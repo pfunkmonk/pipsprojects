@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pip's Projects</title>
+  <meta name="description" content="A hub for Pip's projects — tools, sites, and experiments." />
+  <meta name="theme-color" content="#2f4a6b" />
+  <style>
+    :root {
+      --bg: #f5f4f1; --card: #ffffff; --ink: #1f2933; --muted: #6b7580;
+      --line: #e4e2dc; --accent: #2f4a6b; --accent-2: #c9782e;
+      --shadow: 0 1px 3px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.05);
+      --radius: 16px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#9aa4b0;
+        --line:#2a2f38; --accent:#6ea3d8; --accent-2:#e0a35c; --shadow:0 1px 3px rgba(0,0,0,.4); }
+    }
+    :root[data-theme="dark"] { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#9aa4b0; --line:#2a2f38; --accent:#6ea3d8; --accent-2:#e0a35c; }
+    :root[data-theme="light"] { --bg:#f5f4f1; --card:#ffffff; --ink:#1f2933; --muted:#6b7580; --line:#e4e2dc; --accent:#2f4a6b; --accent-2:#c9782e; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 72px 24px 60px; }
+    header { text-align: center; margin-bottom: 48px; }
+    .mark { font-size: 44px; line-height: 1; }
+    h1 { font-size: clamp(30px, 6vw, 44px); margin: 14px 0 8px; letter-spacing: -.02em; }
+    .tagline { color: var(--muted); font-size: 17px; margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px;
+      text-decoration: none; color: inherit; transition: transform .15s, border-color .15s, box-shadow .15s; position: relative; }
+    a.card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+    .card .icon { font-size: 30px; }
+    .card h2 { margin: 0; font-size: 19px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .card .go { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--accent); }
+    .card.soon { opacity: .72; }
+    .badge { position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; }
+    .badge.live { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+    .badge.wip  { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); }
+    footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 52px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="mark">🎲</div>
+      <h1>Pip's Projects</h1>
+      <p class="tagline">Tools, sites, and experiments — pick a card to dive in.</p>
+    </header>
+
+    <div class="grid">
+      <a class="card" href="https://charactergen.pipsprojects.com">
+        <span class="badge live">Live</span>
+        <span class="icon">⚔️</span>
+        <h2>PF1e Character Generator</h2>
+        <p>Build and manage Pathfinder 1st Edition characters — auto-computed stats, saved to your account.</p>
+        <span class="go">Open →</span>
+      </a>
+
+      <div class="card soon">
+        <span class="badge wip">Coming soon</span>
+        <span class="icon">🌳</span>
+        <h2>Pippenger Family Tree</h2>
+        <p>An interactive genealogy of the Pippenger family — people, photos, stories, and recipes.</p>
+        <span class="go">Coming soon</span>
+      </div>
+
+      <div class="card soon">
+        <span class="badge wip">Coming soon</span>
+        <span class="icon">🗺️</span>
+        <h2>Tabletop Hub</h2>
+        <p>A home base for tabletop tools — maps, tokens, and game-night resources.</p>
+        <span class="go">Coming soon</span>
+      </div>
+
+      <div class="card soon">
+        <span class="icon">✨</span>
+        <h2>More to come</h2>
+        <p>New projects will show up here as they're ready.</p>
+        <span class="go">Stay tuned</span>
+      </div>
+    </div>
+
+    <footer>© <span id="yr"></span> Pip's Projects</footer>
+  </div>
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
