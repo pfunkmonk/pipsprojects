@@ -116,7 +116,7 @@ export function buildDraftReadinessReport({
 
   const illegalTeam = teams.find((team) => team.roster.length > EXPECTED_ROSTER_SIZE
     || team.openSlots < 0
-    || team.cash < team.openSlots * EXPECTED_MINIMUM_BID
+    || team.cash < team.requiredAdditions * EXPECTED_MINIMUM_BID
     || team.legalMaxBid < 0);
   checks.push(!illegalTeam && teams.length === EXPECTED_TEAMS
     ? result("ledger-legality", "Local ledger legality", "pass", `${state.totalPlayers} rostered players; every team can still complete a legal roster.`)
@@ -209,9 +209,7 @@ function emergencyTeamCard(team, rosterSize) {
   const rows = roster.slice(0, rosterSize).map((player, index) => player
     ? `<tr><td>${index + 1}</td><td>${escapeHtml(player.playerName)}</td><td>${escapeHtml(player.position)}</td><td>$${Number(player.price)}</td></tr>`
     : `<tr class="blank"><td>${index + 1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join("");
-  const legalMaximum = Number(team.openSlots) > 0
-    ? Math.max(0, Number(team.cash) - Math.max(0, Number(team.openSlots) - 1))
-    : 0;
+  const legalMaximum = Number(team.openSlots) > 0 ? Number(team.legalMaxBid) || 0 : 0;
   return `<article class="team-card">
     <header><h2>${escapeHtml(team.name)}</h2><strong>$${Number(team.cash)} left</strong></header>
     <p class="team-meta">${team.openSlots} open · max $${legalMaximum} · ${escapeHtml(counts)}</p>

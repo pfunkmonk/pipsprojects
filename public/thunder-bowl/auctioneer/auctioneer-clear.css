@@ -1,0 +1,26 @@
+.sale-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.sale-actions .primary-action {
+  margin-top: 0;
+}
+
+.clear-sale {
+  border: 1px solid #58778b;
+  background: #10283b;
+  color: #e6f0f6;
+  padding: 13px 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.clear-sale:hover,
+.clear-sale:focus-visible {
+  border-color: #8fb1c7;
+  background: #18384f;
+  outline: none;
+}

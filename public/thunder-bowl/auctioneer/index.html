@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071a31">
+  <title>Thunder Bowl Auctioneer</title>
+  <link rel="stylesheet" href="./auctioneer.css">
+  <link rel="stylesheet" href="./auctioneer-enhancements.css">
+  <link rel="stylesheet" href="./auctioneer-illegal.css">
+  <link rel="stylesheet" href="./auctioneer-clear.css">
+  <link rel="stylesheet" href="./auctioneer-mission.css">
+  <link rel="stylesheet" href="./auctioneer-sticky-sale.css">
+  <style>[hidden]{display:none!important}</style>
+</head>
+<body>
+  <main>
+    <section id="login-panel" class="login-panel">
+      <form id="login-form" class="login-card">
+        <span class="brand-mark">TB</span><p>THUNDER BOWL 2026</p><h1>Auctioneer access</h1>
+        <label>Access number<input id="access-code" type="password" inputmode="numeric" autocomplete="current-password" required></label>
+        <label class="login-choice"><input id="auto-open-board" type="checkbox" checked> Open the projector board after sign-in</label>
+        <button type="submit">Open auction console</button><small id="login-status">This role receives public player and roster data only.</small>
+      </form>
+    </section>
+
+    <section id="console" class="console" hidden>
+      <header class="console-header">
+        <div class="console-brand"><span>TB</span><div><strong>THUNDER BOWL 2026</strong><small>AUCTIONEER CONSOLE · PUBLIC DATA ONLY</small></div></div>
+        <div class="header-actions"><em id="sync-state">SYNCING</em><em id="projector-state" class="projector-state is-error">PROJECTOR NOT SEEN</em><button id="open-readiness" type="button">Draft-day check</button><button id="open-finish" type="button">Finish draft</button><button id="open-share" type="button">Share board</button><a href="../guides/" target="_blank" rel="noopener">Setup guides</a><a href="../board?demo=1" target="_blank" rel="noopener" id="board-link">Open board</a><button id="export-csv" type="button">Export CSV</button></div>
+      </header>
+
+      <section id="sale-confirmation" class="sale-confirmation" hidden>
+        <div><small>SUCCESSFULLY CLOUD SYNCED</small><strong id="confirmation-text">Sale recorded</strong></div>
+        <div><button id="confirmation-edit" type="button">Edit</button><button id="confirmation-undo" type="button">Undo</button></div>
+      </section>
+
+      <div class="console-body">
+        <section class="record-panel">
+          <div class="record-panel-scroll">
+          <div class="nomination-strip">
+            <div><small>ON THE CLOCK</small><strong id="current-nominator">—</strong></div>
+            <div><small>NEXT</small><strong id="next-nominator">—</strong></div>
+          </div>
+          <section class="clock-console" aria-label="Nomination clock controls">
+            <div><small>NOMINATION CLOCK</small><strong id="auctioneer-clock">2:00</strong><span id="clock-state">Paused</span></div>
+            <div><label class="clock-length">Clock length<select id="clock-duration"><option value="120000">2:00</option><option value="90000">1:30</option><option value="60000">1:00</option><option value="45000">0:45</option><option value="30000">0:30</option></select></label><button id="clock-pause" type="button">Pause</button><button id="clock-resume" type="button">Resume</button><button id="clock-reset" type="button">Reset 2:00</button><button id="clock-sound" type="button" aria-pressed="true">Clock sound: On</button></div>
+          </section>
+          <p class="eyebrow">RECORD A SALE</p><h1>Winning assignment</h1>
+          <form id="sale-form">
+            <label>Player<input id="player-search" type="search" autocomplete="off" placeholder="Search player, position, or NFL team" role="combobox" aria-autocomplete="list" aria-controls="player-results" aria-expanded="false" required></label>
+            <div id="player-results" class="player-results" role="listbox" aria-label="Player search results" hidden></div>
+            <div id="selected-player-card" class="selected-player-card" hidden><span id="selected-player-position">WR</span><div><small>SELECTED PLAYER</small><strong id="selected-player-name">Player name</strong><em id="selected-player-team">NFL</em></div></div>
+            <div class="form-row">
+              <label>Buying team<select id="sale-team" required></select></label>
+              <label>Winning price
+                <span class="price-entry"><input id="sale-price" type="number" inputmode="numeric" min="1" step="1" required><button id="open-keypad" type="button">Keypad</button></span>
+              </label>
+            </div>
+            <div class="price-increments" aria-label="Price increments"><button type="button" data-price-add="1">+$1</button><button type="button" data-price-add="5">+$5</button><button type="button" data-price-add="10">+$10</button></div>
+            <div class="quick-team-heading"><strong>Quick team selection</strong><span>Alt + shown key</span></div>
+            <div id="quick-team-grid" class="quick-team-grid" aria-label="Quick team selection"></div>
+            <section id="pending-sale-preview" class="pending-sale-preview" hidden aria-live="polite">
+              <strong id="pending-sale-sentence">Pending sale</strong>
+              <div><span>Cap before<b id="impact-before">—</b></span><span>Price<b id="impact-price">—</b></span><span>Cap after<b id="impact-after">—</b></span><span>Max slots left<b id="impact-open">—</b></span><span>Legal max<b id="impact-max">—</b></span></div>
+              <div id="position-completion" class="position-completion"></div>
+            </section>
+            <p id="sale-status" class="form-status">Choose a player, team, and whole-dollar price.</p>
+            <p id="offline-warning" class="offline-warning" hidden><strong>OFFLINE — RECORDING DISABLED</strong><span>Use the command-center laptop until cloud synchronization returns.</span></p>
+          </form>
+          <aside class="privacy-note"><strong>Restricted console</strong><span>No VBD, projections, personal prices, targets, avoids, or private notes are available in this session.</span></aside>
+          </div>
+          <div class="sale-actions" aria-label="Always-visible sale controls">
+            <button id="clear-sale" class="clear-sale" type="button" title="Clear all sale fields (Esc)">Clear</button>
+            <button id="record-sale" class="primary-action" type="submit" form="sale-form" disabled>Record sale</button>
+          </div>
+        </section>
+
+        <section class="history-panel">
+          <section class="recent-sales"><div class="recent-heading"><div><p class="eyebrow">QUICK CORRECTIONS</p><h2>Recent sales</h2></div></div><div id="recent-sale-cards" class="recent-sale-cards"></div></section>
+          <section class="activity-feed"><div><p class="eyebrow">WHAT JUST HAPPENED</p><h2>Activity</h2></div><ol id="activity-items"></ol></section>
+          <div class="history-heading">
+            <div><p class="eyebrow">PERMANENT CORRECTIONS</p><h2>Assignment history</h2></div>
+            <div class="history-tools"><label>Find assignment<input id="history-search" type="search" placeholder="Player or team"></label></div>
+          </div>
+          <details class="advanced-corrections"><summary>Advanced corrections</summary><div><p>Use connected correction only when two or more players or teams were entered as one mix-up.</p><button id="toggle-reconciliation" type="button">Correct a connected mix-up</button><button id="export-audit" type="button">Export audit log</button></div></details>
+          <div id="reconciliation-toolbar" class="reconciliation-toolbar" hidden><strong id="reconciliation-count">0 selected</strong><span>Select the connected mistakes. Every correction will be saved together—or none will.</span><button id="open-reconciliation" type="button" disabled>Fix selected</button><button id="cancel-reconciliation" type="button">Cancel</button></div>
+          <div class="history-wrap"><table><thead><tr><th class="reconcile-cell"></th><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Recorded</th><th></th></tr></thead><tbody id="history-rows"></tbody></table></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="edit-dialog">
+    <form id="edit-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">CORRECT ASSIGNMENT</p><h2 id="edit-title">Edit player</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <input id="edit-assignment-id" type="hidden">
+      <label>Player<select id="edit-player" required></select></label>
+      <div class="form-row"><label>Team<select id="edit-team" required></select></label><label>Price<input id="edit-price" type="number" min="1" step="1" required></label></div>
+      <label id="contract-field">Keeper contract year<input id="edit-contract" type="number" min="1" max="3" step="1"></label>
+      <p>This correction remains in the audit history and updates all derived roster and salary-cap values.</p>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="save-edit" value="default" class="primary-action">Save correction</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="keypad-dialog" class="keypad-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">WINNING PRICE</p><h2>Large keypad</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <output id="keypad-value">$0</output>
+      <div id="keypad-grid" class="keypad-grid">
+        <button type="button" data-keypad="1">1</button><button type="button" data-keypad="2">2</button><button type="button" data-keypad="3">3</button>
+        <button type="button" data-keypad="4">4</button><button type="button" data-keypad="5">5</button><button type="button" data-keypad="6">6</button>
+        <button type="button" data-keypad="7">7</button><button type="button" data-keypad="8">8</button><button type="button" data-keypad="9">9</button>
+        <button type="button" data-keypad="clear">Clear</button><button type="button" data-keypad="0">0</button><button type="button" data-keypad="back">⌫</button>
+      </div>
+      <div class="keypad-increments"><button type="button" data-keypad-add="1">+$1</button><button type="button" data-keypad-add="5">+$5</button><button type="button" data-keypad-add="10">+$10</button></div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="apply-keypad" value="default" class="primary-action">Use price</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="reconciliation-dialog" class="reconciliation-dialog">
+    <form id="reconciliation-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">FIX CONNECTED MISTAKES</p><h2>Correct several assignments</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p>Use this when two or more players, teams, or prices were mixed up. Every correction will be validated and saved together. If anything is illegal, nothing changes.</p>
+      <div id="reconciliation-rows" class="reconciliation-rows"></div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="save-reconciliation" value="default" class="primary-action">Save all corrections</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="readiness-dialog" class="readiness-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">SYSTEM-WIDE PREFLIGHT</p><h2>Draft-day check</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="readiness-intro">Run this before the room fills. It checks the complete public workflow instead of waiting for separate problems to appear.</p>
+      <div class="manual-checks"><button id="test-sound" type="button">Test confirmation sound</button><button id="test-clock-alerts" type="button">Test final 10 seconds</button><label><input id="sale-sounds-enabled" type="checkbox" checked> Use sale/rejection sounds</label><label><input id="sound-confirmed" type="checkbox"> I heard the sounds</label><label><input id="zoom-confirmed" type="checkbox"> Projector browser zoom is 100%</label></div>
+      <div id="readiness-summary" class="readiness-summary">Checks have not run yet.</div>
+      <ol id="readiness-results" class="readiness-results"></ol>
+      <div class="dialog-actions"><button value="cancel">Close</button><button id="run-readiness" type="button" class="primary-action">Run all checks</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="finish-dialog" class="readiness-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">FINAL LEGALITY CHECK</p><h2>Finish draft</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="readiness-intro">Teams may finish with any legal roster from 8 through 14 players. This check does not require every team to reach 14.</p>
+      <div id="finish-summary" class="readiness-summary">Run the final check when the room agrees the auction is finished.</div>
+      <ol id="finish-results" class="readiness-results"></ol>
+      <div class="dialog-actions"><button value="cancel">Close</button><button id="export-final" type="button" disabled>Export final CSV</button><button id="run-finish" type="button" class="primary-action">Check all teams</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="share-dialog" class="share-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">READ-ONLY VIEW</p><h2>Share the public board</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p>Only the isolated public board is shared. Auctioneer access and private evaluation data are never included.</p>
+      <output id="share-board-url"></output>
+      <div id="share-qr" class="share-qr" aria-label="QR code for the public board"></div>
+      <div class="dialog-actions"><button value="cancel">Close</button><button id="copy-board-link" type="button" class="primary-action">Copy viewer link</button></div>
+    </form>
+  </dialog>
+  <script src="../vendor/qrcode-generator.js"></script>
+  <script type="module" src="./auctioneer.mjs"></script>
+</body>
+</html>

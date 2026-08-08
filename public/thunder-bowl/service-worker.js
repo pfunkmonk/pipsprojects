@@ -1,8 +1,33 @@
-const CACHE_VERSION = "thunder-bowl-shell-v49";
+const CACHE_VERSION = "thunder-bowl-shell-v51";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
   "/thunder-bowl/public.html",
+  "/thunder-bowl/auctioneer/",
+  "/thunder-bowl/auctioneer/index.html",
+  "/thunder-bowl/auctioneer/auctioneer.css",
+  "/thunder-bowl/auctioneer/auctioneer-enhancements.css",
+  "/thunder-bowl/auctioneer/auctioneer-illegal.css",
+  "/thunder-bowl/auctioneer/auctioneer-clear.css",
+  "/thunder-bowl/auctioneer/auctioneer-mission.css",
+  "/thunder-bowl/auctioneer/auctioneer-sticky-sale.css",
+  "/thunder-bowl/auctioneer/auctioneer.mjs",
+  "/thunder-bowl/board.html",
+  "/thunder-bowl/board/board.css",
+  "/thunder-bowl/board/board-reliability.css",
+  "/thunder-bowl/board/board-elite.css",
+  "/thunder-bowl/board/board-transactions.css",
+  "/thunder-bowl/board/board.mjs",
+  "/thunder-bowl/shared/addon-config.mjs",
+  "/thunder-bowl/shared/clock-alert-policy.mjs",
+  "/thunder-bowl/shared/data-source.mjs",
+  "/thunder-bowl/shared/demo-store.mjs",
+  "/thunder-bowl/shared/nomination-clock.mjs?v=20260808-cloud",
+  "/thunder-bowl/shared/nomination-order.mjs",
+  "/thunder-bowl/shared/projector-presence.mjs",
+  "/thunder-bowl/shared/public-core.mjs",
+  "/thunder-bowl/shared/readiness.mjs",
+  "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260805g",
   "/thunder-bowl/app.mjs?v=20260805g",
   "/thunder-bowl/public-board.mjs?v=20260805g",
@@ -44,9 +69,11 @@ async function navigationResponse(request) {
     return response;
   } catch {
     const pathname = new URL(request.url).pathname;
-    const fallback = pathname.endsWith("/board") || pathname.endsWith("/public.html")
-      ? "/thunder-bowl/public.html"
-      : "/thunder-bowl/index.html";
+    const fallback = pathname.startsWith("/thunder-bowl/board")
+      ? "/thunder-bowl/board.html"
+      : pathname.startsWith("/thunder-bowl/auctioneer")
+        ? "/thunder-bowl/auctioneer/index.html"
+        : "/thunder-bowl/index.html";
     return caches.match(fallback);
   }
 }

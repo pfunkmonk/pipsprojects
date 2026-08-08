@@ -1,0 +1,26 @@
+.stale-board-warning {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: 4.5vh;
+  width: min(760px, calc(100vw - 40px));
+  transform: translateX(-50%);
+  padding: clamp(12px, 1.2vw, 22px);
+  border: 3px solid #ff5964;
+  background: #5b1018f2;
+  box-shadow: 0 12px 50px #000c, inset 6px 0 #ff8b92;
+  color: #fff;
+  text-align: center;
+}
+
+.stale-board-warning strong {
+  display: block;
+  font-size: clamp(18px, 2vw, 38px);
+  letter-spacing: .08em;
+}
+
+.stale-board-warning span {
+  display: block;
+  margin-top: 5px;
+  font-size: clamp(10px, .9vw, 18px);
+}

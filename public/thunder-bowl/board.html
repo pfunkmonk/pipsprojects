@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#06172a">
+  <title>Thunder Bowl Live Auction Board</title>
+  <link rel="stylesheet" href="./board/board.css">
+  <link rel="stylesheet" href="./board/board-reliability.css">
+  <link rel="stylesheet" href="./board/board-elite.css">
+  <link rel="stylesheet" href="./board/board-transactions.css">
+  <style>.team-board{align-self:start;width:100%}</style>
+</head>
+<body>
+  <main id="board-app" aria-live="polite">
+    <header class="board-topbar">
+      <div class="board-title"><span>TB</span><div><strong>THUNDER BOWL 2026</strong><small>LIVE AUCTION BOARD</small></div></div>
+      <div id="board-clock" class="board-clock"><small>NEXT NOMINATION</small><strong>2:00</strong><span>PAUSED</span></div>
+      <div class="position-key" aria-label="Position colors"><i data-pos="QB">QB</i><i data-pos="RB">RB</i><i data-pos="WR">WR</i><i data-pos="TE">TE</i><i data-pos="K">K</i><i data-pos="DST">DST</i></div>
+      <div class="board-actions"><em id="connection-state">CONNECTING</em><button id="export-board" type="button">Export CSV</button><button id="print-board" type="button">Print / PDF</button><button id="fullscreen-board" type="button">Full screen</button></div>
+    </header>
+    <section id="last-sale-strip" class="last-sale-strip"><strong>LAST 3 SALES</strong><ol id="last-sale-items"><li>No auction purchases recorded yet</li></ol></section>
+    <section id="team-board" class="team-board" aria-label="Team auction columns"></section>
+    <aside id="nominated-player" class="nomination-spotlight" hidden aria-live="assertive"><small>UP FOR BID</small><strong id="nominated-player-text">Player name</strong><span id="nominated-player-detail">Position · NFL team</span></aside>
+    <aside id="sale-spotlight" class="sale-spotlight" hidden aria-live="assertive"><small>SOLD</small><strong id="spotlight-player">Player</strong><span id="spotlight-result">Team · $0</span></aside>
+    <aside id="stale-board-warning" class="stale-board-warning" hidden role="alert"><strong>BOARD CONNECTION LOST</strong><span>The last confirmed board remains visible. Check the auctioneer console or network connection.</span></aside>
+    <footer id="board-status">Loading current auction…</footer>
+  </main>
+  <script type="module" src="./board/board.mjs"></script>
+</body>
+</html>

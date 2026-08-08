@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-05T15:53:26.042Z",
+  "generatedAt": "2026-08-08T23:08:04.555Z",
   "scope": "Deterministic full-system keeper, cap-trade, auction, offline divergence, reconnect, recovery, public-boundary, and latency gate; not a substitute for the final human-paced usability rehearsal.",
   "passed": true,
   "pins": {
     "packSha256": "48ea055b9e5f1b97398997e51594c3243bb5d392fe2c4716083b6c79cc118f27",
-    "engineSha256": "2622304257c462727ddabe631a8dbc8ac623d5a83148f9d8dd62a8daa0485de9",
+    "engineSha256": "9fff751cacfd655184ce189f2c6b183910ae33ade48b17e41b055ef925be41b5",
     "scriptSha256": "8c2febaed78156b3284f495e619ca824b22921e1d81bf8c4d512e4cfec479a54"
   },
   "pack": {
@@ -35,7 +35,7 @@
     "illegalBidCheck": {
       "activeSaleOrdinal": 111,
       "teamId": "el-guapo",
-      "rejectedAmount": 59
+      "rejectedAmount": 61
     },
     "sha256": "60f41788691a07ff9506570c45fe6e54666f0f705e692615d0757b41398a2d53"
   },
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.7216,
+    "reconnectMs": 1.4511,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 27.38,
+    "durationMs": 16.49,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2797,
-      "p95Ms": 0.6206,
-      "maximumMs": 0.8104
+      "medianMs": 0.22,
+      "p95Ms": 0.4789,
+      "maximumMs": 0.6832
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1768,
-      "p95Ms": 0.3121,
-      "maximumMs": 0.3121
+      "medianMs": 0.1561,
+      "p95Ms": 0.2645,
+      "maximumMs": 0.2645
     }
   },
   "finalState": {

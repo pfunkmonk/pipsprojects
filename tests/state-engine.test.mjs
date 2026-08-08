@@ -51,7 +51,7 @@ test("confirmed 2026 caps and complete final-ranking order are preserved", () =>
   assert.equal(state.teams["goon-skwad"].cash, 106);
   assert.equal(state.teams["dogs-of-war"].cash, 104);
   assert.equal(state.teams["el-guapo"].cash, 102);
-  assert.equal(state.teams["dogs-of-war"].legalMaxBid, 91);
+  assert.equal(state.teams["dogs-of-war"].legalMaxBid, 97);
   assert.equal(state.currentNominatorTeamId, "orange-crush");
   assert.equal(state.config.verifiedPrefixCount, 12);
   assert.equal(state.config.nominationOrder[8], "el-guapo");
@@ -133,12 +133,29 @@ test("sale updates cash, roster, player ownership, and nomination", () => {
   assert.equal(state.lastSale.amount, 32);
 });
 
-test("legal maximum preserves one dollar for every later slot", () => {
-  const illegal = sale(1, { amount: 92 });
+test("legal maximum reserves only the additions needed for a legal 8-player lineup", () => {
+  const illegal = sale(1, { amount: 98 });
   assert.throws(
     () => replayDraft([configEvent(), illegal]),
-    (error) => error instanceof RuleViolation && error.code === "ILLEGAL_BID" && error.details.maximum === 91,
+    (error) => error instanceof RuleViolation && error.code === "ILLEGAL_BID" && error.details.maximum === 97,
   );
+});
+
+test("a team may stop at eight legal starters while retaining six optional roster slots", () => {
+  const positions = ["QB", "RB", "RB", "WR", "WR", "TE", "K", "DST"];
+  const events = positions.map((position, index) => sale(index + 1, {
+    playerId: `minimum-roster-${index + 1}`,
+    playerName: `Minimum Roster ${index + 1}`,
+    position,
+    amount: index === 0 ? 97 : 1,
+  }));
+  const state = replayDraft([configEvent(), ...events]);
+  const dogs = state.teams["dogs-of-war"];
+  assert.equal(dogs.roster.length, 8);
+  assert.equal(dogs.cash, 0);
+  assert.equal(dogs.requiredAdditions, 0);
+  assert.equal(dogs.openSlots, 6);
+  assert.equal(dogs.legalMaxBid, 0);
 });
 
 test("live market state preserves the $1 floor and damps room inflation", () => {

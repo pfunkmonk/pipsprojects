@@ -1,0 +1,59 @@
+.record-panel{
+  padding:0;
+}
+.record-panel-scroll{
+  min-height:0;
+  padding:22px;
+  overflow-y:auto;
+  scrollbar-gutter:stable;
+}
+.sale-actions{
+  position:relative;
+  z-index:20;
+  margin:0;
+  padding:12px 14px;
+  border-top:2px solid #f0b542;
+  background:#081a2a;
+  box-shadow:0 -12px 28px #020910d9;
+}
+.sale-actions .primary-action{
+  min-height:50px;
+  font-size:16px;
+}
+.sale-actions .clear-sale{
+  min-height:50px;
+}
+
+@media(min-width:881px){
+  html,body,main{height:100%}
+  .console{
+    display:flex;
+    flex-direction:column;
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
+  .console-header,.sale-confirmation{flex:0 0 auto}
+  .console-body{
+    flex:1 1 auto;
+    min-height:0;
+  }
+  .record-panel{
+    display:grid;
+    grid-template-rows:minmax(0,1fr) auto;
+    min-height:0;
+    overflow:hidden;
+  }
+  .history-panel{min-height:0;overflow:hidden}
+  .history-wrap{max-height:none}
+}
+
+@media(max-width:880px){
+  .record-panel{
+    display:grid;
+    grid-template-rows:minmax(0,1fr) auto;
+    height:calc(100dvh - 130px);
+    min-height:480px;
+    overflow:hidden;
+  }
+}

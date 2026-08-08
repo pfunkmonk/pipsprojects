@@ -1,0 +1,27 @@
+.sale-confirmation.is-illegal {
+  background: #7a111b;
+  border-color: #ff5968;
+  box-shadow: inset 7px 0 #ff6572;
+  animation: illegal-banner-flash .22s ease-in-out 0s 4 alternate;
+}
+
+.sale-confirmation.is-illegal small { color: #ffc1c6; }
+
+.record-panel.illegal-flash {
+  animation: illegal-panel-flash .2s ease-in-out 0s 4 alternate;
+}
+
+@keyframes illegal-banner-flash {
+  from { background: #7a111b; }
+  to { background: #d51f30; }
+}
+
+@keyframes illegal-panel-flash {
+  from { box-shadow: inset 0 0 0 1px #29465d; }
+  to { box-shadow: inset 0 0 0 5px #ff4e5e; background: #32131a; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sale-confirmation.is-illegal,
+  .record-panel.illegal-flash { animation: none; }
+}

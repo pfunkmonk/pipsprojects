@@ -5,6 +5,7 @@ export const MINIMUM_BID = 1;
 export const ROSTER_SIZE = 14;
 export const POSITIONS = Object.freeze(["QB", "RB", "WR", "TE", "K", "DST"]);
 export const STARTER_REQUIREMENTS = Object.freeze({ QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 });
+export const MINIMUM_ROSTER_SIZE = Object.values(STARTER_REQUIREMENTS).reduce((sum, count) => sum + count, 0);
 
 export const EVENT_TYPES = Object.freeze({
   DRAFT_CONFIGURED: "DRAFT_CONFIGURED",
@@ -439,10 +440,30 @@ function starterSlotsMissing(team, starterRequirements) {
   );
 }
 
-export function legalMaximumBid(team, config = DEFAULT_CONFIG) {
+export function requiredRosterAdditions(team, config = DEFAULT_CONFIG, candidatePosition = null) {
+  const counts = { ...team.positionCounts };
+  const rosterCount = team.roster.length + (candidatePosition ? 1 : 0);
+  if (candidatePosition) counts[candidatePosition] = (counts[candidatePosition] || 0) + 1;
+  const minimumPlayersNeeded = Math.max(0, MINIMUM_ROSTER_SIZE - rosterCount);
+  const missingStarters = POSITIONS.reduce(
+    (total, position) => total + Math.max(0, config.starterRequirements[position] - counts[position]),
+    0,
+  );
+  return Math.max(minimumPlayersNeeded, missingStarters);
+}
+
+export function legalMaximumBid(team, config = DEFAULT_CONFIG, candidatePosition = null) {
   const openSlots = config.rosterSize - team.roster.length;
   if (openSlots <= 0) return 0;
-  return Math.max(0, team.cash - config.minimumBid * (openSlots - 1));
+  let reserveAfterPurchase;
+  if (candidatePosition) {
+    reserveAfterPurchase = requiredRosterAdditions(team, config, candidatePosition);
+  } else {
+    const minimumPlayersAfter = Math.max(0, MINIMUM_ROSTER_SIZE - team.roster.length - 1);
+    const missingAfterBestPurchase = Math.max(0, starterSlotsMissing(team, config.starterRequirements) - 1);
+    reserveAfterPurchase = Math.max(minimumPlayersAfter, missingAfterBestPurchase);
+  }
+  return Math.max(0, team.cash - config.minimumBid * reserveAfterPurchase);
 }
 
 export function calculateLiveMarketState({ remainingRoomDollars, remainingOpenSlots, remainingMarketValues }, damping = 0.65) {
@@ -557,7 +578,7 @@ function applyAcquisition(state, event, kind) {
   }
 
   const amount = kind === "keeper" ? payload.salary : payload.amount;
-  const maximum = legalMaximumBid(team, state.config);
+  const maximum = legalMaximumBid(team, state.config, payload.position);
   if (amount > maximum) {
     fail("ILLEGAL_BID", `${team.name} can spend at most $${maximum} and still complete a legal roster.`, {
       amount,
@@ -671,7 +692,7 @@ export function replayDraft(rawEvents = []) {
       const fromTeam = state.teams[event.payload.fromTeamId];
       const toTeam = state.teams[event.payload.toTeamId];
       if (!fromTeam || !toTeam) fail("UNKNOWN_TEAM", "Cap transfer references an unknown team.");
-      const minimumReserve = (state.config.rosterSize - fromTeam.roster.length) * state.config.minimumBid;
+      const minimumReserve = requiredRosterAdditions(fromTeam, state.config) * state.config.minimumBid;
       if (fromTeam.cash - event.payload.amount < minimumReserve) {
         fail("CAP_TRANSFER_BREAKS_ROSTER", `${fromTeam.name} would not retain enough cash to complete its roster.`);
       }
@@ -735,6 +756,8 @@ export function replayDraft(rawEvents = []) {
   state.updatedAt = events.length ? events[events.length - 1].serverReceivedAt || events[events.length - 1].createdAt : null;
   for (const team of Object.values(state.teams)) {
     team.openSlots = state.config.rosterSize - team.roster.length;
+    team.minimumRosterSize = MINIMUM_ROSTER_SIZE;
+    team.requiredAdditions = requiredRosterAdditions(team, state.config);
     team.legalMaxBid = legalMaximumBid(team, state.config);
     team.missingStarterSlots = starterSlotsMissing(team, state.config.starterRequirements);
   }
@@ -805,6 +828,9 @@ export function toPublicSnapshot(state, options = {}) {
       spent: team.spent,
       rosterCount: team.roster.length,
       openSlots: team.openSlots,
+      minimumRosterSize: MINIMUM_ROSTER_SIZE,
+      requiredAdditions: team.requiredAdditions,
+      legalMaxBid: team.legalMaxBid,
       positionCounts: Object.fromEntries(POSITIONS.map((position) => [position, team.positionCounts[position]])),
       players: team.roster.map((player) => ({
         playerId: player.playerId,

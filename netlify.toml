@@ -56,8 +56,28 @@
   status = 200
 
 [[redirects]]
+  from = "/api/thunder-bowl/auctioneer/auth"
+  to = "/.netlify/functions/thunder-bowl-auctioneer-auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/auctioneer/snapshot"
+  to = "/.netlify/functions/thunder-bowl-auctioneer-snapshot"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/auctioneer/commands"
+  to = "/.netlify/functions/thunder-bowl-auctioneer-commands"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/board/snapshot"
+  to = "/.netlify/functions/thunder-bowl-board-snapshot"
+  status = 200
+
+[[redirects]]
   from = "/thunder-bowl/board"
-  to = "/thunder-bowl/public.html"
+  to = "/thunder-bowl/board.html"
   status = 200
 
 [[headers]]

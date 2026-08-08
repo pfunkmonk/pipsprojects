@@ -350,7 +350,8 @@ function availablePlayers() {
 }
 
 function computeLiveMarket() {
-  const remainingOpenSlots = Object.values(draftState.teams).reduce((sum, team) => sum + team.openSlots, 0);
+  const remainingOpenSlots = Object.values(draftState.teams)
+    .reduce((sum, team) => sum + Math.min(team.openSlots, team.cash), 0);
   const remainingMarketValues = availablePlayers().map((player) => player.marketValue);
   while (remainingMarketValues.length < remainingOpenSlots) remainingMarketValues.push(1);
   return calculateLiveMarketState({

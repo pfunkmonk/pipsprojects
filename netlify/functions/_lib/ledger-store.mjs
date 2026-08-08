@@ -18,9 +18,111 @@ import {
 const STORE_NAME = "thunder-bowl-2026";
 const LEDGER_KEY = "auction-ledger-2026";
 const EMPTY_ETAG = '"tb26-empty-v1"';
+const MAX_IDEMPOTENCY_KEYS = 2_000;
+const DOCUMENT_KEYS = new Set([
+  "schemaVersion",
+  "season",
+  "generation",
+  "auctioneerRevision",
+  "updatedAt",
+  "events",
+  "operationalEvents",
+  "completedIdempotencyKeys",
+  "actorLabels",
+]);
+const OPERATION_TYPES = new Set([
+  "TEAM_FINISHED",
+  "TEAM_REOPENED",
+  "NOMINATION_STAGED",
+  "NOMINATION_CLEARED",
+  "CLOCK_UPDATED",
+]);
+const CLOCK_STATUSES = new Set(["running", "paused"]);
+const POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 
 function store() {
   return getStore({ name: STORE_NAME, consistency: "strong" });
+}
+
+function publicText(value, label, maximum = 200) {
+  const text = String(value || "").trim();
+  if (!text || text.length > maximum) throw new Error(`${label} is invalid.`);
+  return text;
+}
+
+function exactKeys(value, required, optional, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be an object.`);
+  const allowed = new Set([...required, ...optional]);
+  for (const key of Object.keys(value)) if (!allowed.has(key)) throw new Error(`${label} contains an unsupported field.`);
+  for (const key of required) if (!(key in value)) throw new Error(`${label} is missing ${key}.`);
+}
+
+function validateClock(value) {
+  exactKeys(value, ["status", "durationMs", "remainingMs", "deadline"], [], "Nomination clock");
+  if (!CLOCK_STATUSES.has(value.status)) throw new Error("Nomination clock status is invalid.");
+  if (!Number.isInteger(value.durationMs) || value.durationMs < 15_000 || value.durationMs > 600_000) throw new Error("Nomination clock duration is invalid.");
+  if (!Number.isInteger(value.remainingMs) || value.remainingMs < 0 || value.remainingMs > value.durationMs) throw new Error("Nomination clock remaining time is invalid.");
+  if (value.deadline !== null && (!Number.isSafeInteger(value.deadline) || value.deadline < 0)) throw new Error("Nomination clock deadline is invalid.");
+  if (value.status === "running" && value.deadline === null) throw new Error("A running nomination clock requires a deadline.");
+  if (value.status === "paused" && value.deadline !== null) throw new Error("A paused nomination clock cannot retain a deadline.");
+  return { status: value.status, durationMs: value.durationMs, remainingMs: value.remainingMs, deadline: value.deadline };
+}
+
+function validateOperationalEvent(value) {
+  exactKeys(value, ["id", "type", "createdAt", "actorLabel"], ["teamId", "player", "clock"], "Operational event");
+  const event = {
+    id: publicText(value.id, "Operational event id", 120),
+    type: publicText(value.type, "Operational event type", 40),
+    createdAt: new Date(value.createdAt).toISOString(),
+    actorLabel: publicText(value.actorLabel, "Operational actor", 80),
+  };
+  if (!OPERATION_TYPES.has(event.type)) throw new Error("Operational event type is invalid.");
+  if (["TEAM_FINISHED", "TEAM_REOPENED"].includes(event.type)) {
+    if (value.player !== undefined || value.clock !== undefined) throw new Error("Team operation contains unrelated data.");
+    event.teamId = publicText(value.teamId, "Operational team id", 120);
+  } else if (event.type === "NOMINATION_STAGED") {
+    if (value.teamId !== undefined || value.clock !== undefined) throw new Error("Nomination operation contains unrelated data.");
+    exactKeys(value.player, ["id", "name", "position", "nflTeam"], [], "Staged player");
+    if (!POSITIONS.has(value.player.position)) throw new Error("Staged player position is invalid.");
+    event.player = {
+      id: publicText(value.player.id, "Staged player id", 120),
+      name: publicText(value.player.name, "Staged player name"),
+      position: value.player.position,
+      nflTeam: publicText(value.player.nflTeam, "Staged player NFL team", 20),
+    };
+  } else if (event.type === "CLOCK_UPDATED") {
+    if (value.teamId !== undefined || value.player !== undefined) throw new Error("Clock operation contains unrelated data.");
+    event.clock = validateClock(value.clock);
+  } else if (value.teamId !== undefined || value.player !== undefined || value.clock !== undefined) {
+    throw new Error("Clear-nomination operation contains unrelated data.");
+  }
+  return event;
+}
+
+function validateOperationalEvents(values) {
+  if (!Array.isArray(values) || values.length > 10_000) throw new Error("Operational event history is invalid.");
+  const ids = new Set();
+  return values.map((value) => {
+    const event = validateOperationalEvent(value);
+    if (ids.has(event.id)) throw new Error("Operational event ids must be unique.");
+    ids.add(event.id);
+    return event;
+  });
+}
+
+function validateIdempotencyKeys(values) {
+  if (!Array.isArray(values) || values.length > MAX_IDEMPOTENCY_KEYS) throw new Error("Auctioneer idempotency history is invalid.");
+  const keys = values.map((value) => publicText(value, "Auctioneer idempotency key", 200));
+  if (new Set(keys).size !== keys.length) throw new Error("Auctioneer idempotency keys must be unique.");
+  return keys;
+}
+
+function validateActorLabels(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Actor labels are invalid.");
+  return Object.fromEntries(Object.entries(value).map(([eventId, label]) => [
+    publicText(eventId, "Actor event id", 120),
+    publicText(label, "Actor label", 80),
+  ]));
 }
 
 function emptyDocument() {
@@ -28,33 +130,48 @@ function emptyDocument() {
     schemaVersion: SCHEMA_VERSION,
     season: SEASON,
     generation: INITIAL_LEDGER_GENERATION,
+    auctioneerRevision: 0,
     updatedAt: null,
     events: [],
+    operationalEvents: [],
+    completedIdempotencyKeys: [],
+    actorLabels: {},
   };
 }
 
 function validateDocument(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Stored ledger is not an object.");
-  const keys = Object.keys(value).sort();
-  const legacyKeys = ["events", "schemaVersion", "season", "updatedAt"];
-  const currentKeys = ["events", "generation", "schemaVersion", "season", "updatedAt"];
-  if (JSON.stringify(keys) !== JSON.stringify(legacyKeys) && JSON.stringify(keys) !== JSON.stringify(currentKeys)) {
-    throw new Error("Stored ledger has an unexpected shape.");
-  }
+  for (const key of Object.keys(value)) if (!DOCUMENT_KEYS.has(key)) throw new Error("Stored ledger has an unexpected shape.");
   if (value.schemaVersion !== SCHEMA_VERSION || value.season !== SEASON || !Array.isArray(value.events)) {
     throw new Error("Stored ledger schema does not match Thunder Bowl 2026.");
   }
   const events = value.events.map(validateEvent);
   replayDraft(events);
+  const auctioneerRevision = value.auctioneerRevision === undefined ? 0 : Number(value.auctioneerRevision);
+  if (!Number.isSafeInteger(auctioneerRevision) || auctioneerRevision < 0) throw new Error("Auctioneer revision is invalid.");
   return {
     schemaVersion: SCHEMA_VERSION,
     season: SEASON,
-    generation: value.generation === undefined
-      ? INITIAL_LEDGER_GENERATION
-      : normalizeLedgerGeneration(value.generation),
+    generation: value.generation === undefined ? INITIAL_LEDGER_GENERATION : normalizeLedgerGeneration(value.generation),
+    auctioneerRevision,
     updatedAt: value.updatedAt || null,
     events,
+    operationalEvents: validateOperationalEvents(value.operationalEvents || []),
+    completedIdempotencyKeys: validateIdempotencyKeys(value.completedIdempotencyKeys || []),
+    actorLabels: validateActorLabels(value.actorLabels || {}),
   };
+}
+
+function incrementAuctioneerRevision(value) {
+  if (!Number.isSafeInteger(value) || value < 0 || value === Number.MAX_SAFE_INTEGER) throw new Error("Auctioneer revision has reached its safe limit.");
+  return value + 1;
+}
+
+function conflict(message, currentRevision = null) {
+  const error = new Error(message);
+  error.code = "LEDGER_CONFLICT";
+  error.currentRevision = currentRevision;
+  return error;
 }
 
 export async function readLedger(options = {}) {
@@ -64,16 +181,8 @@ export async function readLedger(options = {}) {
     type: "json",
     ...(requestedEtag ? { etag: requestedEtag } : {}),
   });
-  if (!entry) {
-    return {
-      document: emptyDocument(),
-      etag: EMPTY_ETAG,
-      notModified: requestedEtag === EMPTY_ETAG,
-    };
-  }
-  if (entry.data === null) {
-    return { document: null, etag: entry.etag, notModified: true };
-  }
+  if (!entry) return { document: emptyDocument(), etag: EMPTY_ETAG, notModified: requestedEtag === EMPTY_ETAG };
+  if (entry.data === null) return { document: null, etag: entry.etag, notModified: true };
   return { document: validateDocument(entry.data), etag: entry.etag, notModified: false };
 }
 
@@ -87,29 +196,47 @@ export async function appendLedgerEvents(incomingEvents, expectedGeneration = nu
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const current = await readLedger();
     assertExpectedLedgerGeneration(current.document.generation, expectedGeneration);
-    const currentEvents = current.document.events;
-    const mergedEvents = mergeEventStreams(currentEvents, validatedIncoming);
-    if (mergedEvents.length === currentEvents.length) {
-      return { document: current.document, etag: current.etag, changed: false };
-    }
+    const mergedEvents = mergeEventStreams(current.document.events, validatedIncoming);
+    if (mergedEvents.length === current.document.events.length) return { document: current.document, etag: current.etag, changed: false };
     const document = {
-      schemaVersion: SCHEMA_VERSION,
-      season: SEASON,
-      generation: current.document.generation,
+      ...current.document,
+      auctioneerRevision: incrementAuctioneerRevision(current.document.auctioneerRevision),
       updatedAt: new Date().toISOString(),
       events: mergedEvents,
     };
     replayDraft(document.events);
-    const write = await store().setJSON(
-      LEDGER_KEY,
-      document,
-      current.etag === EMPTY_ETAG ? { onlyIfNew: true } : { onlyIfMatch: current.etag },
-    );
+    const write = await store().setJSON(LEDGER_KEY, document, current.etag === EMPTY_ETAG ? { onlyIfNew: true } : { onlyIfMatch: current.etag });
     if (write.modified) return { document, etag: write.etag, changed: true };
   }
-  const error = new Error("Another writer changed the ledger repeatedly. Retry the sync.");
-  error.code = "LEDGER_CONFLICT";
-  throw error;
+  throw conflict("Another writer changed the ledger repeatedly. Retry the sync.");
+}
+
+export async function commitAuctioneerLedger({ events, operationalEvents, expectedRevision, idempotencyKey, actorRole = "auctioneer" }) {
+  const key = publicText(idempotencyKey, "Auctioneer idempotency key", 200);
+  const candidateEvents = events.map(validateEvent);
+  replayDraft(candidateEvents);
+  const candidateOperations = validateOperationalEvents(operationalEvents || []);
+  const current = await readLedger();
+  if (current.document.completedIdempotencyKeys.includes(key)) return { document: current.document, etag: current.etag, changed: false };
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision !== current.document.auctioneerRevision) {
+    throw conflict("Another draft action was saved first. The auctioneer has refreshed; retry this action.", current.document.auctioneerRevision);
+  }
+  const currentEventIds = new Set(current.document.events.map((event) => event.id));
+  const actorLabel = actorRole === "auctioneer" ? "Auctioneer" : "Command center";
+  const actorLabels = { ...current.document.actorLabels };
+  for (const event of candidateEvents) if (!currentEventIds.has(event.id)) actorLabels[event.id] = actorLabel;
+  const document = {
+    ...current.document,
+    auctioneerRevision: incrementAuctioneerRevision(current.document.auctioneerRevision),
+    updatedAt: new Date().toISOString(),
+    events: candidateEvents,
+    operationalEvents: candidateOperations,
+    completedIdempotencyKeys: [...current.document.completedIdempotencyKeys, key].slice(-MAX_IDEMPOTENCY_KEYS),
+    actorLabels,
+  };
+  const write = await store().setJSON(LEDGER_KEY, document, current.etag === EMPTY_ETAG ? { onlyIfNew: true } : { onlyIfMatch: current.etag });
+  if (!write.modified) throw conflict("Another draft action was saved first. The auctioneer has refreshed; retry this action.");
+  return { document, etag: write.etag, changed: true };
 }
 
 function archiveReason(value) {
@@ -152,31 +279,19 @@ export async function archiveAndResetLedger(reasonValue, expectedGeneration) {
     error.code = "LEDGER_ARCHIVE_CONFLICT";
     throw error;
   }
-
   const document = {
-    schemaVersion: SCHEMA_VERSION,
-    season: SEASON,
+    ...emptyDocument(),
     generation: nextLedgerGeneration(current.document.generation),
+    auctioneerRevision: incrementAuctioneerRevision(current.document.auctioneerRevision),
     updatedAt: archivedAt,
-    events: [],
   };
-  const resetWrite = await store().setJSON(
-    LEDGER_KEY,
-    document,
-    current.etag === EMPTY_ETAG ? { onlyIfNew: true } : { onlyIfMatch: current.etag },
-  );
+  const resetWrite = await store().setJSON(LEDGER_KEY, document, current.etag === EMPTY_ETAG ? { onlyIfNew: true } : { onlyIfMatch: current.etag });
   if (!resetWrite.modified) {
     const error = new Error("The active ledger changed while it was being archived. It was not reset; retry after syncing.");
     error.code = "LEDGER_CONFLICT";
     throw error;
   }
-  return {
-    document,
-    etag: resetWrite.etag,
-    archiveId,
-    archivedAt,
-    eventCount: archive.eventCount,
-  };
+  return { document, etag: resetWrite.etag, archiveId, archivedAt, eventCount: archive.eventCount };
 }
 
 export function publicSnapshot(document, etag) {

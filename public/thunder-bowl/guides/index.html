@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Thunder Bowl Setup Guides</title>
+  <link rel="stylesheet" href="./guides.css">
+</head>
+<body>
+  <main>
+    <header><span>TB</span><div><small>DRAFT-DAY SETUP</small><h1>Auctioneer, Logos & Wi-Fi</h1></div><button id="print-guides" type="button">Print guides</button></header>
+    <nav><a href="#auctioneer">Auctioneer quick guide</a><a href="#logos">Team logos</a><a href="#wifi">Wi-Fi</a><a href="#offline">Internet-out safety</a></nav>
+    <section id="auctioneer">
+      <p class="eyebrow">DRAFT-DAY QUICK GUIDE</p><h2>Run the auction</h2>
+      <ol>
+        <li><strong>Sign in separately.</strong> Use the auctioneer access number, open the projector, and complete <strong>Draft-day check</strong>.</li>
+        <li><strong>Choose the nominee.</strong> Search and explicitly select the player. The projector shows <strong>UP FOR BID</strong> and pauses the nomination clock.</li>
+        <li><strong>Record the winner.</strong> Choose the team, enter the whole-dollar price, review the cap/legal preview, and press <strong>Record sale</strong>. Illegal purchases are blocked before recording.</li>
+        <li><strong>Clear a mistake before sale.</strong> Press <strong>Clear</strong> or Escape. All entry fields and the projector's <strong>UP FOR BID</strong> popout disappear; recorded history is untouched.</li>
+        <li><strong>Shorten late rounds.</strong> Use <strong>Clock length</strong> to choose 2:00, 1:30, 1:00, 0:45, or 0:30. The selected length remains in effect for Reset and later sales.</li>
+        <li><strong>Correct anything later.</strong> Use Recent sales for quick Edit/Undo or Assignment history for any older entry. Undo requires a second confirmation and remains restorable.</li>
+      </ol>
+      <aside>The auctioneer console receives public roster data only. VBD, projections, targets, personal prices, and notes stay private.</aside>
+    </section>
+    <section id="logos">
+      <p class="eyebrow">TUTORIAL 1</p><h2>Load team logos</h2>
+      <ol>
+        <li><strong>Prepare images.</strong> Prefer transparent square SVG files; PNG also works. Keep each under about 200 KB.</li>
+        <li><strong>Name by team ID.</strong> Examples: <code>orange-crush.svg</code> and <code>dogs-of-war.png</code>.</li>
+        <li><strong>Place in public assets.</strong> Put them under <code>public/team-logos/</code>.</li>
+        <li><strong>Add the public URL.</strong> Add <code>logoUrl: "/thunder-bowl/team-logos/orange-crush.svg"</code> to the matching sanitized team record.</li>
+        <li><strong>Verify.</strong> Open the image URL directly, then inspect the board at the actual projector resolution.</li>
+      </ol>
+      <aside>Logos are optional. A missing or broken logo must never hide the team name or stop the board.</aside>
+    </section>
+    <section id="wifi">
+      <p class="eyebrow">TUTORIAL 2</p><h2>Normal Wi-Fi setup</h2>
+      <ol>
+        <li>Put both computers on the same reliable private Wi-Fi—not a guest network.</li>
+        <li>Open the normal deployed Thunder Bowl URLs. Cloud synchronization does not require the computers to see each other directly.</li>
+        <li>Use the private command-center login on your computer and the separate auctioneer login on the auctioneer computer.</li>
+        <li>Open the projector, run <strong>Draft-day check</strong>, and record one $1 rehearsal sale.</li>
+        <li>Keep a charged phone ready as the simple hotspot fallback.</li>
+      </ol>
+    </section>
+    <section id="offline">
+      <p class="eyebrow">OPTIONAL ADVANCED SAFETY NET</p><h2>Same Wi-Fi when the internet is down</h2>
+      <p>This works only if your command-center computer runs a LAN-accessible copy of the real Thunder Bowl server and its single canonical ledger. The static demo cannot sync different computers.</p>
+      <ol>
+        <li>Find the host computer's private IP address in its Wi-Fi TCP/IP details.</li>
+        <li>Run the real app server on its LAN interface and preserve authentication, display tokens, secure cookies, generation checks, and idempotency.</li>
+        <li>Allow only that app/port through the private-network firewall.</li>
+        <li>Open the host's HTTPS address from the auctioneer computer.</li>
+        <li>Rehearse by disconnecting WAN—not Wi-Fi—and confirm sale, edit, Undo, restore, and reconnection exactly once.</li>
+      </ol>
+      <aside>If the real project lacks a safe local-server seam, use the phone hotspot. Never create a second writable shadow ledger.</aside>
+    </section>
+  </main>
+  <script type="module" src="./guides.mjs"></script>
+</body>
+</html>
