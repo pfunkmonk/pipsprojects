@@ -54,8 +54,8 @@ try {
 if (publicPackExists) throw new Error("The private Thunder Bowl evidence pack must never be published as a static asset.");
 
 const hub = await readFile(resolve(root, "public/index.html"), "utf8");
-if (!hub.includes('href="/thunder-bowl/"') || !hub.includes("Thunder Bowl 2026")) {
-  throw new Error("Pip's Projects hub is missing the Thunder Bowl card.");
+if (!hub.includes('href="/thunder-bowl/"') || !hub.includes('href="/thunder-bowl/auctioneer/"') || !hub.includes("Thunder Bowl 2026")) {
+  throw new Error("Pip's Projects hub is missing one or more Thunder Bowl access links.");
 }
 
 const pack = validateDraftPack(JSON.parse(await readFile(resolve(root, "public/thunder-bowl/sample-draft-pack.json"), "utf8")));
