@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#071a31" />
+  <title>Thunder Bowl 2026 Command Center</title>
+  <meta name="description" content="Dogs of War's private, offline-capable Thunder Bowl 2026 auction command center." />
+  <meta property="og:title" content="Thunder Bowl 2026 Auction Command Center" />
+  <meta property="og:description" content="Keeper strategy, dynamic auction budgets, rapid player decisions, and a live public draft board." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://pipsprojects.com/thunder-bowl/" />
+  <meta property="og:image" content="https://pipsprojects.com/thunder-bowl/thunder-bowl-social.png" />
+  <meta property="og:image:width" content="1728" />
+  <meta property="og:image:height" content="910" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="manifest" href="./manifest.webmanifest?v=20260805g" />
+  <link rel="stylesheet" href="./app.css?v=20260805g" />
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to draft controls</a>
+
+  <main id="login-view" class="login-shell" aria-labelledby="login-title">
+    <section class="login-card">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">TB</span>
+        <div>
+          <p class="eyebrow">Dogs of War</p>
+          <h1 id="login-title">Thunder Bowl 2026</h1>
+        </div>
+      </div>
+      <p class="login-copy">Enter your private access code. After a successful morning check, the same code can unlock this laptop even if the draft location loses internet.</p>
+      <form id="login-form" class="login-form">
+        <label for="access-code">Access code</label>
+        <input id="access-code" name="accessCode" type="password" inputmode="numeric" autocomplete="current-password" minlength="6" maxlength="12" required />
+        <button class="button button-primary button-large" type="submit">Open command center</button>
+      </form>
+      <p id="login-status" class="form-status" role="status" aria-live="polite">Checking connection…</p>
+      <p class="fine-print">Private strategy stays on this screen. The projector page receives only rosters, winning prices, cash, and position counts.</p>
+    </section>
+  </main>
+
+  <div id="app-view" class="app-shell" hidden>
+    <header class="topbar">
+      <div class="brand-lockup compact">
+        <span class="brand-mark" aria-hidden="true">TB</span>
+        <div>
+          <p class="eyebrow">Dogs of War command center</p>
+          <h1 id="command-center-title">Thunder Bowl 2026</h1>
+        </div>
+      </div>
+      <div class="status-row" aria-label="System status">
+        <span id="network-status" class="status-chip status-good">Online</span>
+        <span id="sync-status" class="status-chip">Local state ready</span>
+        <span id="pack-status" class="status-chip status-warning">Illustrative pack</span>
+      </div>
+      <div class="top-actions">
+        <a id="practice-mode-top" class="button button-primary" href="?mode=practice-auction">Practice draft</a>
+        <button id="open-board" class="button button-secondary" type="button">Open public board</button>
+        <button id="export-recovery-top" class="button button-secondary" type="button">Save backup</button>
+      </div>
+    </header>
+
+    <nav class="app-tabs" aria-label="Thunder Bowl pages" role="tablist">
+      <button class="app-tab is-active" id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="view-draft" data-view="draft" tabindex="0">Draft room</button>
+      <button class="app-tab" id="tab-keepers" type="button" role="tab" aria-selected="false" aria-controls="view-keepers" data-view="keepers" tabindex="-1">Keeper strategy</button>
+      <button class="app-tab" id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="view-settings" data-view="settings" tabindex="-1">Admin &amp; data</button>
+    </nav>
+
+    <div id="sample-warning" class="evidence-banner" role="status">
+      <strong id="pack-warning-title">Loading data status.</strong>
+      <span id="pack-warning-copy">The current draft pack is being validated.</span>
+    </div>
+
+    <main id="main-content">
+      <section id="view-draft" class="page-view" role="tabpanel" aria-labelledby="tab-draft">
+        <div class="kpi-grid" aria-label="Live draft state">
+          <article class="metric"><span>Dogs cash</span><strong id="dogs-cash">$104</strong><small id="dogs-slots">14 open slots</small></article>
+          <article class="metric"><span>Legal max</span><strong id="dogs-legal-max">$91</strong><small>$1 reserved per later slot</small></article>
+          <article class="metric"><span>Room cash</span><strong id="room-cash">$1,212</strong><small id="room-slots">168 open slots</small></article>
+          <article class="metric"><span>Market signal</span><strong id="market-signal">Waiting</strong><small id="market-detail">Needs full 2026 pool</small></article>
+          <article class="metric"><span>Nomination</span><strong id="current-nominator">Goon Skwad</strong><small id="nomination-detail">Order prefix verified only</small></article>
+          <article class="metric"><span>Last sale</span><strong id="last-sale-price">—</strong><small id="last-sale-detail">No auction sale recorded</small></article>
+        </div>
+
+        <div class="draft-workspace">
+          <section class="product-panel player-pool-panel" aria-labelledby="pool-title">
+            <header class="panel-header">
+              <div>
+                <p class="eyebrow">Available players</p>
+                <h2 id="pool-title">Player pool</h2>
+              </div>
+              <span id="player-count" class="count-label">0 shown</span>
+            </header>
+            <div class="pool-controls">
+              <label class="search-field" for="player-search">
+                <span>Fast search</span>
+                <input id="player-search" type="search" placeholder="Player, NFL team, or position…" autocomplete="off" />
+              </label>
+              <label for="position-filter">
+                <span>Position</span>
+                <select id="position-filter">
+                  <option value="ALL">All</option>
+                  <option value="QB">QB</option>
+                  <option value="RB">RB</option>
+                  <option value="WR">WR</option>
+                  <option value="TE">TE</option>
+                  <option value="K">K</option>
+                  <option value="DST">DST</option>
+                </select>
+              </label>
+            </div>
+            <p class="pool-help"><strong>Typos are okay.</strong> Right-click any player for news, injury/role evidence, Target/Avoid tags, personal prices, and notes.</p>
+            <div class="table-wrap player-table-wrap">
+              <table class="data-table player-table">
+                <thead><tr><th>Player</th><th class="number">VBD</th><th class="number">Market</th><th class="number">Max</th></tr></thead>
+                <tbody id="player-rows"></tbody>
+              </table>
+            </div>
+            <p id="empty-pool" class="empty-state" hidden>No available player matches that search.</p>
+          </section>
+
+          <section class="product-panel decision-panel" aria-labelledby="selected-player-name">
+            <div class="decision-heading">
+              <div>
+                <span id="selected-position" class="position-badge">—</span>
+                <h2 id="selected-player-name">Select a player</h2>
+                <p id="selected-team-line" class="muted">Search or use the arrow keys.</p>
+              </div>
+              <div class="decision-badges">
+                <span id="selected-personal-tag" class="personal-tag tag-neutral">Neutral</span>
+                <span id="selected-availability" class="availability-badge">Available</span>
+              </div>
+            </div>
+            <div class="bid-verdict">
+              <span>Bid up to</span>
+              <strong id="selected-max-bid">—</strong>
+            </div>
+            <div class="value-trio">
+              <div><span>Intrinsic</span><strong id="selected-intrinsic">—</strong></div>
+              <div><span>Market</span><strong id="selected-market">—</strong></div>
+              <div><span>Projected</span><strong id="selected-projected">—</strong></div>
+            </div>
+            <section class="decision-context" aria-labelledby="decision-context-title">
+              <div class="decision-context-heading">
+                <h3 id="decision-context-title">Scarcity &amp; confidence</h3>
+                <span>DISPLAY ONLY</span>
+              </div>
+              <dl class="decision-context-grid">
+                <div><dt>Tier supply</dt><dd id="selected-tier-supply">—</dd></div>
+                <div><dt>Next tier</dt><dd id="selected-next-alternative">—</dd></div>
+                <div><dt>Max-bid cliff</dt><dd id="selected-tier-cliff">—</dd></div>
+                <div><dt>Source spread</dt><dd id="selected-source-spread">—</dd></div>
+              </dl>
+              <p id="selected-context-detail">Dynamic pool evidence only; it never changes VBD, prices, or bid limits.</p>
+            </section>
+            <section id="selected-priority-card" class="priority-preview" aria-labelledby="selected-priority-label">
+              <div>
+                <span id="selected-priority-label">Priority-week preview</span>
+                <strong id="selected-priority">Baseline —</strong>
+              </div>
+              <small id="selected-priority-detail">Turn on an experimental scenario in Admin to compare division and playoff timing.</small>
+            </section>
+            <section class="projection-evidence" aria-labelledby="projection-evidence-title">
+              <div class="projection-evidence-heading">
+                <h3 id="projection-evidence-title">Dated projection evidence</h3>
+                <span id="projection-evidence-rule">Only “primary” drives value</span>
+              </div>
+              <ul id="selected-projection-sources" class="projection-source-list"></ul>
+            </section>
+            <dl class="decision-evidence">
+              <div><dt>VBD</dt><dd id="selected-vbd">—</dd></div>
+              <div><dt>Source rank</dt><dd id="selected-rank">—</dd></div>
+              <div><dt>Injury / role</dt><dd id="selected-injury">—</dd></div>
+              <div><dt>Schedule</dt><dd id="selected-sos">—</dd></div>
+            </dl>
+            <p id="selected-notes" class="player-notes">Player evidence and decision notes appear here.</p>
+          </section>
+
+          <aside class="product-panel pressure-panel" aria-label="Roster needs and draft pressure">
+            <section>
+              <p class="eyebrow">Dogs of War needs</p>
+              <div id="dogs-needs" class="need-grid"></div>
+            </section>
+            <section class="opponent-pressure-section" aria-labelledby="opponent-pressure-title">
+              <p class="eyebrow" id="opponent-pressure-title">Likely bid pressure</p>
+              <p id="opponent-pressure-summary" class="muted opponent-pressure-summary">Select a player to rank likely competition.</p>
+              <ol id="selected-opponent-pressure" class="opponent-pressure-list"></ol>
+            </section>
+            <section>
+              <p class="eyebrow">Next nomination</p>
+              <p class="large-line" id="next-nomination-line">Goon Skwad</p>
+              <p class="muted" id="nomination-warning">Only the first two order positions are verified; the next position is provisional.</p>
+            </section>
+            <section>
+              <p class="eyebrow">Safety rails</p>
+              <ul class="check-list">
+                <li>Duplicate players blocked</li>
+                <li>$1 per open slot reserved</li>
+                <li>Starting-lineup path protected</li>
+                <li>Every correction remains in history</li>
+              </ul>
+            </section>
+          </aside>
+
+          <section id="practice-console" class="practice-console" aria-labelledby="practice-player-name" hidden>
+            <div class="practice-identity">
+              <p class="eyebrow">Private auto-auction practice</p>
+              <strong id="practice-player-name">Ready for a nomination</strong>
+              <small id="practice-player-detail">11 historical-tendency agents · local ledger only</small>
+            </div>
+            <div class="practice-number">
+              <span>Current bid</span>
+              <strong id="practice-current-bid">—</strong>
+            </div>
+            <div class="practice-number">
+              <span>Leader</span>
+              <strong id="practice-leader">—</strong>
+            </div>
+            <div class="practice-number practice-clock">
+              <span>Quiet clock</span>
+              <strong id="practice-quiet-clock">—</strong>
+            </div>
+            <div class="practice-actions">
+              <button id="practice-start" class="button button-secondary button-large" type="button">Start nomination</button>
+              <button id="practice-bid" class="button button-primary practice-bid-button" type="button" disabled>BID +$1</button>
+              <button id="practice-pass" class="button button-secondary button-large" type="button" disabled>I'm out</button>
+              <button id="practice-pause" class="button button-secondary button-large" type="button">Pause</button>
+            </div>
+            <ol id="practice-activity" class="practice-activity" aria-label="Recent simulated bids"></ol>
+            <p id="practice-status" class="practice-status" role="status" aria-live="polite">Choose a player or let the nominating team's profile choose, then start.</p>
+          </section>
+
+          <form id="sale-form" class="sale-bar" aria-label="Record winning auction bid">
+            <label class="sale-player-field" for="sale-player">
+              <span>Winning player</span>
+              <input id="sale-player" type="text" readonly placeholder="Select a player" />
+              <input id="sale-player-id" type="hidden" />
+            </label>
+            <label for="sale-price">
+              <span>Price</span>
+              <input id="sale-price" type="number" min="1" step="1" inputmode="numeric" required />
+            </label>
+            <label for="sale-team">
+              <span>Winning team</span>
+              <select id="sale-team" required></select>
+            </label>
+            <button id="record-sale" class="button button-primary button-large" type="submit">Record sale</button>
+            <button id="undo-sale" class="button button-secondary button-large" type="button" disabled>Undo last sale</button>
+            <p id="sale-status" class="sale-status" role="status" aria-live="polite">Ready for the first nomination.</p>
+          </form>
+        </div>
+      </section>
+
+      <section id="view-keepers" class="page-view" role="tabpanel" aria-labelledby="tab-keepers" hidden>
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Pre-draft decision lab</p>
+            <h2>Keeper strategy</h2>
+            <p>Compare keeper surplus, contract age, trade value, and auction cash from the authenticated CBS salary and contract snapshot.</p>
+          </div>
+          <div class="keeper-intro-actions">
+            <span class="status-chip status-good">CBS contracts loaded</span>
+            <button id="export-keeper-board" class="button button-secondary" type="button">Download keeper board CSV</button>
+            <p id="keeper-export-status" class="form-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+        <section class="product-panel keeper-timeline-panel" aria-labelledby="keeper-timeline-title">
+          <header class="panel-header keeper-timeline-header">
+            <div><p class="eyebrow">Official 1–12 / 1–12 order</p><h3 id="keeper-timeline-title">Keeper selection timeline</h3></div>
+            <span id="keeper-turn-count" class="count-label">0 of 24 turns complete</span>
+          </header>
+          <div class="keeper-on-clock" aria-live="polite">
+            <div><span class="eyebrow">On the clock</span><strong id="keeper-on-clock-team">Orange Crush</strong></div>
+            <span id="keeper-on-clock-detail">Round 1 · Pick 1</span>
+            <button id="pass-keeper-turn" class="button button-secondary" type="button">Pass this keeper turn</button>
+          </div>
+          <p class="panel-note">Each team receives one turn in Round 1 and one turn in Round 2, both in last season’s first-to-last order. A pass closes only the current turn; it does not prevent that team from choosing in the other round.</p>
+          <div class="keeper-timeline-scroll" tabindex="0" aria-label="Twenty-four keeper selection turns">
+            <div id="keeper-selection-timeline" class="keeper-selection-timeline"></div>
+          </div>
+        </section>
+        <section class="product-panel keeper-operations" aria-labelledby="keeper-operations-title">
+          <header class="panel-header">
+            <div><p class="eyebrow">Append-only setup ledger</p><h3 id="keeper-operations-title">Record keeper declarations and cap trades</h3></div>
+            <span id="keeper-recorded-count" class="count-label">0 keepers recorded</span>
+          </header>
+          <p class="panel-note">Record the cap-dollar payment separately from the keeper declaration. Every action is saved locally first, syncs when possible, and immediately updates the public board.</p>
+          <div class="keeper-operations-grid">
+            <form id="keeper-assignment-form" class="keeper-operation-form">
+              <div><p class="eyebrow">Keeper declaration</p><h4>Assign a keeper</h4></div>
+              <label for="keeper-player"><span>Eligible player rights</span><select id="keeper-player" required></select></label>
+              <label for="keeper-team"><span>Team keeping player</span><select id="keeper-team" required></select></label>
+              <div id="keeper-selection-summary" class="keeper-selection-summary" aria-live="polite">Choose an eligible player.</div>
+              <button id="record-keeper" class="button button-primary button-large" type="submit">Record keeper</button>
+            </form>
+
+            <form id="cap-transfer-form" class="keeper-operation-form">
+              <div><p class="eyebrow">Keeper-rights trade</p><h4>Transfer auction dollars</h4></div>
+              <div class="keeper-trade-teams">
+                <label for="cap-from-team"><span>Team paying dollars</span><select id="cap-from-team" required></select></label>
+                <label for="cap-to-team"><span>Team receiving dollars</span><select id="cap-to-team" required></select></label>
+              </div>
+              <div class="keeper-trade-detail">
+                <label for="cap-transfer-amount"><span>Amount</span><input id="cap-transfer-amount" type="number" min="1" max="200" step="1" inputmode="numeric" required /></label>
+                <label for="cap-transfer-reason"><span>Player or reason</span><input id="cap-transfer-reason" minlength="3" maxlength="120" placeholder="Justin Herbert rights" required /></label>
+              </div>
+              <div id="cap-transfer-summary" class="keeper-selection-summary" aria-live="polite">The paying team loses auction cash; the receiving team gains it.</div>
+              <button id="record-cap-transfer" class="button button-primary button-large" type="submit">Record cap transfer</button>
+            </form>
+
+            <section class="keeper-audit" aria-labelledby="keeper-audit-title">
+              <div><p class="eyebrow">Recovery</p><h4 id="keeper-audit-title">Recent setup actions</h4></div>
+              <ol id="keeper-action-list" class="keeper-action-list"><li class="muted">No keeper setup actions recorded.</li></ol>
+              <button id="undo-keeper-action" class="button button-secondary" type="button" disabled>Undo last setup action</button>
+            </section>
+          </div>
+          <p id="keeper-operation-status" class="sale-status keeper-operation-status" role="status" aria-live="polite">Ready to record pre-draft keeper activity.</p>
+        </section>
+        <div class="keeper-layout">
+          <section class="product-panel keeper-evidence-panel" aria-labelledby="keeper-evidence-title">
+            <details id="keeper-evidence-details">
+              <summary class="panel-header keeper-evidence-summary">
+                <div><p class="eyebrow">Dogs of War</p><h3 id="keeper-evidence-title">Candidate evidence</h3></div>
+                <span class="keeper-evidence-summary-actions"><span id="keeper-count" class="count-label">0 candidates</span><span id="keeper-evidence-toggle-label" class="keeper-evidence-toggle-label">Show table</span><span class="keeper-evidence-chevron" aria-hidden="true">›</span></span>
+              </summary>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">Surplus</th><th>Trade read</th><th>Evidence</th></tr></thead>
+                  <tbody id="keeper-rows"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+          <aside class="product-panel scenario-panel">
+            <header class="panel-header"><div><p class="eyebrow">Portfolio comparison</p><h3>Scenario lab</h3></div></header>
+            <div id="keeper-scenarios" class="scenario-buttons"></div>
+            <div class="scenario-result" aria-live="polite">
+              <span id="scenario-label">Evidence gate</span>
+              <strong id="scenario-value">Not ready</strong>
+              <p id="scenario-detail">Choose a candidate to compare keeper surplus and remaining auction cash.</p>
+            </div>
+          </aside>
+        </div>
+        <section class="product-panel keeper-market-panel" aria-labelledby="keeper-market-title">
+          <header class="panel-header keeper-market-header">
+            <div><p class="eyebrow">Two-keeper trade optimizer</p><h3 id="keeper-market-title">Keeper trade market</h3></div>
+            <span id="keeper-market-summary" class="count-label">Calculating opportunities</span>
+          </header>
+          <p class="panel-note">Ranked by the change to Dogs of War’s best two-keeper portfolio—not just a player’s raw discount. Test the separate cap payment before loading a proposal into the audited trade form.</p>
+          <p id="keeper-market-evidence" class="keeper-market-evidence" hidden></p>
+          <div class="keeper-market-columns">
+            <section class="keeper-market-lane" aria-labelledby="keeper-acquire-title">
+              <header><div><p class="eyebrow">Upgrade your keepers</p><h4 id="keeper-acquire-title">Players to trade for</h4></div><span id="keeper-acquire-count">0 viable</span></header>
+              <p class="keeper-market-help">A player appears only when another owner’s minimum model price fits below your risk-buffered ceiling.</p>
+              <div id="keeper-acquire-list" class="keeper-market-list"></div>
+            </section>
+            <section class="keeper-market-lane" aria-labelledby="keeper-sell-title">
+              <header><div><p class="eyebrow">Turn excess value into cash</p><h4 id="keeper-sell-title">Players to trade away</h4></div><span id="keeper-sell-count">0 viable</span></header>
+              <p class="keeper-market-help">The strongest fits are teams whose current keeper options leave room for one of your surplus players.</p>
+              <div id="keeper-sell-list" class="keeper-market-list"></div>
+            </section>
+          </div>
+          <p id="keeper-market-status" class="sale-status keeper-market-status" role="status" aria-live="polite">Trade suggestions are advisory and never record a transaction automatically.</p>
+        </section>
+        <section class="product-panel league-keeper-panel" aria-labelledby="league-keeper-title">
+          <header class="panel-header">
+            <div><p class="eyebrow">All 12 teams</p><h3 id="league-keeper-title">League keeper pressure</h3></div>
+            <span id="league-keeper-count" class="count-label">0 candidates</span>
+          </header>
+          <p id="league-keeper-note" class="panel-note">Top eligible values per roster; forced-pool players stay visible but cannot be selected for 2026.</p>
+          <div id="league-keeper-grid" class="keeper-pressure-grid"></div>
+        </section>
+      </section>
+
+      <section id="view-settings" class="page-view" role="tabpanel" aria-labelledby="tab-settings" hidden>
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Morning setup &amp; recovery</p>
+            <h2>Admin, data, and draft setup</h2>
+            <p>Imports are validated before replacing the active private player pack. The app checks privately on sign-in and every 30 minutes; bids and sales never wait for a refresh.</p>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <section class="product-panel settings-card readiness-card" aria-labelledby="readiness-title">
+            <div class="readiness-heading">
+              <div><p class="eyebrow">Fail-closed departure gate</p><h3 id="readiness-title">Draft-morning readiness</h3></div>
+              <span id="readiness-overall" class="status-chip status-warning">Not checked</span>
+            </div>
+            <p id="readiness-summary">Run one check before leaving for the auction. It verifies the live room, final pack, rules, caps, nomination order, legal ledger, offline unlock, recovery file, projector link, current status, and the complete player-intelligence lockbox.</p>
+            <ul id="readiness-checks" class="readiness-list" aria-live="polite"></ul>
+            <div class="button-stack">
+              <button id="run-readiness" class="button button-primary button-large" type="button">Run departure check</button>
+              <button id="open-emergency-board" class="button button-secondary" type="button">Open printable local fallback</button>
+            </div>
+            <p id="readiness-action-status" class="form-status" role="status" aria-live="polite">Read-only check: no values, keepers, caps, or auction events can change.</p>
+          </section>
+
+          <section class="product-panel settings-card human-rehearsal-card" aria-labelledby="human-rehearsal-title">
+            <div class="readiness-heading">
+              <div><p class="eyebrow">Phase 4/6 physical exit test</p><h3 id="human-rehearsal-title">Human-paced two-screen rehearsal</h3></div>
+              <span id="human-rehearsal-progress" class="status-chip status-warning">0 of 7</span>
+            </div>
+            <p>Check each item only after physically doing it in the real 2026 rehearsal room. Automated tests cannot substitute for bidding, speaking, a second computer, and deliberate Wi-Fi failure.</p>
+            <fieldset class="human-rehearsal-list">
+              <legend class="sr-only">Required human rehearsal actions</legend>
+              <label><input type="checkbox" data-human-rehearsal="full-auction" /> <span>Completed a full 12-team mock auction at realistic speaking and entry speed.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="second-screen" /> <span>Projected the public board on a second computer and saw purchases update within about one second.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="wifi-loss" /> <span>Deliberately disconnected Wi-Fi during active bidding.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="offline-actions" /> <span>While offline, searched, recorded a sale, and used Undo successfully.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="reconnect" /> <span>Reconnected and verified queued events merged without duplicates or lost corrections.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="recovery-import" /> <span>Downloaded a recovery bundle and successfully restored it during the rehearsal.</span></label>
+              <label><input type="checkbox" data-human-rehearsal="noisy-room" /> <span>Operated the MacBook at the intended zoom while bidding, talking, and tracking the room alone.</span></label>
+            </fieldset>
+            <div class="button-stack">
+              <button id="seal-human-rehearsal" class="button button-primary button-large" type="button" disabled>Seal completed rehearsal</button>
+              <button id="clear-human-rehearsal" class="button button-secondary" type="button" disabled>Clear certificate &amp; repeat</button>
+            </div>
+            <p id="human-rehearsal-status" class="form-status" role="status" aria-live="polite">No human rehearsal certificate is saved on this laptop.</p>
+            <p class="fine-print">Human-attested evidence only · saved locally · configuration-bound · expires after 30 days · no model or ledger effect.</p>
+          </section>
+
+          <section class="product-panel settings-card morning-intelligence-card" aria-labelledby="morning-intelligence-title">
+            <p class="eyebrow">One-button offline lockbox</p>
+            <h3 id="morning-intelligence-title">Draft-morning player intelligence</h3>
+            <p>Force a fresh injury, depth-chart, CBS, and RotoWire check, scan every player in the active pack, and seal the complete source snapshots on this laptop. A player with no published story is reported honestly—not treated as missing data or given an invented update.</p>
+            <dl class="settings-facts">
+              <div><dt>Last full capture</dt><dd id="morning-intelligence-time">Not captured</dd></div>
+              <div><dt>Players scanned</dt><dd id="morning-intelligence-players">0 / 0</dd></div>
+              <div><dt>Injury/status</dt><dd id="morning-intelligence-status-coverage">—</dd></div>
+              <div><dt>FBG depth chart</dt><dd id="morning-intelligence-depth">—</dd></div>
+              <div><dt>News archive</dt><dd id="morning-intelligence-news">—</dd></div>
+              <div><dt>Authority</dt><dd>Evidence only</dd></div>
+            </dl>
+            <div class="button-stack">
+              <button id="capture-morning-intelligence" class="button button-primary button-large" type="button">Capture all player intelligence now</button>
+              <button id="export-morning-intelligence" class="button button-secondary" type="button" disabled>Download intelligence backup</button>
+            </div>
+            <p id="morning-intelligence-action-status" class="form-status" role="status" aria-live="polite">Run this after the final player pack is loaded and again immediately before leaving for the auction.</p>
+          </section>
+
+          <section class="product-panel settings-card">
+            <p class="eyebrow">Private draft pack</p>
+            <h3 id="pack-name">Loading…</h3>
+            <dl class="settings-facts">
+              <div><dt>Status</dt><dd id="pack-detail-status">—</dd></div>
+              <div><dt>As of</dt><dd id="pack-as-of">—</dd></div>
+              <div><dt>Players</dt><dd id="pack-player-total">—</dd></div>
+              <div><dt>Sources</dt><dd id="pack-source-total">—</dd></div>
+              <div><dt>Live status</dt><dd id="status-as-of">Saved pack</dd></div>
+            </dl>
+            <div class="button-stack">
+              <button id="load-bundled-pack" class="button button-primary" type="button">Check for latest private 2026 pack</button>
+              <a id="practice-mode-link" class="button button-primary" href="?mode=practice-auction">Open auto-auction practice</a>
+              <a id="replay-mode-link" class="button button-secondary" href="?mode=2025-replay">Open 2025 replay sandbox</a>
+              <label class="file-button" for="draft-pack-file">Import another validated draft pack</label>
+            </div>
+            <input id="draft-pack-file" class="sr-only" type="file" accept="application/json,.json" />
+            <p id="pack-import-status" class="form-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="product-panel settings-card">
+            <p class="eyebrow">Catastrophe recovery</p>
+            <h3>Local recovery bundle</h3>
+            <p>Save the private player pack and full append-only draft ledger to a file you can keep on the laptop or a USB drive.</p>
+            <div class="button-stack">
+              <button id="export-recovery" class="button button-primary" type="button">Download recovery bundle</button>
+              <label class="file-button" for="recovery-file">Merge recovery bundle</label>
+              <input id="recovery-file" class="sr-only" type="file" accept="application/json,.json" />
+            </div>
+            <p id="recovery-status" class="form-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="product-panel settings-card personal-board-card" aria-labelledby="personal-board-title">
+            <p class="eyebrow">Private device-to-device board</p>
+            <h3 id="personal-board-title">Targets, Avoids, prices, and notes</h3>
+            <p>Move your personal draft decisions from this computer to your Mac without exposing them on the public board. JSON is the validated restorable backup; CSV is a spreadsheet-safe reading copy.</p>
+            <dl class="settings-facts">
+              <div><dt>Player decisions</dt><dd id="personal-board-total">0</dd></div>
+              <div><dt>Targets</dt><dd id="personal-board-targets">0</dd></div>
+              <div><dt>Avoids</dt><dd id="personal-board-avoids">0</dd></div>
+              <div><dt>Personal prices</dt><dd id="personal-board-prices">0</dd></div>
+              <div><dt>Notes</dt><dd id="personal-board-notes">0</dd></div>
+              <div><dt>Transfer backup</dt><dd id="personal-board-backup-state">No backup needed</dd></div>
+              <div><dt>Authority</dt><dd>Personal board only</dd></div>
+            </dl>
+            <div class="button-stack">
+              <button id="export-personal-board" class="button button-primary" type="button">Download private JSON</button>
+              <button id="export-personal-board-csv" class="button button-secondary" type="button">Download readable CSV</button>
+              <label class="file-button" for="personal-board-file">Import private JSON</label>
+              <input id="personal-board-file" class="sr-only" type="file" accept="application/json,.json" />
+            </div>
+            <p id="personal-board-status" class="form-status" role="status" aria-live="polite">New JSON restores the complete board exactly, including deletions. Older schema-v1 files merge without deleting local decisions and must be re-exported before draft-morning transfer can pass. Neither path can change projections, VBD, model prices, or the auction ledger.</p>
+          </section>
+
+          <section class="product-panel settings-card cbs-bridge-card" aria-labelledby="cbs-bridge-title">
+            <p class="eyebrow">Read-only Chrome bridge</p>
+            <h3 id="cbs-bridge-title">CBS rosters, salaries, and contracts</h3>
+            <p>The optional helper reads only the 12 known Thunder Bowl team pages when you press Capture. The snapshot is validated and saved locally; it never changes projections, VBD, prices, keepers, or the draft ledger by itself.</p>
+            <dl class="settings-facts">
+              <div><dt>Last capture</dt><dd id="cbs-capture-time">Not captured</dd></div>
+              <div><dt>Coverage</dt><dd id="cbs-capture-coverage">—</dd></div>
+              <div><dt>Changes</dt><dd id="cbs-capture-changes">—</dd></div>
+              <div><dt>Authority</dt><dd>Evidence only</dd></div>
+            </dl>
+            <div class="button-stack">
+              <button id="capture-cbs-rosters" class="button button-primary" type="button">Capture current CBS rosters</button>
+              <button id="export-cbs-rosters" class="button button-secondary" type="button" disabled>Download last snapshot</button>
+            </div>
+            <p id="cbs-capture-status" class="form-status" role="status" aria-live="polite">The Chrome helper is not installed automatically; installation requires your explicit approval.</p>
+          </section>
+
+          <section class="product-panel settings-card">
+            <p class="eyebrow">CBS entry &amp; next-year learning</p>
+            <h3>Draft history CSV</h3>
+            <p>Download every active cap trade, keeper decision, nomination skip, and auction purchase in chronological order. Audited corrections remain preserved in the recovery bundle; voided rows are excluded from this clean entry file.</p>
+            <div class="button-stack">
+              <button id="export-draft-history" class="button button-primary" type="button">Download draft history CSV</button>
+            </div>
+            <p id="draft-history-status" class="form-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="product-panel settings-card">
+            <p class="eyebrow">Second screen</p>
+            <h3>Public draft board</h3>
+            <p>The projector route receives a separately authorized, public-safe snapshot. It never receives projections, values, targets, or opponent profiles.</p>
+            <div class="button-stack">
+              <button id="copy-board-link" class="button button-primary" type="button">Copy projector link</button>
+              <button id="open-board-settings" class="button button-secondary" type="button">Open in new window</button>
+            </div>
+            <p id="board-link-status" class="form-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="product-panel settings-card schedule-card">
+            <p class="eyebrow">CBS 2026 league context</p>
+            <h3>Schedule and division gate</h3>
+            <dl class="settings-facts">
+              <div><dt>Status</dt><dd id="schedule-status">Not loaded</dd></div>
+              <div><dt>Dogs division</dt><dd id="schedule-division">â€”</dd></div>
+              <div><dt>Division rivals</dt><dd id="schedule-rivals">â€”</dd></div>
+              <div><dt>Priority weeks</dt><dd id="schedule-division-weeks">â€”</dd></div>
+              <div><dt>Random Week 14</dt><dd id="schedule-week-14">â€”</dd></div>
+              <div><dt>Playoffs</dt><dd id="schedule-playoffs">â€”</dd></div>
+            </dl>
+            <p class="panel-note">Schedule evidence is visible. The historical gate held automatic weighting, so schedule context does not change VBD or bid limits.</p>
+          </section>
+
+          <section class="product-panel settings-card priority-settings-card" aria-labelledby="priority-settings-title">
+            <p class="eyebrow">Experimental scenario — private only</p>
+            <h3 id="priority-settings-title">Weekly priority weights</h3>
+            <p>Compare players after emphasizing the weeks that matter most to Dogs of War. The calculation is normalized so a steady player is not rewarded merely because some weeks have larger weights.</p>
+            <dl class="settings-facts">
+              <div><dt>Weekly context</dt><dd id="priority-context-status">Not loaded</dd></div>
+              <div><dt>Coverage</dt><dd id="priority-context-coverage">—</dd></div>
+              <div><dt>Division weeks</dt><dd id="priority-division-weeks">—</dd></div>
+              <div><dt>Playoff weeks</dt><dd id="priority-playoff-weeks">—</dd></div>
+            </dl>
+            <div class="priority-weight-grid">
+              <label for="priority-baseline-weight"><span>Ordinary weeks</span><input id="priority-baseline-weight" type="number" min="0.50" max="2.00" step="0.01" inputmode="decimal" value="1.00" /></label>
+              <label for="priority-division-weight"><span>Division weeks</span><input id="priority-division-weight" type="number" min="0.50" max="2.00" step="0.01" inputmode="decimal" value="1.00" /></label>
+              <label for="priority-playoff-weight"><span>Playoff weeks</span><input id="priority-playoff-weight" type="number" min="0.50" max="2.00" step="0.01" inputmode="decimal" value="1.00" /></label>
+            </div>
+            <label class="priority-mode-toggle" for="priority-experimental-mode">
+              <input id="priority-experimental-mode" type="checkbox" />
+              <span>Show experimental priority preview in the draft room</span>
+            </label>
+            <div class="button-stack priority-actions">
+              <button id="priority-use-suggested" class="button button-secondary" type="button">Use 1.20 / 1.40 idea</button>
+              <button id="priority-apply" class="button button-primary" type="button">Save preview settings</button>
+              <button id="priority-reset" class="button button-secondary" type="button">Reset to baseline</button>
+            </div>
+            <p id="priority-settings-status" class="form-status" role="status" aria-live="polite">Baseline is active. No VBD, market value, max bid, sale, or public-board field is changed.</p>
+          </section>
+
+          <section class="product-panel settings-card order-card">
+            <p class="eyebrow">Nomination snake</p>
+            <h3>Order evidence</h3>
+            <p id="order-status-copy">The complete 2026 order is verified from the 2025 final standings.</p>
+            <ol id="nomination-order-list" class="order-list"></ol>
+          </section>
+
+          <section class="product-panel settings-card archive-card">
+            <p class="eyebrow">Practice control</p>
+            <h3 id="archive-card-title">Archive this rehearsal</h3>
+            <p id="archive-card-copy">Download the private recovery file, preserve the cloud audit ledger, and open a clean ledger for the next full practice.</p>
+            <div class="button-stack">
+              <button id="open-archive-dialog" class="button button-danger" type="button">Archive &amp; start new rehearsal</button>
+              <button id="load-current-ledger" class="button button-secondary" type="button">Load current cloud rehearsal</button>
+            </div>
+            <p id="archive-status" class="form-status" role="status" aria-live="polite"></p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="archive-dialog" class="confirm-dialog" aria-labelledby="archive-dialog-title">
+      <form id="archive-form" method="dialog">
+        <p class="eyebrow">Protected operation</p>
+        <h2 id="archive-dialog-title">Archive and start clean?</h2>
+        <p id="archive-dialog-copy">This first downloads a complete private recovery file. The server then preserves the current audit ledger and starts a new generation so stale tabs cannot restore old sales.</p>
+        <label for="archive-reason">Reason</label>
+        <select id="archive-reason" required>
+          <option value="New practice rehearsal">New practice rehearsal</option>
+          <option value="Draft-day final ledger">Draft-day final ledger</option>
+          <option value="Data-pack replacement">Data-pack replacement</option>
+        </select>
+        <label for="archive-confirmation">Type <strong>ARCHIVE AND START NEW</strong></label>
+        <input id="archive-confirmation" autocomplete="off" spellcheck="false" required />
+        <p id="archive-dialog-status" class="form-status" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button id="cancel-archive" class="button button-secondary" type="button">Cancel</button>
+          <button id="confirm-archive" class="button button-danger" type="submit" disabled>Download, archive &amp; reset</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="emergency-board-dialog" class="emergency-board-dialog" aria-labelledby="emergency-board-title">
+      <header>
+        <div><p class="eyebrow">Local catastrophe fallback</p><h2 id="emergency-board-title">Printable roster &amp; budget board</h2></div>
+        <div class="dialog-actions">
+          <button id="print-emergency-board" class="button button-primary" type="button">Print</button>
+          <button id="close-emergency-board" class="button button-secondary" type="button">Close</button>
+        </div>
+      </header>
+      <p>Generated from this laptop's current local ledger. It contains only team rosters, prices, cash, legal maximums, and position counts.</p>
+      <iframe id="emergency-board-frame" title="Printable Thunder Bowl emergency roster and budget board"></iframe>
+      <p id="emergency-board-status" class="form-status" role="status" aria-live="polite">Use Print, then keep the paper copy with the draft laptop.</p>
+    </dialog>
+
+    <dialog id="player-intel-dialog" class="player-intel-dialog" aria-labelledby="player-intel-name">
+      <form id="player-intel-form">
+        <header class="intel-header">
+          <div>
+            <p class="eyebrow">Player intelligence popout</p>
+            <h2 id="player-intel-name">Player</h2>
+            <p id="player-intel-meta" class="muted">Position · NFL team</p>
+          </div>
+          <button id="close-player-intel" class="intel-close" type="button" aria-label="Close player intelligence">×</button>
+        </header>
+
+        <div class="intel-layout">
+          <section class="intel-evidence" aria-labelledby="intel-evidence-title">
+            <div class="intel-section-heading">
+              <div><p class="eyebrow">Decision evidence</p><h3 id="intel-evidence-title">Current snapshot</h3></div>
+              <button id="refresh-player-intel" class="button button-secondary" type="button">Refresh live status</button>
+            </div>
+            <div class="intel-metrics">
+              <div><span>Model max</span><strong id="intel-model-max">—</strong></div>
+              <div><span>Market</span><strong id="intel-market">—</strong></div>
+              <div><span>VBD</span><strong id="intel-vbd">—</strong></div>
+              <div><span>Projected</span><strong id="intel-projected">—</strong></div>
+            </div>
+            <article class="intel-callout">
+              <span>Injury / availability status</span>
+              <strong id="intel-injury">No current evidence</strong>
+              <small id="intel-injury-detail">No separate practice or injury detail.</small>
+              <small id="intel-live-freshness">Saved draft-pack evidence</small>
+            </article>
+            <dl class="intel-facts">
+              <div><dt>Depth / role</dt><dd id="intel-depth-role">—</dd></div>
+              <div><dt>Schedule</dt><dd id="intel-sos">—</dd></div>
+              <div><dt>Tier / rank</dt><dd id="intel-rank">—</dd></div>
+              <div><dt>Source date</dt><dd id="intel-source-date">—</dd></div>
+            </dl>
+            <p id="intel-pack-notes" class="intel-pack-notes">No pack notes.</p>
+            <div>
+              <p class="eyebrow">Projection sources</p>
+              <ul id="intel-projection-sources" class="intel-source-list"></ul>
+            </div>
+            <div class="intel-news-section">
+              <div class="intel-news-heading">
+                <p class="eyebrow">Current player news</p>
+                <small id="intel-news-freshness">Saved news unavailable</small>
+              </div>
+              <ul id="intel-news-list" class="intel-news-list"></ul>
+            </div>
+            <div class="intel-news-section">
+              <div class="intel-news-heading">
+                <p class="eyebrow">CBS player news</p>
+                <small id="intel-cbs-news-freshness">Saved CBS news unavailable</small>
+              </div>
+              <ul id="intel-cbs-news-list" class="intel-news-list"></ul>
+            </div>
+            <div class="intel-depth-section">
+              <div class="intel-news-heading">
+                <p class="eyebrow">Footballguys depth chart</p>
+                <small id="intel-fbg-depth-freshness">Saved FBG depth unavailable</small>
+              </div>
+              <div id="intel-fbg-depth" class="intel-fbg-depth">No internal Footballguys depth chart has been downloaded yet.</div>
+            </div>
+            <div class="intel-research-links" aria-label="Player research controls">
+              <button id="intel-news-link" class="button button-secondary" type="button">Refresh latest news</button>
+              <button id="intel-cbs-link" class="button button-secondary" type="button">Refresh CBS news</button>
+              <button id="intel-fbg-link" class="button button-secondary" type="button">Refresh FBG depth chart</button>
+            </div>
+            <p class="intel-source-caveat">All three refresh controls stay inside Thunder Bowl. RotoWire RSS headlines and summaries, CBS headlines and summaries, and Footballguys depth order are embedded without model authority; opening an individual source article remains optional. Saved evidence remains usable without Wi-Fi and never silently changes VBD or your prices.</p>
+          </section>
+
+          <section class="intel-personal" aria-labelledby="intel-personal-title">
+            <div><p class="eyebrow">Your draft board</p><h3 id="intel-personal-title">Personal decision</h3></div>
+            <fieldset class="tag-picker">
+              <legend>Player tag</legend>
+              <label class="tag-choice tag-target"><input type="radio" name="playerTag" value="target" /> Target</label>
+              <label class="tag-choice tag-neutral"><input type="radio" name="playerTag" value="neutral" checked /> Neutral</label>
+              <label class="tag-choice tag-avoid"><input type="radio" name="playerTag" value="avoid" /> Avoid</label>
+            </fieldset>
+            <div class="personal-price-grid">
+              <label for="intel-steal-price"><span>Steal at or below</span><input id="intel-steal-price" type="number" min="1" max="300" step="1" inputmode="numeric" placeholder="Optional" /></label>
+              <label for="intel-personal-max"><span>My hard-stop price</span><input id="intel-personal-max" type="number" min="1" max="300" step="1" inputmode="numeric" placeholder="Optional" /></label>
+            </div>
+            <label for="intel-personal-note"><span>Personal notes</span><textarea id="intel-personal-note" rows="7" maxlength="1200" placeholder="Why you want or dislike him, bidding plan, roster fit…"></textarea></label>
+            <div id="intel-effective-limit" class="intel-effective-limit">Effective bid limit: —</div>
+            <p id="player-intel-status" class="form-status" role="status" aria-live="polite"></p>
+            <div class="dialog-actions">
+              <button id="clear-player-intel" class="button button-secondary" type="button">Clear personal data</button>
+              <button class="button button-primary button-large" type="submit">Save player decision</button>
+            </div>
+          </section>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
+  </div>
+
+  <script type="module" src="./app.mjs?v=20260805g"></script>
+</body>
+</html>

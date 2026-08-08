@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-08-05T13:49:48.730Z",
+  "approved": true,
+  "candidate": {
+    "packId": "tb26-provisional-20260804-v9",
+    "asOf": "2026-08-04T18:22:04.000Z",
+    "sha256": "94b6bff15591c6a778b2560bee54006b3f5cc4b382d84283bff769fb6770a2b0",
+    "players": 716,
+    "keeperCandidates": 177,
+    "keeperTeams": 12,
+    "sources": 10,
+    "supplementalProjectionRows": 509,
+    "managerProfiles": 12,
+    "scheduleContext": "loaded_value_neutral",
+    "weeklyContext": "loaded_experimental_scenario_only",
+    "weeklyProjectionRows": 447,
+    "primaryProjectionSource": null,
+    "expectedCap": 1212,
+    "allocatedMarketDollars": 1212
+  },
+  "current": {
+    "packId": "tb26-provisional-20260804-v9",
+    "asOf": "2026-08-04T18:22:04.000Z",
+    "sha256": "94b6bff15591c6a778b2560bee54006b3f5cc4b382d84283bff769fb6770a2b0",
+    "players": 716
+  },
+  "contentChanged": false,
+  "blockingIssues": [],
+  "warnings": [],
+  "changes": {
+    "addedCount": 0,
+    "removedCount": 0,
+    "materialCount": 0,
+    "exactStrategyValueChangeCount": 0,
+    "addedPlayerIds": [],
+    "removedPlayerIds": [],
+    "largestMaterialChanges": [],
+    "exactStrategyValueChanges": []
+  }
+}

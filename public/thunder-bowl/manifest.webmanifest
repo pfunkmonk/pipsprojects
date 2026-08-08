@@ -1,0 +1,11 @@
+{
+  "name": "Thunder Bowl 2026 Command Center",
+  "short_name": "Thunder Bowl",
+  "description": "Offline-capable Thunder Bowl 2026 auction command center for Dogs of War.",
+  "start_url": "/thunder-bowl/",
+  "scope": "/thunder-bowl/",
+  "display": "standalone",
+  "background_color": "#071a31",
+  "theme_color": "#071a31",
+  "categories": ["sports", "utilities", "productivity"]
+}

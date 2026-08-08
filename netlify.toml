@@ -1,8 +1,85 @@
 [build]
   publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  included_files = ["netlify/functions/_data/**"]
+
+[dev]
+  framework = "#static"
+  publish = "public"
+  port = 8888
+
+[[redirects]]
+  from = "/api/thunder-bowl/auth"
+  to = "/.netlify/functions/thunder-auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/ledger"
+  to = "/.netlify/functions/thunder-ledger"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/pack"
+  to = "/.netlify/functions/thunder-pack"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/replay-2025/pack"
+  to = "/.netlify/functions/thunder-replay-2025-pack"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/status"
+  to = "/.netlify/functions/thunder-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/news"
+  to = "/.netlify/functions/thunder-news"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/research"
+  to = "/.netlify/functions/thunder-research"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/admin"
+  to = "/.netlify/functions/thunder-admin"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/public"
+  to = "/.netlify/functions/thunder-public"
+  status = 200
+
+[[redirects]]
+  from = "/thunder-bowl/board"
+  to = "/thunder-bowl/public.html"
+  status = 200
 
 [[headers]]
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/thunder-bowl/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/thunder-bowl/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/api/thunder-bowl/*"
+  [headers.values]
+    Cache-Control = "no-store"

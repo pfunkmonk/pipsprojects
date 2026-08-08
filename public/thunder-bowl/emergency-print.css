@@ -1,0 +1,35 @@
+@page { size: letter portrait; margin: 0.35in; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: #111; font: 10px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 3px solid #123f70; padding-bottom: 8px; }
+.page-header p { margin: 0 0 2px; color: #8b6708; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; }
+h1 { margin: 0; color: #123f70; font-size: 20px; }
+.instructions { max-width: 260px; text-align: right; }
+.instructions strong, .instructions span { display: block; }
+.instructions strong { color: #8b6708; font-size: 12px; }
+.snapshot-meta { display: grid; grid-template-columns: repeat(4, 1fr); margin: 8px 0; border: 1px solid #777; }
+.snapshot-meta div { padding: 4px 6px; border-right: 1px solid #aaa; }
+.snapshot-meta div:last-child { border-right: 0; }
+.snapshot-meta dt { color: #555; font-size: 7px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.snapshot-meta dd { margin: 1px 0 0; font-weight: 800; }
+.team-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.team-card { break-inside: avoid; border: 1px solid #555; }
+.team-card header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 4px 6px; background: #eaf1f8; border-bottom: 1px solid #777; }
+.team-card h2 { margin: 0; color: #123f70; font-size: 12px; }
+.team-card header strong { font-size: 12px; }
+.team-meta { margin: 0; padding: 3px 6px; border-bottom: 1px solid #aaa; color: #333; font-size: 8px; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th, td { height: 15px; border-bottom: 1px solid #ddd; padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+th { height: 13px; background: #f5f5f5; color: #555; font-size: 7px; text-transform: uppercase; }
+th:first-child, td:first-child { width: 22px; text-align: right; color: #777; }
+th:nth-child(3), td:nth-child(3) { width: 32px; }
+th:last-child, td:last-child { width: 28px; text-align: right; }
+.blank td { height: 18px; }
+footer { margin-top: 7px; color: #555; font-size: 8px; text-align: center; }
+@media screen {
+  body { max-width: 8.5in; margin: 20px auto; padding: 0.35in; box-shadow: 0 3px 24px rgba(0,0,0,.25); }
+}
+@media print {
+  body { max-width: none; padding: 0; }
+  .instructions strong { color: #111; }
+}

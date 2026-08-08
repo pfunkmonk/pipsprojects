@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#071a31" />
+  <title>Thunder Bowl 2026 Public Draft Board</title>
+  <meta name="description" content="Public Thunder Bowl 2026 auction rosters, prices, budgets, and position counts." />
+  <link rel="stylesheet" href="./app.css?v=20260805g" />
+</head>
+<body class="public-body">
+  <main class="public-shell">
+    <header class="public-header">
+      <div class="brand-lockup compact">
+        <span class="brand-mark" aria-hidden="true">TB</span>
+        <div><p class="eyebrow">Live auction</p><h1>Thunder Bowl 2026 Draft Board</h1></div>
+      </div>
+      <div class="public-summary">
+        <div><span>Nomination</span><strong id="public-nominator">Waiting</strong></div>
+        <div><span>Last sale</span><strong id="public-last-sale">—</strong></div>
+        <div><span>Room cash</span><strong id="public-room-cash">$1,212</strong></div>
+      </div>
+      <div class="public-actions">
+        <span id="public-connection" class="status-chip status-warning">Connecting…</span>
+        <button id="public-fullscreen" class="button button-secondary" type="button">Full screen</button>
+        <button id="public-print" class="button button-secondary" type="button">Print</button>
+      </div>
+    </header>
+
+    <section id="display-login" class="display-login" aria-labelledby="display-login-title" hidden>
+      <h2 id="display-login-title">Connect this display</h2>
+      <p>Paste the projector link from the private command center, or enter its display token here.</p>
+      <form id="display-login-form">
+        <label for="display-token">Display token</label>
+        <input id="display-token" type="password" autocomplete="off" required />
+        <button class="button button-primary" type="submit">Open public board</button>
+      </form>
+      <p id="display-login-status" class="form-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <div class="team-board-viewport" role="region" aria-label="Standings-ordered team columns" tabindex="0">
+      <section id="team-board" class="team-board" aria-label="Twelve team auction board"></section>
+    </div>
+    <footer class="public-footer"><span id="public-updated">No live update received</span><span>Public view — private strategy excluded</span></footer>
+  </main>
+  <script type="module" src="./public-board.mjs?v=20260805g"></script>
+</body>
+</html>

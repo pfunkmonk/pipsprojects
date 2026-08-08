@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Thunder Bowl CBS Helper",
+  "version": "0.1.0",
+  "description": "User-triggered, read-only roster capture for the private Thunder Bowl draft tool.",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": [
+    "https://berrymvp.football.cbssports.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.mjs",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://pipsprojects.com/thunder-bowl/*",
+        "http://localhost:8888/thunder-bowl/*"
+      ],
+      "js": ["page-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "Thunder Bowl CBS Helper"
+  }
+}
+

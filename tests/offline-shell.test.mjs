@@ -1,0 +1,334 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const indexHtml = await readFile(new URL("../public/thunder-bowl/index.html", import.meta.url), "utf8");
+const publicHtml = await readFile(new URL("../public/thunder-bowl/public.html", import.meta.url), "utf8");
+const serviceWorker = await readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8");
+const appSource = await readFile(new URL("../public/thunder-bowl/app.mjs", import.meta.url), "utf8");
+const appCss = await readFile(new URL("../public/thunder-bowl/app.css", import.meta.url), "utf8");
+const readinessSource = await readFile(new URL("../public/thunder-bowl/draft-readiness.mjs", import.meta.url), "utf8");
+const publicBoardSource = await readFile(new URL("../public/thunder-bowl/public-board.mjs", import.meta.url), "utf8");
+const intelligenceCollectorSource = await readFile(new URL("../netlify/functions/thunder-intelligence-collector.mjs", import.meta.url), "utf8");
+
+test("release assets are versioned across private, public, and offline shells", () => {
+  assert.match(indexHtml, /app\.mjs\?v=\d{8}[a-z]/);
+  assert.match(indexHtml, /app\.css\?v=\d{8}[a-z]/);
+  assert.match(publicHtml, /public-board\.mjs\?v=\d{8}[a-z]/);
+  assert.match(serviceWorker, /app\.mjs\?v=\d{8}[a-z]/);
+});
+
+test("desktop draft controls remain pinned above the fold", () => {
+  const wideDraftRule = appCss.slice(
+    appCss.indexOf("@media (min-width: 901px) and (min-height: 700px)"),
+    appCss.indexOf(".section-intro"),
+  );
+  assert.match(wideDraftRule, /#view-draft \{ padding-bottom: 9rem; \}/);
+  assert.match(wideDraftRule, /#view-draft \.sale-bar \{[\s\S]*position: fixed;/);
+  assert.match(wideDraftRule, /bottom: 0\.75rem;/);
+  assert.match(wideDraftRule, /left: clamp\(1rem, 2vw, 2rem\);/);
+});
+
+test("selected-player scarcity and source confidence are dynamic display-only evidence", () => {
+  for (const id of ["selected-tier-supply", "selected-next-alternative", "selected-tier-cliff", "selected-source-spread", "selected-context-detail"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(indexHtml, /Scarcity &amp; confidence/);
+  assert.match(indexHtml, /DISPLAY ONLY/);
+  assert.match(appSource, /buildDecisionContext\(\{/);
+  assert.match(appSource, /availablePlayers: availablePlayers\(\)/);
+  assert.match(appSource, /valueFor: \(candidate\) => effectivePlayerBidLimit\(candidate\)/);
+  assert.match(appSource, /No value authority/);
+  assert.match(serviceWorker, /decision-context\.mjs\?v=/);
+});
+
+test("the public board is one standings-ordered row with budget headers and acquisition cards", () => {
+  assert.match(publicHtml, /class="team-board-viewport"/);
+  assert.match(appCss, /grid-template-columns: repeat\(12, minmax\(168px, 1fr\)\)/);
+  assert.match(appCss, /\.team-board-viewport \{[^}]*overflow-x: auto/);
+  assert.match(publicBoardSource, /team\.startingCap/);
+  assert.match(publicBoardSource, /PUBLIC_TEAM_ORDER/);
+  assert.match(publicBoardSource, /CURRENT/);
+  assert.match(publicBoardSource, /player\.acquisitionType === "keeper"/);
+  assert.match(publicBoardSource, /Waiting for keepers/);
+});
+
+test("primary pages implement keyboard-roving tabs and reduced-motion safety", () => {
+  assert.match(indexHtml, /id="tab-draft"[\s\S]*tabindex="0"/);
+  assert.match(indexHtml, /id="tab-keepers"[\s\S]*tabindex="-1"/);
+  assert.match(indexHtml, /id="tab-settings"[\s\S]*tabindex="-1"/);
+  assert.match(appSource, /function navigateAppTabs/);
+  for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) assert.match(appSource, new RegExp(key));
+  assert.match(appSource, /tab\.tabIndex = active \? 0 : -1/);
+  assert.match(appCss, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test("the Admin screen exposes schedule evidence and configurable experimental weekly priority without value authority", () => {
+  assert.match(indexHtml, /Schedule and division gate/);
+  assert.match(indexHtml, /id="schedule-division-weeks"/);
+  assert.match(indexHtml, /does not change VBD or bid limits/);
+  assert.match(indexHtml, /Weekly priority weights/);
+  assert.match(indexHtml, /id="priority-experimental-mode"/);
+  assert.match(indexHtml, /Use 1\.20 \/ 1\.40 idea/);
+  assert.match(appSource, /Loaded - candidate held/);
+  assert.match(appSource, /draftPack\.scheduleContext/);
+  assert.match(appSource, /setMeta\("priorityWeightScenario", priorityScenario\)/);
+  assert.match(appSource, /no VBD, price, or max-bid effect/);
+  assert.match(appSource, /if \(!priorityControlsDirty\) syncPriorityControls\(\)/);
+  assert.match(appSource, /priorityControlsDirty = false/);
+  assert.match(serviceWorker, /priority-weights\.mjs\?v=/);
+});
+
+test("the CBS bridge is user-triggered, locally persisted, and offline code remains cached", () => {
+  assert.match(indexHtml, /id="capture-cbs-rosters"/);
+  assert.match(indexHtml, /id="export-cbs-rosters"/);
+  assert.match(appSource, /requestCbsRosterCapture\(\)/);
+  assert.match(appSource, /setMeta\("cbsRosterSnapshot", snapshot\)/);
+  assert.match(serviceWorker, /cbs-roster-snapshot\.mjs\?v=/);
+});
+
+test("static shell refreshes from the network before falling back to cache", () => {
+  const staticHandler = serviceWorker.slice(
+    serviceWorker.indexOf("async function staticResponse"),
+    serviceWorker.indexOf('self.addEventListener("fetch"'),
+  );
+  assert.ok(staticHandler.indexOf("await fetch(request)") < staticHandler.indexOf("await caches.match(request)"));
+});
+
+test("unreachable online access falls back to the saved local verifier quickly", () => {
+  assert.match(appSource, /AbortSignal\.timeout\(ACCESS_CHECK_TIMEOUT_MS\)/);
+  assert.match(appSource, /hasOfflineVerifier\(\)/);
+  assert.match(appSource, /verifyOfflineCode\(code\)/);
+  assert.doesNotMatch(appSource, /Turn off Wi/);
+});
+
+test("the evidence pack is fetched through the authenticated API and never precached publicly", () => {
+  assert.match(appSource, /\/api\/thunder-bowl\/pack/);
+  assert.doesNotMatch(appSource, /fetch\("\.\/draft-pack-2026-provisional\.json/);
+  assert.doesNotMatch(serviceWorker, /draft-pack-2026-provisional\.json/);
+});
+
+test("background pack refresh is conditional, infrequent, and reconnect-aware", () => {
+  assert.match(appSource, /PACK_REFRESH_INTERVAL_MS = 30 \* 60 \* 1000/);
+  assert.match(appSource, /"If-None-Match": priorEtag/);
+  assert.match(appSource, /response\.status === 304/);
+  assert.match(appSource, /schedulePackRefresh\(1000\)/);
+  assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshPackInBackground/);
+});
+
+test("live injury status refresh is hourly, offline-persistent, and value-isolated", () => {
+  assert.match(appSource, /STATUS_REFRESH_INTERVAL_MS = 60 \* 60 \* 1000/);
+  assert.match(appSource, /\/api\/thunder-bowl\/status/);
+  assert.match(appSource, /setMeta\("liveStatusSnapshot", snapshot\)/);
+  assert.match(appSource, /14 \* 86_400_000/);
+  assert.match(appSource, /forbidden of \["projectedPoints", "projectionSources", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue"\]/);
+  assert.match(appSource, /response\.status === 304 && !liveStatusSnapshot/);
+  assert.match(appSource, /setMeta\("liveStatusEtag", null\)/);
+  assert.match(appSource, /Unavailable — \$\{liveStatusError\}/);
+  assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshLiveStatus/);
+});
+
+test("player intelligence exposes value-neutral live depth and availability details", () => {
+  assert.match(indexHtml, /id="intel-injury-detail"/);
+  assert.match(appSource, /Sleeper depth chart:/);
+  assert.match(appSource, /live\.practiceParticipation/);
+  assert.match(appSource, /live\.injuryBodyPart/);
+  assert.match(appSource, /supplemental, no value effect/);
+  assert.match(appSource, /schemaVersion !== 2/);
+});
+
+test("private personal decisions have a validated same-season Mac transfer path with no value or ledger authority", () => {
+  for (const id of ["personal-board-title", "personal-board-total", "personal-board-targets", "personal-board-avoids", "personal-board-prices", "personal-board-notes", "personal-board-backup-state", "export-personal-board", "export-personal-board-csv", "personal-board-file", "personal-board-status"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(indexHtml, /New JSON restores the complete board exactly, including deletions/i);
+  assert.match(indexHtml, /schema-v1 files merge without deleting local decisions/i);
+  assert.match(indexHtml, /can(?:not| change) projections, VBD, model prices, or the auction ledger/i);
+  assert.match(appSource, /createPersonalBoardBundle/);
+  assert.match(appSource, /validatePersonalBoardBundle/);
+  assert.match(appSource, /mergePersonalBoardAnnotations/);
+  assert.match(appSource, /personalBoardCsv/);
+  assert.match(appSource, /createPersonalBoardEvidence/);
+  assert.match(appSource, /personalBoardFingerprint/);
+  assert.match(appSource, /setMeta\("personalBoardBackupEvidence"/);
+  assert.match(appSource, /event\.key !== PLAYER_ANNOTATIONS_KEY[\s\S]{0,160}personalBoardBackupEvidence = null/);
+  assert.match(appSource, /Personal board changed\. Download a new private JSON/);
+  assert.match(appSource, /Personal board changed in another Thunder Bowl tab/);
+  assert.match(readinessSource, /"personal-board-backup"/);
+  assert.match(appSource, /replacePersonalBoardAnnotations/);
+  assert.match(appSource, /Restored the complete personal board/);
+  assert.match(appSource, /Imported legacy schema-v1 decisions/);
+  assert.match(appSource, /Import failed safely; the previous personal board was restored/);
+  assert.match(serviceWorker, /personal-board-exchange\.mjs\?v=/);
+  const importFunction = appSource.slice(appSource.indexOf("async function importPersonalBoard"), appSource.indexOf("function exportRecovery"));
+  assert.doesNotMatch(importFunction, /commitLocalEvents|appendEvents|replaceEvents|events\s*=|draftPack\s*=|vbd\s*=|marketValue\s*=|maxBid\s*=/);
+  assert.match(importFunction, /bundle\.scope === "full-board"/);
+  assert.match(importFunction, /priorSerialized/);
+  assert.match(importFunction, /localStorage\.setItem\(PLAYER_ANNOTATIONS_KEY, priorSerialized\)/);
+  assert.match(importFunction, /setMeta\("personalBoardBackupEvidence", priorEvidence\)/);
+});
+
+test("player intelligence embeds source-linked news with a separate offline-safe value firewall", () => {
+  assert.match(indexHtml, /id="intel-news-list"/);
+  assert.match(indexHtml, /RotoWire RSS headlines and summaries/);
+  assert.match(indexHtml, /<button id="intel-news-link"[^>]*type="button"[^>]*>Refresh latest news<\/button>/);
+  assert.doesNotMatch(indexHtml, /<a id="intel-news-link"/);
+  assert.match(appSource, /NEWS_REFRESH_INTERVAL_MS = 10 \* 60 \* 1000/);
+  assert.match(appSource, /\/api\/thunder-bowl\/news/);
+  assert.match(appSource, /setMeta\("liveNewsSnapshot", snapshot\)/);
+  assert.match(appSource, /playerNewsItems\(player\)/);
+  assert.match(appSource, /refreshPlayerNewsInApp/);
+  assert.match(appSource, /You stayed inside Thunder Bowl/);
+  assert.match(appSource, /forbidden of \["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"\]/);
+  assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshLiveNews/);
+});
+
+test("Footballguys depth charts and CBS news refresh and render internally without Google search", () => {
+  for (const id of ["intel-cbs-news-list", "intel-cbs-news-freshness", "intel-fbg-depth", "intel-fbg-depth-freshness"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(indexHtml, /<button id="intel-cbs-link"[^>]*>Refresh CBS news<\/button>/);
+  assert.match(indexHtml, /<button id="intel-fbg-link"[^>]*>Refresh FBG depth chart<\/button>/);
+  assert.doesNotMatch(indexHtml, /<a id="intel-(?:cbs|fbg)-link"/);
+  assert.match(appSource, /\/api\/thunder-bowl\/research/);
+  assert.match(appSource, /validateResearchSnapshot/);
+  assert.match(appSource, /renderIntelCbsNews/);
+  assert.match(appSource, /renderIntelFbgDepth/);
+  assert.match(appSource, /setMeta\("liveResearchSnapshot", snapshot\)/);
+  assert.doesNotMatch(appSource, /google\.com\/search/);
+});
+
+test("draft morning can force, scan, seal, restore, and export every-player intelligence", () => {
+  for (const id of ["capture-morning-intelligence", "export-morning-intelligence", "morning-intelligence-time", "morning-intelligence-players", "morning-intelligence-status-coverage", "morning-intelligence-depth", "morning-intelligence-news", "morning-intelligence-action-status"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(appSource, /captureMorningIntelligence/);
+  assert.match(appSource, /morningPlayerCoverage/);
+  assert.match(appSource, /force: true/);
+  assert.match(appSource, /setMeta\("morningIntelligenceSnapshot", morningIntelligenceSnapshot\)/);
+  assert.match(appSource, /getMeta\("morningIntelligenceSnapshot"\)/);
+  assert.match(appSource, /playersScanned: rows\.length/);
+  assert.match(appSource, /sourceSnapshots:/);
+  assert.match(indexHtml, /Download intelligence backup/);
+  assert.match(readinessSource, /morning-intelligence/);
+  assert.match(intelligenceCollectorSource, /schedule: "@hourly"/);
+  assert.match(intelligenceCollectorSource, /currentResearchSnapshot\(\{ force: true \}\)/);
+  assert.match(intelligenceCollectorSource, /modelEffect: "none"/);
+});
+
+test("draft-morning readiness and the printable local fallback are offline-cached and read-only", () => {
+  for (const id of ["run-readiness", "readiness-overall", "readiness-checks", "open-emergency-board", "readiness-action-status", "emergency-board-dialog", "emergency-board-frame", "print-emergency-board", "close-emergency-board"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(appSource, /buildDraftReadinessReport/);
+  assert.match(appSource, /buildEmergencyBoardHtml/);
+  assert.match(appSource, /emergency-board-frame["']\)\.srcdoc = html/);
+  const emergencyFunction = appSource.slice(appSource.indexOf("function openEmergencyBoard"), appSource.indexOf("function printEmergencyBoard"));
+  assert.doesNotMatch(emergencyFunction, /window\.open/);
+  assert.match(readinessSource, /modelEffect:\s*"none"/);
+  assert.match(readinessSource, /ledgerEffect:\s*"none"/);
+  assert.match(serviceWorker, /draft-readiness\.mjs\?v=/);
+  assert.match(serviceWorker, /player-search\.mjs\?v=/);
+  assert.match(serviceWorker, /emergency-print\.css\?v=/);
+});
+
+test("human-paced two-screen rehearsal is an explicit local certificate and departure warning", () => {
+  for (const id of ["human-rehearsal-title", "human-rehearsal-progress", "seal-human-rehearsal", "clear-human-rehearsal", "human-rehearsal-status"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  for (const item of ["full-auction", "second-screen", "wifi-loss", "offline-actions", "reconnect", "recovery-import", "noisy-room"]) {
+    assert.match(indexHtml, new RegExp(`data-human-rehearsal=["']${item}["']`));
+  }
+  assert.match(indexHtml, /Human-attested evidence only/);
+  assert.match(appSource, /createHumanRehearsalEvidence/);
+  assert.match(appSource, /setMeta\("humanRehearsalEvidence", humanRehearsalEvidence\)/);
+  assert.match(appSource, /humanRehearsalEvidence,/);
+  assert.match(appSource, /if \(status\.current\) input\.checked = true;\s*else if \(humanRehearsalEvidence\) input\.checked = false;/);
+  assert.match(appSource, /addEventListener\("change", refreshHumanRehearsalControls\)/);
+  assert.match(readinessSource, /"human-rehearsal"/);
+  assert.match(serviceWorker, /human-rehearsal\.mjs\?v=/);
+});
+
+test("practice reset requires an exact phrase and sends the current ledger generation", () => {
+  assert.match(indexHtml, /ARCHIVE AND START NEW/);
+  assert.match(appSource, /generation: ledgerGeneration/);
+  assert.match(appSource, /ledgerStale/);
+  assert.match(appSource, /exportRecovery\(\)/);
+  assert.match(indexHtml, /Load current cloud rehearsal/);
+  assert.match(appSource, /loadCurrentCloudLedger/);
+});
+
+test("keeper declarations and cap trades use the offline-first audited ledger", () => {
+  for (const id of [
+    "keeper-assignment-form",
+    "keeper-player",
+    "keeper-team",
+    "keeper-selection-timeline",
+    "pass-keeper-turn",
+    "cap-transfer-form",
+    "cap-from-team",
+    "cap-to-team",
+    "cap-transfer-amount",
+    "undo-keeper-action",
+  ]) {
+    assert.match(indexHtml, new RegExp(`id="${id}"`));
+  }
+  assert.match(appSource, /EVENT_TYPES\.KEEPER_ASSIGNED/);
+  assert.match(appSource, /EVENT_TYPES\.KEEPER_PASSED/);
+  assert.match(appSource, /EVENT_TYPES\.CAP_TRANSFERRED/);
+  assert.match(appSource, /commitLocalEvents\(\s*\[keeper\]/);
+  assert.match(appSource, /commitLocalEvents\(\s*\[pass\]/);
+  assert.match(appSource, /commitLocalEvents\(\s*\[transfer\]/);
+  assert.match(appSource, /lastUndoableEvent\(events, KEEPER_SETUP_EVENT_TYPES\)/);
+  assert.match(indexHtml, /saved locally first, syncs when possible, and immediately updates the public board/);
+  assert.match(indexHtml, /Official 1–12 \/ 1–12 order/);
+});
+
+test("keeper strategy exports a complete advisory board without granting model or ledger authority", () => {
+  for (const id of ["export-keeper-board", "keeper-export-status"]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(appSource, /buildKeeperBoard/);
+  assert.match(appSource, /keeperBoardCsv/);
+  assert.match(appSource, /text\/csv;charset=utf-8/);
+  assert.match(appSource, /Trade ranges are advisory and use current practice values/);
+  assert.match(serviceWorker, /keeper-board\.mjs\?v=/);
+});
+
+test("Dogs of War candidate evidence is an accessible remembered disclosure", () => {
+  for (const id of ["keeper-evidence-details", "keeper-evidence-title", "keeper-evidence-toggle-label", "keeper-count", "keeper-rows"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(indexHtml, /<details id="keeper-evidence-details">[\s\S]*<summary class="panel-header keeper-evidence-summary">/);
+  assert.doesNotMatch(indexHtml, /<details id="keeper-evidence-details" open>/);
+  assert.match(appSource, /getMeta\("keeperEvidenceExpanded", false\)/);
+  assert.match(appSource, /setMeta\("keeperEvidenceExpanded", event\.currentTarget\.open\)/);
+  assert.match(appSource, /details\.open \? "Hide table" : "Show table"/);
+  assert.match(appCss, /\.keeper-evidence-summary:focus-visible/);
+  assert.match(appCss, /details\[open\] \.keeper-evidence-chevron/);
+});
+
+test("keeper strategy exposes ranked trade-for and trade-away proposals without auto-recording them", () => {
+  for (const id of [
+    "keeper-market-title",
+    "keeper-market-summary",
+    "keeper-market-evidence",
+    "keeper-acquire-list",
+    "keeper-sell-list",
+    "keeper-market-status",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(appSource, /buildKeeperTradeMarket\(draftPack\)/);
+  assert.match(appSource, /keeperTradeScenario\(opportunity, amount\)/);
+  assert.match(appSource, /addKeeperTradeFact\(facts, "Contract", `\$\{opportunity\.contractYearLabel\} · \$\{opportunity\.contractYearsLeft\} left`\)/);
+  assert.match(appCss, /\.keeper-market-facts \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(appSource, /loadKeeperTradeProposal/);
+  assert.match(appSource, /Review it, negotiate, and press Record cap transfer only after both teams agree/);
+  assert.doesNotMatch(appSource, /loadKeeperTradeProposal[\s\S]{0,1200}commitLocalEvents/);
+});
+
+test("data setup exports a clean chronological draft history for CBS entry and future modeling", () => {
+  for (const id of ["export-draft-history", "draft-history-status"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(appSource, /buildDraftHistoryRows\(\{ events, pack: draftPack \}\)/);
+  assert.match(appSource, /draftHistoryCsv\(rows\)/);
+  assert.match(indexHtml, /active cap trade, keeper decision, nomination skip, and auction purchase/i);
+});
