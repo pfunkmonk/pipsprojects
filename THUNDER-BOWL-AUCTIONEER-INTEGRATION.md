@@ -68,7 +68,9 @@ Then verify:
 
 ## Release status
 
-The integration is committed locally only. It has not been pushed or deployed. Before production release, set the auctioneer environment value, run the full test/build gates, and complete one real two-computer projector rehearsal on the venue network or a comparable hotspot.
+The integration was pushed to GitHub and deployed to `https://pipsprojects.com` on August 8, 2026. The production auctioneer secret is configured as a write-only Netlify Functions environment value. Production smoke verification passed the separate login, 12-team/716-player restricted snapshot, tokenized projector snapshot, trailing-slash board redirect, private-field firewall, cloud synchronization, projector presence, and clean browser diagnostics without recording a transaction.
+
+The remaining release-readiness action is one real two-computer projector rehearsal on the venue network or a comparable hotspot. Use the production auctioneer and tokenized board, exercise the documented correction/outage path, then archive/reset the rehearsal ledger before draft day.
 
 ## Open dependency advisory
 
