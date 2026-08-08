@@ -464,6 +464,12 @@ input[readonly] { color: var(--muted); }
 .keeper-evidence-summary-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; }
 .keeper-evidence-toggle-label { min-width: 104px; border: 1px solid var(--gold); border-radius: 999px; padding: 0.42rem 0.65rem; background: rgba(240, 186, 54, 0.1); color: var(--gold-light); font-size: 0.82rem; font-weight: 900; text-align: center; white-space: nowrap; }
 .keeper-evidence-chevron { color: var(--gold-light); font-size: 1.9rem; font-weight: 800; line-height: 1; transform: rotate(0deg); transition: transform 140ms ease; }
+.keeper-evidence-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); padding: 0.75rem 0.8rem; background: var(--navy-850); }
+.keeper-evidence-team-picker { display: grid; grid-template-columns: auto minmax(220px, 320px); align-items: center; gap: 0.65rem; margin: 0; }
+.keeper-evidence-team-picker > span { color: var(--gold-light); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.keeper-evidence-team-picker select { min-height: 46px; border: 1px solid var(--line-strong); border-radius: 9px; padding: 0.55rem 2.4rem 0.55rem 0.75rem; background: var(--navy-950); color: var(--text); font: inherit; font-weight: 800; }
+.keeper-evidence-team-picker select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.keeper-evidence-toolbar p { max-width: 430px; margin: 0; color: var(--muted); font-size: 0.8rem; text-align: right; }
 .keeper-evidence-panel details:not([open]) .keeper-evidence-summary { border-bottom-color: transparent; }
 .keeper-evidence-panel details[open] .keeper-evidence-chevron { transform: rotate(90deg); }
 .scenario-panel { padding-bottom: 1rem; }
@@ -797,6 +803,10 @@ input[readonly] { color: var(--muted); }
   .keeper-market-edge { justify-self: start; }
   .keeper-market-calculator { grid-template-columns: 1fr; align-items: stretch; }
   .keeper-market-action { width: 100%; }
+  .keeper-evidence-toolbar { align-items: stretch; flex-direction: column; }
+  .keeper-evidence-team-picker { grid-template-columns: 1fr; }
+  .keeper-evidence-team-picker select { width: 100%; }
+  .keeper-evidence-toolbar p { max-width: none; text-align: left; }
 }
 @media (max-width: 500px) {
   .brand-lockup.compact { min-width: 0; }

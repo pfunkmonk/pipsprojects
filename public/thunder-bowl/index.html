@@ -16,7 +16,7 @@
   <meta property="og:image:height" content="910" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260805g" />
-  <link rel="stylesheet" href="./app.css?v=20260805g" />
+  <link rel="stylesheet" href="./app.css?v=20260808a" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -323,9 +323,16 @@
           <section class="product-panel keeper-evidence-panel" aria-labelledby="keeper-evidence-title">
             <details id="keeper-evidence-details">
               <summary class="panel-header keeper-evidence-summary">
-                <div><p class="eyebrow">Dogs of War</p><h3 id="keeper-evidence-title">Candidate evidence</h3></div>
+                <div><p id="keeper-evidence-team-label" class="eyebrow">Dogs of War</p><h3 id="keeper-evidence-title">Candidate evidence</h3></div>
                 <span class="keeper-evidence-summary-actions"><span id="keeper-count" class="count-label">0 candidates</span><span id="keeper-evidence-toggle-label" class="keeper-evidence-toggle-label">Show table</span><span class="keeper-evidence-chevron" aria-hidden="true">›</span></span>
               </summary>
+              <div class="keeper-evidence-toolbar">
+                <label class="keeper-evidence-team-picker" for="keeper-evidence-team">
+                  <span>View team</span>
+                  <select id="keeper-evidence-team" aria-describedby="keeper-evidence-team-help"></select>
+                </label>
+                <p id="keeper-evidence-team-help">Switch teams without changing keeper choices, values, or the draft ledger.</p>
+              </div>
               <div class="table-wrap">
                 <table class="data-table">
                   <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">Surplus</th><th>Trade read</th><th>Evidence</th></tr></thead>
@@ -726,6 +733,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260805g"></script>
+  <script type="module" src="./app.mjs?v=20260808a"></script>
 </body>
 </html>

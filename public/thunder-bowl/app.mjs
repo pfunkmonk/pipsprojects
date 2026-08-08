@@ -157,6 +157,7 @@ let liveStatusError = null;
 let draftReadinessReport = null;
 let lastRecoveryExportAt = null;
 let keeperBoardRows = [];
+let selectedKeeperEvidenceTeamId = "dogs-of-war";
 let newsRefreshTimer = null;
 let newsRefreshInFlight = false;
 let liveNewsSnapshot = null;
@@ -1480,17 +1481,37 @@ function renderKeeperEvidenceDisclosure() {
   byId("keeper-evidence-toggle-label").textContent = details.open ? "Hide table" : "Show table";
 }
 
+function keeperCandidatesForTeam(teamId) {
+  return draftPack.keeperCandidates.filter((candidate) => candidate.teamId === teamId);
+}
+
+function renderKeeperEvidenceTeamSelector() {
+  const select = byId("keeper-evidence-team");
+  const teamIds = draftState.config.nominationOrder;
+  if (!teamIds.includes(selectedKeeperEvidenceTeamId)) selectedKeeperEvidenceTeamId = "dogs-of-war";
+  select.replaceChildren();
+  for (const teamId of teamIds) {
+    const option = document.createElement("option");
+    option.value = teamId;
+    option.textContent = draftState.teams[teamId].name;
+    select.append(option);
+  }
+  select.value = selectedKeeperEvidenceTeamId;
+  byId("keeper-evidence-team-label").textContent = draftState.teams[selectedKeeperEvidenceTeamId].name;
+}
+
 function keeperRows() {
   const tbody = byId("keeper-rows");
   tbody.replaceChildren();
-  const candidates = draftPack.keeperCandidates.filter((candidate) => candidate.teamId === "dogs-of-war");
+  renderKeeperEvidenceTeamSelector();
+  const candidates = keeperCandidatesForTeam(selectedKeeperEvidenceTeamId);
   byId("keeper-count").textContent = `${candidates.length} candidate${candidates.length === 1 ? "" : "s"}`;
   if (!candidates.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 7;
     cell.className = "muted";
-    cell.textContent = "No keeper candidates have passed the evidence gate yet.";
+    cell.textContent = `${draftState.teams[selectedKeeperEvidenceTeamId].name} has no keeper candidates that passed the evidence gate.`;
     row.append(cell);
     tbody.append(row);
     return candidates;
@@ -2251,7 +2272,8 @@ function renderAll() {
   renderNeeds();
   teamOptions();
   renderPackStatus();
-  renderKeeperScenarios(keeperRows());
+  keeperRows();
+  renderKeeperScenarios(keeperCandidatesForTeam("dogs-of-war"));
   renderKeeperOperations();
   renderKeeperTradeMarket();
   renderLeagueKeeperPressure();
@@ -2474,10 +2496,6 @@ function showView(view) {
     tab.classList.toggle("is-active", active);
     tab.setAttribute("aria-selected", String(active));
     tab.tabIndex = active ? 0 : -1;
-  });
-  byId("keeper-evidence-details").addEventListener("toggle", (event) => {
-    renderKeeperEvidenceDisclosure();
-    void setMeta("keeperEvidenceExpanded", event.currentTarget.open);
   });
   document.querySelectorAll(".page-view").forEach((page) => {
     page.hidden = page.id !== `view-${view}`;
@@ -3484,6 +3502,17 @@ function bindInteractions() {
   capTransferForm.addEventListener("submit", (event) => void recordCapTransfer(event));
   passKeeperTurnButton.addEventListener("click", () => void passKeeperTurn());
   undoKeeperActionButton.addEventListener("click", () => void undoLastKeeperAction());
+  byId("keeper-evidence-details").addEventListener("toggle", (event) => {
+    renderKeeperEvidenceDisclosure();
+    void setMeta("keeperEvidenceExpanded", event.currentTarget.open);
+  });
+  byId("keeper-evidence-team").addEventListener("change", (event) => {
+    const teamId = event.currentTarget.value;
+    if (!draftState.config.nominationOrder.includes(teamId)) return;
+    selectedKeeperEvidenceTeamId = teamId;
+    keeperRows();
+    void setMeta("keeperEvidenceTeamId", teamId);
+  });
   keeperPlayer.addEventListener("change", () => {
     updateKeeperSelectionSummary();
   });
@@ -3709,6 +3738,10 @@ async function bootstrap() {
     deviceId = await getOrCreateDeviceId();
     const session = await fetchSession().catch(() => null);
     draftPack = await loadPack(Boolean(session?.authenticated));
+    const savedKeeperEvidenceTeamId = await getMeta("keeperEvidenceTeamId", "dogs-of-war");
+    selectedKeeperEvidenceTeamId = draftPack.leagueConfig.teams.some((team) => team.id === savedKeeperEvidenceTeamId)
+      ? savedKeeperEvidenceTeamId
+      : "dogs-of-war";
     if (!LOCAL_ONLY) humanRehearsalEvidence = await getMeta("humanRehearsalEvidence");
     byId("keeper-evidence-details").open = await getMeta("keeperEvidenceExpanded", false) === true;
     renderKeeperEvidenceDisclosure();

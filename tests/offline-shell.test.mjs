@@ -293,8 +293,8 @@ test("keeper strategy exports a complete advisory board without granting model o
   assert.match(serviceWorker, /keeper-board\.mjs\?v=/);
 });
 
-test("Dogs of War candidate evidence is an accessible remembered disclosure", () => {
-  for (const id of ["keeper-evidence-details", "keeper-evidence-title", "keeper-evidence-toggle-label", "keeper-count", "keeper-rows"]) {
+test("league-wide candidate evidence has a remembered team selector and accessible disclosure", () => {
+  for (const id of ["keeper-evidence-details", "keeper-evidence-title", "keeper-evidence-toggle-label", "keeper-evidence-team-label", "keeper-evidence-team", "keeper-count", "keeper-rows"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   }
   assert.match(indexHtml, /<details id="keeper-evidence-details">[\s\S]*<summary class="panel-header keeper-evidence-summary">/);
@@ -302,7 +302,12 @@ test("Dogs of War candidate evidence is an accessible remembered disclosure", ()
   assert.match(appSource, /getMeta\("keeperEvidenceExpanded", false\)/);
   assert.match(appSource, /setMeta\("keeperEvidenceExpanded", event\.currentTarget\.open\)/);
   assert.match(appSource, /details\.open \? "Hide table" : "Show table"/);
+  assert.match(appSource, /keeperCandidatesForTeam\(selectedKeeperEvidenceTeamId\)/);
+  assert.match(appSource, /getMeta\("keeperEvidenceTeamId", "dogs-of-war"\)/);
+  assert.match(appSource, /setMeta\("keeperEvidenceTeamId", teamId\)/);
+  assert.match(appSource, /renderKeeperScenarios\(keeperCandidatesForTeam\("dogs-of-war"\)\)/);
   assert.match(appCss, /\.keeper-evidence-summary:focus-visible/);
+  assert.match(appCss, /\.keeper-evidence-team-picker select:focus-visible/);
   assert.match(appCss, /details\[open\] \.keeper-evidence-chevron/);
 });
 
