@@ -80,6 +80,27 @@ test("selected-player scarcity and source confidence are dynamic display-only ev
   assert.match(serviceWorker, /decision-context\.mjs\?v=/);
 });
 
+test("auction intelligence stays private, optional, fast to capture, and offline cached", () => {
+  for (const id of [
+    "auction-forecast",
+    "auction-natural-price",
+    "auction-price-range",
+    "auction-dogs-price",
+    "runner-up-prompt",
+    "runner-up-team",
+    "runner-up-skip",
+    "auction-telemetry-rows",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(appSource, /RUNNER_UP_PROMPT_MS/);
+  assert.match(appSource, /setTimeout\(\(\) => void saveRunnerUpUnknown/);
+  assert.match(appSource, /forecastAuctionPrice\(\{/);
+  assert.match(appSource, /bidAuthority: "none"|advisory only/);
+  assert.match(appSource, /private runner-up learning log/i);
+  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260809a/);
+  assert.match(serviceWorker, /auction-telemetry\.mjs\?v=20260809a/);
+  assert.doesNotMatch(publicBoardSource, /runnerUp|runner-up/i);
+});
+
 test("the public board is one standings-ordered row with budget headers and acquisition cards", () => {
   assert.match(publicHtml, /class="team-board-viewport"/);
   assert.match(appCss, /grid-template-columns: repeat\(12, minmax\(168px, 1fr\)\)/);

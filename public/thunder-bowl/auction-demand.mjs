@@ -17,6 +17,14 @@ export const HISTORICAL_AUCTION_DEMAND = Object.freeze({
     positionBudgetPriceMae: 4.489,
     blendedPriceMae: 4.191,
     outcomeHoldoutExcluded: 2025,
+    coarseBaselineInterval: Object.freeze({
+      developmentRows: 141,
+      targetCoverage: 0.8,
+      leaveOneSeasonOutCoverage: 0.794,
+      globalRadius: 7,
+      positionRadius: Object.freeze({ QB: 7, RB: 8, WR: 14, TE: 7, K: 7, DST: 7 }),
+      role: "baseline price safety band only; not WTP-challenger calibration",
+    }),
   }),
   historicalPositionSpend: Object.freeze({
     seasons: Object.freeze([2021, 2022, 2023, 2025]),
@@ -400,6 +408,7 @@ export function calculateAuctionDemandMarket(pack, state, { profile = HISTORICAL
     globalInflationPercent: displayPercent,
     globalMultiplier,
     positionImpacts,
+    baselineValuesByPlayerId: baselineValues,
     valuesByPlayerId: currentValues,
     bidCeilingsByPlayerId,
     roomCurveValuesByPlayerId: marketRoomCurve,

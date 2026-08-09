@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-full-auction-rehearsal",
-  "generatedAt": "2026-08-05T15:53:25.976Z",
+  "generatedAt": "2026-08-09T15:00:04.030Z",
   "scope": "Deterministic automated state, rule, recovery, and latency rehearsal; not a substitute for a human-paced usability rehearsal.",
   "passed": true,
   "pack": {
@@ -22,7 +22,7 @@
     "illegalBidCheck": {
       "activeSaleOrdinal": 111,
       "buyer": "Three Amigos",
-      "rejectedAmount": 24
+      "rejectedAmount": 28
     },
     "sha256": "69d6360fb3793905fb8c33b51b85b6d26460f1277aa563bef9a466efd77364c6"
   },
@@ -203,22 +203,22 @@
   "offlineReconnect": {
     "canonicalActiveSales": 96,
     "mergedPhysicalEvents": 171,
-    "durationMs": 1.1251
+    "durationMs": 1.0649
   },
   "performance": {
     "incrementalReplay": {
       "samples": 168,
-      "medianMs": 0.2435,
-      "p95Ms": 0.5884,
-      "maximumMs": 0.7769
+      "medianMs": 0.2053,
+      "p95Ms": 0.4138,
+      "maximumMs": 0.629
     },
     "playerSearch": {
       "samples": 80,
-      "medianMs": 0.0351,
-      "p95Ms": 0.0599,
-      "maximumMs": 0.3218
+      "medianMs": 0.0196,
+      "p95Ms": 0.0438,
+      "maximumMs": 0.2079
     },
-    "publicSnapshotMs": 0.2609
+    "publicSnapshotMs": 0.2366
   },
   "checks": {
     "activeSalesExactly168": true,

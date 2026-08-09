@@ -15,6 +15,54 @@
     "positionBudget": 4.489,
     "blendedPositionBudget": 4.191
   },
+  "conformalCalibration": {
+    "role": "coarse baseline-price safety band; not calibration for the new per-team WTP challenger",
+    "coverageTarget": 0.8,
+    "developmentRows": 141,
+    "globalRadius80": 7,
+    "positionRadius80": {
+      "QB": {
+        "n": 19,
+        "radius": 7,
+        "fallback": "global"
+      },
+      "RB": {
+        "n": 37,
+        "radius": 8,
+        "fallback": "position"
+      },
+      "WR": {
+        "n": 36,
+        "radius": 14,
+        "fallback": "position"
+      },
+      "TE": {
+        "n": 17,
+        "radius": 7,
+        "fallback": "global"
+      },
+      "K": {
+        "n": 17,
+        "radius": 7,
+        "fallback": "global"
+      },
+      "DST": {
+        "n": 15,
+        "radius": 7,
+        "fallback": "global"
+      }
+    },
+    "leaveOneSeasonOut": {
+      "rows": 141,
+      "coverage80": 0.794,
+      "meanWidth80": 14.553,
+      "pinballLoss": {
+        "q10": 0.965,
+        "q50": 2.096,
+        "q90": 1.405
+      }
+    }
+  },
   "folds": [
     {
       "testSeason": 2023,

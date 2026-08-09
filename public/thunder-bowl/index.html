@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260808k" />
+  <link rel="stylesheet" href="./app.css?v=20260809a" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -198,8 +198,15 @@
               <div id="dogs-needs" class="need-grid"></div>
             </section>
             <section class="opponent-pressure-section" aria-labelledby="opponent-pressure-title">
-              <p class="eyebrow" id="opponent-pressure-title">Likely bid pressure</p>
+              <p class="eyebrow" id="opponent-pressure-title">Auction forecast</p>
               <p id="opponent-pressure-summary" class="muted opponent-pressure-summary">Select a player to rank likely competition.</p>
+              <dl id="auction-forecast" class="auction-forecast" hidden>
+                <div class="auction-forecast-primary"><dt>Natural sale</dt><dd id="auction-natural-price">â€”</dd><small id="auction-price-range">â€”</small></div>
+                <div><dt>Rational room</dt><dd id="auction-rational-price">â€”</dd></div>
+                <div><dt>If Dogs bids</dt><dd id="auction-dogs-price">â€”</dd></div>
+                <div><dt>Win chance</dt><dd id="auction-dogs-win">â€”</dd></div>
+              </dl>
+              <p id="auction-forecast-note" class="auction-forecast-note" hidden></p>
               <ol id="selected-opponent-pressure" class="opponent-pressure-list"></ol>
             </section>
             <section>
@@ -583,6 +590,24 @@
             <p id="draft-history-status" class="form-status" role="status" aria-live="polite"></p>
           </section>
 
+          <details class="product-panel settings-card auction-intelligence-log">
+            <summary>
+              <span><span class="eyebrow">Private learning data</span><strong>Auction intelligence log</strong></span>
+              <span id="auction-telemetry-summary" class="count-label">No sales yet</span>
+            </summary>
+            <p>Runner-up choices are stored only on this device. They never enter the public ledger or projector board. You can correct a missed choice here at any time.</p>
+            <div class="table-wrap">
+              <table class="data-table telemetry-table">
+                <thead><tr><th>Sale</th><th>Winner</th><th>Runner-up</th></tr></thead>
+                <tbody id="auction-telemetry-rows"></tbody>
+              </table>
+            </div>
+            <div class="button-stack">
+              <button id="export-auction-telemetry" class="button button-secondary" type="button">Download private learning CSV</button>
+            </div>
+            <p id="auction-telemetry-status" class="form-status" role="status" aria-live="polite">Optional evidence only; no current bid limit is changed automatically.</p>
+          </details>
+
           <section class="product-panel settings-card">
             <p class="eyebrow">Second screen</p>
             <h3>Public draft board</h3>
@@ -656,6 +681,17 @@
         </div>
       </section>
     </main>
+
+    <aside id="runner-up-prompt" class="runner-up-prompt" aria-labelledby="runner-up-prompt-title" hidden>
+      <div>
+        <p class="eyebrow">Optional private note</p>
+        <strong id="runner-up-prompt-title">Who was the runner-up?</strong>
+        <p id="runner-up-prompt-sale">Record the last losing bidder without interrupting the auction.</p>
+      </div>
+      <label for="runner-up-team"><span class="sr-only">Runner-up team</span><select id="runner-up-team"><option value="">Choose runner-upâ€¦</option></select></label>
+      <button id="runner-up-skip" class="button button-secondary" type="button">Not sure</button>
+      <small>Optional Â· closes in 30 seconds Â· editable later in Admin</small>
+    </aside>
 
     <dialog id="archive-dialog" class="confirm-dialog" aria-labelledby="archive-dialog-title">
       <form id="archive-form" method="dialog">
@@ -787,6 +823,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260808n"></script>
+  <script type="module" src="./app.mjs?v=20260809a"></script>
 </body>
 </html>

@@ -155,6 +155,18 @@ function mae(rows, values) {
   return rows.reduce((sum, row) => sum + Math.abs(finite(row.salary) - (values.get(row.player_id) ?? 1)), 0) / Math.max(1, rows.length);
 }
 
+function conformalRadius(errors, coverage = 0.8) {
+  if (!errors.length) return null;
+  const sorted = errors.map(Math.abs).sort((left, right) => left - right);
+  const rank = Math.min(sorted.length, Math.ceil((sorted.length + 1) * coverage));
+  return sorted[Math.max(0, rank - 1)];
+}
+
+function pinball(actual, predicted, quantile) {
+  const error = actual - predicted;
+  return error >= 0 ? quantile * error : (quantile - 1) * error;
+}
+
 const [projectionText, rosterText, auctionText] = await Promise.all([
   readFile(resolve(dataRoot, "cbs_projection_actual_joins_2021_2025.csv"), "utf8"),
   readFile(resolve(dataRoot, "auction_rosters_2021_2025.csv"), "utf8"),
@@ -164,6 +176,7 @@ const projections = parseCsv(projectionText);
 const rosters = parseCsv(rosterText);
 const auctions = parseCsv(auctionText);
 const folds = [];
+const foldResidualRows = [];
 
 for (const testSeason of [2023, 2024, 2025]) {
   const trainingSeasons = new Set([2021, 2022, 2023, 2024].filter((season) => season < testSeason));
@@ -183,6 +196,13 @@ for (const testSeason of [2023, 2024, 2025]) {
   const positionBudget = calculateValues(pool, profile.ranks, totalBudget, profile.spendShares, "position-budget");
   const blended = new Map(pool.map((row) => [row.id, Math.max(1, Math.round(0.25 * (classic.get(row.id) ?? 1) + 0.75 * (positionBudget.get(row.id) ?? 1)))]));
   const matchedPurchaseRows = purchaseRows.filter((row) => classic.has(row.player_id));
+  foldResidualRows.push(...matchedPurchaseRows.map((row) => ({
+    testSeason,
+    position: row.position,
+    actual: finite(row.salary),
+    predicted: blended.get(row.player_id) ?? 1,
+    residual: finite(row.salary) - (blended.get(row.player_id) ?? 1),
+  })));
   const metricSet = (rows) => rows.length ? {
     classic: Number(mae(rows, classic).toFixed(3)),
     globalDemand: Number(mae(rows, globalDemand).toFixed(3)),
@@ -214,6 +234,39 @@ for (const testSeason of [2023, 2024, 2025]) {
 const development = folds.filter((fold) => fold.evidenceRole === "development_fold");
 const weighted = (field) => Number((development.reduce((sum, fold) => sum + fold.mae[field] * fold.purchases, 0) / development.reduce((sum, fold) => sum + fold.purchases, 0)).toFixed(3));
 const weightedMatched = (field) => Number((development.reduce((sum, fold) => sum + fold.matchedMae[field] * fold.matchedPurchases, 0) / development.reduce((sum, fold) => sum + fold.matchedPurchases, 0)).toFixed(3));
+const developmentResidualRows = foldResidualRows.filter((row) => [2023, 2024].includes(row.testSeason));
+const globalRadius80 = conformalRadius(developmentResidualRows.map((row) => row.residual), 0.8);
+const positionRadius80 = Object.fromEntries(POSITIONS.map((position) => {
+  const rows = developmentResidualRows.filter((row) => row.position === position);
+  return [position, {
+    n: rows.length,
+    radius: rows.length >= 20 ? conformalRadius(rows.map((row) => row.residual), 0.8) : globalRadius80,
+    fallback: rows.length < 20 ? "global" : "position",
+  }];
+}));
+const losoRows = [];
+for (const testSeason of [2023, 2024]) {
+  const calibration = developmentResidualRows.filter((row) => row.testSeason !== testSeason);
+  const testing = developmentResidualRows.filter((row) => row.testSeason === testSeason);
+  const globalRadius = conformalRadius(calibration.map((row) => row.residual), 0.8);
+  for (const row of testing) {
+    const positionCalibration = calibration.filter((candidate) => candidate.position === row.position);
+    const radius = positionCalibration.length >= 20
+      ? conformalRadius(positionCalibration.map((candidate) => candidate.residual), 0.8)
+      : globalRadius;
+    losoRows.push({ ...row, radius });
+  }
+}
+const losoMetric = losoRows.length ? {
+  rows: losoRows.length,
+  coverage80: Number((losoRows.filter((row) => row.actual >= row.predicted - row.radius && row.actual <= row.predicted + row.radius).length / losoRows.length).toFixed(3)),
+  meanWidth80: Number((losoRows.reduce((sum, row) => sum + row.radius * 2, 0) / losoRows.length).toFixed(3)),
+  pinballLoss: {
+    q10: Number((losoRows.reduce((sum, row) => sum + pinball(row.actual, row.predicted - row.radius, 0.1), 0) / losoRows.length).toFixed(3)),
+    q50: Number((losoRows.reduce((sum, row) => sum + pinball(row.actual, row.predicted, 0.5), 0) / losoRows.length).toFixed(3)),
+    q90: Number((losoRows.reduce((sum, row) => sum + pinball(row.actual, row.predicted + row.radius, 0.9), 0) / losoRows.length).toFixed(3)),
+  },
+} : null;
 const result = {
   schemaVersion: 1,
   protocol: "time-forward CBS preseason projections; train roster counts and position spend on prior Thunder Bowl seasons; explicit keepers excluded where labeled; unresolved draft/keeper rows retained",
@@ -230,6 +283,14 @@ const result = {
     globalDemand: weightedMatched("globalDemand"),
     positionBudget: weightedMatched("positionBudget"),
     blendedPositionBudget: weightedMatched("blendedPositionBudget"),
+  },
+  conformalCalibration: {
+    role: "coarse baseline-price safety band; not calibration for the new per-team WTP challenger",
+    coverageTarget: 0.8,
+    developmentRows: developmentResidualRows.length,
+    globalRadius80,
+    positionRadius80,
+    leaveOneSeasonOut: losoMetric,
   },
   folds,
 };

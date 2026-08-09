@@ -10,7 +10,6 @@ import {
   lastUndoableSale,
   mergeEventStreams,
   nominationOrderEvidence,
-  rankOpponentPressure,
   replayDraft,
   toPublicSnapshot,
   validateDraftPack,
@@ -60,7 +59,19 @@ import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-read
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
-import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260808b";
+import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
+import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260809a";
+import {
+  AUCTION_TELEMETRY_META_KEY,
+  RUNNER_UP_PROMPT_MS,
+  auctionTelemetryCsv,
+  attachSaleForecast,
+  createAuctionTelemetryStore,
+  markRunnerUpUnknown,
+  reconcileAuctionTelemetryStore,
+  recordRunnerUp,
+  validateAuctionTelemetryStore,
+} from "./auction-telemetry.mjs?v=20260809a";
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
@@ -139,6 +150,8 @@ const practicePauseButton = byId("practice-pause");
 const practiceStatus = byId("practice-status");
 const playerIntelDialog = byId("player-intel-dialog");
 const playerIntelForm = byId("player-intel-form");
+const runnerUpPrompt = byId("runner-up-prompt");
+const runnerUpTeam = byId("runner-up-team");
 const PLAYER_ANNOTATIONS_KEY = `thunder-bowl-${ROOM_SEASON}-player-annotations-v1`;
 
 let deviceId;
@@ -207,6 +220,10 @@ let humanRehearsalEvidence = null;
 let personalBoardBackupEvidence = null;
 let salesEntryMode = SALES_ENTRY_MODES.AUCTIONEER;
 let salesEntryModeChanging = false;
+let auctionTelemetry = createAuctionTelemetryStore();
+let runnerUpPromptSaleId = null;
+let runnerUpPromptTimer = null;
+const auctionForecastCache = new Map();
 const draftChannelName = REPLAY_2025 ? "thunder-bowl-2025-replay" : PRACTICE_AUCTION ? "thunder-bowl-2026-practice" : "thunder-bowl-2026";
 const draftChannel = "BroadcastChannel" in window ? new BroadcastChannel(draftChannelName) : null;
 
@@ -1094,12 +1111,263 @@ function clearPlayerIntel() {
   }
 }
 
+function activeSaleEvents() {
+  const voided = new Set(events.filter((event) => event.type === EVENT_TYPES.EVENT_VOIDED).map((event) => event.payload.targetEventId));
+  return events.filter((event) => event.type === EVENT_TYPES.PLAYER_SOLD && !voided.has(event.id));
+}
+
+function auctionForecastForState(player, state, market, forecastEvents, telemetryStore = auctionTelemetry) {
+  const modelMax = market.bidCeilingsByPlayerId[player.id] ?? player.maxBid;
+  const dogsBidLimit = personalBidLimit({
+    modelMax,
+    legalMax: state.teams[USER_TEAM_ID]?.legalMaxBid || 0,
+    annotation: annotationFor(player.id),
+  });
+  const cacheable = state === draftState && market === liveMarket && forecastEvents === events && telemetryStore === auctionTelemetry;
+  const latestTelemetryUpdate = Object.values(auctionTelemetry.records).reduce(
+    (latest, record) => record.updatedAt > latest ? record.updatedAt : latest,
+    "",
+  );
+  const cacheKey = cacheable
+    ? `${draftPack.packId}|${events.length}|${events.at(-1)?.id || "empty"}|${latestTelemetryUpdate}|${player.id}|${market.valuesByPlayerId[player.id]}|${dogsBidLimit}`
+    : null;
+  if (cacheKey && auctionForecastCache.has(cacheKey)) return auctionForecastCache.get(cacheKey);
+  const forecast = forecastAuctionPrice({
+    profiles: draftPack.managerProfiles || [],
+    state,
+    player,
+    liveMarketValue: market.valuesByPlayerId[player.id] ?? player.marketValue,
+    packPlayers: draftPack.players,
+    baselineValuesByPlayerId: market.baselineValuesByPlayerId,
+    marketValuesByPlayerId: market.valuesByPlayerId,
+    events: forecastEvents,
+    telemetryStore,
+    dogsBidLimit,
+  });
+  if (cacheKey) {
+    auctionForecastCache.set(cacheKey, forecast);
+    while (auctionForecastCache.size > 40) auctionForecastCache.delete(auctionForecastCache.keys().next().value);
+  }
+  return forecast;
+}
+
+function attachForecastsForSales(saleEventIds) {
+  for (const saleEventId of saleEventIds) {
+    const saleIndex = events.findIndex((event) => event.id === saleEventId && event.type === EVENT_TYPES.PLAYER_SOLD);
+    if (saleIndex < 0 || auctionTelemetry.records[saleEventId]?.forecast) continue;
+    const sale = events[saleIndex];
+    const player = draftPack.players.find((candidate) => candidate.id === sale.payload.playerId);
+    if (!player) continue;
+    const priorEvents = events.slice(0, saleIndex);
+    const priorState = replayDraft(priorEvents);
+    const priorMarket = calculateAuctionDemandMarket(draftPack, priorState);
+    const priorTelemetry = reconcileAuctionTelemetryStore(auctionTelemetry, {
+      events: priorEvents,
+      teamIds: priorState.config.teams.map((team) => team.id),
+    });
+    const forecast = auctionForecastForState(player, priorState, priorMarket, priorEvents, priorTelemetry);
+    auctionTelemetry = attachSaleForecast(auctionTelemetry, saleEventId, forecast, {
+      events,
+      teamIds: auctionTelemetryTeamIds(),
+      now: sale.createdAt,
+    });
+  }
+}
+
+function auctionTelemetryTeamIds() {
+  return draftState.config.teams.map((team) => team.id);
+}
+
+function reconcileAuctionTelemetry() {
+  auctionTelemetry = reconcileAuctionTelemetryStore(auctionTelemetry, {
+    events,
+    teamIds: auctionTelemetryTeamIds(),
+  });
+  if (runnerUpPromptSaleId && !auctionTelemetry.records[runnerUpPromptSaleId]) closeRunnerUpPrompt();
+  return auctionTelemetry;
+}
+
+async function persistAuctionTelemetry() {
+  reconcileAuctionTelemetry();
+  await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
+}
+
+function runnerUpTeamOptions(select, record, emptyLabel = "Not recorded") {
+  select.replaceChildren();
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = emptyLabel;
+  select.append(empty);
+  for (const teamId of draftState.config.nominationOrder) {
+    if (teamId === record.winnerTeamId) continue;
+    const option = document.createElement("option");
+    option.value = teamId;
+    option.textContent = draftState.teams[teamId].name;
+    select.append(option);
+  }
+  select.value = record.runnerUpTeamId || "";
+}
+
+function renderAuctionTelemetryLog() {
+  const container = byId("auction-telemetry-rows");
+  if (!container) return;
+  reconcileAuctionTelemetry();
+  container.replaceChildren();
+  const records = activeSaleEvents()
+    .map((sale) => auctionTelemetry.records[sale.id])
+    .filter(Boolean)
+    .slice(-30)
+    .reverse();
+  const recorded = records.filter((record) => record.status === "recorded").length;
+  byId("auction-telemetry-summary").textContent = records.length
+    ? `${recorded}/${records.length} runner-ups`
+    : "No sales yet";
+  if (!records.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.className = "muted";
+    cell.textContent = "Sales will appear here automatically.";
+    row.append(cell);
+    container.append(row);
+    return;
+  }
+  for (const record of records) {
+    const row = document.createElement("tr");
+    const saleCell = document.createElement("td");
+    saleCell.className = "telemetry-sale-line";
+    const player = document.createElement("strong");
+    player.textContent = record.playerName;
+    const detail = document.createElement("small");
+    detail.textContent = `${record.position} · ${currency(record.salePrice)}${record.forecast ? ` · forecast ${currency(record.forecast.naturalPoint)}` : " · forecast unavailable"}`;
+    saleCell.append(player, detail);
+    const winnerCell = document.createElement("td");
+    winnerCell.textContent = draftState.teams[record.winnerTeamId]?.name || record.winnerTeamId;
+    const runnerCell = document.createElement("td");
+    const select = document.createElement("select");
+    select.dataset.runnerUpSaleId = record.saleEventId;
+    select.setAttribute("aria-label", `Runner-up for ${record.playerName}`);
+    runnerUpTeamOptions(select, record);
+    runnerCell.append(select);
+    row.append(saleCell, winnerCell, runnerCell);
+    container.append(row);
+  }
+}
+
+function closeRunnerUpPrompt() {
+  clearTimeout(runnerUpPromptTimer);
+  runnerUpPromptTimer = null;
+  runnerUpPromptSaleId = null;
+  runnerUpPrompt.hidden = true;
+}
+
+function openRunnerUpPrompt(saleEventId) {
+  if (LOCAL_ONLY || appView.hidden) return;
+  const record = auctionTelemetry.records[saleEventId];
+  if (!record || record.status !== "pending") return;
+  closeRunnerUpPrompt();
+  runnerUpPromptSaleId = saleEventId;
+  byId("runner-up-prompt-title").textContent = `Who was second on ${record.playerName}?`;
+  byId("runner-up-prompt-sale").textContent = `${draftState.teams[record.winnerTeamId]?.name || record.winnerTeamId} won for ${currency(record.salePrice)}.`;
+  runnerUpTeamOptions(runnerUpTeam, record, "Choose runner-up…");
+  runnerUpPrompt.hidden = false;
+  runnerUpPromptTimer = setTimeout(() => void saveRunnerUpUnknown(saleEventId, false), RUNNER_UP_PROMPT_MS);
+}
+
+async function saveRunnerUpUnknown(saleEventId = runnerUpPromptSaleId, announce = true) {
+  if (!saleEventId || !auctionTelemetry.records[saleEventId]) {
+    closeRunnerUpPrompt();
+    return;
+  }
+  try {
+    auctionTelemetry = markRunnerUpUnknown(auctionTelemetry, saleEventId, {
+      events,
+      teamIds: auctionTelemetryTeamIds(),
+    });
+    await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
+    closeRunnerUpPrompt();
+    renderAuctionTelemetryLog();
+    if (announce) showToast("Runner-up skipped. You can add it later in Admin & data.");
+    else setStatus(byId("auction-telemetry-status"), "Runner-up cleared. The sale remains available for later correction.");
+  } catch (error) {
+    closeRunnerUpPrompt();
+    setStatus(byId("auction-telemetry-status"), errorMessage(error), true);
+    showToast(`Runner-up note was not saved: ${errorMessage(error)}`, true);
+  }
+}
+
+async function saveRunnerUpChoice(saleEventId, teamId, announce = true) {
+  if (!saleEventId || !teamId) {
+    await saveRunnerUpUnknown(saleEventId, announce);
+    return;
+  }
+  try {
+    auctionTelemetry = recordRunnerUp(auctionTelemetry, saleEventId, teamId, {
+      events,
+      teamIds: auctionTelemetryTeamIds(),
+    });
+    await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
+    const record = auctionTelemetry.records[saleEventId];
+    closeRunnerUpPrompt();
+    renderAll();
+    if (announce) showToast(`${draftState.teams[teamId].name} saved privately as runner-up for ${record.playerName}.`);
+    else setStatus(byId("auction-telemetry-status"), "Runner-up corrected and saved privately. Forecast evidence refreshed.");
+  } catch (error) {
+    setStatus(byId("auction-telemetry-status"), errorMessage(error), true);
+    showToast(`Runner-up note was not saved: ${errorMessage(error)}`, true);
+  }
+}
+
+async function registerNewSaleTelemetry(saleEventIds, { prompt = true } = {}) {
+  if (!saleEventIds.length) return;
+  reconcileAuctionTelemetry();
+  attachForecastsForSales(saleEventIds);
+  const candidates = saleEventIds.filter((saleEventId) => auctionTelemetry.records[saleEventId]?.status === "pending");
+  for (const saleEventId of candidates.slice(0, -1)) {
+    auctionTelemetry = markRunnerUpUnknown(auctionTelemetry, saleEventId, {
+      events,
+      teamIds: auctionTelemetryTeamIds(),
+    });
+  }
+  await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
+  renderAuctionTelemetryLog();
+  if (prompt && candidates.length) openRunnerUpPrompt(candidates.at(-1));
+}
+
+function markAllPendingTelemetryUnknown() {
+  for (const record of Object.values(auctionTelemetry.records)) {
+    if (record.status !== "pending") continue;
+    auctionTelemetry = markRunnerUpUnknown(auctionTelemetry, record.saleEventId, {
+      events,
+      teamIds: auctionTelemetryTeamIds(),
+    });
+  }
+}
+
+function exportAuctionTelemetry() {
+  try {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadText(
+      `thunder-bowl-${ROOM_SEASON}-private-auction-intelligence-${stamp}.csv`,
+      auctionTelemetryCsv(auctionTelemetry, { events, teams: draftState.config.teams }),
+      "text/csv;charset=utf-8",
+    );
+    setStatus(byId("auction-telemetry-status"), "Private runner-up learning CSV downloaded. Public ledger unchanged.");
+  } catch (error) {
+    setStatus(byId("auction-telemetry-status"), errorMessage(error), true);
+  }
+}
+
 function renderOpponentPressure(player, liveMarketValue, available = true) {
   const container = byId("selected-opponent-pressure");
   const summary = byId("opponent-pressure-summary");
+  const forecastPanel = byId("auction-forecast");
+  const forecastNote = byId("auction-forecast-note");
   container.replaceChildren();
+  forecastPanel.hidden = true;
+  forecastNote.hidden = true;
   if (!player) {
-    summary.textContent = "Select a player to rank likely competition.";
+    summary.textContent = "Select a player to forecast the room.";
     return;
   }
   if (!available) {
@@ -1110,15 +1378,24 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
     summary.textContent = "Historical manager profiles are unavailable in this pack.";
     return;
   }
-  const ranked = rankOpponentPressure({
-    profiles: draftPack.managerProfiles,
-    state: draftState,
-    player,
-    liveMarketValue,
-  }).slice(0, 3);
+  const forecast = auctionForecastForState(player, draftState, liveMarket, events);
+  const ranked = forecast.opponents.slice(0, 3);
   summary.textContent = ranked.length
-    ? "Low-confidence advisory · winning purchases only"
+    ? "Private advisory · second-highest bidder model"
     : `No opponent can legally reach the current ${currency(liveMarketValue)} market price.`;
+  forecastPanel.hidden = false;
+  forecastNote.hidden = false;
+  byId("auction-natural-price").textContent = currency(forecast.naturalSale.point);
+  byId("auction-price-range").textContent = `Historical safety ${currency(forecast.naturalSale.range80.low)}–${currency(forecast.naturalSale.range80.high)}`;
+  byId("auction-rational-price").textContent = currency(forecast.rationalBaseline);
+  byId("auction-dogs-price").textContent = currency(forecast.dogsParticipation.point);
+  byId("auction-dogs-win").textContent = `${forecast.dogsParticipation.winProbability.toFixed(0)}%`;
+  const timing = forecast.nominationTiming;
+  const timingLabel = timing.bestWindow === "now" ? "nominate now" : timing.bestWindow === "middle" ? "middle models cheaper (wait risk)" : "late models cheaper (wait risk)";
+  const anchor = forecast.marketEvidence.anchorDollars + forecast.marketEvidence.roomRegimeDollars;
+  const run = forecast.marketEvidence.positionRunDollars;
+  const signedMoney = (value) => `${value >= 0 ? "+" : "−"}${currency(Math.abs(value))}`;
+  forecastNote.textContent = `${timingLabel} · comparable/room ${signedMoney(anchor)} · ${player.position} run ${signedMoney(run)} · historical baseline covered 79.4%; WTP calibration starts live`;
   for (const opponent of ranked) {
     const item = document.createElement("li");
     item.className = "opponent-pressure-row";
@@ -1126,18 +1403,18 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
     const name = document.createElement("strong");
     name.textContent = opponent.teamName;
     const badge = document.createElement("span");
-    badge.className = `opponent-pressure-badge pressure-${opponent.label.toLowerCase()}`;
-    badge.textContent = opponent.label;
+    badge.className = `opponent-pressure-badge pressure-${opponent.confidence === "medium" ? "watch" : "low"}`;
+    badge.textContent = opponent.confidence.toUpperCase();
     const index = document.createElement("b");
-    index.textContent = `${opponent.pressureIndex.toFixed(2)}×`;
+    index.textContent = `${currency(opponent.meanWtp)} WTP`;
     heading.append(name, badge, index);
     const detail = document.createElement("small");
-    const need = opponent.starterNeeded ? `needs ${player.position}` : `${player.position} starters filled`;
+    const need = opponent.need.starterNeeded ? `needs ${player.position}` : `${opponent.need.expectedAdditional} expected ${player.position} adds`;
     const affinity = opponent.affinityMatch ? ` · ${player.nflTeam} affinity` : "";
-    detail.textContent = `${player.position} history ${opponent.positionMultiplier.toFixed(2)}× · ${need} · ${currency(opponent.cash)}/${opponent.openSlots} slots${affinity}`;
+    detail.textContent = `${currency(opponent.lowWtp)}–${currency(opponent.highWtp)} range · legal ${currency(opponent.legalMaxBid)} · ${need}${affinity}`;
     const sample = document.createElement("small");
     sample.className = "opponent-pressure-sample";
-    sample.textContent = `${opponent.samplePurchases} purchases over ${opponent.sampleSeasons} seasons · no max-bid effect`;
+    sample.textContent = `${opponent.samplePurchases} purchases / ${opponent.sampleSeasons} seasons · ${Math.round(opponent.empiricalBayesWeight * 100)}% manager signal after shrinkage · advisory only`;
     item.append(heading, detail, sample);
     container.append(item);
   }
@@ -2601,6 +2878,7 @@ function startPracticeClock() {
 
 function renderAll() {
   draftState = replayDraft(events);
+  reconcileAuctionTelemetry();
   replayKeeperSandbox();
   liveMarket = computeLiveMarket();
   keeperScenario = calculateKeeperScenarioValues(draftPack, keeperWorkspaceState());
@@ -2619,6 +2897,7 @@ function renderAll() {
   renderLeagueKeeperPressure();
   renderPracticeConsole();
   renderPersonalBoardPortability();
+  renderAuctionTelemetryLog();
   const undoable = lastUndoableSale(events);
   renderSalesEntryMode();
   undoSaleButton.disabled = salesEntryMode !== SALES_ENTRY_MODES.MANUAL || !undoable;
@@ -2704,12 +2983,14 @@ async function commitLocalEvents(newEvents, message, statusElement = saleStatus)
     );
   }
   const previous = events;
+  const previousTelemetry = auctionTelemetry;
   const candidate = [...events, ...newEvents];
   replayDraft(candidate);
   events = candidate;
+  reconcileAuctionTelemetry();
   renderAll();
   try {
-    await appendEvents(newEvents);
+    await Promise.all([appendEvents(newEvents), setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry)]);
     setStatus(statusElement, message);
     byId("sync-status").textContent = LOCAL_ONLY
       ? PRACTICE_AUCTION ? "Local practice saved" : "Local replay saved"
@@ -2717,6 +2998,7 @@ async function commitLocalEvents(newEvents, message, statusElement = saleStatus)
     scheduleSync(20);
   } catch (error) {
     events = previous;
+    auctionTelemetry = previousTelemetry;
     renderAll();
     throw error;
   }
@@ -2793,6 +3075,7 @@ async function recordSale(event) {
       { deviceId },
     );
     await commitLocalEvents([sale], `Recorded: ${player.name} to ${draftState.teams[teamId].name} for ${currency(amount)}.`);
+    await registerNewSaleTelemetry([sale.id]);
     playerSearch.value = "";
     salePrice.value = "";
     selectedPlayerId = availablePlayers()[0]?.id || null;
@@ -3122,12 +3405,20 @@ async function syncNow() {
     cloudReachable = true;
     ledgerStale = false;
     updateNetworkStatus();
+    const priorSaleIds = new Set(activeSaleEvents().map((sale) => sale.id));
     const merged = mergeEventStreams(data.events || [], events);
     events = merged;
+    const newSaleIds = activeSaleEvents().map((sale) => sale.id).filter((saleId) => !priorSaleIds.has(saleId));
+    reconcileAuctionTelemetry();
     ledgerGeneration = data.generation;
-    await Promise.all([replaceEvents(events), setMeta("ledgerGeneration", ledgerGeneration)]);
+    await Promise.all([
+      replaceEvents(events),
+      setMeta("ledgerGeneration", ledgerGeneration),
+      setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
+    ]);
     await rememberDisplayUrl(data.displayBoardUrl);
     renderAll();
+    await registerNewSaleTelemetry(newSaleIds);
     chip.textContent = salesEntryMode === SALES_ENTRY_MODES.AUCTIONEER ? "Auctioneer feed live" : "Cloud synced";
     chip.classList.add("status-good");
   } catch (error) {
@@ -3747,13 +4038,19 @@ async function importPersonalBoard(file) {
 function exportRecovery() {
   try {
     const exportedAt = new Date().toISOString();
-    const bundle = createRecoveryBundle(draftPack, events, exportedAt);
+    const bundle = {
+      ...createRecoveryBundle(draftPack, events, exportedAt),
+      privateAuctionTelemetry: validateAuctionTelemetryStore(auctionTelemetry, {
+        events,
+        teamIds: draftState.config.teams.map((team) => team.id),
+      }),
+    };
     const stamp = exportedAt.replace(/[:.]/g, "-");
     downloadJSON(`thunder-bowl-${ROOM_SEASON}${REPLAY_2025 ? "-replay" : PRACTICE_AUCTION ? "-practice" : ""}-recovery-${stamp}.json`, bundle);
     lastRecoveryExportAt = exportedAt;
     void setMeta("lastRecoveryExportAt", exportedAt);
     void runDraftReadinessCheck({ announce: false });
-    setStatus(byId("recovery-status"), "Recovery bundle downloaded.");
+    setStatus(byId("recovery-status"), "Recovery bundle downloaded with the private runner-up learning log.");
     return true;
   } catch (error) {
     setStatus(byId("recovery-status"), errorMessage(error), true);
@@ -3795,11 +4092,17 @@ async function loadCurrentCloudLedger() {
     }
     replayDraft(data.events);
     events = data.events;
+    reconcileAuctionTelemetry();
+    markAllPendingTelemetryUnknown();
     ledgerGeneration = data.generation;
     ledgerStale = false;
     cloudReachable = true;
     selectedPlayerId = null;
-    await Promise.all([replaceEvents(events), setMeta("ledgerGeneration", ledgerGeneration)]);
+    await Promise.all([
+      replaceEvents(events),
+      setMeta("ledgerGeneration", ledgerGeneration),
+      setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
+    ]);
     await rememberDisplayUrl(data.displayBoardUrl);
     await ensureConfigurationEvent();
     updateNetworkStatus();
@@ -3829,11 +4132,17 @@ async function archiveAndStartNew(event) {
       setStatus(status, PRACTICE_AUCTION ? "Saving this practice draft before resetting it…" : "Saving this replay before resetting it…");
       if (!exportRecovery()) throw new RuleViolation("RECOVERY_EXPORT_FAILED", PRACTICE_AUCTION ? "The recovery download failed, so practice was not reset." : "The recovery download failed, so the replay was not reset.");
       events = [];
+      auctionTelemetry = createAuctionTelemetryStore();
       ledgerGeneration = null;
       ledgerStale = false;
       selectedPlayerId = null;
       practiceSession = null;
-      await Promise.all([replaceEvents(events), setMeta("ledgerGeneration", null), setMeta("practiceAuctionSession", null)]);
+      await Promise.all([
+        replaceEvents(events),
+        setMeta("ledgerGeneration", null),
+        setMeta("practiceAuctionSession", null),
+        setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
+      ]);
       await ensureConfigurationEvent();
       await ensureReplayFirstRoundKeepers();
       renderAll();
@@ -3879,10 +4188,15 @@ async function archiveAndStartNew(event) {
     }
 
     events = [];
+    auctionTelemetry = createAuctionTelemetryStore();
     ledgerGeneration = data.generation;
     ledgerStale = false;
     selectedPlayerId = null;
-    await Promise.all([replaceEvents(events), setMeta("ledgerGeneration", ledgerGeneration)]);
+    await Promise.all([
+      replaceEvents(events),
+      setMeta("ledgerGeneration", ledgerGeneration),
+      setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
+    ]);
     await ensureConfigurationEvent();
     renderAll();
     byId("archive-dialog").close();
@@ -3952,7 +4266,15 @@ async function loadBundledDraftPack() {
 async function importRecovery(file) {
   const status = byId("recovery-status");
   try {
-    const bundle = validateRecoveryBundle(await parseFile(file));
+    const raw = await parseFile(file);
+    const { privateAuctionTelemetry, ...coreRecovery } = raw;
+    const bundle = validateRecoveryBundle(coreRecovery);
+    const importedTelemetry = privateAuctionTelemetry
+      ? validateAuctionTelemetryStore(privateAuctionTelemetry, {
+          events: bundle.events,
+          teamIds: bundle.pack.leagueConfig.teams.map((team) => team.id),
+        })
+      : createAuctionTelemetryStore();
     const meaningfulLocal = events.some(
       (event) => event.type !== EVENT_TYPES.DRAFT_CONFIGURED && event.type !== EVENT_TYPES.EVENT_VOIDED,
     );
@@ -3961,7 +4283,16 @@ async function importRecovery(file) {
     draftPack = bundle.pack;
     loadPlayerAnnotations();
     events = nextEvents;
-    await Promise.all([setMeta("draftPack", draftPack), replaceEvents(events)]);
+    auctionTelemetry = meaningfulLocal
+      ? { schemaVersion: 1, records: { ...importedTelemetry.records, ...auctionTelemetry.records } }
+      : importedTelemetry;
+    reconcileAuctionTelemetry();
+    markAllPendingTelemetryUnknown();
+    await Promise.all([
+      setMeta("draftPack", draftPack),
+      replaceEvents(events),
+      setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
+    ]);
     selectedPlayerId = null;
     renderAll();
     setStatus(status, `Recovery merged: ${events.length} audited events loaded.`);
@@ -3975,6 +4306,16 @@ function bindInteractions() {
   loginForm.addEventListener("submit", (event) => void attemptLogin(event));
   saleForm.addEventListener("submit", (event) => void recordSale(event));
   undoSaleButton.addEventListener("click", () => void undoLastSale());
+  runnerUpTeam.addEventListener("change", () => {
+    if (runnerUpTeam.value) void saveRunnerUpChoice(runnerUpPromptSaleId, runnerUpTeam.value);
+  });
+  byId("runner-up-skip").addEventListener("click", () => void saveRunnerUpUnknown());
+  byId("auction-telemetry-rows").addEventListener("change", (event) => {
+    const select = event.target.closest("select[data-runner-up-sale-id]");
+    if (!select) return;
+    void saveRunnerUpChoice(select.dataset.runnerUpSaleId, select.value, false);
+  });
+  byId("export-auction-telemetry").addEventListener("click", exportAuctionTelemetry);
   byId("sales-mode-auctioneer").addEventListener("click", () => void changeSalesEntryMode(SALES_ENTRY_MODES.AUCTIONEER));
   byId("sales-mode-manual").addEventListener("click", () => void changeSalesEntryMode(SALES_ENTRY_MODES.MANUAL));
   keeperAssignmentForm.addEventListener("submit", (event) => void recordKeeper(event));
@@ -4315,6 +4656,12 @@ async function bootstrap() {
       }
     }
     events = await readEvents();
+    auctionTelemetry = reconcileAuctionTelemetryStore(await getMeta(AUCTION_TELEMETRY_META_KEY), {
+      events,
+      teamIds: draftPack.leagueConfig.teams.map((team) => team.id),
+    });
+    markAllPendingTelemetryUnknown();
+    await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
     salesEntryMode = normalizeSalesEntryMode(await getMeta("salesEntryMode", SALES_ENTRY_MODES.AUCTIONEER), { localOnly: LOCAL_ONLY });
     const savedKeeperWorkspaceMode = await getMeta("keeperWorkspaceMode", "sandbox");
     keeperWorkspaceMode = savedKeeperWorkspaceMode === "official" ? "official" : "sandbox";

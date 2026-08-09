@@ -37,6 +37,17 @@ test("runtime blend evidence matches the canonical matched-purchase backtest", (
       blendedPriceMae: marketBacktest.developmentMatchedWeightedMae.blendedPositionBudget,
     },
   );
+  assert.deepEqual(
+    HISTORICAL_AUCTION_DEMAND.marketBlend.coarseBaselineInterval,
+    {
+      developmentRows: marketBacktest.conformalCalibration.developmentRows,
+      targetCoverage: marketBacktest.conformalCalibration.coverageTarget,
+      leaveOneSeasonOutCoverage: marketBacktest.conformalCalibration.leaveOneSeasonOut.coverage80,
+      globalRadius: marketBacktest.conformalCalibration.globalRadius80,
+      positionRadius: Object.fromEntries(Object.entries(marketBacktest.conformalCalibration.positionRadius80).map(([position, row]) => [position, row.radius])),
+      role: "baseline price safety band only; not WTP-challenger calibration",
+    },
+  );
 });
 
 test("initial auction curve uses historical roster demand and preserves all room dollars", () => {

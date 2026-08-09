@@ -301,6 +301,14 @@ input[readonly] { color: var(--muted); }
 .projection-source-row.is-disagreement { background: rgba(245, 199, 71, 0.1); }
 .projection-source-empty { color: var(--quiet); font-size: 0.78rem; }
 .opponent-pressure-summary { margin: 0.25rem 0 0.55rem; font-size: 0.78rem; line-height: 1.35; }
+.auction-forecast { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; margin: 0 0 0.55rem; }
+.auction-forecast > div { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 0.42rem 0.5rem; background: var(--navy-950); }
+.auction-forecast dt { color: var(--quiet); font-size: 0.62rem; font-weight: 850; letter-spacing: 0.05em; text-transform: uppercase; }
+.auction-forecast dd { margin: 0.08rem 0 0; color: var(--text); font-size: 1rem; font-weight: 900; }
+.auction-forecast small { display: block; margin-top: 0.05rem; color: var(--muted); font-size: 0.68rem; }
+.auction-forecast .auction-forecast-primary { border-color: var(--gold); background: rgba(240, 186, 54, 0.09); }
+.auction-forecast-primary dd { color: var(--gold-light); font-size: 1.32rem; }
+.auction-forecast-note { margin: 0 0 0.55rem; color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
 .opponent-pressure-list { display: grid; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
 .opponent-pressure-row { border-left: 3px solid var(--gold); border-radius: 7px; padding: 0.48rem 0.55rem; background: rgba(7, 26, 49, 0.72); }
 .opponent-pressure-row > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.38rem; }
@@ -751,6 +759,35 @@ input[readonly] { color: var(--muted); }
 .global-status.is-visible { opacity: 1; transform: none; }
 .global-status.is-error { color: var(--danger); }
 
+.runner-up-prompt {
+  position: fixed;
+  z-index: 70;
+  top: 8.2rem;
+  right: clamp(1rem, 2vw, 2rem);
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 0.9fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  width: min(640px, calc(100vw - 2rem));
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: var(--navy-750);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+.runner-up-prompt[hidden] { display: none; }
+.runner-up-prompt p { margin: 0.12rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
+.runner-up-prompt strong { display: block; color: var(--gold-light); font-size: 1.05rem; }
+.runner-up-prompt select { min-height: 48px; width: 100%; }
+.runner-up-prompt > small { grid-column: 1 / -1; color: var(--quiet); font-size: 0.7rem; }
+
+.auction-intelligence-log > summary { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; cursor: pointer; }
+.auction-intelligence-log > summary strong { display: block; margin-top: 0.18rem; font-size: 1.05rem; }
+.auction-intelligence-log > p { color: var(--muted); line-height: 1.45; }
+.telemetry-table select { min-width: 180px; }
+.telemetry-sale-line strong, .telemetry-sale-line small { display: block; }
+.telemetry-sale-line small { margin-top: 0.12rem; color: var(--muted); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
@@ -878,6 +915,8 @@ input[readonly] { color: var(--muted); }
   .keeper-market-team-picker { grid-template-columns: 1fr; }
   .keeper-market-team-picker select { width: 100%; }
   .keeper-market-toolbar .panel-note { text-align: left; }
+  .runner-up-prompt { top: auto; right: 0.75rem; bottom: 0.75rem; left: 0.75rem; grid-template-columns: 1fr auto; width: auto; }
+  .runner-up-prompt > div, .runner-up-prompt > label, .runner-up-prompt > small { grid-column: 1 / -1; }
 }
 @media (max-width: 500px) {
   .brand-lockup.compact { min-width: 0; }

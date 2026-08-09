@@ -1,5 +1,5 @@
 import { POSITIONS } from "./state-engine.mjs?v=20260808g";
-import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260808b";
+import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
 
 function activeKeeperRows(state) {
   return Object.values(state.teams)
