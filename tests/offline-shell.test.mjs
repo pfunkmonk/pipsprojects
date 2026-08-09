@@ -48,6 +48,21 @@ test("desktop draft controls remain pinned above the fold", () => {
   assert.match(wideDraftRule, /left: clamp\(1rem, 2vw, 2rem\);/);
 });
 
+test("the private draft room can safely switch between auctioneer feed and manual backup", () => {
+  for (const id of ["sales-entry-control", "sales-entry-title", "sales-entry-detail", "sales-entry-health", "sales-mode-auctioneer", "sales-mode-manual"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(indexHtml, /Auctioneer feed/);
+  assert.match(indexHtml, /Manual backup/);
+  assert.match(appSource, /normalizeSalesEntryMode\(await getMeta\("salesEntryMode"/);
+  assert.match(appSource, /setMeta\("salesEntryMode", salesEntryMode\)/);
+  assert.match(appSource, /salesEntryMode !== SALES_ENTRY_MODES\.MANUAL/);
+  assert.match(appSource, /Pulling the latest confirmed auctioneer sale before manual takeover/);
+  assert.match(appSource, /currentSalesEntryPolicy\(\)\.pollIntervalMs/);
+  assert.match(appCss, /\.sale-bar\.is-auctioneer-mode \.manual-sale-control \{ display: none; \}/);
+  assert.match(serviceWorker, /sales-entry-mode\.mjs\?v=/);
+});
+
 test("selected-player scarcity and source confidence are dynamic display-only evidence", () => {
   for (const id of ["selected-tier-supply", "selected-next-alternative", "selected-tier-cliff", "selected-source-spread", "selected-context-detail"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));

@@ -79,6 +79,7 @@ import {
   requestCbsRosterCapture,
   validateCbsRosterSnapshot,
 } from "./cbs-roster-snapshot.mjs?v=20260805g";
+import { SALES_ENTRY_MODES, normalizeSalesEntryMode, salesEntryPolicy } from "./sales-entry-mode.mjs?v=20260808a";
 
 const byId = (id) => document.getElementById(id);
 const URL_PARAMETERS = new URLSearchParams(window.location.search);
@@ -199,6 +200,8 @@ let cbsRosterSnapshot = null;
 let cbsRosterChanges = null;
 let humanRehearsalEvidence = null;
 let personalBoardBackupEvidence = null;
+let salesEntryMode = SALES_ENTRY_MODES.AUCTIONEER;
+let salesEntryModeChanging = false;
 const draftChannelName = REPLAY_2025 ? "thunder-bowl-2025-replay" : PRACTICE_AUCTION ? "thunder-bowl-2026-practice" : "thunder-bowl-2026";
 const draftChannel = "BroadcastChannel" in window ? new BroadcastChannel(draftChannelName) : null;
 
@@ -243,6 +246,7 @@ function updateNetworkStatus() {
       : "Cloud unavailable — local ledger active";
   chip.classList.toggle("status-good", online && cloudReachable);
   chip.classList.toggle("status-warning", !online || !cloudReachable);
+  renderSalesEntryMode();
 }
 
 async function fetchProtectedDraftPack(conditional = true) {
@@ -2616,9 +2620,71 @@ function renderAll() {
   renderPracticeConsole();
   renderPersonalBoardPortability();
   const undoable = lastUndoableSale(events);
-  undoSaleButton.disabled = !undoable;
+  renderSalesEntryMode();
+  undoSaleButton.disabled = salesEntryMode !== SALES_ENTRY_MODES.MANUAL || !undoable;
   const snapshot = toPublicSnapshot(draftState, { updatedAt: new Date().toISOString() });
   draftChannel?.postMessage({ type: "PUBLIC_SNAPSHOT", snapshot });
+}
+
+function currentSalesEntryPolicy() {
+  return salesEntryPolicy({
+    mode: salesEntryMode,
+    localOnly: LOCAL_ONLY,
+    online: navigator.onLine,
+    cloudReachable,
+    lastSale: draftState.lastSale,
+  });
+}
+
+function renderSalesEntryMode() {
+  const policy = currentSalesEntryPolicy();
+  const control = byId("sales-entry-control");
+  control.hidden = LOCAL_ONLY;
+  saleForm.classList.toggle("is-auctioneer-mode", policy.auctioneer && !LOCAL_ONLY);
+  byId("sales-entry-title").textContent = policy.title;
+  byId("sales-entry-detail").textContent = policy.detail;
+  byId("sales-entry-health").classList.toggle("is-warning", !policy.healthy);
+  const auctioneerButton = byId("sales-mode-auctioneer");
+  const manualButton = byId("sales-mode-manual");
+  auctioneerButton.setAttribute("aria-pressed", String(policy.auctioneer));
+  manualButton.setAttribute("aria-pressed", String(!policy.auctioneer));
+  auctioneerButton.className = `button ${policy.auctioneer ? "button-primary" : "button-secondary"}`;
+  manualButton.className = `button ${policy.auctioneer ? "button-secondary" : "button-primary"}`;
+  auctioneerButton.disabled = salesEntryModeChanging;
+  manualButton.disabled = salesEntryModeChanging;
+  salePrice.disabled = !policy.manualControlsEnabled;
+  saleTeam.disabled = !policy.manualControlsEnabled;
+  byId("record-sale").disabled = !policy.manualControlsEnabled;
+}
+
+async function changeSalesEntryMode(nextMode) {
+  if (LOCAL_ONLY || salesEntryModeChanging) return;
+  const normalized = normalizeSalesEntryMode(nextMode);
+  if (normalized === salesEntryMode) return;
+  salesEntryModeChanging = true;
+  renderSalesEntryMode();
+  try {
+    if (normalized === SALES_ENTRY_MODES.MANUAL && navigator.onLine) {
+      byId("sales-entry-detail").textContent = "Pulling the latest confirmed auctioneer sale before manual takeover...";
+      await syncNow();
+    }
+    salesEntryMode = normalized;
+    await setMeta("salesEntryMode", salesEntryMode);
+    renderAll();
+    startPolling();
+    if (salesEntryMode === SALES_ENTRY_MODES.MANUAL) {
+      showToast("Manual backup active. Confirm the auctioneer has stopped entering sales before you record one here.");
+      salePrice.focus();
+    } else {
+      showToast("Auctioneer feed active. Manual sale controls are locked to prevent duplicate entry.");
+      scheduleSync(10);
+    }
+  } catch (error) {
+    showToast(`Sales entry mode was not changed: ${errorMessage(error)}`, true);
+  } finally {
+    salesEntryModeChanging = false;
+    renderSalesEntryMode();
+  }
 }
 
 function selectPlayer(playerId, focusPrice = false) {
@@ -2709,6 +2775,7 @@ async function recordSale(event) {
   const teamId = saleTeam.value;
   const amount = Number(salePrice.value);
   try {
+    if (salesEntryMode !== SALES_ENTRY_MODES.MANUAL) throw new RuleViolation("AUCTIONEER_ENTRY_ACTIVE", "Auctioneer feed is active. Switch to Manual backup before recording a sale here.");
     if (!player || draftState.draftedPlayers[player.id]) throw new RuleViolation("PLAYER_REQUIRED", "Select an available player first.");
     if (!Number.isInteger(amount) || amount < 1) throw new RuleViolation("PRICE_REQUIRED", "Enter a whole-dollar winning price.");
     if (!draftState.currentNominatorTeamId) throw new RuleViolation("DRAFT_COMPLETE", "No nomination remains because all rosters are full.");
@@ -2738,6 +2805,10 @@ async function recordSale(event) {
 }
 
 async function undoLastSale() {
+  if (salesEntryMode !== SALES_ENTRY_MODES.MANUAL) {
+    showToast("Auctioneer feed is active. Corrections belong on the auctioneer screen unless you switch to Manual backup.", true);
+    return;
+  }
   const target = lastUndoableSale(events);
   if (!target) return;
   try {
@@ -3057,7 +3128,7 @@ async function syncNow() {
     await Promise.all([replaceEvents(events), setMeta("ledgerGeneration", ledgerGeneration)]);
     await rememberDisplayUrl(data.displayBoardUrl);
     renderAll();
-    chip.textContent = "Cloud synced";
+    chip.textContent = salesEntryMode === SALES_ENTRY_MODES.AUCTIONEER ? "Auctioneer feed live" : "Cloud synced";
     chip.classList.add("status-good");
   } catch (error) {
     if (error instanceof RuleViolation && error.code === "LEDGER_GENERATION_MISMATCH") {
@@ -3084,9 +3155,10 @@ async function syncNow() {
 function startPolling() {
   clearInterval(pollTimer);
   if (LOCAL_ONLY) return;
+  const pollIntervalMs = currentSalesEntryPolicy().pollIntervalMs;
   pollTimer = setInterval(() => {
     if (document.visibilityState === "visible") void syncNow();
-  }, 4000);
+  }, pollIntervalMs);
 }
 
 function schedulePackRefresh(delay = PACK_REFRESH_INTERVAL_MS) {
@@ -3903,6 +3975,8 @@ function bindInteractions() {
   loginForm.addEventListener("submit", (event) => void attemptLogin(event));
   saleForm.addEventListener("submit", (event) => void recordSale(event));
   undoSaleButton.addEventListener("click", () => void undoLastSale());
+  byId("sales-mode-auctioneer").addEventListener("click", () => void changeSalesEntryMode(SALES_ENTRY_MODES.AUCTIONEER));
+  byId("sales-mode-manual").addEventListener("click", () => void changeSalesEntryMode(SALES_ENTRY_MODES.MANUAL));
   keeperAssignmentForm.addEventListener("submit", (event) => void recordKeeper(event));
   capTransferForm.addEventListener("submit", (event) => void recordCapTransfer(event));
   passKeeperTurnButton.addEventListener("click", () => void passKeeperTurn());
@@ -4241,6 +4315,7 @@ async function bootstrap() {
       }
     }
     events = await readEvents();
+    salesEntryMode = normalizeSalesEntryMode(await getMeta("salesEntryMode", SALES_ENTRY_MODES.AUCTIONEER), { localOnly: LOCAL_ONLY });
     const savedKeeperWorkspaceMode = await getMeta("keeperWorkspaceMode", "sandbox");
     keeperWorkspaceMode = savedKeeperWorkspaceMode === "official" ? "official" : "sandbox";
     const savedKeeperSandboxEvents = await getMeta("keeperPredictionSandboxEvents", []);

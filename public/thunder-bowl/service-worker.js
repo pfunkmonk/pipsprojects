@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v63";
+const CACHE_VERSION = "thunder-bowl-shell-v64";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -33,8 +33,8 @@ const APP_SHELL = [
   "/thunder-bowl/shared/public-core.mjs",
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/vendor/qrcode-generator.js",
-  "/thunder-bowl/app.css?v=20260808i",
-  "/thunder-bowl/app.mjs?v=20260808k",
+  "/thunder-bowl/app.css?v=20260808j",
+  "/thunder-bowl/app.mjs?v=20260808l",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260808g",
   "/thunder-bowl/storage.mjs?v=20260805g",
@@ -50,6 +50,7 @@ const APP_SHELL = [
   "/thunder-bowl/human-rehearsal.mjs?v=20260805g",
   "/thunder-bowl/priority-weights.mjs?v=20260805g",
   "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260805g",
+  "/thunder-bowl/sales-entry-mode.mjs?v=20260808a",
   "/thunder-bowl/emergency-print.css?v=20260805g",
   "/thunder-bowl/sample-draft-pack.json",
   "/thunder-bowl/manifest.webmanifest?v=20260808h"

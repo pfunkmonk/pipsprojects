@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260808i" />
+  <link rel="stylesheet" href="./app.css?v=20260808j" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -235,22 +235,32 @@
           </section>
 
           <form id="sale-form" class="sale-bar" aria-label="Record winning auction bid">
-            <label class="sale-player-field" for="sale-player">
+            <div id="sales-entry-control" class="sales-entry-control">
+              <div class="sales-entry-copy">
+                <span id="sales-entry-health" class="sales-entry-health" aria-hidden="true"></span>
+                <div><strong id="sales-entry-title">Auctioneer is entering sales</strong><small id="sales-entry-detail">Live sales will appear automatically.</small></div>
+              </div>
+              <div class="sales-entry-switch" role="group" aria-label="Choose who records winning sales">
+                <button id="sales-mode-auctioneer" class="button button-primary" type="button" aria-pressed="true">Auctioneer feed</button>
+                <button id="sales-mode-manual" class="button button-secondary" type="button" aria-pressed="false">Manual backup</button>
+              </div>
+            </div>
+            <label class="sale-player-field manual-sale-control" for="sale-player">
               <span>Winning player</span>
               <input id="sale-player" type="text" readonly placeholder="Select a player" />
               <input id="sale-player-id" type="hidden" />
             </label>
-            <label for="sale-price">
+            <label class="manual-sale-control" for="sale-price">
               <span>Price</span>
               <input id="sale-price" type="number" min="1" step="1" inputmode="numeric" required />
             </label>
-            <label for="sale-team">
+            <label class="manual-sale-control" for="sale-team">
               <span>Winning team</span>
               <select id="sale-team" required></select>
             </label>
-            <button id="record-sale" class="button button-primary button-large" type="submit">Record sale</button>
-            <button id="undo-sale" class="button button-secondary button-large" type="button" disabled>Undo last sale</button>
-            <p id="sale-status" class="sale-status" role="status" aria-live="polite">Ready for the first nomination.</p>
+            <button id="record-sale" class="button button-primary button-large manual-sale-control" type="submit">Record sale</button>
+            <button id="undo-sale" class="button button-secondary button-large manual-sale-control" type="button" disabled>Undo last sale</button>
+            <p id="sale-status" class="sale-status manual-sale-control" role="status" aria-live="polite">Ready for the first nomination.</p>
           </form>
         </div>
       </section>
@@ -775,6 +785,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260808k"></script>
+  <script type="module" src="./app.mjs?v=20260808l"></script>
 </body>
 </html>
