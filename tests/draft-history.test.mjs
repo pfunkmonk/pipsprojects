@@ -97,3 +97,29 @@ test("draft history can export a header-only clean ledger", () => {
   assert.equal(csv.split("\r\n").filter(Boolean).length, 1);
   assert.match(csv, /^Season,Pack ID,/);
 });
+
+test("draft history preserves every player and dollar in an atomic multi-player rights trade", () => {
+  const configured = event(EVENT_TYPES.DRAFT_CONFIGURED, DEFAULT_CONFIG, 0);
+  const trade = event(
+    EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+    {
+      teamAId: "the-hobbits",
+      teamBId: "t-dogs",
+      amountFromAToB: 4,
+      teamASends: [{ playerId: "hobbits-one", playerName: "Hobbits One" }],
+      teamBSends: [
+        { playerId: "tdogs-one", playerName: "T-Dogs One" },
+        { playerId: "tdogs-two", playerName: "T-Dogs Two" },
+      ],
+    },
+    1,
+  );
+  const [row] = buildDraftHistoryRows({ events: [configured, trade], pack });
+  assert.equal(row.eventType, EVENT_TYPES.KEEPER_RIGHTS_TRADED);
+  assert.equal(row.teamName, "The Hobbits");
+  assert.equal(row.otherTeamName, "T-Dogs");
+  assert.equal(row.amount, 4);
+  assert.match(row.playerName, /Hobbits One A→B/);
+  assert.match(row.playerName, /T-Dogs One B→A/);
+  assert.match(row.playerName, /T-Dogs Two B→A/);
+});

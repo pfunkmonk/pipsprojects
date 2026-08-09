@@ -221,13 +221,34 @@ test("an advisory manager-profile release cannot alter any strategy value", () =
   assert.ok(audit.blockingIssues.some((issue) => issue.includes("advisory-only manager-profile release")));
 });
 
+test("Footballguys auction values remain a comparison-only partial source", () => {
+  const candidate = clone(current);
+  candidate.packId = "tb26-fbg-comparison-refresh";
+  candidate.asOf = "2026-08-09T12:00:00.000Z";
+  candidate.fbgAuctionValues.values[0].value = 2;
+  const accepted = auditDraftPack(candidate, current);
+  assert.equal(accepted.approved, true);
+  assert.equal(accepted.changes.exactStrategyValueChangeCount, 0);
+
+  const forged = clone(candidate);
+  forged.packId = "tb26-fbg-comparison-forged";
+  forged.players[0].marketValue += 1;
+  const rejected = auditDraftPack(forged, current);
+  assert.equal(rejected.approved, false);
+  assert.ok(rejected.blockingIssues.some((issue) => issue.includes("value-neutral Footballguys auction comparison")));
+
+  const unpaired = clone(candidate);
+  delete unpaired.fbgAuctionValues;
+  assert.equal(auditDraftPack(unpaired, current).approved, false);
+});
+
 test("a declared primary projection source may change values only through the classic champion", () => {
   const candidate = clone(current);
   candidate.packId = "tb26-candidate-projection-lab-test";
-  candidate.asOf = "2026-08-05T14:05:00.000Z";
+  candidate.asOf = "2026-08-09T14:05:00.000Z";
   candidate.sources.push({
     name: "Projection Lab",
-    asOf: "2026-08-05T14:00:00.000Z",
+    asOf: "2026-08-09T14:00:00.000Z",
     authority: "primary projection; Thunder Bowl computes value",
     scoringFingerprint: candidate.sources[0].scoringFingerprint,
   });
@@ -247,7 +268,7 @@ test("a declared primary projection source may change values only through the cl
     player.projectionSources.push({
       source: "Projection Lab",
       points: player.projectedPoints,
-      asOf: "2026-08-05T14:00:00.000Z",
+      asOf: "2026-08-09T14:00:00.000Z",
       role: "primary",
       modelEffect: "primary_projection",
       note: "Candidate forecast from immutable model projection-lab-test",

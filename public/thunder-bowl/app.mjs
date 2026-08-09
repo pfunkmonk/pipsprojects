@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260805g";
+} from "./state-engine.mjs?v=20260808b";
 import {
   appendEvents,
   getMeta,
@@ -60,8 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260805g";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260805g";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808b";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808b";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808b";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -118,6 +119,7 @@ const saleStatus = byId("sale-status");
 const undoSaleButton = byId("undo-sale");
 const keeperAssignmentForm = byId("keeper-assignment-form");
 const keeperPlayer = byId("keeper-player");
+const keeperPlayerSearch = byId("keeper-player-search");
 const keeperTeam = byId("keeper-team");
 const keeperOperationStatus = byId("keeper-operation-status");
 const undoKeeperActionButton = byId("undo-keeper-action");
@@ -126,7 +128,10 @@ const capTransferForm = byId("cap-transfer-form");
 const capFromTeam = byId("cap-from-team");
 const capToTeam = byId("cap-to-team");
 const capTransferAmount = byId("cap-transfer-amount");
-const capTransferReason = byId("cap-transfer-reason");
+const capTransferPlayerSearch = byId("cap-transfer-player-search");
+const capTransferPlayer = byId("cap-transfer-player");
+const capReturnPlayerSearch = byId("cap-return-player-search");
+const capReturnPlayer = byId("cap-return-player");
 const practiceConsole = byId("practice-console");
 const practiceStartButton = byId("practice-start");
 const practiceBidButton = byId("practice-bid");
@@ -158,6 +163,12 @@ let draftReadinessReport = null;
 let lastRecoveryExportAt = null;
 let keeperBoardRows = [];
 let selectedKeeperEvidenceTeamId = "dogs-of-war";
+let keeperWorkspaceMode = "sandbox";
+let keeperSandboxEvents = [];
+let keeperSandboxState = replayDraft([]);
+let keeperScenario = null;
+let teamASendsPlayerIds = new Set();
+let teamBSendsPlayerIds = new Set();
 let newsRefreshTimer = null;
 let newsRefreshInFlight = false;
 let liveNewsSnapshot = null;
@@ -1481,8 +1492,86 @@ function renderKeeperEvidenceDisclosure() {
   byId("keeper-evidence-toggle-label").textContent = details.open ? "Hide table" : "Show table";
 }
 
+function keeperSandboxConfigEvent() {
+  return {
+    id: `keeper-sandbox-config-${ROOM_SEASON}`,
+    type: EVENT_TYPES.DRAFT_CONFIGURED,
+    createdAt: `${ROOM_SEASON}-01-01T00:00:00.000Z`,
+    deviceId: "keeper-sandbox",
+    payload: draftPack.leagueConfig,
+  };
+}
+
+function replayKeeperSandbox() {
+  keeperSandboxState = replayDraft([keeperSandboxConfigEvent(), ...keeperSandboxEvents]);
+  return keeperSandboxState;
+}
+
+function keeperWorkspaceState() {
+  return keeperWorkspaceMode === "sandbox" ? keeperSandboxState : draftState;
+}
+
+function keeperWorkspaceEventList() {
+  return keeperWorkspaceMode === "sandbox" ? keeperSandboxEvents : events;
+}
+
+function currentKeeperCandidates() {
+  const state = keeperWorkspaceState();
+  return draftPack.keeperCandidates.map((candidate) => ({
+    ...candidate,
+    originalTeamId: candidate.teamId,
+    teamId: state.keeperRightsOwners[candidate.playerId]?.teamId || candidate.teamId,
+  }));
+}
+
+function keeperScenarioPack() {
+  const candidates = currentKeeperCandidates().map((candidate) => {
+    const scenarioValue = keeperScenario?.valuesByPlayerId[candidate.playerId] ?? candidate.marketValue;
+    return {
+      ...candidate,
+      marketValue: scenarioValue,
+      surplus: candidate.keeperYear <= 3 ? scenarioValue - candidate.keeperSalary : 0,
+    };
+  });
+  return { ...draftPack, keeperCandidates: candidates };
+}
+
 function keeperCandidatesForTeam(teamId) {
-  return draftPack.keeperCandidates.filter((candidate) => candidate.teamId === teamId);
+  return currentKeeperCandidates().filter((candidate) => candidate.teamId === teamId);
+}
+
+function renderKeeperWorkspace() {
+  const sandbox = keeperWorkspaceMode === "sandbox";
+  byId("keeper-mode-sandbox").setAttribute("aria-pressed", String(sandbox));
+  byId("keeper-mode-official").setAttribute("aria-pressed", String(!sandbox));
+  byId("keeper-mode-sandbox").className = `button ${sandbox ? "button-primary" : "button-secondary"}`;
+  byId("keeper-mode-official").className = `button ${sandbox ? "button-secondary" : "button-primary"}`;
+  byId("keeper-sandbox-copy-official").disabled = !sandbox;
+  byId("keeper-sandbox-reset").disabled = !sandbox || keeperSandboxEvents.length === 0;
+  byId("keeper-workspace-description").textContent = sandbox
+    ? "Private sandbox changes stay on this laptop and never reach the public board. Every keeper or trade recalculates forecast auction values."
+    : "Official ledger actions sync to the auctioneer and public board. Use this mode only for confirmed keeper decisions and trades.";
+  byId("keeper-operations-eyebrow").textContent = sandbox ? "Private prediction ledger" : "Official synced setup ledger";
+  byId("keeper-operations-title").textContent = sandbox
+    ? "Test keeper declarations and rights trades"
+    : "Record confirmed keeper declarations and rights trades";
+
+  const impact = byId("keeper-scenario-impact");
+  impact.replaceChildren();
+  const summary = document.createElement("strong");
+  summary.textContent = `${keeperScenario.activeKeeperCount} forecast keeper${keeperScenario.activeKeeperCount === 1 ? "" : "s"} · room inflation ${keeperScenario.globalInflationPercent >= 0 ? "+" : ""}${keeperScenario.globalInflationPercent.toFixed(1)}%`;
+  impact.append(summary);
+  const chips = document.createElement("div");
+  chips.className = "keeper-impact-chips";
+  for (const position of POSITIONS) {
+    const row = keeperScenario.positionImpacts[position];
+    const chip = document.createElement("span");
+    chip.className = row.displayPercent > 0 ? "is-up" : row.displayPercent < 0 ? "is-down" : "";
+    chip.textContent = `${position} ${row.displayPercent >= 0 ? "+" : ""}${row.displayPercent.toFixed(1)}% · ${row.keepers} kept`;
+    chip.title = `${currency(row.keeperSurplus)} keeper surplus currently concentrated at ${position}`;
+    chips.append(chip);
+  }
+  impact.append(chips);
 }
 
 function renderKeeperEvidenceTeamSelector() {
@@ -1505,11 +1594,17 @@ function keeperRows() {
   tbody.replaceChildren();
   renderKeeperEvidenceTeamSelector();
   const candidates = keeperCandidatesForTeam(selectedKeeperEvidenceTeamId);
+  const workspaceState = keeperWorkspaceState();
+  const fbgRows = new Map((draftPack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
+  const fbgCoverage = draftPack.fbgAuctionValues;
+  byId("keeper-fbg-coverage").textContent = fbgCoverage
+    ? `FBG comparison loaded: ${fbgCoverage.matchedRows}/${fbgCoverage.reportedRows} supplied rows matched · supplied PDF covers ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd} only · no model effect.`
+    : "No Footballguys auction-value comparison is loaded in this pack.";
   byId("keeper-count").textContent = `${candidates.length} candidate${candidates.length === 1 ? "" : "s"}`;
   if (!candidates.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.className = "muted";
     cell.textContent = `${draftState.teams[selectedKeeperEvidenceTeamId].name} has no keeper candidates that passed the evidence gate.`;
     row.append(cell);
@@ -1519,6 +1614,21 @@ function keeperRows() {
   const boardByPlayerId = new Map(keeperBoardRows.map((row) => [row.playerId, row]));
   for (const candidate of candidates) {
     const row = document.createElement("tr");
+    const boardRow = boardByPlayerId.get(candidate.playerId);
+    const fbg = fbgRows.get(candidate.playerId);
+    const actionable = candidate.keeperYear <= 3 && !workspaceState.draftedPlayers[candidate.playerId];
+    row.dataset.playerId = candidate.playerId;
+    row.className = actionable ? "keeper-candidate-action" : workspaceState.draftedPlayers[candidate.playerId] ? "keeper-candidate-recorded" : "";
+    if (actionable) {
+      row.tabIndex = 0;
+      row.title = `Double-click to record ${candidate.playerName} when ${teamName(candidate.teamId)} is on the clock`;
+      row.addEventListener("dblclick", () => void recordKeeperCandidate(candidate, candidate.teamId));
+      row.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        void recordKeeperCandidate(candidate, candidate.teamId);
+      });
+    }
     const playerCell = document.createElement("td");
     const playerName = document.createElement("span");
     playerName.className = "player-name";
@@ -1539,13 +1649,18 @@ function keeperRows() {
     evidence.textContent = candidate.evidenceStatus;
     const trade = document.createElement("td");
     trade.className = "keeper-trade-read";
-    trade.textContent = boardByPlayerId.get(candidate.playerId)?.tradeRead || "No current trade read";
+    trade.textContent = boardRow?.tradeRead || "No current trade read";
+    const fbgCell = numberCell(fbg ? currency(fbg.value) : "—", fbg ? "fbg-value" : "fbg-missing");
+    fbgCell.title = fbg
+      ? `Footballguys rank ${fbg.rank} in the supplied August 8 PDF · comparison only`
+      : "Not present in the supplied Footballguys PDF, which contains ranks 301–400 only.";
     row.append(
       playerCell,
       contract,
       numberCell(currency(candidate.keeperSalary), "gold"),
-      numberCell(currency(candidate.marketValue)),
-      numberCell(currency(candidate.surplus), candidate.surplus > 0 ? "positive" : ""),
+      numberCell(currency(boardRow?.marketValue ?? candidate.marketValue)),
+      fbgCell,
+      numberCell(currency(boardRow?.surplus ?? candidate.surplus), (boardRow?.surplus ?? candidate.surplus) > 0 ? "positive" : ""),
       trade,
       evidence,
     );
@@ -1555,15 +1670,16 @@ function keeperRows() {
 }
 
 function renderLeagueKeeperPressure() {
+  const state = keeperWorkspaceState();
   const grid = byId("league-keeper-grid");
   grid.replaceChildren();
   if (REPLAY_2025) {
-    const selectedCount = Object.values(draftState.teams)
+    const selectedCount = Object.values(state.teams)
       .flatMap((team) => team.roster)
       .filter((player) => player.acquisitionType === "keeper").length;
     byId("league-keeper-count").textContent = `${selectedCount} recorded · ${24 - selectedCount} choices open`;
-    for (const teamId of draftState.config.nominationOrder) {
-      const team = draftState.teams[teamId];
+    for (const teamId of state.config.nominationOrder) {
+      const team = state.teams[teamId];
       const recorded = team.roster.filter((player) => player.acquisitionType === "keeper");
       const card = document.createElement("article");
       card.className = `keeper-pressure-card${team.id === "dogs-of-war" ? " is-dogs" : ""}`;
@@ -1600,12 +1716,13 @@ function renderLeagueKeeperPressure() {
     }
     return;
   }
-  const eligibleTotal = draftPack.keeperCandidates.filter((candidate) => candidate.keeperYear <= 3).length;
-  const forcedTotal = draftPack.keeperCandidates.length - eligibleTotal;
+  const scenarioCandidates = keeperScenarioPack().keeperCandidates;
+  const eligibleTotal = scenarioCandidates.filter((candidate) => candidate.keeperYear <= 3).length;
+  const forcedTotal = scenarioCandidates.length - eligibleTotal;
   byId("league-keeper-count").textContent = `${eligibleTotal} eligible · ${forcedTotal} forced pool`;
 
   for (const team of draftPack.leagueConfig.teams) {
-    const candidates = draftPack.keeperCandidates.filter((candidate) => candidate.teamId === team.id);
+    const candidates = scenarioCandidates.filter((candidate) => candidate.teamId === team.id);
     const eligible = candidates.filter((candidate) => candidate.keeperYear <= 3).sort((left, right) => right.surplus - left.surplus);
     const forced = candidates.filter((candidate) => candidate.keeperYear > 3);
     const card = document.createElement("article");
@@ -1646,10 +1763,15 @@ function renderLeagueKeeperPressure() {
 }
 
 function renderKeeperScenarios(candidates) {
+  const state = keeperWorkspaceState();
   const container = byId("keeper-scenarios");
   container.replaceChildren();
-  const dogsStartingCap = draftState.teams["dogs-of-war"]?.startingCap || 104;
-  const eligible = candidates.filter((candidate) => candidate.keeperYear <= 3).sort((left, right) => right.surplus - left.surplus);
+  const dogsStartingCap = state.teams["dogs-of-war"]?.startingCap || 104;
+  const boardByPlayerId = new Map(keeperBoardRows.map((row) => [row.playerId, row]));
+  const eligible = candidates
+    .filter((candidate) => candidate.keeperYear <= 3)
+    .map((candidate) => ({ ...candidate, surplus: boardByPlayerId.get(candidate.playerId)?.surplus ?? candidate.surplus }))
+    .sort((left, right) => right.surplus - left.surplus);
   const scenarios = [
     {
       label: "Keep nobody",
@@ -1722,10 +1844,14 @@ function loadKeeperTradeProposal(opportunity, amount) {
   capFromTeam.value = acquiring ? "dogs-of-war" : opportunity.bestBuyerTeamId;
   capToTeam.value = acquiring ? opportunity.ownerTeamId : "dogs-of-war";
   capTransferAmount.value = String(amount);
-  capTransferReason.value = `${opportunity.playerName} keeper rights`;
+  teamASendsPlayerIds = new Set();
+  teamBSendsPlayerIds = new Set([opportunity.playerId]);
+  capTransferPlayerSearch.value = "";
+  capReturnPlayerSearch.value = "";
+  renderKeeperOperations();
   updateCapTransferSummary();
   capTransferForm.scrollIntoView({ behavior: "smooth", block: "center" });
-  setStatus(byId("keeper-market-status"), `${currency(amount)} ${opportunity.playerName} proposal loaded below. Review it, negotiate, and press Record cap transfer only after both teams agree.`);
+  setStatus(byId("keeper-market-status"), `${currency(amount)} ${opportunity.playerName} proposal loaded below. Review it, negotiate, and record the atomic rights trade only after both teams agree.`);
 }
 
 function keeperTradeOpportunityCard(opportunity) {
@@ -1807,7 +1933,7 @@ function keeperTradeOpportunityCard(opportunity) {
 }
 
 function renderKeeperTradeMarket() {
-  const market = buildKeeperTradeMarket(draftPack);
+  const market = buildKeeperTradeMarket(keeperScenarioPack());
   const acquireList = byId("keeper-acquire-list");
   const sellList = byId("keeper-sell-list");
   acquireList.replaceChildren();
@@ -1837,46 +1963,62 @@ function renderKeeperTradeMarket() {
   }
 }
 
-const KEEPER_SETUP_EVENT_TYPES = [EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED];
+const KEEPER_SETUP_EVENT_TYPES = [EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_RIGHTS_TRADED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED];
 
 function teamName(teamId) {
   return draftState.teams[teamId]?.name || teamId;
 }
 
 function eligibleKeeperCandidates() {
-  return draftPack.keeperCandidates
-    .filter((candidate) => candidate.keeperYear <= 3 && !draftState.draftedPlayers[candidate.playerId])
+  const state = keeperWorkspaceState();
+  return currentKeeperCandidates()
+    .filter((candidate) => candidate.keeperYear <= 3 && !state.draftedPlayers[candidate.playerId])
     .sort((left, right) => {
       const leftDogs = left.teamId === "dogs-of-war" ? 0 : 1;
       const rightDogs = right.teamId === "dogs-of-war" ? 0 : 1;
       if (leftDogs !== rightDogs) return leftDogs - rightDogs;
-      const teamDifference = draftState.config.teams.findIndex((team) => team.id === left.teamId)
-        - draftState.config.teams.findIndex((team) => team.id === right.teamId);
+      const teamDifference = state.config.teams.findIndex((team) => team.id === left.teamId)
+        - state.config.teams.findIndex((team) => team.id === right.teamId);
       return teamDifference || right.surplus - left.surplus || left.playerName.localeCompare(right.playerName);
     });
 }
 
 function fillTeamSelect(select, preferredTeamId, labelValue) {
+  const state = keeperWorkspaceState();
   select.replaceChildren();
-  for (const configuredTeam of draftState.config.teams) {
-    const team = draftState.teams[configuredTeam.id];
+  for (const configuredTeam of state.config.teams) {
+    const team = state.teams[configuredTeam.id];
     const option = document.createElement("option");
     option.value = team.id;
     option.textContent = `${team.name} — ${labelValue(team)}`;
     select.append(option);
   }
-  select.value = draftState.teams[preferredTeamId] ? preferredTeamId : draftState.config.teams[0].id;
+  select.value = state.teams[preferredTeamId] ? preferredTeamId : state.config.teams[0].id;
 }
 
 function selectedKeeperCandidate() {
-  return draftPack.keeperCandidates.find((candidate) => candidate.playerId === keeperPlayer.value) || null;
+  return currentKeeperCandidates().find((candidate) => candidate.playerId === keeperPlayer.value) || null;
+}
+
+function currentKeeperCandidate(playerId) {
+  return currentKeeperCandidates().find((candidate) => candidate.playerId === playerId) || null;
+}
+
+function selectedTradePlayers(playerIds) {
+  return [...playerIds].map(currentKeeperCandidate).filter(Boolean);
+}
+
+function playerNameMatches(candidate, query) {
+  const normalized = normalizePlayerSearch(query);
+  return !normalized || normalizePlayerSearch(candidate.playerName).includes(normalized);
 }
 
 function updateKeeperSelectionSummary() {
+  const state = keeperWorkspaceState();
   const summary = byId("keeper-selection-summary");
   const candidate = selectedKeeperCandidate();
-  const selectedTeam = draftState.teams[keeperTeam.value];
-  if (draftState.keeperSelection.complete) {
+  const selectedTeam = state.teams[keeperTeam.value];
+  if (state.keeperSelection.complete) {
     summary.textContent = "All 24 keeper turns are complete. Undo the last setup action if a correction is needed.";
     return;
   }
@@ -1884,10 +2026,9 @@ function updateKeeperSelectionSummary() {
     summary.textContent = "No eligible keeper rights remain to record.";
     return;
   }
-  const originalTeam = teamName(candidate.teamId);
-  const rightsPath = candidate.teamId === selectedTeam.id
-    ? originalTeam
-    : `${originalTeam} → ${selectedTeam.name}`;
+  const originalTeam = teamName(candidate.originalTeamId);
+  const currentOwner = teamName(candidate.teamId);
+  const rightsPath = candidate.originalTeamId === candidate.teamId ? currentOwner : `${originalTeam} → ${currentOwner}`;
   const remainingCash = selectedTeam.cash - candidate.keeperSalary;
   summary.replaceChildren();
   const headline = document.createElement("strong");
@@ -1899,29 +2040,50 @@ function updateKeeperSelectionSummary() {
 }
 
 function updateCapTransferSummary() {
+  const state = keeperWorkspaceState();
   const summary = byId("cap-transfer-summary");
-  const fromTeam = draftState.teams[capFromTeam.value];
-  const toTeam = draftState.teams[capToTeam.value];
+  const teamA = state.teams[capFromTeam.value];
+  const teamB = state.teams[capToTeam.value];
+  const teamASends = selectedTradePlayers(teamASendsPlayerIds);
+  const teamBSends = selectedTradePlayers(teamBSendsPlayerIds);
   const amount = Number(capTransferAmount.value);
-  if (!fromTeam || !toTeam || fromTeam.id === toTeam.id || !Number.isInteger(amount) || amount < 1) {
-    summary.textContent = "The paying team loses auction cash; the receiving team gains it.";
+  if (!teamA || !teamB || teamA.id === teamB.id || (!teamASends.length && !teamBSends.length) || !Number.isInteger(amount) || amount < 0) {
+    summary.textContent = "Add at least one player to either side. Cap can be $0 for a player swap.";
     return;
   }
   summary.replaceChildren();
   const headline = document.createElement("strong");
-  headline.textContent = `${fromTeam.name} pays ${toTeam.name} ${currency(amount)}.`;
+  const aPackage = [teamASends.map((player) => player.playerName).join(" + "), amount > 0 ? currency(amount) : ""].filter(Boolean).join(" + ") || "no players";
+  const bPackage = teamBSends.map((player) => player.playerName).join(" + ") || "no players";
+  headline.textContent = `${teamA.name} sends ${aPackage}; ${teamB.name} sends ${bPackage}.`;
   const detail = document.createElement("span");
-  detail.textContent = ` Auction cash: ${fromTeam.name} ${currency(fromTeam.cash)} → ${currency(fromTeam.cash - amount)}; ${toTeam.name} ${currency(toTeam.cash)} → ${currency(toTeam.cash + amount)}.`;
+  detail.textContent = amount > 0
+    ? ` Auction cash: ${teamA.name} ${currency(teamA.cash)} → ${currency(teamA.cash - amount)}; ${teamB.name} ${currency(teamB.cash)} → ${currency(teamB.cash + amount)}.`
+    : " Player-for-player swap; neither salary cap changes.";
   summary.append(headline, detail);
 }
 
+function addPlayerToTrade(direction) {
+  const teamAtoB = direction === "A_TO_B";
+  const select = teamAtoB ? capReturnPlayer : capTransferPlayer;
+  const playerId = select.value;
+  if (!playerId) return;
+  const destination = teamAtoB ? teamASendsPlayerIds : teamBSendsPlayerIds;
+  destination.add(playerId);
+  if (teamAtoB) capReturnPlayerSearch.value = "";
+  else capTransferPlayerSearch.value = "";
+  renderKeeperOperations();
+}
+
 function activeKeeperSetupEvents() {
-  const voided = new Set(events.filter((event) => event.type === EVENT_TYPES.EVENT_VOIDED).map((event) => event.payload.targetEventId));
-  return events.filter((event) => KEEPER_SETUP_EVENT_TYPES.includes(event.type) && !voided.has(event.id));
+  const workspaceEvents = keeperWorkspaceEventList();
+  const voided = new Set(workspaceEvents.filter((event) => event.type === EVENT_TYPES.EVENT_VOIDED).map((event) => event.payload.targetEventId));
+  return workspaceEvents.filter((event) => KEEPER_SETUP_EVENT_TYPES.includes(event.type) && !voided.has(event.id));
 }
 
 function renderKeeperSelectionTimeline() {
-  const selection = draftState.keeperSelection;
+  const state = keeperWorkspaceState();
+  const selection = state.keeperSelection;
   const container = byId("keeper-selection-timeline");
   const next = selection.nextSlot;
   byId("keeper-turn-count").textContent = `${selection.completedCount} of ${selection.totalSlots} turns complete`;
@@ -1932,7 +2094,7 @@ function renderKeeperSelectionTimeline() {
     byId("keeper-on-clock-team").textContent = "Keeper selection complete";
     byId("keeper-on-clock-detail").textContent = "All 24 keeper turns are recorded";
   }
-  passKeeperTurnButton.disabled = !next || draftState.saleCount > 0;
+  passKeeperTurnButton.disabled = !next || state.saleCount > 0;
 
   container.replaceChildren();
   for (const slot of selection.slots) {
@@ -1977,6 +2139,11 @@ function renderKeeperActionList() {
       } else if (event.type === EVENT_TYPES.KEEPER_PASSED) {
         headline.textContent = `${teamName(event.payload.teamId)} passed Round ${event.payload.round}`;
         detail.textContent = "No keeper selected for this turn";
+      } else if (event.type === EVENT_TYPES.KEEPER_RIGHTS_TRADED) {
+        headline.textContent = `${teamName(event.payload.teamAId)} ↔ ${teamName(event.payload.teamBId)} rights trade`;
+        const aSends = event.payload.teamASends.map((player) => player.playerName).join(" + ") || "no players";
+        const bSends = event.payload.teamBSends.map((player) => player.playerName).join(" + ") || "no players";
+        detail.textContent = `A sends ${aSends}${event.payload.amountFromAToB ? ` + ${currency(event.payload.amountFromAToB)}` : ""}; B sends ${bSends}`;
       } else {
         headline.textContent = `${teamName(event.payload.fromTeamId)} paid ${teamName(event.payload.toTeamId)} ${currency(event.payload.amount)}`;
         detail.textContent = event.payload.reason;
@@ -1985,38 +2152,122 @@ function renderKeeperActionList() {
       list.append(item);
     }
   }
-  undoKeeperActionButton.disabled = !lastUndoableEvent(events, KEEPER_SETUP_EVENT_TYPES);
+  undoKeeperActionButton.disabled = !lastUndoableEvent(keeperWorkspaceEventList(), KEEPER_SETUP_EVENT_TYPES);
+}
+
+function renderSelectedTradeList(containerId, playerIds, destinationTeamId) {
+  const container = byId(containerId);
+  container.replaceChildren();
+  const players = selectedTradePlayers(playerIds);
+  if (!players.length) {
+    container.textContent = "No players added.";
+    return;
+  }
+  for (const player of players) {
+    const chip = document.createElement("span");
+    const label = document.createElement("span");
+    label.textContent = `${player.playerName} → ${teamName(destinationTeamId)}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.title = `Remove ${player.playerName} from this trade`;
+    remove.setAttribute("aria-label", `Remove ${player.playerName} from this trade`);
+    remove.addEventListener("click", () => {
+      playerIds.delete(player.playerId);
+      renderKeeperOperations();
+    });
+    chip.append(label, remove);
+    container.append(chip);
+  }
 }
 
 function renderKeeperOperations() {
+  const state = keeperWorkspaceState();
   const priorPlayerId = keeperPlayer.value;
+  const priorTradePlayerId = capTransferPlayer.value;
+  const priorReturnPlayerId = capReturnPlayer.value;
   const priorFromTeamId = capFromTeam.value;
   const priorToTeamId = capToTeam.value;
   const candidates = eligibleKeeperCandidates();
+  const boardByPlayerId = new Map(keeperBoardRows.map((row) => [row.playerId, row]));
+  const nextKeeperTeamId = state.keeperSelection.nextSlot?.teamId || state.config.nominationOrder[0];
+  const keeperCandidates = candidates.filter((candidate) => candidate.teamId === nextKeeperTeamId);
+  const keeperMatches = keeperCandidates.filter((candidate) => playerNameMatches(candidate, keeperPlayerSearch.value));
 
   keeperPlayer.replaceChildren();
-  for (const candidate of candidates) {
+  for (const candidate of keeperMatches) {
     const tenure = keeperContractTenure(candidate.keeperYear);
     const option = document.createElement("option");
     option.value = candidate.playerId;
-    option.textContent = `${candidate.playerName} — ${teamName(candidate.teamId)} · ${currency(candidate.keeperSalary)} · ${tenure.yearLabel} (${tenure.yearsUsed} used/${tenure.yearsLeft} left) · ${candidate.surplus >= 0 ? "+" : ""}${currency(candidate.surplus)}`;
+    const scenarioSurplus = boardByPlayerId.get(candidate.playerId)?.surplus ?? candidate.surplus;
+    option.textContent = `${candidate.playerName} — ${teamName(candidate.teamId)} · ${currency(candidate.keeperSalary)} · ${tenure.yearLabel} (${tenure.yearsUsed} used/${tenure.yearsLeft} left) · ${scenarioSurplus >= 0 ? "+" : ""}${currency(scenarioSurplus)}`;
     keeperPlayer.append(option);
   }
-  if (candidates.some((candidate) => candidate.playerId === priorPlayerId)) keeperPlayer.value = priorPlayerId;
-  const nextKeeperTeamId = draftState.keeperSelection.nextSlot?.teamId || draftState.config.nominationOrder[0];
+  if (keeperMatches.some((candidate) => candidate.playerId === priorPlayerId)) keeperPlayer.value = priorPlayerId;
+  byId("keeper-player-search-status").textContent = keeperPlayerSearch.value
+    ? `${keeperMatches.length} matching eligible player${keeperMatches.length === 1 ? "" : "s"} for ${teamName(nextKeeperTeamId)}.`
+    : `${keeperCandidates.length} eligible player${keeperCandidates.length === 1 ? "" : "s"} owned by ${teamName(nextKeeperTeamId)}.`;
   fillTeamSelect(keeperTeam, nextKeeperTeamId, (team) => `${team.roster.filter((player) => player.acquisitionType === "keeper").length}/2 keepers · ${currency(team.cash)}`);
 
   fillTeamSelect(capFromTeam, priorFromTeamId || "dogs-of-war", (team) => `${currency(team.cash)} cash`);
-  const receiverFallback = draftState.config.teams.find((team) => team.id !== capFromTeam.value)?.id;
+  const receiverFallback = state.config.teams.find((team) => team.id !== capFromTeam.value)?.id;
   fillTeamSelect(capToTeam, priorToTeamId || receiverFallback, (team) => `${currency(team.cash)} cash`);
   if (capFromTeam.value === capToTeam.value) capToTeam.value = receiverFallback;
 
-  const auctionStarted = draftState.saleCount > 0;
-  const keeperSelectionComplete = draftState.keeperSelection.complete;
+  const teamACandidates = candidates.filter((candidate) => candidate.teamId === capFromTeam.value);
+  const teamBCandidates = candidates.filter((candidate) => candidate.teamId === capToTeam.value);
+  teamASendsPlayerIds = new Set([...teamASendsPlayerIds].filter((playerId) => teamACandidates.some((candidate) => candidate.playerId === playerId)));
+  teamBSendsPlayerIds = new Set([...teamBSendsPlayerIds].filter((playerId) => teamBCandidates.some((candidate) => candidate.playerId === playerId)));
+  const tradeMatches = teamBCandidates.filter((candidate) => !teamBSendsPlayerIds.has(candidate.playerId) && playerNameMatches(candidate, capTransferPlayerSearch.value));
+  capTransferPlayer.replaceChildren();
+  for (const candidate of tradeMatches) {
+    const tenure = keeperContractTenure(candidate.keeperYear);
+    const option = document.createElement("option");
+    option.value = candidate.playerId;
+    option.textContent = `${candidate.playerName} · ${currency(candidate.keeperSalary)} · ${tenure.yearLabel} · ${teamName(candidate.teamId)}`;
+    capTransferPlayer.append(option);
+  }
+  if (tradeMatches.some((candidate) => candidate.playerId === priorTradePlayerId)) capTransferPlayer.value = priorTradePlayerId;
+  byId("cap-transfer-player-search-status").textContent = capTransferPlayerSearch.value
+    ? `${tradeMatches.length} matching player${tradeMatches.length === 1 ? "" : "s"} owned by ${teamName(capToTeam.value)}.`
+    : `${teamBCandidates.length} eligible player${teamBCandidates.length === 1 ? "" : "s"} owned by ${teamName(capToTeam.value)}.`;
+
+  const returnMatches = teamACandidates.filter((candidate) => !teamASendsPlayerIds.has(candidate.playerId) && playerNameMatches(candidate, capReturnPlayerSearch.value));
+  capReturnPlayer.replaceChildren();
+  for (const candidate of returnMatches) {
+    const tenure = keeperContractTenure(candidate.keeperYear);
+    const option = document.createElement("option");
+    option.value = candidate.playerId;
+    option.textContent = `${candidate.playerName} · ${currency(candidate.keeperSalary)} · ${tenure.yearLabel} · ${teamName(candidate.teamId)}`;
+    capReturnPlayer.append(option);
+  }
+  if (returnMatches.some((candidate) => candidate.playerId === priorReturnPlayerId)) capReturnPlayer.value = priorReturnPlayerId;
+  byId("cap-return-player-search-status").textContent = capReturnPlayerSearch.value
+    ? `${returnMatches.length} matching player${returnMatches.length === 1 ? "" : "s"} owned by ${teamName(capFromTeam.value)}.`
+    : `${teamACandidates.length} eligible player${teamACandidates.length === 1 ? "" : "s"} owned by ${teamName(capFromTeam.value)}.`;
+  renderSelectedTradeList("cap-transfer-player-list", teamBSendsPlayerIds, capFromTeam.value);
+  renderSelectedTradeList("cap-return-player-list", teamASendsPlayerIds, capToTeam.value);
+
+  const auctionStarted = state.saleCount > 0;
+  const keeperSelectionComplete = state.keeperSelection.complete;
   for (const form of [keeperAssignmentForm, capTransferForm]) form.setAttribute("aria-disabled", String(auctionStarted));
   keeperTeam.disabled = true;
-  for (const control of [keeperPlayer, byId("record-keeper")]) control.disabled = auctionStarted || keeperSelectionComplete || !candidates.length;
-  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferReason, byId("record-cap-transfer")]) control.disabled = auctionStarted;
+  for (const control of [keeperPlayerSearch, keeperPlayer, byId("record-keeper")]) control.disabled = auctionStarted || keeperSelectionComplete || !keeperCandidates.length;
+  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferPlayerSearch, capTransferPlayer, capReturnPlayerSearch, capReturnPlayer, byId("add-cap-transfer-player"), byId("add-cap-return-player"), byId("record-cap-transfer")]) control.disabled = auctionStarted;
+  capFromTeam.disabled = auctionStarted;
+  capToTeam.disabled = auctionStarted;
+  capTransferPlayerSearch.disabled = auctionStarted || !teamBCandidates.length;
+  capTransferPlayer.disabled = auctionStarted || !tradeMatches.length;
+  byId("add-cap-transfer-player").disabled = auctionStarted || !tradeMatches.length;
+  capReturnPlayerSearch.disabled = auctionStarted || !teamACandidates.length;
+  capReturnPlayer.disabled = auctionStarted || !returnMatches.length;
+  byId("add-cap-return-player").disabled = auctionStarted || !returnMatches.length;
+  const evidencePass = byId("keeper-evidence-pass");
+  const selectedTeamOnClock = state.keeperSelection.nextSlot?.teamId === selectedKeeperEvidenceTeamId;
+  evidencePass.disabled = auctionStarted || !selectedTeamOnClock;
+  evidencePass.textContent = selectedTeamOnClock
+    ? `Pass ${teamName(selectedKeeperEvidenceTeamId)} — no keeper`
+    : `${state.keeperSelection.nextSlot ? teamName(state.keeperSelection.nextSlot.teamId) : "Selection complete"} is on clock`;
   if (auctionStarted) keeperOperationStatus.textContent = "Auction purchases have begun. New keepers and cap transfers are locked; append-only undo remains available for corrections.";
   else if (keeperSelectionComplete) keeperOperationStatus.textContent = "All 24 keeper turns are complete. Review the timeline and setup actions before the auction begins.";
 
@@ -2264,14 +2515,17 @@ function startPracticeClock() {
 
 function renderAll() {
   draftState = replayDraft(events);
+  replayKeeperSandbox();
   liveMarket = computeLiveMarket();
-  keeperBoardRows = buildKeeperBoard(draftPack);
+  keeperScenario = calculateKeeperScenarioValues(draftPack, keeperWorkspaceState());
+  keeperBoardRows = buildKeeperBoard(keeperScenarioPack());
   renderMetrics();
   renderPlayerPool();
   renderSelectedPlayer();
   renderNeeds();
   teamOptions();
   renderPackStatus();
+  renderKeeperWorkspace();
   keeperRows();
   renderKeeperScenarios(keeperCandidatesForTeam("dogs-of-war"));
   renderKeeperOperations();
@@ -2318,6 +2572,55 @@ async function commitLocalEvents(newEvents, message, statusElement = saleStatus)
     renderAll();
     throw error;
   }
+}
+
+async function commitKeeperWorkspaceEvents(newEvents, message) {
+  if (keeperWorkspaceMode === "official") {
+    await commitLocalEvents(newEvents, message, keeperOperationStatus);
+    return;
+  }
+  const previous = keeperSandboxEvents;
+  const candidate = [...keeperSandboxEvents, ...newEvents];
+  replayDraft([keeperSandboxConfigEvent(), ...candidate]);
+  keeperSandboxEvents = candidate;
+  try {
+    await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
+    renderAll();
+    setStatus(keeperOperationStatus, `${message} Private prediction only; public board unchanged.`);
+  } catch (error) {
+    keeperSandboxEvents = previous;
+    renderAll();
+    throw error;
+  }
+}
+
+async function setKeeperWorkspaceMode(mode) {
+  if (!['sandbox', 'official'].includes(mode)) return;
+  keeperWorkspaceMode = mode;
+  await setMeta("keeperWorkspaceMode", mode);
+  renderAll();
+  showToast(mode === "sandbox" ? "Prediction sandbox active. Public board is protected." : "Official keeper ledger active. Confirmed actions will sync publicly.");
+}
+
+async function resetKeeperSandbox() {
+  keeperSandboxEvents = [];
+  teamASendsPlayerIds = new Set();
+  teamBSendsPlayerIds = new Set();
+  keeperPlayerSearch.value = "";
+  capTransferPlayerSearch.value = "";
+  capReturnPlayerSearch.value = "";
+  await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
+  renderAll();
+  setStatus(keeperOperationStatus, "Prediction sandbox reset. Official keeper ledger and public board were not changed.");
+}
+
+async function copyOfficialKeeperSetupToSandbox() {
+  const voided = new Set(events.filter((event) => event.type === EVENT_TYPES.EVENT_VOIDED).map((event) => event.payload.targetEventId));
+  keeperSandboxEvents = events.filter((event) => KEEPER_SETUP_EVENT_TYPES.includes(event.type) && !voided.has(event.id));
+  replayDraft([keeperSandboxConfigEvent(), ...keeperSandboxEvents]);
+  await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
+  renderAll();
+  setStatus(keeperOperationStatus, `Prediction sandbox now starts from ${keeperSandboxEvents.length} active official setup action${keeperSandboxEvents.length === 1 ? "" : "s"}. Public board was not changed.`);
 }
 
 async function recordSale(event) {
@@ -2373,14 +2676,17 @@ async function undoLastSale() {
 
 async function recordKeeper(event) {
   event.preventDefault();
-  const candidate = selectedKeeperCandidate();
-  const teamId = keeperTeam.value;
+  await recordKeeperCandidate(selectedKeeperCandidate(), keeperTeam.value);
+}
+
+async function recordKeeperCandidate(candidate, teamId) {
+  const state = keeperWorkspaceState();
   try {
-    if (draftState.saleCount > 0) throw new RuleViolation("LATE_KEEPER", "Keepers must be assigned before auction purchases begin.");
-    const nextTurn = draftState.keeperSelection.nextSlot;
+    if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER", "Keepers must be assigned before auction purchases begin.");
+    const nextTurn = state.keeperSelection.nextSlot;
     if (!nextTurn) throw new RuleViolation("KEEPER_SELECTION_COMPLETE", "All 24 keeper turns are already complete.");
-    if (teamId !== nextTurn.teamId) throw new RuleViolation("WRONG_KEEPER_TURN", `${draftState.teams[nextTurn.teamId].name} is on the clock in Round ${nextTurn.round}.`);
-    if (!candidate || candidate.keeperYear > 3 || draftState.draftedPlayers[candidate?.playerId]) {
+    if (teamId !== nextTurn.teamId) throw new RuleViolation("WRONG_KEEPER_TURN", `${state.teams[nextTurn.teamId].name} is on the clock in Round ${nextTurn.round}. Switch to that team or record/pass the earlier turns first.`);
+    if (!candidate || candidate.teamId !== teamId || candidate.keeperYear > 3 || state.draftedPlayers[candidate?.playerId]) {
       throw new RuleViolation("KEEPER_REQUIRED", "Choose an eligible, unassigned keeper first.");
     }
     const player = draftPack.players.find((packPlayer) => packPlayer.id === candidate.playerId);
@@ -2400,11 +2706,11 @@ async function recordKeeper(event) {
       },
       { deviceId },
     );
-    await commitLocalEvents(
+    await commitKeeperWorkspaceEvents(
       [keeper],
-      `Recorded: ${draftState.teams[teamId].name} keeps ${player.name} for ${currency(candidate.keeperSalary)} in ${keeperContractTenure(candidate.keeperYear).yearLabel}.`,
-      keeperOperationStatus,
+      `Recorded: ${state.teams[teamId].name} keeps ${player.name} for ${currency(candidate.keeperSalary)} in ${keeperContractTenure(candidate.keeperYear).yearLabel}.`,
     );
+    keeperPlayerSearch.value = "";
     showToast(`${player.name} recorded as a ${currency(candidate.keeperSalary)} keeper.`);
   } catch (error) {
     setStatus(keeperOperationStatus, errorMessage(error), true);
@@ -2412,22 +2718,23 @@ async function recordKeeper(event) {
   }
 }
 
-async function passKeeperTurn() {
+async function passKeeperTurn(expectedTeamId = null) {
+  const state = keeperWorkspaceState();
   try {
-    if (draftState.saleCount > 0) throw new RuleViolation("LATE_KEEPER_PASS", "Keeper turns must be completed before auction purchases begin.");
-    const nextTurn = draftState.keeperSelection.nextSlot;
+    if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER_PASS", "Keeper turns must be completed before auction purchases begin.");
+    const nextTurn = state.keeperSelection.nextSlot;
     if (!nextTurn) throw new RuleViolation("KEEPER_SELECTION_COMPLETE", "All 24 keeper turns are already complete.");
+    if (expectedTeamId && expectedTeamId !== nextTurn.teamId) throw new RuleViolation("WRONG_KEEPER_TURN", `${state.teams[nextTurn.teamId].name} is on the clock in Round ${nextTurn.round}.`);
     const pass = createEvent(
       EVENT_TYPES.KEEPER_PASSED,
       { teamId: nextTurn.teamId, round: nextTurn.round, reason: "No keeper selected for this turn" },
       { deviceId },
     );
-    await commitLocalEvents(
+    await commitKeeperWorkspaceEvents(
       [pass],
-      `Recorded: ${draftState.teams[nextTurn.teamId].name} passes its Round ${nextTurn.round} keeper turn.`,
-      keeperOperationStatus,
+      `Recorded: ${state.teams[nextTurn.teamId].name} passes its Round ${nextTurn.round} keeper turn.`,
     );
-    showToast(`${draftState.teams[nextTurn.teamId].name} passed Round ${nextTurn.round}.`);
+    showToast(`${state.teams[nextTurn.teamId].name} passed Round ${nextTurn.round}.`);
   } catch (error) {
     setStatus(keeperOperationStatus, errorMessage(error), true);
     showToast(errorMessage(error), true);
@@ -2436,31 +2743,48 @@ async function passKeeperTurn() {
 
 async function recordCapTransfer(event) {
   event.preventDefault();
-  const fromTeamId = capFromTeam.value;
-  const toTeamId = capToTeam.value;
+  const state = keeperWorkspaceState();
+  const buyerTeamId = capFromTeam.value;
+  const sellerTeamId = capToTeam.value;
   const amount = Number(capTransferAmount.value);
-  const reason = capTransferReason.value.trim();
+  const teamASends = selectedTradePlayers(teamASendsPlayerIds);
+  const teamBSends = selectedTradePlayers(teamBSendsPlayerIds);
   try {
-    if (draftState.saleCount > 0) throw new RuleViolation("LATE_CAP_TRANSFER", "Cap transfers must be recorded before auction purchases begin.");
-    if (!Number.isInteger(amount) || amount < 1) throw new RuleViolation("CAP_AMOUNT_REQUIRED", "Enter a whole-dollar transfer amount.");
-    if (fromTeamId === toTeamId) throw new RuleViolation("SELF_TRANSFER", "Choose different paying and receiving teams.");
-    if (reason.length < 3) throw new RuleViolation("CAP_REASON_REQUIRED", "Enter the player name or a short trade reason.");
+    if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER_RIGHTS_TRADE", "Keeper-rights trades must be recorded before auction purchases begin.");
+    if (!Number.isInteger(amount) || amount < 0) throw new RuleViolation("CAP_AMOUNT_REQUIRED", "Enter a whole-dollar cap amount, including $0 for a player swap.");
+    if (buyerTeamId === sellerTeamId) throw new RuleViolation("SELF_TRANSFER", "Choose different buying and selling teams.");
+    if (!teamASends.length && !teamBSends.length) throw new RuleViolation("KEEPER_TRADE_PLAYER_REQUIRED", "Add at least one eligible player to the trade package.");
+    if (teamASends.some((candidate) => candidate.teamId !== buyerTeamId || candidate.keeperYear > 3 || state.draftedPlayers[candidate.playerId])) {
+      throw new RuleViolation("KEEPER_TRADE_PLAYER_REQUIRED", "Every Team A player must be eligible and currently owned by Team A.");
+    }
+    if (teamBSends.some((candidate) => candidate.teamId !== sellerTeamId || candidate.keeperYear > 3 || state.draftedPlayers[candidate.playerId])) {
+      throw new RuleViolation("KEEPER_TRADE_PLAYER_REQUIRED", "Every Team B player must be eligible and currently owned by Team B.");
+    }
     const transfer = createEvent(
-      EVENT_TYPES.CAP_TRANSFERRED,
-      { fromTeamId, toTeamId, amount, reason },
+      EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+      {
+        teamAId: buyerTeamId,
+        teamBId: sellerTeamId,
+        amountFromAToB: amount,
+        teamASends: teamASends.map((candidate) => ({ playerId: candidate.playerId, playerName: candidate.playerName })),
+        teamBSends: teamBSends.map((candidate) => ({ playerId: candidate.playerId, playerName: candidate.playerName })),
+      },
       { deviceId },
     );
-    const fromTeamName = draftState.teams[fromTeamId].name;
-    const toTeamName = draftState.teams[toTeamId].name;
-    await commitLocalEvents(
+    const buyerName = state.teams[buyerTeamId].name;
+    const sellerName = state.teams[sellerTeamId].name;
+    await commitKeeperWorkspaceEvents(
       [transfer],
-      `Recorded: ${fromTeamName} pays ${toTeamName} ${currency(amount)} for ${reason}.`,
-      keeperOperationStatus,
+      `Recorded complete trade package between ${buyerName} and ${sellerName}${amount ? ` with ${currency(amount)} moving to ${sellerName}` : " with no cap payment"}.`,
     );
-    capTransferAmount.value = "";
-    capTransferReason.value = "";
-    updateCapTransferSummary();
-    showToast(`${currency(amount)} cap transfer recorded.`);
+    capTransferAmount.value = "0";
+    capTransferPlayerSearch.value = "";
+    capReturnPlayerSearch.value = "";
+    teamASendsPlayerIds = new Set();
+    teamBSendsPlayerIds = new Set();
+    selectedKeeperEvidenceTeamId = buyerTeamId;
+    renderAll();
+    showToast("Complete keeper-rights trade recorded as one undoable action.");
   } catch (error) {
     setStatus(keeperOperationStatus, errorMessage(error), true);
     showToast(errorMessage(error), true);
@@ -2468,7 +2792,7 @@ async function recordCapTransfer(event) {
 }
 
 async function undoLastKeeperAction() {
-  const target = lastUndoableEvent(events, KEEPER_SETUP_EVENT_TYPES);
+  const target = lastUndoableEvent(keeperWorkspaceEventList(), KEEPER_SETUP_EVENT_TYPES);
   if (!target) return;
   try {
     const undo = createEvent(
@@ -2480,8 +2804,10 @@ async function undoLastKeeperAction() {
       ? `${target.payload.playerName} keeper assignment`
       : target.type === EVENT_TYPES.KEEPER_PASSED
         ? `${teamName(target.payload.teamId)} Round ${target.payload.round} pass`
+        : target.type === EVENT_TYPES.KEEPER_RIGHTS_TRADED
+          ? `${teamName(target.payload.teamAId)} / ${teamName(target.payload.teamBId)} rights trade`
       : `${currency(target.payload.amount)} cap transfer`;
-    await commitLocalEvents([undo], `Undone: ${label}. Keeper setup state restored.`, keeperOperationStatus);
+    await commitKeeperWorkspaceEvents([undo], `Undone: ${label}. Keeper setup state restored.`);
     showToast(`Undone: ${label}.`);
   } catch (error) {
     setStatus(keeperOperationStatus, errorMessage(error), true);
@@ -3501,7 +3827,12 @@ function bindInteractions() {
   keeperAssignmentForm.addEventListener("submit", (event) => void recordKeeper(event));
   capTransferForm.addEventListener("submit", (event) => void recordCapTransfer(event));
   passKeeperTurnButton.addEventListener("click", () => void passKeeperTurn());
+  byId("keeper-evidence-pass").addEventListener("click", () => void passKeeperTurn(selectedKeeperEvidenceTeamId));
   undoKeeperActionButton.addEventListener("click", () => void undoLastKeeperAction());
+  byId("keeper-mode-sandbox").addEventListener("click", () => void setKeeperWorkspaceMode("sandbox"));
+  byId("keeper-mode-official").addEventListener("click", () => void setKeeperWorkspaceMode("official"));
+  byId("keeper-sandbox-reset").addEventListener("click", () => void resetKeeperSandbox());
+  byId("keeper-sandbox-copy-official").addEventListener("click", () => void copyOfficialKeeperSetupToSandbox());
   byId("keeper-evidence-details").addEventListener("toggle", (event) => {
     renderKeeperEvidenceDisclosure();
     void setMeta("keeperEvidenceExpanded", event.currentTarget.open);
@@ -3511,19 +3842,30 @@ function bindInteractions() {
     if (!draftState.config.nominationOrder.includes(teamId)) return;
     selectedKeeperEvidenceTeamId = teamId;
     keeperRows();
+    renderKeeperOperations();
     void setMeta("keeperEvidenceTeamId", teamId);
   });
+  keeperPlayerSearch.addEventListener("input", renderKeeperOperations);
   keeperPlayer.addEventListener("change", () => {
     updateKeeperSelectionSummary();
   });
   keeperTeam.addEventListener("change", updateKeeperSelectionSummary);
   capFromTeam.addEventListener("change", () => {
     if (capFromTeam.value === capToTeam.value) {
-      capToTeam.value = draftState.config.teams.find((team) => team.id !== capFromTeam.value)?.id || "";
+      capToTeam.value = keeperWorkspaceState().config.teams.find((team) => team.id !== capFromTeam.value)?.id || "";
     }
-    updateCapTransferSummary();
+    renderKeeperOperations();
   });
-  capToTeam.addEventListener("change", updateCapTransferSummary);
+  capToTeam.addEventListener("change", () => {
+    capTransferPlayerSearch.value = "";
+    renderKeeperOperations();
+  });
+  byId("add-cap-transfer-player").addEventListener("click", () => addPlayerToTrade("B_TO_A"));
+  byId("add-cap-return-player").addEventListener("click", () => addPlayerToTrade("A_TO_B"));
+  capTransferPlayerSearch.addEventListener("input", renderKeeperOperations);
+  capReturnPlayerSearch.addEventListener("input", renderKeeperOperations);
+  capTransferPlayer.addEventListener("change", updateCapTransferSummary);
+  capReturnPlayer.addEventListener("change", updateCapTransferSummary);
   capTransferAmount.addEventListener("input", updateCapTransferSummary);
   playerSearch.addEventListener("input", () => {
     renderPlayerPool();
@@ -3816,6 +4158,17 @@ async function bootstrap() {
       }
     }
     events = await readEvents();
+    const savedKeeperWorkspaceMode = await getMeta("keeperWorkspaceMode", "sandbox");
+    keeperWorkspaceMode = savedKeeperWorkspaceMode === "official" ? "official" : "sandbox";
+    const savedKeeperSandboxEvents = await getMeta("keeperPredictionSandboxEvents", []);
+    try {
+      keeperSandboxEvents = Array.isArray(savedKeeperSandboxEvents) ? savedKeeperSandboxEvents : [];
+      replayKeeperSandbox();
+    } catch {
+      keeperSandboxEvents = [];
+      await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
+      replayKeeperSandbox();
+    }
     ledgerGeneration = await getMeta("ledgerGeneration");
     await ensureConfigurationEvent();
     await ensureReplayFirstRoundKeepers();

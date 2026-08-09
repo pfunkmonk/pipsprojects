@@ -261,6 +261,7 @@ test("practice reset requires an exact phrase and sends the current ledger gener
 test("keeper declarations and cap trades use the offline-first audited ledger", () => {
   for (const id of [
     "keeper-assignment-form",
+    "keeper-player-search",
     "keeper-player",
     "keeper-team",
     "keeper-selection-timeline",
@@ -269,6 +270,15 @@ test("keeper declarations and cap trades use the offline-first audited ledger", 
     "cap-from-team",
     "cap-to-team",
     "cap-transfer-amount",
+    "cap-transfer-player-search",
+    "cap-transfer-player",
+    "add-cap-transfer-player",
+    "cap-transfer-player-list",
+    "cap-return-player-search",
+    "cap-return-player",
+    "add-cap-return-player",
+    "cap-return-player-list",
+    "keeper-evidence-pass",
     "undo-keeper-action",
   ]) {
     assert.match(indexHtml, new RegExp(`id="${id}"`));
@@ -276,12 +286,15 @@ test("keeper declarations and cap trades use the offline-first audited ledger", 
   assert.match(appSource, /EVENT_TYPES\.KEEPER_ASSIGNED/);
   assert.match(appSource, /EVENT_TYPES\.KEEPER_PASSED/);
   assert.match(appSource, /EVENT_TYPES\.CAP_TRANSFERRED/);
-  assert.match(appSource, /commitLocalEvents\(\s*\[keeper\]/);
-  assert.match(appSource, /commitLocalEvents\(\s*\[pass\]/);
-  assert.match(appSource, /commitLocalEvents\(\s*\[transfer\]/);
-  assert.match(appSource, /lastUndoableEvent\(events, KEEPER_SETUP_EVENT_TYPES\)/);
-  assert.match(indexHtml, /saved locally first, syncs when possible, and immediately updates the public board/);
+  assert.match(appSource, /EVENT_TYPES\.KEEPER_RIGHTS_TRADED/);
+  assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[keeper\]/);
+  assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[pass\]/);
+  assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[transfer\]/);
+  assert.match(appSource, /lastUndoableEvent\(keeperWorkspaceEventList\(\), KEEPER_SETUP_EVENT_TYPES\)/);
+  assert.match(indexHtml, /Prediction-sandbox actions stay private on this laptop; only actions deliberately entered in Official ledger mode can sync to the public board/);
   assert.match(indexHtml, /Official 1–12 \/ 1–12 order/);
+  assert.match(indexHtml, /Cap dollars Team A pays Team B/);
+  assert.match(indexHtml, /min="0" max="200"/);
 });
 
 test("keeper strategy exports a complete advisory board without granting model or ledger authority", () => {
@@ -311,6 +324,25 @@ test("league-wide candidate evidence has a remembered team selector and accessib
   assert.match(appCss, /details\[open\] \.keeper-evidence-chevron/);
 });
 
+test("keeper prediction sandbox recalculates scarcity without leaking into the official public ledger", () => {
+  for (const id of [
+    "keeper-mode-sandbox",
+    "keeper-mode-official",
+    "keeper-sandbox-copy-official",
+    "keeper-sandbox-reset",
+    "keeper-scenario-impact",
+    "keeper-fbg-coverage",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(appSource, /calculateKeeperScenarioValues\(draftPack, keeperWorkspaceState\(\)\)/);
+  assert.match(appSource, /keeperWorkspaceMode === "sandbox"/);
+  assert.match(appSource, /keeperPredictionSandboxEvents/);
+  assert.match(appSource, /Private prediction only; public board unchanged/);
+  assert.match(appSource, /row\.addEventListener\("dblclick"/);
+  assert.match(appSource, /FBG comparison loaded/);
+  assert.match(indexHtml, /<th class="number">Value<\/th><th class="number">FBG value<\/th>/);
+  assert.match(serviceWorker, /keeper-scenario\.mjs\?v=/);
+});
+
 test("keeper strategy exposes ranked trade-for and trade-away proposals without auto-recording them", () => {
   for (const id of [
     "keeper-market-title",
@@ -320,12 +352,12 @@ test("keeper strategy exposes ranked trade-for and trade-away proposals without 
     "keeper-sell-list",
     "keeper-market-status",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
-  assert.match(appSource, /buildKeeperTradeMarket\(draftPack\)/);
+  assert.match(appSource, /buildKeeperTradeMarket\(keeperScenarioPack\(\)\)/);
   assert.match(appSource, /keeperTradeScenario\(opportunity, amount\)/);
   assert.match(appSource, /addKeeperTradeFact\(facts, "Contract", `\$\{opportunity\.contractYearLabel\} · \$\{opportunity\.contractYearsLeft\} left`\)/);
   assert.match(appCss, /\.keeper-market-facts \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(appSource, /loadKeeperTradeProposal/);
-  assert.match(appSource, /Review it, negotiate, and press Record cap transfer only after both teams agree/);
+  assert.match(appSource, /Review it, negotiate, and record the atomic rights trade only after both teams agree/);
   assert.doesNotMatch(appSource, /loadKeeperTradeProposal[\s\S]{0,1200}commitLocalEvents/);
 });
 

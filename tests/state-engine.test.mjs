@@ -232,6 +232,107 @@ test("cap transfer and keeper reproduce the $2 plus $4 Herbert example", () => {
   assert.equal(state.teams["goon-skwad"].roster[0].keeperYear, 3);
 });
 
+test("keeper-rights trade moves the player and cap atomically and undo restores both", () => {
+  const trade = make(
+    EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+    {
+      teamAId: "the-hobbits",
+      teamBId: "t-dogs",
+      amountFromAToB: 4,
+      teamASends: [],
+      teamBSends: [{ playerId: "jonathan-taylor-rights", playerName: "Jonathan Taylor" }],
+    },
+    1,
+  );
+  const traded = replayDraft([configEvent(), trade]);
+  assert.equal(traded.teams["the-hobbits"].cash, 96);
+  assert.equal(traded.teams["t-dogs"].cash, 104);
+  assert.equal(traded.keeperRightsOwners["jonathan-taylor-rights"].teamId, "the-hobbits");
+
+  const orangePass = make(
+    EVENT_TYPES.KEEPER_PASSED,
+    { teamId: "orange-crush", round: 1, reason: "No keeper selected for this turn" },
+    2,
+  );
+  const keeper = make(
+    EVENT_TYPES.KEEPER_ASSIGNED,
+    {
+      playerId: "jonathan-taylor-rights",
+      playerName: "Jonathan Taylor",
+      position: "RB",
+      nflTeam: "IND",
+      teamId: "the-hobbits",
+      salary: 27,
+      keeperYear: 2,
+      selectionRound: 1,
+      source: "authenticated test candidate",
+    },
+    3,
+  );
+  const kept = replayDraft([configEvent(), trade, orangePass, keeper]);
+  assert.equal(kept.teams["the-hobbits"].cash, 69);
+  assert.equal(kept.teams["the-hobbits"].roster[0].playerName, "Jonathan Taylor");
+
+  const undo = make(EVENT_TYPES.EVENT_VOIDED, { targetEventId: trade.id, reason: "Trade correction" }, 4);
+  const restored = replayDraft([configEvent(), trade, undo]);
+  const baseline = replayDraft([configEvent()]);
+  assert.equal(restored.teams["the-hobbits"].cash, baseline.teams["the-hobbits"].cash);
+  assert.equal(restored.teams["t-dogs"].cash, baseline.teams["t-dogs"].cash);
+  assert.deepEqual(restored.keeperRightsOwners, {});
+});
+
+test("a transferred player can only be kept or resold by the current rights owner", () => {
+  const trade = make(
+    EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+    {
+      teamAId: "the-hobbits",
+      teamBId: "t-dogs",
+      amountFromAToB: 2,
+      teamASends: [],
+      teamBSends: [{ playerId: "rights-owner-check", playerName: "Rights Owner Check" }],
+    },
+    1,
+  );
+  const invalidResale = make(
+    EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+    {
+      teamAId: "dogs-of-war",
+      teamBId: "t-dogs",
+      amountFromAToB: 1,
+      teamASends: [],
+      teamBSends: [{ playerId: "rights-owner-check", playerName: "Rights Owner Check" }],
+    },
+    2,
+  );
+  assert.throws(
+    () => replayDraft([configEvent(), trade, invalidResale]),
+    (error) => error instanceof RuleViolation && error.code === "RIGHTS_SELLER_MISMATCH",
+  );
+});
+
+test("one atomic package supports two-for-one rights and a zero-dollar player swap", () => {
+  const swap = make(
+    EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+    {
+      teamAId: "the-hobbits",
+      teamBId: "t-dogs",
+      amountFromAToB: 0,
+      teamASends: [{ playerId: "hobbits-player-one", playerName: "Hobbits Player" }],
+      teamBSends: [
+        { playerId: "tdogs-player-one", playerName: "T-Dogs Player One" },
+        { playerId: "tdogs-player-two", playerName: "T-Dogs Player Two" },
+      ],
+    },
+    1,
+  );
+  const state = replayDraft([configEvent(), swap]);
+  assert.equal(state.keeperRightsOwners["hobbits-player-one"].teamId, "t-dogs");
+  assert.equal(state.keeperRightsOwners["tdogs-player-one"].teamId, "the-hobbits");
+  assert.equal(state.keeperRightsOwners["tdogs-player-two"].teamId, "the-hobbits");
+  assert.equal(state.teams["the-hobbits"].cash, DEFAULT_CONFIG.teams.find((team) => team.id === "the-hobbits").startingCap);
+  assert.equal(state.teams["t-dogs"].cash, DEFAULT_CONFIG.teams.find((team) => team.id === "t-dogs").startingCap);
+});
+
 test("keeper selection follows 1-12 and then repeats 1-12 with explicit passes", () => {
   const initial = keeperSelectionTimeline([configEvent()], DEFAULT_CONFIG);
   assert.equal(initial.totalSlots, 24);
@@ -415,6 +516,20 @@ test("bundled draft pack and recovery format validate end to end", async () => {
   const restored = validateRecoveryBundle(recovery);
   assert.equal(restored.events.length, 2);
   assert.equal(restored.pack.packId, pack.packId);
+});
+
+test("protected Footballguys auction values are complete for the supplied partial PDF and value neutral", async () => {
+  const raw = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
+  const pack = validateDraftPack(raw);
+  assert.equal(pack.fbgAuctionValues.modelEffect, "none");
+  assert.equal(pack.fbgAuctionValues.rankStart, 301);
+  assert.equal(pack.fbgAuctionValues.rankEnd, 400);
+  assert.equal(pack.fbgAuctionValues.reportedRows, 100);
+  assert.equal(pack.fbgAuctionValues.matchedRows, 100);
+  assert.equal(new Set(pack.fbgAuctionValues.values.map((row) => row.playerId)).size, 100);
+  const unauthorized = structuredClone(raw);
+  unauthorized.fbgAuctionValues.modelEffect = "market_value";
+  assert.throws(() => validateDraftPack(unauthorized), (error) => error.code === "FBG_VALUE_AUTHORITY");
 });
 
 test("dated projection evidence is validated and supplemental sources stay value neutral", async () => {

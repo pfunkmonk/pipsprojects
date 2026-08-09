@@ -84,6 +84,9 @@ test("the current board covers every source candidate and preserves value/ledger
   assert.equal(dogs[0].contractYearLabel, "Year 3 of 3");
   assert.equal(dogs[1].playerName, "DJ Moore");
   assert.equal(dogs[1].strategy, "Current top-two keeper");
+  const fbgRows = rows.filter((row) => row.fbgAuctionValue !== null);
+  assert.equal(fbgRows.length, 2);
+  assert.ok(fbgRows.every((row) => row.fbgAuctionValue === 1 && row.fbgAuctionRank >= 301 && row.fbgAuctionRank <= 400));
 });
 
 test("CSV is complete, quoted, and spreadsheet-formula safe", () => {
@@ -95,6 +98,7 @@ test("CSV is complete, quoted, and spreadsheet-formula safe", () => {
   assert.match(csv, /"comma, quote "" and newline\nproof"/);
   assert.match(csv, /Best Buyer Ceiling/);
   assert.match(csv, /Contract Years Used,Eligible Years Left,Contract Status/);
+  assert.match(csv, /Current Market,FBG Value,FBG Rank,Current Surplus/);
   assert.match(csv, /Pack As Of/);
 });
 

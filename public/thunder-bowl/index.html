@@ -16,7 +16,7 @@
   <meta property="og:image:height" content="910" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260805g" />
-  <link rel="stylesheet" href="./app.css?v=20260808a" />
+  <link rel="stylesheet" href="./app.css?v=20260808b" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -267,6 +267,22 @@
             <p id="keeper-export-status" class="form-status" role="status" aria-live="polite"></p>
           </div>
         </div>
+        <section class="product-panel keeper-workspace-panel" aria-labelledby="keeper-workspace-title">
+          <div class="keeper-workspace-copy">
+            <p class="eyebrow">Prediction workspace</p>
+            <h3 id="keeper-workspace-title">Forecast keepers before they are official</h3>
+            <p id="keeper-workspace-description">Private sandbox changes stay on this laptop and never reach the public board.</p>
+          </div>
+          <div class="keeper-mode-switch" role="group" aria-label="Keeper workspace mode">
+            <button id="keeper-mode-sandbox" class="button button-primary" type="button" aria-pressed="true">Prediction sandbox</button>
+            <button id="keeper-mode-official" class="button button-secondary" type="button" aria-pressed="false">Official ledger</button>
+          </div>
+          <div class="keeper-workspace-actions">
+            <button id="keeper-sandbox-copy-official" class="button button-secondary" type="button">Start from official ledger</button>
+            <button id="keeper-sandbox-reset" class="button button-secondary" type="button">Reset prediction sandbox</button>
+          </div>
+          <div id="keeper-scenario-impact" class="keeper-scenario-impact" aria-live="polite">No forecast keepers selected yet.</div>
+        </section>
         <section class="product-panel keeper-timeline-panel" aria-labelledby="keeper-timeline-title">
           <header class="panel-header keeper-timeline-header">
             <div><p class="eyebrow">Official 1–12 / 1–12 order</p><h3 id="keeper-timeline-title">Keeper selection timeline</h3></div>
@@ -284,13 +300,15 @@
         </section>
         <section class="product-panel keeper-operations" aria-labelledby="keeper-operations-title">
           <header class="panel-header">
-            <div><p class="eyebrow">Append-only setup ledger</p><h3 id="keeper-operations-title">Record keeper declarations and cap trades</h3></div>
+            <div><p id="keeper-operations-eyebrow" class="eyebrow">Private prediction ledger</p><h3 id="keeper-operations-title">Test keeper declarations and rights trades</h3></div>
             <span id="keeper-recorded-count" class="count-label">0 keepers recorded</span>
           </header>
-          <p class="panel-note">Record the cap-dollar payment separately from the keeper declaration. Every action is saved locally first, syncs when possible, and immediately updates the public board.</p>
+          <p class="panel-note">A keeper-rights trade records every player move and any cap-dollar payment as one atomic action. Prediction-sandbox actions stay private on this laptop; only actions deliberately entered in Official ledger mode can sync to the public board.</p>
           <div class="keeper-operations-grid">
             <form id="keeper-assignment-form" class="keeper-operation-form">
               <div><p class="eyebrow">Keeper declaration</p><h4>Assign a keeper</h4></div>
+              <label for="keeper-player-search"><span>Search eligible player rights</span><input id="keeper-player-search" type="search" maxlength="80" autocomplete="off" placeholder="Type a player name" aria-describedby="keeper-player-search-status" /></label>
+              <p id="keeper-player-search-status" class="keeper-search-status" role="status" aria-live="polite">All eligible players shown.</p>
               <label for="keeper-player"><span>Eligible player rights</span><select id="keeper-player" required></select></label>
               <label for="keeper-team"><span>Team keeping player</span><select id="keeper-team" required></select></label>
               <div id="keeper-selection-summary" class="keeper-selection-summary" aria-live="polite">Choose an eligible player.</div>
@@ -298,17 +316,32 @@
             </form>
 
             <form id="cap-transfer-form" class="keeper-operation-form">
-              <div><p class="eyebrow">Keeper-rights trade</p><h4>Transfer auction dollars</h4></div>
+              <div><p class="eyebrow">Keeper-rights trade</p><h4>Build a complete trade package</h4></div>
               <div class="keeper-trade-teams">
-                <label for="cap-from-team"><span>Team paying dollars</span><select id="cap-from-team" required></select></label>
-                <label for="cap-to-team"><span>Team receiving dollars</span><select id="cap-to-team" required></select></label>
+                <label for="cap-from-team"><span>Team A / pays dollars</span><select id="cap-from-team" required></select></label>
+                <label for="cap-to-team"><span>Team B / receives dollars</span><select id="cap-to-team" required></select></label>
+              </div>
+              <div class="keeper-trade-player-lanes">
+                <fieldset class="keeper-trade-player-lane">
+                  <legend>Team B sends players to Team A</legend>
+                  <label for="cap-transfer-player-search"><span>Search Team B players</span><input id="cap-transfer-player-search" type="search" maxlength="80" autocomplete="off" placeholder="Type a player name" aria-describedby="cap-transfer-player-search-status" /></label>
+                  <p id="cap-transfer-player-search-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team B to load its players.</p>
+                  <div class="keeper-trade-add-row"><label for="cap-transfer-player"><span>Eligible player</span><select id="cap-transfer-player"></select></label><button id="add-cap-transfer-player" class="button button-secondary" type="button">Add player</button></div>
+                  <div id="cap-transfer-player-list" class="keeper-trade-selected" aria-live="polite">No players added.</div>
+                </fieldset>
+                <fieldset class="keeper-trade-player-lane">
+                  <legend>Team A sends players to Team B (optional)</legend>
+                  <label for="cap-return-player-search"><span>Search Team A players</span><input id="cap-return-player-search" type="search" maxlength="80" autocomplete="off" placeholder="Type a player name" aria-describedby="cap-return-player-search-status" /></label>
+                  <p id="cap-return-player-search-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team A to load its players.</p>
+                  <div class="keeper-trade-add-row"><label for="cap-return-player"><span>Eligible player</span><select id="cap-return-player"></select></label><button id="add-cap-return-player" class="button button-secondary" type="button">Add player</button></div>
+                  <div id="cap-return-player-list" class="keeper-trade-selected" aria-live="polite">No players added.</div>
+                </fieldset>
               </div>
               <div class="keeper-trade-detail">
-                <label for="cap-transfer-amount"><span>Amount</span><input id="cap-transfer-amount" type="number" min="1" max="200" step="1" inputmode="numeric" required /></label>
-                <label for="cap-transfer-reason"><span>Player or reason</span><input id="cap-transfer-reason" minlength="3" maxlength="120" placeholder="Justin Herbert rights" required /></label>
+                <label for="cap-transfer-amount"><span>Cap dollars Team A pays Team B</span><input id="cap-transfer-amount" type="number" min="0" max="200" step="1" inputmode="numeric" value="0" required /></label>
               </div>
-              <div id="cap-transfer-summary" class="keeper-selection-summary" aria-live="polite">The paying team loses auction cash; the receiving team gains it.</div>
-              <button id="record-cap-transfer" class="button button-primary button-large" type="submit">Record cap transfer</button>
+              <div id="cap-transfer-summary" class="keeper-selection-summary" aria-live="polite">Build either a player-for-cap trade, a multi-player package, or a $0 player swap.</div>
+              <button id="record-cap-transfer" class="button button-primary button-large" type="submit">Record complete trade package</button>
             </form>
 
             <section class="keeper-audit" aria-labelledby="keeper-audit-title">
@@ -331,11 +364,15 @@
                   <span>View team</span>
                   <select id="keeper-evidence-team" aria-describedby="keeper-evidence-team-help"></select>
                 </label>
-                <p id="keeper-evidence-team-help">Switch teams without changing keeper choices, values, or the draft ledger.</p>
+                <div class="keeper-evidence-actions">
+                  <p id="keeper-evidence-team-help">Double-click an eligible player to record that keeper when this team is on the clock.</p>
+                  <button id="keeper-evidence-pass" class="button button-secondary" type="button">Pass — no keeper</button>
+                </div>
               </div>
+              <p id="keeper-fbg-coverage" class="keeper-fbg-coverage">FBG comparison coverage is loading.</p>
               <div class="table-wrap">
                 <table class="data-table">
-                  <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">Surplus</th><th>Trade read</th><th>Evidence</th></tr></thead>
+                  <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">FBG value</th><th class="number">Surplus</th><th>Trade read</th><th>Evidence</th></tr></thead>
                   <tbody id="keeper-rows"></tbody>
                 </table>
               </div>
@@ -733,6 +770,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260808a"></script>
+  <script type="module" src="./app.mjs?v=20260808b"></script>
 </body>
 </html>

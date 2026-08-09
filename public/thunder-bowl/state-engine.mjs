@@ -10,6 +10,7 @@ export const MINIMUM_ROSTER_SIZE = Object.values(STARTER_REQUIREMENTS).reduce((s
 export const EVENT_TYPES = Object.freeze({
   DRAFT_CONFIGURED: "DRAFT_CONFIGURED",
   CAP_TRANSFERRED: "CAP_TRANSFERRED",
+  KEEPER_RIGHTS_TRADED: "KEEPER_RIGHTS_TRADED",
   KEEPER_ASSIGNED: "KEEPER_ASSIGNED",
   KEEPER_PASSED: "KEEPER_PASSED",
   PLAYER_SOLD: "PLAYER_SOLD",
@@ -268,6 +269,22 @@ function validatePlayerPayload(payload, label, amountField) {
   return normalized;
 }
 
+function validateRightsTradePlayers(input, label) {
+  if (!Array.isArray(input) || input.length > ROSTER_SIZE) fail("INVALID_RIGHTS_TRADE_PLAYERS", `${label} must contain 0-${ROSTER_SIZE} players.`);
+  const ids = new Set();
+  return input.map((player, index) => {
+    const rowLabel = `${label} player ${index + 1}`;
+    assertExactKeys(player, ["playerId", "playerName"], [], rowLabel);
+    const row = {
+      playerId: assertIdentifier(player.playerId, `${rowLabel} id`),
+      playerName: assertString(player.playerName, `${rowLabel} name`, 2, 80),
+    };
+    if (ids.has(row.playerId)) fail("DUPLICATE_RIGHTS_TRADE_PLAYER", `${row.playerName} appears more than once in the same trade side.`);
+    ids.add(row.playerId);
+    return row;
+  });
+}
+
 export function validateEvent(input) {
   assertExactKeys(input, EVENT_KEYS, OPTIONAL_EVENT_KEYS, "auction event");
   const event = {
@@ -294,6 +311,22 @@ export function validateEvent(input) {
       if (event.payload.fromTeamId === event.payload.toTeamId) {
         fail("SELF_TRANSFER", "A cap transfer requires two different teams.");
       }
+      break;
+    case EVENT_TYPES.KEEPER_RIGHTS_TRADED:
+      assertExactKeys(input.payload, ["teamAId", "teamBId", "amountFromAToB", "teamASends", "teamBSends"], [], "keeper-rights trade");
+      event.payload = {
+        teamAId: assertIdentifier(input.payload.teamAId, "keeper-rights trade Team A"),
+        teamBId: assertIdentifier(input.payload.teamBId, "keeper-rights trade Team B"),
+        amountFromAToB: assertInteger(input.payload.amountFromAToB, "keeper-rights trade cap amount", 0, 200),
+        teamASends: validateRightsTradePlayers(input.payload.teamASends, "Team A sends"),
+        teamBSends: validateRightsTradePlayers(input.payload.teamBSends, "Team B sends"),
+      };
+      if (event.payload.teamAId === event.payload.teamBId) {
+        fail("SELF_TRANSFER", "A keeper-rights trade requires two different teams.");
+      }
+      if (!event.payload.teamASends.length && !event.payload.teamBSends.length) fail("EMPTY_RIGHTS_TRADE", "A keeper-rights trade must move at least one player.");
+      const bothSides = [...event.payload.teamASends, ...event.payload.teamBSends].map((player) => player.playerId);
+      if (new Set(bothSides).size !== bothSides.length) fail("DUPLICATE_RIGHTS_TRADE_PLAYER", "A player cannot move in both directions in one trade.");
       break;
     case EVENT_TYPES.KEEPER_ASSIGNED:
       event.payload = validatePlayerPayload(input.payload, "keeper", "salary");
@@ -644,6 +677,7 @@ function baseState(config) {
     nominationStep: 0,
     currentNominatorTeamId: null,
     lastSale: null,
+    keeperRightsOwners: {},
     activeEventCount: 0,
     updatedAt: null,
   };
@@ -703,8 +737,46 @@ export function replayDraft(rawEvents = []) {
       continue;
     }
 
+    if (event.type === EVENT_TYPES.KEEPER_RIGHTS_TRADED) {
+      if (state.saleCount > 0) fail("LATE_KEEPER_RIGHTS_TRADE", "Keeper-rights trades must be recorded before the auction begins.");
+      const teamA = state.teams[event.payload.teamAId];
+      const teamB = state.teams[event.payload.teamBId];
+      if (!teamA || !teamB) fail("UNKNOWN_TEAM", "Keeper-rights trade references an unknown team.");
+      const transfers = [
+        ...event.payload.teamASends.map((player) => ({ ...player, fromTeam: teamA, toTeam: teamB })),
+        ...event.payload.teamBSends.map((player) => ({ ...player, fromTeam: teamB, toTeam: teamA })),
+      ];
+      for (const transfer of transfers) {
+        if (state.draftedPlayers[transfer.playerId]) fail("RIGHTS_ALREADY_USED", `${transfer.playerName} is already assigned to a roster.`);
+        const priorTransfer = state.keeperRightsOwners[transfer.playerId];
+        if (priorTransfer && priorTransfer.teamId !== transfer.fromTeam.id) {
+          fail("RIGHTS_SELLER_MISMATCH", `${transfer.fromTeam.name} does not currently own ${transfer.playerName}'s rights.`);
+        }
+      }
+      const minimumReserve = requiredRosterAdditions(teamA, state.config) * state.config.minimumBid;
+      if (teamA.cash - event.payload.amountFromAToB < minimumReserve) {
+        fail("CAP_TRANSFER_BREAKS_ROSTER", `${teamA.name} would not retain enough cash to complete its roster.`);
+      }
+      teamA.cash -= event.payload.amountFromAToB;
+      teamA.startingCap -= event.payload.amountFromAToB;
+      teamB.cash += event.payload.amountFromAToB;
+      teamB.startingCap += event.payload.amountFromAToB;
+      for (const transfer of transfers) {
+        state.keeperRightsOwners[transfer.playerId] = {
+          teamId: transfer.toTeam.id,
+          playerName: transfer.playerName,
+          eventId: event.id,
+        };
+      }
+      continue;
+    }
+
     if (event.type === EVENT_TYPES.KEEPER_ASSIGNED) {
       if (state.saleCount > 0) fail("LATE_KEEPER", "Keepers must be assigned before auction purchases.");
+      const rightsOwner = state.keeperRightsOwners[event.payload.playerId];
+      if (rightsOwner && rightsOwner.teamId !== event.payload.teamId) {
+        fail("KEEPER_RIGHTS_OWNER_MISMATCH", `${event.payload.playerName}'s transferred rights belong to ${state.teams[rightsOwner.teamId].name}.`);
+      }
       applyAcquisition(state, event, "keeper");
       continue;
     }
@@ -771,7 +843,7 @@ export function lastUndoableEvent(rawEvents, allowedTypes) {
   }
   const allowed = new Set(allowedTypes);
   for (const type of allowed) {
-    if (![EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED, EVENT_TYPES.PLAYER_SOLD, EVENT_TYPES.NOMINATION_SKIPPED].includes(type)) {
+    if (![EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_RIGHTS_TRADED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED, EVENT_TYPES.PLAYER_SOLD, EVENT_TYPES.NOMINATION_SKIPPED].includes(type)) {
       fail("INVALID_UNDO_TYPE", `Event type '${type}' cannot be selected for operational undo.`);
     }
   }
@@ -1083,7 +1155,7 @@ export function validateDraftPack(input) {
   assertExactKeys(
     input,
     ["schemaVersion", "packId", "season", "status", "asOf", "sources", "leagueConfig", "players", "keeperCandidates"],
-    ["managerProfiles", "scheduleContext", "weeklyContext"],
+    ["managerProfiles", "scheduleContext", "weeklyContext", "fbgAuctionValues"],
     "draft pack",
   );
   if (input.schemaVersion !== SCHEMA_VERSION) fail("PACK_SCHEMA_MISMATCH", "Unsupported draft-pack schema.");
@@ -1228,6 +1300,51 @@ export function validateDraftPack(input) {
       fail("WEEKLY_CONTEXT_COVERAGE", "Weekly context coverage does not reconcile to attached player rows.");
     }
   }
+  let fbgAuctionValues;
+  if (input.fbgAuctionValues !== undefined) {
+    assertExactKeys(
+      input.fbgAuctionValues,
+      ["source", "asOf", "modelEffect", "coverage", "rankStart", "rankEnd", "reportedRows", "matchedRows", "values"],
+      [],
+      "FBG auction values",
+    );
+    const source = assertString(input.fbgAuctionValues.source, "FBG auction value source", 3, 80);
+    const fbgAsOf = assertTimestamp(input.fbgAuctionValues.asOf, "FBG auction value asOf");
+    const modelEffect = assertString(input.fbgAuctionValues.modelEffect, "FBG auction value model effect", 3, 20);
+    if (modelEffect !== "none") fail("FBG_VALUE_AUTHORITY", "FBG auction values are comparison-only and cannot alter Thunder Bowl strategy values.");
+    const rankStart = assertInteger(input.fbgAuctionValues.rankStart, "FBG auction rank start", 1, 2000);
+    const rankEnd = assertInteger(input.fbgAuctionValues.rankEnd, "FBG auction rank end", rankStart, 2000);
+    const reportedRows = assertInteger(input.fbgAuctionValues.reportedRows, "FBG reported rows", 1, 2000);
+    const matchedRows = assertInteger(input.fbgAuctionValues.matchedRows, "FBG matched rows", 0, reportedRows);
+    if (!Array.isArray(input.fbgAuctionValues.values)) fail("INVALID_FBG_VALUES", "FBG auction values must be an array.");
+    const fbgPlayerIds = new Set();
+    const fbgRanks = new Set();
+    const values = input.fbgAuctionValues.values.map((row, index) => {
+      const label = `FBG auction value ${index + 1}`;
+      assertExactKeys(row, ["playerId", "rank", "value"], [], label);
+      const playerId = assertIdentifier(row.playerId, `${label} player id`);
+      const rank = assertInteger(row.rank, `${label} rank`, rankStart, rankEnd);
+      const value = assertInteger(row.value, `${label} value`, 1, 300);
+      if (!playerIds.has(playerId)) fail("UNKNOWN_FBG_PLAYER", `${label} does not resolve to the player pool.`);
+      if (fbgPlayerIds.has(playerId)) fail("DUPLICATE_FBG_PLAYER", `${label} repeats a player.`);
+      if (fbgRanks.has(rank)) fail("DUPLICATE_FBG_RANK", `${label} repeats rank ${rank}.`);
+      fbgPlayerIds.add(playerId);
+      fbgRanks.add(rank);
+      return { playerId, rank, value };
+    });
+    if (values.length !== matchedRows) fail("FBG_MATCHED_ROWS", "FBG matched-row count does not reconcile to its values.");
+    fbgAuctionValues = {
+      source,
+      asOf: fbgAsOf,
+      modelEffect,
+      coverage: assertString(input.fbgAuctionValues.coverage, "FBG auction value coverage", 3, 180),
+      rankStart,
+      rankEnd,
+      reportedRows,
+      matchedRows,
+      values,
+    };
+  }
   if (!Array.isArray(input.keeperCandidates)) fail("INVALID_KEEPERS", "keeperCandidates must be an array.");
   const keeperCandidates = input.keeperCandidates.map((candidate, index) => {
     assertExactKeys(
@@ -1256,7 +1373,21 @@ export function validateDraftPack(input) {
     }
     return normalized;
   });
-  return { schemaVersion: SCHEMA_VERSION, packId, season: input.season, status, asOf, sources, leagueConfig, players, keeperCandidates, managerProfiles, scheduleContext, weeklyContext };
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    packId,
+    season: input.season,
+    status,
+    asOf,
+    sources,
+    leagueConfig,
+    players,
+    keeperCandidates,
+    managerProfiles,
+    scheduleContext,
+    weeklyContext,
+    ...(fbgAuctionValues ? { fbgAuctionValues } : {}),
+  };
 }
 
 export function createRecoveryBundle(pack, events, exportedAt = new Date().toISOString()) {

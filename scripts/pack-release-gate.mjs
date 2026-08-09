@@ -210,6 +210,7 @@ export function auditDraftPack(candidateInput, currentInput = null) {
   const managerAdvisorySources = candidate.sources.filter((source) => /manager.*profile|advisory/i.test(`${source.name} ${source.authority}`));
   const scheduleEvidenceSources = candidate.sources.filter((source) => /Thunder Bowl 2026 schedule/i.test(source.name));
   const weeklyContextSources = candidate.sources.filter((source) => source.name === "Thunder Bowl weekly context v3");
+  const fbgAuctionValueSources = candidate.sources.filter((source) => source.name === "Footballguys 2026 Draft Dominator auction values");
   const weeklyProjectionRows = candidate.players.filter((player) => player.weeklyProjection?.modelEffect === "none").length;
   const supplementalProjectionRows = candidate.players.reduce(
     (sum, player) => sum + (player.projectionSources || []).filter((source) => source.role === "supplemental" && source.modelEffect === "none").length,
@@ -242,6 +243,12 @@ export function auditDraftPack(candidateInput, currentInput = null) {
   }
   if (candidate.weeklyContext && weeklyProjectionRows !== candidate.weeklyContext.coveredPlayers) {
     blockingIssues.push("Weekly-context player evidence does not reconcile to the declared coverage count.");
+  }
+  if (fbgAuctionValueSources.length !== (candidate.fbgAuctionValues ? 1 : 0)) {
+    blockingIssues.push("The Footballguys auction-value source and validated value-neutral comparison rows must appear together exactly once.");
+  }
+  if (candidate.fbgAuctionValues && candidate.fbgAuctionValues.modelEffect !== "none") {
+    blockingIssues.push("Footballguys auction values exceed comparison-only authority.");
   }
   if (allocated !== expectedCap) blockingIssues.push(`Top-roster market allocation is $${allocated}, not the $${expectedCap} league cap.`);
   if (keeperTeams.size !== candidate.leagueConfig.teams.length) {
@@ -286,6 +293,11 @@ export function auditDraftPack(candidateInput, currentInput = null) {
     if (candidate.weeklyContext && hasStrategyChanges && !primaryProjectionSource) {
       blockingIssues.push(
         `A value-neutral weekly-context release changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
+      );
+    }
+    if (candidate.fbgAuctionValues && hasStrategyChanges && !primaryProjectionSource) {
+      blockingIssues.push(
+        `A value-neutral Footballguys auction comparison changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
     if (primaryProjectionSource) {
@@ -338,6 +350,7 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       scheduleContext: candidate.scheduleContext?.status || null,
       weeklyContext: candidate.weeklyContext?.status || null,
       weeklyProjectionRows,
+      fbgAuctionValueRows: candidate.fbgAuctionValues?.matchedRows || 0,
       primaryProjectionSource,
       expectedCap,
       allocatedMarketDollars: allocated,

@@ -50,6 +50,7 @@ export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) 
   }
   if (!Number.isSafeInteger(riskBuffer) || riskBuffer < 0 || riskBuffer > 10) throw new Error("Keeper trade risk buffer must be 0-10 whole dollars.");
   const teamsById = new Map(pack.leagueConfig.teams.map((team) => [team.id, team]));
+  const fbgByPlayerId = new Map((pack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
   const groups = new Map(pack.leagueConfig.teams.map((team) => [team.id, []]));
   for (const candidate of pack.keeperCandidates) {
     if (!groups.has(candidate.teamId)) throw new Error(`${candidate.playerName} references an unknown keeper team.`);
@@ -110,6 +111,8 @@ export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) 
       contractYearsLeft: tenure.yearsLeft,
       contractYearLabel: tenure.yearLabel,
       marketValue: candidate.marketValue,
+      fbgAuctionValue: fbgByPlayerId.get(candidate.playerId)?.value ?? null,
+      fbgAuctionRank: fbgByPlayerId.get(candidate.playerId)?.rank ?? null,
       surplus: candidate.surplus,
       eligible,
       portfolioRank: ranks.get(candidate.playerId),
@@ -285,6 +288,8 @@ export function keeperBoardCsv(rows) {
     ["Eligible Years Left", "contractYearsLeft"],
     ["Contract Status", "contractYearLabel"],
     ["Current Market", "marketValue"],
+    ["FBG Value", "fbgAuctionValue"],
+    ["FBG Rank", "fbgAuctionRank"],
     ["Current Surplus", "surplus"],
     ["Eligible", "eligible"],
     ["Team Surplus Rank", "portfolioRank"],

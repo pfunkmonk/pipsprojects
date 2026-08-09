@@ -456,6 +456,17 @@ input[readonly] { color: var(--muted); }
 .section-intro p:last-child { max-width: 900px; margin: 0; color: var(--muted); }
 .keeper-intro-actions { display: grid; justify-items: end; gap: 0.55rem; }
 .keeper-intro-actions .form-status { max-width: 430px; margin: 0; text-align: right; }
+.keeper-workspace-panel { display: grid; grid-template-columns: minmax(360px, 1fr) auto auto; align-items: center; gap: 0.85rem; margin-bottom: 0.8rem; padding: 0.9rem; border-color: rgba(240, 186, 54, 0.55); background: linear-gradient(115deg, rgba(240, 186, 54, 0.08), var(--navy-800)); }
+.keeper-workspace-copy h3 { margin: 0.15rem 0 0.25rem; }
+.keeper-workspace-copy p:last-child { max-width: 760px; margin: 0; color: var(--muted); }
+.keeper-mode-switch, .keeper-workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.55rem; }
+.keeper-workspace-actions { display: grid; }
+.keeper-scenario-impact { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; border-top: 1px solid var(--line); padding-top: 0.75rem; color: var(--muted); }
+.keeper-scenario-impact > strong { color: var(--gold-light); white-space: nowrap; }
+.keeper-impact-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
+.keeper-impact-chips span { border: 1px solid var(--line); border-radius: 999px; padding: 0.28rem 0.52rem; background: var(--navy-950); color: var(--muted); font-size: 0.76rem; font-weight: 800; white-space: nowrap; }
+.keeper-impact-chips span.is-up { border-color: rgba(93, 211, 158, 0.5); color: var(--good); }
+.keeper-impact-chips span.is-down { color: var(--quiet); }
 .keeper-layout { display: grid; grid-template-columns: minmax(620px, 1.25fr) minmax(340px, 0.75fr); gap: 0.8rem; }
 .keeper-evidence-summary { min-height: 84px; list-style: none; cursor: pointer; user-select: none; }
 .keeper-evidence-summary::-webkit-details-marker { display: none; }
@@ -470,6 +481,14 @@ input[readonly] { color: var(--muted); }
 .keeper-evidence-team-picker select { min-height: 46px; border: 1px solid var(--line-strong); border-radius: 9px; padding: 0.55rem 2.4rem 0.55rem 0.75rem; background: var(--navy-950); color: var(--text); font: inherit; font-weight: 800; }
 .keeper-evidence-team-picker select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .keeper-evidence-toolbar p { max-width: 430px; margin: 0; color: var(--muted); font-size: 0.8rem; text-align: right; }
+.keeper-evidence-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; }
+.keeper-evidence-actions .button { flex: 0 0 auto; }
+.keeper-fbg-coverage { margin: 0; border-bottom: 1px solid var(--line); padding: 0.52rem 0.8rem; background: rgba(240, 186, 54, 0.06); color: var(--muted); font-size: 0.78rem; }
+.keeper-candidate-action { cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }
+.keeper-candidate-action:hover, .keeper-candidate-action:focus-visible { background: rgba(240, 186, 54, 0.1); box-shadow: inset 4px 0 0 var(--gold); outline: none; }
+.keeper-candidate-recorded { opacity: 0.68; }
+.fbg-value { color: var(--gold-light); }
+.fbg-missing { color: var(--quiet); }
 .keeper-evidence-panel details:not([open]) .keeper-evidence-summary { border-bottom-color: transparent; }
 .keeper-evidence-panel details[open] .keeper-evidence-chevron { transform: rotate(90deg); }
 .scenario-panel { padding-bottom: 1rem; }
@@ -516,7 +535,16 @@ input[readonly] { color: var(--muted); }
 .keeper-operation-form h4, .keeper-audit h4 { margin: 0; font-size: 1.05rem; }
 .keeper-operation-form .eyebrow, .keeper-audit .eyebrow { margin-bottom: 0.1rem; }
 .keeper-trade-teams, .keeper-trade-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
-.keeper-trade-detail { grid-template-columns: minmax(100px, 0.3fr) minmax(210px, 1fr); }
+.keeper-trade-detail { grid-template-columns: minmax(100px, 220px); }
+.keeper-search-status { min-height: 1.1rem; margin: -0.35rem 0 0; color: var(--quiet); font-size: 0.76rem; }
+.keeper-trade-player-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.keeper-trade-player-lane { display: grid; align-content: start; gap: 0.55rem; min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 9px; padding: 0.7rem; background: var(--navy-950); }
+.keeper-trade-player-lane legend { padding: 0 0.35rem; color: var(--gold-light); font-size: 0.8rem; font-weight: 850; }
+.keeper-trade-add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.45rem; }
+.keeper-trade-add-row .button { min-height: 46px; }
+.keeper-trade-selected { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 34px; color: var(--quiet); font-size: 0.76rem; }
+.keeper-trade-selected > span { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(111, 221, 167, 0.5); border-radius: 999px; padding: 0.24rem 0.32rem 0.24rem 0.52rem; background: rgba(111, 221, 167, 0.09); color: var(--text); font-weight: 750; }
+.keeper-trade-selected button { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--navy-750); color: var(--text); cursor: pointer; font-size: 1.05rem; line-height: 1; }
 .keeper-selection-summary { min-height: 54px; border-left: 4px solid var(--gold); border-radius: 7px; padding: 0.55rem 0.65rem; background: var(--navy-950); color: var(--muted); font-size: 0.86rem; }
 .keeper-selection-summary strong { color: var(--gold-light); }
 .keeper-action-list { display: grid; gap: 0.45rem; max-height: 250px; margin: 0; padding: 0; overflow: auto; list-style: none; }
@@ -791,6 +819,10 @@ input[readonly] { color: var(--muted); }
   .section-intro .status-chip { margin-top: 0.75rem; }
   .keeper-intro-actions { justify-items: start; margin-top: 0.75rem; }
   .keeper-intro-actions .form-status { text-align: left; }
+  .keeper-workspace-panel { grid-template-columns: 1fr; }
+  .keeper-mode-switch, .keeper-workspace-actions { justify-content: flex-start; }
+  .keeper-scenario-impact { grid-column: 1; align-items: flex-start; flex-direction: column; }
+  .keeper-impact-chips { justify-content: flex-start; }
   .keeper-pressure-grid { grid-template-columns: 1fr; }
   .keeper-on-clock { grid-template-columns: 1fr; align-items: stretch; }
   .keeper-on-clock .button { width: 100%; }
@@ -807,6 +839,7 @@ input[readonly] { color: var(--muted); }
   .keeper-evidence-team-picker { grid-template-columns: 1fr; }
   .keeper-evidence-team-picker select { width: 100%; }
   .keeper-evidence-toolbar p { max-width: none; text-align: left; }
+  .keeper-evidence-actions { align-items: stretch; flex-direction: column; }
 }
 @media (max-width: 500px) {
   .brand-lockup.compact { min-width: 0; }
@@ -818,7 +851,7 @@ input[readonly] { color: var(--muted); }
   .sale-bar > * { grid-column: 1; }
   .practice-console { grid-template-columns: 1fr; }
   .practice-identity, .practice-number, .practice-actions, .practice-activity, .practice-status { grid-column: 1; }
-  .keeper-trade-teams, .keeper-trade-detail { grid-template-columns: 1fr; }
+  .keeper-trade-teams, .keeper-trade-detail, .keeper-trade-player-lanes { grid-template-columns: 1fr; }
   .keeper-market-facts { grid-template-columns: 1fr; }
   .order-list { columns: 1; }
   .dialog-actions { flex-direction: column-reverse; }

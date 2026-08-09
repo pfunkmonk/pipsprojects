@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "packId": "tb26-provisional-20260804-v9",
+  "packId": "tb26-provisional-20260808-v10",
   "season": 2026,
   "status": "practice",
-  "asOf": "2026-08-04T12:22:04-06:00",
+  "asOf": "2026-08-08T18:00:00-06:00",
   "sources": [
     {
       "name": "User-confirmed prior-season league order and 2026 bonus caps",
@@ -63,6 +63,12 @@
       "name": "Thunder Bowl weekly context v3",
       "asOf": "2026-08-04T12:22:04-06:00",
       "authority": "experimental weekly shape; no value effect",
+      "scoringFingerprint": "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1"
+    },
+    {
+      "name": "Footballguys 2026 Draft Dominator auction values",
+      "asOf": "2026-08-08T17:57:59-06:00",
+      "authority": "value-neutral auction comparison; partial ranks",
       "scoringFingerprint": "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1"
     }
   ],
@@ -8936,7 +8942,7 @@
     },
     {
       "id": "fbg:PineEd44",
-      "name": "Eddy Piñeiro",
+      "name": "Eddy Pi\u00f1eiro",
       "position": "K",
       "nflTeam": "SF",
       "tier": 2,
@@ -35400,7 +35406,7 @@
     },
     {
       "id": "fbg:EstiAu00",
-      "name": "Audric Estimé",
+      "name": "Audric Estim\u00e9",
       "position": "RB",
       "nflTeam": "NO",
       "tier": 14,
@@ -40956,7 +40962,7 @@
     },
     {
       "playerId": "fbg:PineEd44",
-      "playerName": "Eddy Piñeiro",
+      "playerName": "Eddy Pi\u00f1eiro",
       "position": "K",
       "teamId": "goon-skwad",
       "priorSalary": 2,
@@ -42360,5 +42366,517 @@
       "modelEffect": "advisory_only",
       "note": "Winning purchases only; no losing bids or full sequence; 2024 labels incomplete."
     }
-  ]
+  ],
+  "fbgAuctionValues": {
+    "source": "Footballguys 2026 Draft Dominator auction values",
+    "asOf": "2026-08-08T17:57:59-06:00",
+    "modelEffect": "none",
+    "coverage": "Supplied PDF contains ranks 301-400 only; ranks 1-300 were not supplied.",
+    "rankStart": 301,
+    "rankEnd": 400,
+    "reportedRows": 100,
+    "matchedRows": 100,
+    "values": [
+      {
+        "playerId": "fbg:BellDa03",
+        "rank": 301,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WillAn02",
+        "rank": 302,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SampDr00",
+        "rank": 303,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MimsMa00",
+        "rank": 304,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:GayxMa44",
+        "rank": 305,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MusgLu00",
+        "rank": 306,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ZaccOl00",
+        "rank": 307,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ColeKE02",
+        "rank": 308,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:TremTo00",
+        "rank": 309,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:JohnTy00",
+        "rank": 310,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DelpOs00",
+        "rank": 311,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BrowDy00",
+        "rank": 312,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HiggEl00",
+        "rank": 313,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BellCh01",
+        "rank": 314,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RariEl00",
+        "rank": 315,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WashMi00",
+        "rank": 316,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:LloyMa00",
+        "rank": 317,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:JohnEm00",
+        "rank": 318,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HursTe00",
+        "rank": 319,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:PeriSa00",
+        "rank": 320,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HoopAu00",
+        "rank": 321,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WrigBr00",
+        "rank": 322,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DougDe00",
+        "rank": 323,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SinnBe00",
+        "rank": 324,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:AlieMo00",
+        "rank": 325,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ShraSp00",
+        "rank": 326,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SmytDu00",
+        "rank": 327,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:LaneJa01",
+        "rank": 328,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:KleiMa00",
+        "rank": 329,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HortTo00",
+        "rank": 330,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SchoLu00",
+        "rank": 331,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:PalmJo01",
+        "rank": 332,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:KirkCh00",
+        "rank": 333,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HibnMa00",
+        "rank": 334,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BoerNa00",
+        "rank": 335,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DurhPa00",
+        "rank": 336,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HolaGe01",
+        "rank": 337,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:StovCa00",
+        "rank": 338,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MumpKo00",
+        "rank": 339,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:JolyJu00",
+        "rank": 340,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HaweJa00",
+        "rank": 341,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SpanBr00",
+        "rank": 342,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DaviRa02",
+        "rank": 343,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SimsBe00",
+        "rank": 344,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WhylJo00",
+        "rank": 345,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:PattRi44",
+        "rank": 346,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MoreFo00",
+        "rank": 347,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:StolJa00",
+        "rank": 348,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:JohnTe01",
+        "rank": 349,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RousSa00",
+        "rank": 350,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BellSk00",
+        "rank": 351,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RuckJe00",
+        "rank": 352,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RaymKa00",
+        "rank": 353,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:VidaKi00",
+        "rank": 354,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:KacmWi00",
+        "rank": 355,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:TillCe00",
+        "rank": 356,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:FarrLu00",
+        "rank": 357,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:SaubEr00",
+        "rank": 358,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BlacKa00",
+        "rank": 359,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WoerCh00",
+        "rank": 360,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:AyomEl00",
+        "rank": 361,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ConkTy00",
+        "rank": 362,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:JameJo02",
+        "rank": 363,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ThorDo00",
+        "rank": 364,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:AdkiNa00",
+        "rank": 365,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ReimTi00",
+        "rank": 366,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:AiyuBr00",
+        "rank": 367,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HudsTa00",
+        "rank": 368,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:AlleDa01",
+        "rank": 369,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WileJa00",
+        "rank": 370,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:FielMa00",
+        "rank": 371,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BrowMa05",
+        "rank": 372,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RoyaJa00",
+        "rank": 373,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:KoziTa00",
+        "rank": 374,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:GalbJJ00",
+        "rank": 375,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:CalcGr00",
+        "rank": 376,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WilsRo02",
+        "rank": 377,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BartGa00",
+        "rank": 378,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:McCaLu00",
+        "rank": 379,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BateBr00",
+        "rank": 380,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:YuroBe00",
+        "rank": 381,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DuliAs00",
+        "rank": 382,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:CulpDe00",
+        "rank": 383,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MorrQu00",
+        "rank": 384,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:BateJo00",
+        "rank": 385,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ColeJo00",
+        "rank": 386,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HillTy00",
+        "rank": 387,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:FidoTh00",
+        "rank": 388,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:McKeSe00",
+        "rank": 389,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:WillKy01",
+        "rank": 390,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:RoyeJo00",
+        "rank": 391,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:TraoSe00",
+        "rank": 392,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:HollMa00",
+        "rank": 393,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:EndrJa00",
+        "rank": 394,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:CuevJo00",
+        "rank": 395,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:GranKy00",
+        "rank": 396,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:ArkiTa00",
+        "rank": 397,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:DikeCh00",
+        "rank": 398,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:MundJo00",
+        "rank": 399,
+        "value": 1
+      },
+      {
+        "playerId": "fbg:LongHu00",
+        "rank": 400,
+        "value": 1
+      }
+    ]
+  }
 }

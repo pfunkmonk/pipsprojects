@@ -1,7 +1,8 @@
-import { EVENT_TYPES, replayDraft, validateEvent } from "./state-engine.mjs?v=20260805g";
+import { EVENT_TYPES, replayDraft, validateEvent } from "./state-engine.mjs?v=20260808b";
 
 const ACTIVE_EXPORT_TYPES = new Set([
   EVENT_TYPES.CAP_TRANSFERRED,
+  EVENT_TYPES.KEEPER_RIGHTS_TRADED,
   EVENT_TYPES.KEEPER_ASSIGNED,
   EVENT_TYPES.KEEPER_PASSED,
   EVENT_TYPES.PLAYER_SOLD,
@@ -68,6 +69,18 @@ export function buildDraftHistoryRows({ events, pack }) {
       row.teamName = teamName(payload.fromTeamId);
       row.otherTeamId = payload.toTeamId;
       row.otherTeamName = teamName(payload.toTeamId);
+    } else if (event.type === EVENT_TYPES.KEEPER_RIGHTS_TRADED) {
+      row.teamId = payload.teamAId;
+      row.teamName = teamName(payload.teamAId);
+      row.otherTeamId = payload.teamBId;
+      row.otherTeamName = teamName(payload.teamBId);
+      row.playerId = [...payload.teamASends, ...payload.teamBSends].map((player) => player.playerId).join(" / ");
+      row.playerName = [
+        ...payload.teamASends.map((player) => `${player.playerName} A→B`),
+        ...payload.teamBSends.map((player) => `${player.playerName} B→A`),
+      ].join(" / ");
+      row.amount = payload.amountFromAToB;
+      row.detail = "Atomic multi-player keeper-rights and cap trade";
     } else {
       row.teamId = payload.teamId;
       row.teamName = teamName(payload.teamId);
