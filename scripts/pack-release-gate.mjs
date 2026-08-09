@@ -116,6 +116,24 @@ function declaredPrimaryProjectionSource(candidate) {
   return everyPlayerUsesSource ? sourceName : null;
 }
 
+function primaryProjectionChanged(candidate, current, sourceName) {
+  if (!sourceName) return false;
+  if (!current) return true;
+  const currentSourceName = declaredPrimaryProjectionSource(current);
+  if (currentSourceName !== sourceName) return true;
+  const candidateSource = candidate.sources.find((source) => source.name === sourceName);
+  const currentSource = current.sources.find((source) => source.name === sourceName);
+  if (stableText(candidateSource) !== stableText(currentSource)) return true;
+  const currentPlayers = playerMap(current);
+  return candidate.players.some((player) => {
+    const prior = currentPlayers.get(player.id);
+    if (!prior || player.projectedPoints !== prior.projectedPoints) return true;
+    const nextPrimary = (player.projectionSources || []).find((source) => source.modelEffect === "primary_projection");
+    const priorPrimary = (prior.projectionSources || []).find((source) => source.modelEffect === "primary_projection");
+    return stableText(nextPrimary) !== stableText(priorPrimary);
+  });
+}
+
 function classicChampionIssues(candidate, current) {
   const issues = [];
   const teamCount = candidate.leagueConfig.teams.length;
@@ -165,7 +183,7 @@ function classicChampionIssues(candidate, current) {
   const marketById = new Map(candidate.players.map((player) => [player.id, 1]));
   for (const [position, curve] of Object.entries(currentMarketCurves)) {
     const positionRows = valued.filter((row) => row.position === position)
-      .sort((left, right) => right.positiveVbd - left.positiveVbd || left.id.localeCompare(right.id));
+      .sort((left, right) => right.rawVbd - left.rawVbd || left.id.localeCompare(right.id));
     positionRows.slice(0, curve.length).forEach((row, index) => marketById.set(row.id, curve[index]));
   }
 
@@ -207,6 +225,8 @@ export function auditDraftPack(candidateInput, currentInput = null) {
   const sourceText = candidate.sources.map((source) => `${source.name} ${source.authority}`).join(" | ");
   const supplementalProjectionSources = candidate.sources.filter((source) => /supplemental projection/i.test(source.authority));
   const primaryProjectionSource = declaredPrimaryProjectionSource(candidate);
+  const declaredPrimarySources = candidate.sources.filter((source) => source.authority === "primary projection; Thunder Bowl computes value");
+  const primaryProjectionUpdate = primaryProjectionChanged(candidate, current, primaryProjectionSource);
   const managerAdvisorySources = candidate.sources.filter((source) => /manager.*profile|advisory/i.test(`${source.name} ${source.authority}`));
   const scheduleEvidenceSources = candidate.sources.filter((source) => /Thunder Bowl 2026 schedule/i.test(source.name));
   const weeklyContextSources = candidate.sources.filter((source) => source.name === "Thunder Bowl weekly context v3");
@@ -231,6 +251,9 @@ export function auditDraftPack(candidateInput, currentInput = null) {
   if (SEALED_HOLDOUT_PATTERN.test(sourceText)) blockingIssues.push("A source label appears to reference sealed 2025 outcome evidence.");
   if (supplementalProjectionSources.length && supplementalProjectionRows === 0) {
     blockingIssues.push("A supplemental projection source is declared but no value-neutral player evidence is attached.");
+  }
+  if (declaredPrimarySources.length && !primaryProjectionSource) {
+    blockingIssues.push("Exactly one declared primary projection source must reconcile to every player's projected points.");
   }
   if (managerAdvisorySources.length && candidate.managerProfiles.length === 0) {
     blockingIssues.push("A manager-profile advisory source is declared but no validated manager profiles are attached.");
@@ -275,32 +298,32 @@ export function auditDraftPack(candidateInput, currentInput = null) {
     changes = materialPlayerChanges(current, candidate);
     exactValueChanges = exactStrategyChanges(current, candidate);
     const hasStrategyChanges = changes.added.length || changes.removed.length || exactValueChanges.length;
-    if (supplementalProjectionSources.length && hasStrategyChanges && !primaryProjectionSource) {
+    if (supplementalProjectionSources.length && hasStrategyChanges && !primaryProjectionUpdate) {
       blockingIssues.push(
         `A value-neutral supplemental projection release changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
-    if (candidate.managerProfiles.length && hasStrategyChanges && !primaryProjectionSource) {
+    if (candidate.managerProfiles.length && hasStrategyChanges && !primaryProjectionUpdate) {
       blockingIssues.push(
         `An advisory-only manager-profile release changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
-    if (candidate.scheduleContext && hasStrategyChanges && !primaryProjectionSource) {
+    if (candidate.scheduleContext && hasStrategyChanges && !primaryProjectionUpdate) {
       blockingIssues.push(
         `A value-neutral schedule-context release changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
-    if (candidate.weeklyContext && hasStrategyChanges && !primaryProjectionSource) {
+    if (candidate.weeklyContext && hasStrategyChanges && !primaryProjectionUpdate) {
       blockingIssues.push(
         `A value-neutral weekly-context release changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
-    if (candidate.fbgAuctionValues && hasStrategyChanges && !primaryProjectionSource) {
+    if (candidate.fbgAuctionValues && hasStrategyChanges && !primaryProjectionUpdate) {
       blockingIssues.push(
         `A value-neutral Footballguys auction comparison changed ${changes.added.length} additions, ${changes.removed.length} removals, or ${exactValueChanges.length} player strategy records.`,
       );
     }
-    if (primaryProjectionSource) {
+    if (primaryProjectionUpdate) {
       if (changes.added.length || changes.removed.length) {
         blockingIssues.push("A projection-only candidate changed the player universe.");
       }
@@ -310,10 +333,15 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       if (stableText(candidate.scheduleContext) !== stableText(current.scheduleContext)) {
         blockingIssues.push("A primary projection update changed value-neutral schedule context.");
       }
-      const priorSourceFingerprints = new Set(current.sources.map(stableText));
+      const replacingPrimarySource = current.sources.some((source) => source.name === primaryProjectionSource);
+      const priorSourceFingerprints = new Set(current.sources
+        .filter((source) => !replacingPrimarySource || source.name !== primaryProjectionSource)
+        .map(stableText));
       const retainedSourceCount = candidate.sources.filter((source) => priorSourceFingerprints.has(stableText(source))).length;
-      if (retainedSourceCount !== current.sources.length || candidate.sources.length !== current.sources.length + 1) {
-        blockingIssues.push("A primary projection update changed prior source evidence instead of appending one candidate source.");
+      const expectedRetainedSources = current.sources.length - (replacingPrimarySource ? 1 : 0);
+      const expectedCandidateSources = current.sources.length + (replacingPrimarySource ? 0 : 1);
+      if (retainedSourceCount !== expectedRetainedSources || candidate.sources.length !== expectedCandidateSources) {
+        blockingIssues.push("A primary projection update changed prior source evidence outside the registered append-or-replace path.");
       }
       const evidenceFields = ["id", "name", "position", "nflTeam", "injury", "sos", "notes"];
       const currentPlayers = playerMap(current);
@@ -352,6 +380,7 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       weeklyProjectionRows,
       fbgAuctionValueRows: candidate.fbgAuctionValues?.matchedRows || 0,
       primaryProjectionSource,
+      primaryProjectionUpdate,
       expectedCap,
       allocatedMarketDollars: allocated,
     },

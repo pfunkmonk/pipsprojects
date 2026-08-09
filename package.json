@@ -13,6 +13,7 @@
     "audit:thunder-values": "node scripts/audit-thunder-valuations.mjs",
     "backtest:thunder-market": "node scripts/backtest-auction-market-calibration.mjs",
     "backtest:thunder-projections": "python scripts/backtest-projection-ensemble.py",
+    "build:thunder-consensus": "node scripts/build-thunder-consensus-handoff.mjs",
     "export:thunder-projection-handoff": "node scripts/export-projection-handoff.mjs",
     "refresh:thunder-projections": "node scripts/run-projection-refresh.mjs",
     "stage:thunder-pack": "node scripts/stage-thunder-pack.mjs",

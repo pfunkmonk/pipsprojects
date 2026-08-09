@@ -11,12 +11,13 @@ import {
 } from "../scripts/projection-refresh-core.mjs";
 
 const current = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
+const afterCurrent = (minutes) => new Date(Date.parse(current.asOf) + minutes * 60 * 1000).toISOString();
 
 function completedRows() {
   return createProjectionHandoffTemplateRows(current, {
     modelId: "projection-lab-test-v1",
-    sourceAsOf: "2026-08-09T16:00:00-06:00",
-    exportedAt: "2026-08-09T16:05:00-06:00",
+    sourceAsOf: afterCurrent(1),
+    exportedAt: afterCurrent(2),
   }).map((row) => {
     const sourcePoints = [row.fbg_points, row.cbs_points, row.fantasypros_points].filter((value) => value !== "").map(Number);
     const consensus = Number(row.raw_consensus_points);
@@ -54,7 +55,7 @@ test("a complete candidate recomputes values through the classic champion withou
   const candidate = createProjectionCandidatePack(current, completedRows());
   const audit = auditDraftPack(candidate, current);
   assert.equal(audit.approved, true, audit.blockingIssues.join(" | "));
-  assert.equal(audit.candidate.primaryProjectionSource, "Thunder Projection Lab");
+  assert.equal(audit.candidate.primaryProjectionSource, "Thunder Bowl Consensus");
   assert.equal(candidate.players.length, current.players.length);
   assert.deepEqual(candidate.leagueConfig, current.leagueConfig);
   assert.equal(candidate.players.every((player) => player.projectionSources.filter((source) => source.modelEffect === "primary_projection").length === 1), true);
@@ -65,8 +66,21 @@ test("missing rows, a forged consensus, or an unreconciled adjustment fail close
   assert.throws(() => createProjectionCandidatePack(current, completedRows().slice(1)), /not all 716/);
   const consensus = completedRows();
   consensus[0].raw_consensus_points = Number(consensus[0].raw_consensus_points) + 10;
-  assert.throws(() => createProjectionCandidatePack(current, consensus), /not the equal average/);
+  assert.throws(() => createProjectionCandidatePack(current, consensus), /does not match the registered accuracy-weighted source model/);
   const adjusted = completedRows();
   adjusted[0].mean_reversion_delta = -10;
   assert.throws(() => createProjectionCandidatePack(current, adjusted), /do not reconcile/);
+});
+
+test("the frozen market curve remains monotone below replacement instead of sorting zero-VBD ties by id", () => {
+  const candidate = createProjectionCandidatePack(current, completedRows());
+  for (const position of ["QB", "RB", "WR", "TE", "K", "DST"]) {
+    const rows = candidate.players
+      .filter((player) => player.position === position)
+      .sort((left, right) => right.projectedPoints - left.projectedPoints || left.id.localeCompare(right.id));
+    for (let index = 1; index < rows.length; index += 1) {
+      assert.ok(rows[index - 1].marketValue >= rows[index].marketValue,
+        `${position}: ${rows[index - 1].name} cannot be cheaper than lower-projected ${rows[index].name}`);
+    }
+  }
 });

@@ -28,4 +28,4 @@ if (!audit.approved) {
   process.exit(1);
 }
 console.log(`PASS ${candidate.packId}: candidate and audit written; active pack unchanged.`);
-console.log("PROMOTION BLOCKED: exact historical FBG/CBS/FantasyPros outcome testing is not yet available.");
+console.log("PROMOTION REQUIRES the separate release gate and an explicit --promote action.");

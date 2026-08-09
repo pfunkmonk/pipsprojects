@@ -75,7 +75,7 @@ import {
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
-import { buildProjectionLabPreview } from "./projection-lab.mjs?v=20260809b";
+import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
 import {
   HUMAN_REHEARSAL_ITEMS,
   createHumanRehearsalEvidence,
@@ -902,6 +902,12 @@ function renderProjectionSources(player) {
     return;
   }
   const primary = sources.find((source) => source.modelEffect === "primary_projection");
+  const liveConsensus = primary?.source === "Thunder Bowl Consensus";
+  const premiumSources = sources.filter((source) => ["Footballguys", "CBS", "FantasyPros"].includes(source.source));
+  const blendWeights = projectionSourceWeights(premiumSources.map((source) => source.source));
+  byId("projection-evidence-rule").textContent = liveConsensus
+    ? "Accuracy-weighted consensus drives value"
+    : "Only “primary” drives value";
   for (const source of sources) {
     const delta = primary && source !== primary ? source.points - primary.points : null;
     const item = document.createElement("li");
@@ -910,7 +916,11 @@ function renderProjectionSources(player) {
     const name = document.createElement("strong");
     name.textContent = source.source;
     const badge = document.createElement("span");
-    badge.textContent = source.role === "supplemental" ? "NO VALUE EFFECT" : source.role.toUpperCase();
+    badge.textContent = liveConsensus && blendWeights[source.source]
+      ? `BLEND ${(blendWeights[source.source] * 100).toFixed(1)}%`
+      : source.modelEffect === "primary_projection"
+        ? "PRIMARY · DRIVES VBD"
+        : source.role === "supplemental" ? "NO VALUE EFFECT" : source.role.toUpperCase();
     heading.append(name, badge);
     const points = document.createElement("b");
     points.textContent = source.points.toFixed(1);
@@ -938,18 +948,21 @@ function renderProjectionLab(player) {
     : preview.status === "partial_consensus"
       ? `${preview.sourceCoverage}/3 sources · partial`
       : "fallback";
-  byId("projection-lab-summary").textContent = `${preview.modified.toFixed(1)} candidate · ${preview.consensus.toFixed(1)} consensus · ${summaryStatus}`;
+  const live = preview.valueEffect === "primary_projection";
+  byId("projection-lab-summary").textContent = `${preview.modified.toFixed(1)} Thunder projection · ${summaryStatus}`;
+  byId("projection-lab-authority").textContent = live ? "LIVE PRIMARY · DRIVES VBD" : "CONSENSUS PREVIEW";
   byId("projection-lab-primary").textContent = `${preview.currentPrimary.points.toFixed(1)} (${preview.currentPrimary.source})`;
   byId("projection-lab-consensus").textContent = preview.consensus.toFixed(1);
-  byId("projection-lab-modified").textContent = preview.modified.toFixed(1);
-  byId("projection-lab-range").textContent = preview.interval80
-    ? `${preview.interval80.low.toFixed(1)}–${preview.interval80.high.toFixed(1)}`
-    : "Not calibrated";
+  byId("projection-lab-modified").textContent = signed(preview.automaticCorrectionDelta || 0);
+  byId("projection-lab-range").textContent = preview.sourceRange
+    ? `${preview.sourceRange.low.toFixed(1)}–${preview.sourceRange.high.toFixed(1)}`
+    : "Single source";
   const weekly = preview.weekly
     ? `Weekly shape preserves ${preview.weekly.seasonTotal.toFixed(1)} · division ${preview.weekly.divisionTotal.toFixed(1)} · playoffs ${preview.weekly.playoffTotal.toFixed(1)}.`
     : "Weekly context is unavailable for this player.";
-  byId("projection-lab-breakdown").textContent = `Equal-source consensus ${preview.consensus.toFixed(1)} · surrogate-gated mean reversion ${signed(preview.meanReversionDelta)} = ${preview.modified.toFixed(1)}. ${weekly}`;
-  byId("projection-lab-evidence").textContent = `Surrogate time-forward MAE 39.5 versus 41.7 for one source across 1,153 player-seasons. Exact premium-source history is unavailable, so this has no VBD, dollar, keeper, or bid effect.`;
+  const weights = preview.sources.map((source) => `${source.source} ${(source.weight * 100).toFixed(1)}%`).join(" · ");
+  byId("projection-lab-breakdown").textContent = `${weights || "Current validated fallback"} = ${preview.consensus.toFixed(1)}. QA-approved automatic correction ${signed(preview.automaticCorrectionDelta || 0)}. ${weekly}`;
+  byId("projection-lab-evidence").textContent = `The paired FBG/CBS consensus scored 44.65 MAE versus 45.34 for the better single source; a separate 1,153-row time-forward test also favored blending. Failed mean-reversion, durability, weather, analog, and schedule total-point corrections remain value-neutral.`;
 }
 
 function renderIntelProjectionSources(player) {
@@ -1766,7 +1779,7 @@ function renderPackStatus() {
     byId("pack-warning-title").textContent = illustrative ? "Illustrative values only." : "Current practice pack.";
     byId("pack-warning-copy").textContent = illustrative
       ? "The interface is live; the displayed player projections and prices are placeholders until the approved 2026 draft pack is imported."
-      : "Current Footballguys and CBS projections are loaded with FantasyPros as a dated, value-neutral second opinion. The 2026 schedule and divisions are loaded; values remain provisional until keeper, injury, source-refresh, and schedule-weighting gates pass.";
+      : "The accuracy-weighted Footballguys, CBS, and FantasyPros consensus now drives VBD. The 2026 division schedule is loaded and visible, but its small matchup modifier stays display-only until it passes the historical promotion gate. Values remain provisional until the final keeper, injury, and source refreshes pass.";
     }
   }
   const packChip = byId("pack-status");

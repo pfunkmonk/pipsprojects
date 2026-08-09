@@ -248,27 +248,39 @@ test("a declared primary projection source may change values only through the cl
   candidate.packId = "tb26-candidate-projection-lab-test";
   const sourceAsOf = afterCurrent();
   candidate.asOf = afterCurrent(2);
-  candidate.sources.push({
-    name: "Projection Lab",
-    asOf: sourceAsOf,
-    authority: "primary projection; Thunder Bowl computes value",
-    scoringFingerprint: candidate.sources[0].scoringFingerprint,
-  });
+  const primarySourceIndex = candidate.sources.findIndex((source) => source.authority === "primary projection; Thunder Bowl computes value");
+  const primarySourceName = candidate.sources[primarySourceIndex].name;
+  candidate.sources[primarySourceIndex] = { ...candidate.sources[primarySourceIndex], asOf: sourceAsOf };
   for (const position of Object.keys(candidate.leagueConfig.starterRequirements)) {
     const group = candidate.players.filter((player) => player.position === position)
       .sort((left, right) => right.projectedPoints - left.projectedPoints || left.id.localeCompare(right.id));
     const replacementRank = candidate.leagueConfig.teams.length * candidate.leagueConfig.starterRequirements[position];
     const baseline = group[Math.min(group.length, replacementRank) - 1].projectedPoints;
     for (const player of group) player.vbd = Number((player.projectedPoints - baseline).toFixed(1));
+    const marketCurve = current.players.filter((player) => player.position === position)
+      .map((player) => player.marketValue)
+      .sort((left, right) => right - left);
+    group.sort((left, right) => right.vbd - left.vbd || left.id.localeCompare(right.id));
+    group.forEach((player, index) => {
+      player.marketValue = marketCurve[index];
+      player.maxBid = marketCurve[index];
+    });
+  }
+  const values = new Map(candidate.players.map((player) => [player.id, player.marketValue]));
+  for (const keeper of candidate.keeperCandidates) {
+    keeper.marketValue = values.get(keeper.playerId);
+    keeper.surplus = keeper.keeperYear <= 3 ? keeper.marketValue - keeper.keeperSalary : 0;
   }
   for (const player of candidate.players) {
-    player.projectionSources = (player.projectionSources || []).map((source) => ({
+    player.projectionSources = (player.projectionSources || [])
+      .filter((source) => source.source !== primarySourceName)
+      .map((source) => ({
       ...source,
       role: source.role === "primary" ? "cross-check" : source.role,
       modelEffect: "none",
-    }));
+      }));
     player.projectionSources.push({
-      source: "Projection Lab",
+      source: primarySourceName,
       points: player.projectedPoints,
       asOf: sourceAsOf,
       role: "primary",
@@ -279,7 +291,8 @@ test("a declared primary projection source may change values only through the cl
 
   const accepted = auditDraftPack(candidate, current);
   assert.equal(accepted.approved, true);
-  assert.equal(accepted.candidate.primaryProjectionSource, "Projection Lab");
+  assert.equal(accepted.candidate.primaryProjectionSource, primarySourceName);
+  assert.equal(accepted.candidate.primaryProjectionUpdate, true);
   assert.ok(accepted.warnings.some((warning) => warning.includes("recomputed every strategy value")));
 
   const forged = clone(candidate);

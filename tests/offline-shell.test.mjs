@@ -80,7 +80,7 @@ test("selected-player scarcity and source confidence are dynamic display-only ev
   assert.match(serviceWorker, /decision-context\.mjs\?v=/);
 });
 
-test("the projection lab exposes an auditable challenger without changing live values", () => {
+test("the Thunder projection exposes its live consensus and rejected corrections", () => {
   for (const id of [
     "selected-projection-lab",
     "projection-lab-summary",
@@ -91,10 +91,12 @@ test("the projection lab exposes an auditable challenger without changing live v
     "projection-lab-breakdown",
     "projection-lab-evidence",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
-  assert.match(indexHtml, /CANDIDATE ONLY · NO VALUE EFFECT/);
+  assert.match(indexHtml, /id="projection-lab-authority"/);
+  assert.match(indexHtml, /Accuracy blend/);
   assert.match(appSource, /buildProjectionLabPreview\(player/);
-  assert.match(appSource, /no VBD, dollar, keeper, or bid effect/);
-  assert.match(serviceWorker, /projection-lab\.mjs\?v=20260809b/);
+  assert.match(appSource, /QA-approved automatic correction/);
+  assert.match(appSource, /Failed mean-reversion, durability, weather, analog, and schedule total-point corrections remain value-neutral/);
+  assert.match(serviceWorker, /projection-lab\.mjs\?v=20260809c/);
   assert.doesNotMatch(publicBoardSource, /projection-lab|Thunder candidate/i);
 });
 

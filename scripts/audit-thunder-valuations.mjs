@@ -265,12 +265,13 @@ const auditRows = pack.players.map((player) => {
   const latestFbg = player.position === "DST" ? fbgWeeklyDstByTeam.get(normalizedTeam(player.nflTeam)) : fbgWeeklyByKey.get(key);
   const model = modelByKey.get(key);
   const modeling = modelingByKey.get(key);
+  const fbgProjection = projectionSource(player, "Footballguys");
   const cbs = projectionSource(player, "CBS");
   const fantasyPros = projectionSource(player, "FantasyPros");
   const primary = player.projectedPoints;
   const primarySource = (player.projectionSources || []).find((row) => row.role === "primary")?.source || "Unknown";
   const latestFbgPoints = latestFbg?.total ?? null;
-  const currentSourceValues = [primary, cbs, fantasyPros].filter(Number.isFinite);
+  const currentSourceValues = [fbgProjection, cbs, fantasyPros].filter(Number.isFinite);
   const sourceMedian = median(currentSourceValues);
   const sourceValues = currentSourceValues;
   const sourceRange = sourceValues.length > 1 ? Math.max(...sourceValues) - Math.min(...sourceValues) : null;
@@ -313,7 +314,8 @@ const auditRows = pack.players.map((player) => {
     team: player.nflTeam,
     sourceRank: player.sourceRank,
     primarySource,
-    primaryFbgAug3: formatNumber(primary),
+    primaryProjection: formatNumber(primary),
+    fbg: formatNumber(fbgProjection),
     latestFbgAug8: formatNumber(latestFbgPoints),
     cbs: formatNumber(cbs),
     fantasyPros: formatNumber(fantasyPros),
@@ -345,7 +347,7 @@ const auditRows = pack.players.map((player) => {
 
 for (const pos of ["QB", "RB", "WR", "TE", "K", "DST"]) {
   const positionRows = auditRows.filter((row) => row.position === pos);
-  [...positionRows].sort((left, right) => right.market - left.market || Number(right.primaryFbgAug3) - Number(left.primaryFbgAug3) || left.name.localeCompare(right.name))
+  [...positionRows].sort((left, right) => right.market - left.market || Number(right.primaryProjection) - Number(left.primaryProjection) || left.name.localeCompare(right.name))
     .forEach((row, index) => { row.marketPositionRank = index + 1; });
   [...positionRows].filter((row) => row.fbgValue !== "")
     .sort((left, right) => Number(left.fbgGlobalRank) - Number(right.fbgGlobalRank))
@@ -378,17 +380,17 @@ const vbdFormulaMismatchRows = auditRows.filter((row) => row.flags.includes("VBD
 const legacyCurveRepairRows = auditRows.filter((row) => row.flags.includes("LEGACY_CURVE_IDENTITY_REPAIR"));
 const starterDisagreementRows = auditRows.filter((row) => row.flags.includes("STARTER_VBD_SOURCE_DISAGREEMENT"));
 const sourcePositionSummary = ["QB", "RB", "WR", "TE", "K", "DST"].map((pos) => {
-  const rows = auditRows.filter((row) => row.position === pos && row.primarySource === "Footballguys");
+  const rows = auditRows.filter((row) => row.position === pos && row.fbg !== "");
   const cbsRows = rows.filter((row) => row.cbs !== "");
   const fantasyProsRows = rows.filter((row) => row.fantasyPros !== "");
   return {
     position: pos,
     cbsN: cbsRows.length,
-    medianFbgMinusCbs: median(cbsRows.map((row) => Number(row.primaryFbgAug3) - Number(row.cbs))),
-    cbsSpearman: spearman(cbsRows, "primaryFbgAug3", "cbs"),
+    medianFbgMinusCbs: median(cbsRows.map((row) => Number(row.fbg) - Number(row.cbs))),
+    cbsSpearman: spearman(cbsRows, "fbg", "cbs"),
     fantasyProsN: fantasyProsRows.length,
-    medianFbgMinusFantasyPros: median(fantasyProsRows.map((row) => Number(row.primaryFbgAug3) - Number(row.fantasyPros))),
-    fantasyProsSpearman: spearman(fantasyProsRows, "primaryFbgAug3", "fantasyPros"),
+    medianFbgMinusFantasyPros: median(fantasyProsRows.map((row) => Number(row.fbg) - Number(row.fantasyPros))),
+    fantasyProsSpearman: spearman(fantasyProsRows, "fbg", "fantasyPros"),
   };
 });
 
@@ -414,12 +416,12 @@ const markdown = [
   "",
   "## Systemic findings",
   "",
-  "1. The live pack's primary projection is the August 3 Footballguys raw-category feed rescored for Thunder Bowl. The August 8 weekly export uses a different scoring setup and contains artificial negative reconciliation weeks; its season totals cannot replace the Thunder Bowl-scored primary.",
+  "1. The live pack's primary projection is the registered Thunder Bowl Consensus: a near-equal accuracy-weighted blend of the dated Footballguys, CBS, and FantasyPros rows available for each player. Missing sources renormalize rather than becoming zero.",
   "2. The supplied FBG auction PDF was generated from an incompatible Draft Dominator setup: 18 rounds, three starting WRs, non-PPR scoring, 4-point passing TDs, one-point sacks, and other scoring differences. Its ranks remain a directional opinion; its dollars are not Thunder Bowl dollars.",
   "3. The application market estimate uses validated historical roster counts and position spending. The bid ceiling remains the classic starter-VBD room curve because historical-depth VBD failed held-out decision utility.",
   "4. Runtime price curves are reassigned monotonically within each position by projected points. This repairs legacy identity anomalies (for example, a low-ranked player carrying a higher player's old dollar value) without inventing extra room dollars.",
   "5. MFL AAV aggregates mixed budget sizes. It is used as a within-position ranking signal, never compared dollar-for-dollar with Thunder Bowl's $100 cap.",
-  "6. The separate candidate projection model remains quarantined. Its own handoff documents incomplete pack coverage and unsupported K/DST/durability behavior.",
+  "6. The separate handoff model remains a comparison-only challenger. Mean reversion, durability, weather, analog, and schedule total-point corrections remain quarantined because they failed or lacked the production gate.",
   "",
   "## FBG Draft Dominator configuration mismatches",
   "",
@@ -443,15 +445,15 @@ const markdown = [
   "",
   "## Largest projection disagreements",
   "",
-  "| Player | Pos | Primary (Aug 3) | FBG weekly (Aug 8) | CBS | FantasyPros | Source range | Candidate | Flags |",
-  "|---|---:|---:|---:|---:|---:|---:|---:|---|",
-  ...topProjection.map((row) => `| ${row.name} | ${row.position} | ${row.primaryFbgAug3} (${row.primarySource}) | ${row.latestFbgAug8 || "-"} | ${row.cbs || "-"} | ${row.fantasyPros || "-"} | ${row.sourceRange || "-"} | ${row.candidateModel || "-"} | ${row.flags} |`),
+  "| Player | Pos | Thunder | FBG (Aug 3) | FBG weekly (Aug 8) | CBS | FantasyPros | Source range | Challenger | Flags |",
+  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+  ...topProjection.map((row) => `| ${row.name} | ${row.position} | ${row.primaryProjection} | ${row.fbg || "-"} | ${row.latestFbgAug8 || "-"} | ${row.cbs || "-"} | ${row.fantasyPros || "-"} | ${row.sourceRange || "-"} | ${row.candidateModel || "-"} | ${row.flags} |`),
   "",
   "## Replacement-line source disagreements",
   "",
   "These are the source differences most capable of changing VBD rather than merely shifting every player at a position by a similar number of points.",
   "",
-  "| Player | Pos | FBG VBD | CBS VBD | FantasyPros VBD | Market | Max | Flags |",
+  "| Player | Pos | Thunder VBD | CBS VBD | FantasyPros VBD | Market | Max | Flags |",
   "|---|---:|---:|---:|---:|---:|---:|---|",
   ...[...starterDisagreementRows]
     .sort((left, right) => Math.max(Math.abs(Number(right.cbsVbd || 0) - Number(right.vbd)), Math.abs(Number(right.fantasyProsVbd || 0) - Number(right.vbd))) - Math.max(Math.abs(Number(left.cbsVbd || 0) - Number(left.vbd)), Math.abs(Number(left.fantasyProsVbd || 0) - Number(left.vbd))))

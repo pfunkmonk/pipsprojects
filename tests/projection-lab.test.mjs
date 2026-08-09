@@ -17,18 +17,18 @@ function gibbs() {
   };
 }
 
-test("three-source consensus is transparent and has no live value authority", () => {
+test("three-source consensus uses the registered accuracy weights and exposes its authority", () => {
   const preview = buildProjectionLabPreview(gibbs(), { divisionWeeks: [1, 3, 11, 12], playoffWeeks: [15, 16, 17] });
   assert.equal(preview.status, "complete_three_source");
-  assert.equal(preview.consensus, 366.1);
-  assert.equal(preview.median, 372.2);
-  assert.equal(preview.modified, 330.7);
-  assert.equal(preview.meanReversionDelta, -35.4);
-  assert.deepEqual(preview.interval80, { low: 275.5, high: 413.3, method: "surrogate time-forward residual deciles" });
+  assert.equal(preview.consensus, 365.9);
+  assert.equal(preview.modified, 365.9);
+  assert.equal(preview.automaticCorrectionDelta, 0);
+  assert.deepEqual(preview.sourceRange, { low: 339.6, high: 386.5 });
+  assert.equal(Math.round(preview.sources.reduce((sum, source) => sum + source.weight, 0) * 1000), 1000);
   assert.equal(preview.weekly.seasonTotal, preview.modified);
   assert.equal(preview.weekly.effectOnSeasonTotal, 0);
-  assert.equal(preview.valueEffect, "none");
-  assert.equal(PROJECTION_LAB_MODEL.livePromotionEligible, false);
+  assert.equal(preview.valueEffect, "candidate_ready");
+  assert.equal(PROJECTION_LAB_MODEL.livePromotionEligible, true);
 });
 
 test("partial and missing source coverage fail soft without inventing projections", () => {
@@ -41,8 +41,8 @@ test("partial and missing source coverage fail soft without inventing projection
   const fallback = buildProjectionLabPreview(missing);
   assert.equal(fallback.status, "fallback_current_primary");
   assert.equal(fallback.modified, 339.6);
-  assert.equal(fallback.interval80, null);
-  assert.equal(fallback.valueEffect, "none");
+  assert.equal(fallback.sourceRange, null);
+  assert.equal(fallback.valueEffect, "fallback");
 });
 
 test("small projections preserve weekly totals without negative rounding artifacts", () => {

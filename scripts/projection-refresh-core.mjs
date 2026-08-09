@@ -1,8 +1,9 @@
 import { validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
+import { projectionSourceWeights, weightedProjectionConsensus } from "../public/thunder-bowl/projection-lab.mjs";
 
 export const PROJECTION_HANDOFF_KIND = "thunder-bowl-projection-handoff-v1";
 export const PROJECTION_HANDOFF_AUTHORITY = "candidate_only";
-export const PROJECTION_PRIMARY_SOURCE = "Thunder Projection Lab";
+export const PROJECTION_PRIMARY_SOURCE = "Thunder Bowl Consensus";
 export const PROJECTION_SCORING_FINGERPRINT = "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1";
 export const PREMIUM_PROJECTION_SOURCES = ["Footballguys", "CBS", "FantasyPros"];
 export const WEEK_COLUMNS = Array.from({ length: 18 }, (_, index) => `wk${index + 1}`);
@@ -108,7 +109,11 @@ export function createProjectionHandoffTemplateRows(packInput, {
   const pack = validateDraftPack(packInput);
   return pack.players.map((player) => {
     const values = PREMIUM_PROJECTION_SOURCES.map((source) => sourcePoint(player, source)).filter((value) => value !== "");
-    const consensus = values.length ? round1(values.reduce((sum, value) => sum + Number(value), 0) / values.length) : player.projectedPoints;
+    const consensus = values.length ? round1(weightedProjectionConsensus({
+      Footballguys: sourcePoint(player, "Footballguys"),
+      CBS: sourcePoint(player, "CBS"),
+      FantasyPros: sourcePoint(player, "FantasyPros"),
+    })) : player.projectedPoints;
     const ids = sourceIdsByPlayerId[player.id] || {};
     return {
       pack_player_id: player.id,
@@ -192,8 +197,9 @@ export function validateProjectionHandoffRows(rows, packInput) {
     };
     const supplied = Object.values(sourcePoints).filter((value) => value !== null);
     const consensus = finite(row.raw_consensus_points, `${player.name} consensus points`);
-    if (supplied.length && Math.abs(consensus - supplied.reduce((sum, value) => sum + value, 0) / supplied.length) > 0.11) {
-      fail("PROJECTION_CONSENSUS_MISMATCH", `${player.name}'s raw consensus is not the equal average of the supplied premium sources.`);
+    const expectedConsensus = weightedProjectionConsensus(sourcePoints);
+    if (supplied.length && Math.abs(consensus - expectedConsensus) > 0.11) {
+      fail("PROJECTION_CONSENSUS_MISMATCH", `${player.name}'s raw consensus does not match the registered accuracy-weighted source model.`);
     }
     const adjustments = {
       meanReversion: finite(row.mean_reversion_delta, `${player.name} mean-reversion delta`, { minimum: -300, maximum: 300 }),
@@ -280,7 +286,7 @@ function recomputeClassicValues(candidate, current) {
       .sort((left, right) => right - left)
       .slice(0, positiveCandidateCount);
     const group = candidate.players.filter((player) => player.position === position)
-      .sort((left, right) => Math.max(0, right.vbd) - Math.max(0, left.vbd) || left.id.localeCompare(right.id));
+      .sort((left, right) => right.vbd - left.vbd || left.id.localeCompare(right.id));
     group.slice(0, curve.length).forEach((player, index) => marketById.set(player.id, curve[index]));
   }
   for (const player of candidate.players) {
@@ -297,33 +303,48 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
   const current = validateDraftPack(currentInput);
   const rows = validateProjectionHandoffRows(handoffRows, current);
   const first = rows[0];
-  if (current.sources.some((source) => source.name === PROJECTION_PRIMARY_SOURCE)) fail("PROJECTION_SOURCE_EXISTS", "The active pack already contains a Thunder Projection Lab primary source.");
   const candidate = structuredClone(current);
   const rowsById = new Map(rows.map((row) => [row.playerId, row]));
-  candidate.packId = `tb26-${first.modelId.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "")}-${first.exportedAt.slice(0, 10).replaceAll("-", "")}`.slice(0, 100);
+  const releaseStamp = first.exportedAt.replace(/\D/g, "").slice(0, 14);
+  candidate.packId = `tb26-${first.modelId.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "")}-${releaseStamp}`.slice(0, 100);
   candidate.asOf = first.exportedAt;
-  candidate.sources.push({
+  const primarySource = {
     name: PROJECTION_PRIMARY_SOURCE,
     asOf: first.sourceAsOf,
     authority: "primary projection; Thunder Bowl computes value",
     scoringFingerprint: current.sources[0].scoringFingerprint,
-  });
+  };
+  const existingPrimarySourceIndex = candidate.sources.findIndex((source) => source.name === PROJECTION_PRIMARY_SOURCE);
+  if (existingPrimarySourceIndex >= 0) candidate.sources[existingPrimarySourceIndex] = primarySource;
+  else candidate.sources.push(primarySource);
   for (const player of candidate.players) {
     const row = rowsById.get(player.id);
     player.projectedPoints = row.modifiedPoints;
-    player.projectionSources = (player.projectionSources || []).map((source) => ({
+    const premiumRows = (player.projectionSources || []).filter((source) => PREMIUM_PROJECTION_SOURCES.includes(source.source));
+    const premiumWeights = projectionSourceWeights(premiumRows.map((source) => source.source));
+    player.projectionSources = (player.projectionSources || [])
+      .filter((source) => source.source !== PROJECTION_PRIMARY_SOURCE)
+      .map((source) => ({
       ...source,
       role: source.role === "primary" ? "cross-check" : source.role,
       modelEffect: "none",
-    }));
+      note: premiumWeights[source.source]
+        ? `Included in Thunder Bowl consensus at ${(premiumWeights[source.source] * 100).toFixed(1)}% of available-source weight`
+        : source.note,
+      }));
     player.projectionSources.push({
       source: PROJECTION_PRIMARY_SOURCE,
       points: row.modifiedPoints,
       asOf: first.sourceAsOf,
       role: "primary",
       modelEffect: "primary_projection",
-      note: `Immutable ${first.modelId}; equal premium consensus plus audited adjustments`,
+      note: `Immutable ${first.modelId}; accuracy-weighted premium consensus plus production-gated adjustments`,
     });
+    const sourceSummary = premiumRows
+      .map((source) => `${source.source} ${Number(source.points).toFixed(1)}`)
+      .join("; ");
+    const priorSupplementalNote = String(player.notes || "").match(/Sleeper status is a supplemental fresh flag only; no projection or dollar adjustment applied\.?/i)?.[0] || "";
+    player.notes = `${sourceSummary}. Thunder Bowl consensus ${row.modifiedPoints.toFixed(1)} drives VBD; QA-approved automatic correction +0.0.${priorSupplementalNote ? ` ${priorSupplementalNote}` : ""}`;
     if (row.weeklyPoints) {
       const byeWeek = row.weeklyPoints.findIndex((value) => value === null) + 1;
       player.weeklyProjection = {

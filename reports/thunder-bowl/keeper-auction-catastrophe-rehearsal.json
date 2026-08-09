@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-09T17:02:14.882Z",
+  "generatedAt": "2026-08-09T22:44:19.760Z",
   "scope": "Deterministic full-system keeper, cap-trade, auction, offline divergence, reconnect, recovery, public-boundary, and latency gate; not a substitute for the final human-paced usability rehearsal.",
   "passed": true,
   "pins": {
-    "packSha256": "6e4d8ee374c3d6aa543c18c71dbc52356814f508803be930a68ab066512c188b",
+    "packSha256": "74991dc647e6c05e303e249892eed23222d8a2c101499ac0d55d124a14fa944b",
     "engineSha256": "33b043d547bc2aec27eb6fb66744d84a2e9fe2e4a0eaee1de69ee3a3f68b5a14",
     "scriptSha256": "8c2febaed78156b3284f495e619ca824b22921e1d81bf8c4d512e4cfec479a54"
   },
   "pack": {
-    "id": "tb26-provisional-20260809-v12",
+    "id": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -37,34 +37,34 @@
       "teamId": "el-guapo",
       "rejectedAmount": 61
     },
-    "sha256": "60f41788691a07ff9506570c45fe6e54666f0f705e692615d0757b41398a2d53"
+    "sha256": "fab85222bed1ff351a921a81a7fa04df489aa4517cf99c5044700145ba6f5b20"
   },
   "outage": {
     "disconnectAtActiveSales": 72,
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.2103,
+    "reconnectMs": 1.2434,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 15.228,
+    "durationMs": 22.2427,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.1998,
-      "p95Ms": 0.3739,
-      "maximumMs": 0.5348
+      "medianMs": 0.2404,
+      "p95Ms": 0.465,
+      "maximumMs": 0.8613
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1118,
-      "p95Ms": 0.2398,
-      "maximumMs": 0.2398
+      "medianMs": 0.1504,
+      "p95Ms": 0.4164,
+      "maximumMs": 0.4164
     }
   },
   "finalState": {

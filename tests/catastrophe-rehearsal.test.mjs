@@ -14,12 +14,13 @@ const [report, packBytes, engineBytes, scriptBytes] = await Promise.all([
   readFile(scriptUrl),
 ]);
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const activePack = JSON.parse(packBytes.toString("utf8"));
 
 test("catastrophe rehearsal is pinned to the current pack, engine, and runner", () => {
   assert.equal(report.pins.packSha256, sha256(packBytes));
   assert.equal(report.pins.engineSha256, sha256(engineBytes));
   assert.equal(report.pins.scriptSha256, sha256(scriptBytes));
-  assert.equal(report.pack.id, "tb26-provisional-20260809-v12");
+  assert.equal(report.pack.id, activePack.packId);
   assert.equal(report.pack.players, 716);
   assert.equal(report.pack.keeperCandidates, 177);
 });

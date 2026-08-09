@@ -69,7 +69,7 @@ The player-value foundation remains at least as important as price prediction. E
 The target pipeline is source evidence → Thunder projection → VBD → intrinsic dollars → historically calibrated auction market → live-room bid guidance. Source projections never write VBD or dollars directly.
 
 1. Rescore every source to the exact Thunder Bowl scoring fingerprint before comparison.
-2. Average the available Footballguys, CBS, and FantasyPros point projections as the transparent raw consensus. Missing sources reduce confidence; they are not silently replaced with zero.
+2. Blend the available Footballguys, CBS, and FantasyPros point projections with registered inverse-MAE reliability weights. Missing sources reduce confidence and renormalize the remaining weights; they are never silently replaced with zero.
 3. Apply only adjustments that reconcile by named component: mean reversion, within-position correction, season context, durability, and current availability.
 4. Use weekly matchup, venue, travel, weather climatology, short-turnaround, division, and playoff evidence to shape weekly value. It may not manufacture extra season points unless an isolated time-forward season-total test earns that authority.
 5. Emit an honest uncertainty interval and explicit fallback reason for every player.
@@ -77,7 +77,9 @@ The target pipeline is source evidence → Thunder projection → VBD → intrin
 
 The August 9 surrogate test scored 1,153 player-seasons in strict time-forward folds. Equal weighting beat the single-source reference (41.041 versus 41.748 MAE), and equal consensus plus a lean position-specific mean-reversion calibration improved MAE to 39.456 with no position regression. Inverse-error source weighting, within-position shrinkage, season-total context, a second durability haircut, and the full feature pile did not beat that challenger and remain rejected for automatic use.
 
-This result validates the architecture, not a live premium-source replacement: the archived history contains Sleeper/ESPN forecasts rather than the exact dated Footballguys/CBS/FantasyPros trio. The draft room therefore shows the Thunder result only in a collapsed, private **candidate only / no value effect** disclosure until exact-source evidence earns promotion.
+The separate clean 2023 paired audit adds 412 like-for-like FBG/CBS player outcomes. Its two-source consensus scored 44.653 MAE versus 45.338 for the better single source. The confidence interval on the small FBG/CBS accuracy difference crossed zero, so the production source tilt is deliberately tiny rather than falsely precise: FBG 33.7%, FantasyPros 33.3%, and CBS 33.0% when all three are present. FantasyPros receives a neutral midpoint reliability prior until a comparable historical point archive exists.
+
+The released **Thunder Bowl Consensus** is therefore the accuracy-weighted source blend only. It drives projected points and the downstream VBD engine. Mean reversion, durability, weather, analog, and schedule total-point corrections remain at exactly zero because they did not clear their promotion gates. The draft room discloses the live weights, source range, fallback coverage, and zero QA correction for the selected player.
 
 ### League schedule configuration and weekly-context gate
 
@@ -92,10 +94,10 @@ On August 9, the weekly engine was tested on 31,486 player-weeks in strict time-
 - exactly one row for every one of the 716 active pack players;
 - exact pack ID plus available FBG, CBS, FantasyPros, and GSIS source IDs;
 - immutable model ID, timezone-bearing source/export timestamps, scoring fingerprint, and `candidate_only` authority;
-- all three raw source values, their equal consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
+- all three raw source values, their registered accuracy-weighted consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
 - exactly one blank bye week when weekly values are supplied, with weekly values reconciling to the season total;
 - fail-closed rejection of missing/duplicate players, identity drift, stale or malformed metadata, forged consensus values, unreconciled adjustments, or malformed weeks;
-- candidate pack and audit output only. The active pack remains unchanged until the independent projection promotion gate passes.
+- candidate pack and audit output first; an explicit, separately audited promotion action is required before the active pack changes.
 
 Beginning with the 2026 snapshot, every dated premium-source input, modified projection, model ID, and later result will be retained so future tests no longer depend on surrogate sources.
 
