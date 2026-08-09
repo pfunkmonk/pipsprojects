@@ -388,6 +388,13 @@ test("keeper strategy exposes ranked trade-for and trade-away proposals without 
   assert.match(appSource, /addKeeperTradeFact\(facts, "Contract", `\$\{opportunity\.contractYearLabel\} · \$\{opportunity\.contractYearsLeft\} left`\)/);
   assert.match(appCss, /\.keeper-market-facts \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(appSource, /loadKeeperTradeProposal/);
+  assert.match(appSource, /function ownerKeeperStatusRationale\(opportunity\)/);
+  assert.match(appSource, /has already declared both keepers/);
+  assert.match(appSource, /has declared one keeper/);
+  assert.match(appSource, /has not declared any keepers/);
+  assert.match(appSource, /ownerDeclaredKeeperNames\.join\(" and "\)/);
+  assert.doesNotMatch(appSource, /This is currently in the owner’s top two/);
+  assert.doesNotMatch(appSource, /The owner currently has at least two stronger keeper values/);
   assert.match(appSource, /Review it, negotiate, and record the atomic rights trade only after both teams agree/);
   assert.doesNotMatch(appSource, /loadKeeperTradeProposal[\s\S]{0,1200}commitLocalEvents/);
   assert.match(appSource, /KEEPER_TRADE_RESULT_LIMIT = 20/);

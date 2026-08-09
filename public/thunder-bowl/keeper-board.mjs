@@ -63,6 +63,18 @@ function declaredKeeperSet(pack, declaredKeeperIds) {
   return declared;
 }
 
+function teamKeeperContext(pack, teamId, declaredKeeperIds) {
+  const candidates = pack.keeperCandidates.filter((candidate) => candidate.teamId === teamId);
+  const declaredCandidates = candidates.filter((candidate) => declaredKeeperIds.has(candidate.playerId));
+  const portfolio = selectedPortfolio(candidates, declaredKeeperIds);
+  return {
+    declaredCount: declaredCandidates.length,
+    declaredNames: declaredCandidates.map((candidate) => candidate.playerName),
+    openSlots: Math.max(0, MAX_KEEPERS - declaredCandidates.length),
+    portfolioIds: new Set(portfolio.map((candidate) => candidate.playerId)),
+  };
+}
+
 export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER, declaredKeeperIds = [] } = {}) {
   if (!pack || !Array.isArray(pack.keeperCandidates) || !Array.isArray(pack.leagueConfig?.teams)) {
     throw new Error("Keeper board requires the validated draft pack.");
@@ -212,6 +224,10 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
     teamName: candidateTeam.name,
     count: pack.keeperCandidates.filter((candidate) => candidate.teamId === candidateTeam.id).length,
   }));
+  const keeperContextByTeam = new Map(pack.leagueConfig.teams.map((candidateTeam) => [
+    candidateTeam.id,
+    teamKeeperContext(pack, candidateTeam.id, declaredKeepers),
+  ]));
 
   const acquire = [];
   for (const row of board.filter((candidate) => candidate.currentTeamId !== teamId && candidate.eligible && candidate.surplus > 0 && !candidate.declaredKeeper)) {
@@ -222,6 +238,7 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
     const afterIds = new Set(afterPortfolio.map((item) => item.playerId));
     const displaced = currentPortfolio.find((item) => !afterIds.has(item.playerId)) || null;
     const incrementalSurplus = portfolioValue([...teamCandidates, candidate], declaredKeepers) - currentPortfolioValue;
+    const ownerKeeperContext = keeperContextByTeam.get(row.currentTeamId);
     const openingScenario = keeperTradeScenario({
       ...opportunityBase(row),
       kind: "acquire",
@@ -235,6 +252,11 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
       ownerTeamId: row.currentTeamId,
       ownerTeamName: row.currentTeamName,
       ownerKeeperRank: row.portfolioRank,
+      ownerDeclaredKeeperCount: ownerKeeperContext.declaredCount,
+      ownerDeclaredKeeperNames: [...ownerKeeperContext.declaredNames],
+      ownerOpenKeeperSlots: ownerKeeperContext.openSlots,
+      ownerPortfolioIncludesPlayer: ownerKeeperContext.portfolioIds.has(row.playerId),
+      sellerPortfolioLoss: row.sellerPortfolioLoss,
       offerFloor: row.sellerFloor,
       offerCeiling: buyerOffer.ceiling,
       incrementalSurplus,
@@ -252,6 +274,7 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
     .filter((row) => row.currentTeamId === teamId && row.eligible && row.surplus > 0 && row.negotiable && !row.declaredKeeper)
     .map((row) => {
       const bestOffer = row.buyerOffers.find((offer) => offer.ceiling === row.bestBuyerCeiling);
+      const ownerKeeperContext = keeperContextByTeam.get(teamId);
       const highScenario = keeperTradeScenario({
         ...opportunityBase(row),
         kind: "trade-away",
@@ -262,6 +285,12 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
       return {
         ...opportunityBase(row),
         kind: "trade-away",
+        ownerTeamId: teamId,
+        ownerTeamName: team.name,
+        ownerDeclaredKeeperCount: ownerKeeperContext.declaredCount,
+        ownerDeclaredKeeperNames: [...ownerKeeperContext.declaredNames],
+        ownerOpenKeeperSlots: ownerKeeperContext.openSlots,
+        ownerPortfolioIncludesPlayer: ownerKeeperContext.portfolioIds.has(row.playerId),
         portfolioRank: row.portfolioRank,
         offerFloor: row.sellerFloor,
         offerCeiling: row.bestBuyerCeiling,

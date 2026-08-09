@@ -60,7 +60,7 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808j";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808g";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
@@ -1855,6 +1855,30 @@ function addKeeperTradeFact(container, label, value) {
   container.append(fact);
 }
 
+function ownerKeeperStatusMeta(opportunity) {
+  return opportunity.ownerDeclaredKeeperCount > 0
+    ? `${opportunity.ownerDeclaredKeeperCount}/2 keepers declared`
+    : `owner option #${opportunity.ownerKeeperRank ?? opportunity.portfolioRank}`;
+}
+
+function ownerKeeperStatusRationale(opportunity) {
+  const owner = opportunity.ownerTeamName;
+  const declaredNames = opportunity.ownerDeclaredKeeperNames.length
+    ? ` (${opportunity.ownerDeclaredKeeperNames.join(" and ")})`
+    : "";
+  if (opportunity.ownerDeclaredKeeperCount >= 2) {
+    return `${owner} has already declared both keepers${declaredNames}. ${opportunity.playerName} is outside those locked slots, so trading the right does not displace keeper value.`;
+  }
+  if (opportunity.ownerDeclaredKeeperCount === 1) {
+    return opportunity.ownerPortfolioIncludesPlayer
+      ? `${owner} has declared one keeper${declaredNames}. The model currently places ${opportunity.playerName} in the remaining open slot, so a trade displaces ${currency(opportunity.sellerPortfolioLoss)} of keeper value.`
+      : `${owner} has declared one keeper${declaredNames}, but the model has a stronger option for the remaining open slot. ${opportunity.playerName} does not displace keeper value.`;
+  }
+  return opportunity.ownerPortfolioIncludesPlayer
+    ? `${owner} has not declared any keepers. The model currently places ${opportunity.playerName} in its best two available options, so a trade displaces ${currency(opportunity.sellerPortfolioLoss)} of keeper value.`
+    : `${owner} has not declared any keepers and the model has at least two stronger available options. ${opportunity.playerName} does not displace keeper value.`;
+}
+
 function loadKeeperTradeProposal(opportunity, amount, optimizerTeamId) {
   const acquiring = opportunity.kind === "acquire";
   capFromTeam.value = acquiring ? optimizerTeamId : opportunity.bestBuyerTeamId;
@@ -1877,8 +1901,8 @@ function keeperTradeOpportunityCard(opportunity, market) {
   name.textContent = opportunity.playerName;
   const meta = document.createElement("p");
   meta.textContent = opportunity.kind === "acquire"
-    ? `${opportunity.position} · ${opportunity.ownerTeamName} · owner option #${opportunity.ownerKeeperRank}`
-    : `${opportunity.position} · ${market.teamName} option #${opportunity.portfolioRank} · best fit ${opportunity.bestBuyerTeamName}`;
+    ? `${opportunity.position} · ${opportunity.ownerTeamName} · ${ownerKeeperStatusMeta(opportunity)}`
+    : `${opportunity.position} · ${market.teamName} · ${ownerKeeperStatusMeta(opportunity)} · best fit ${opportunity.bestBuyerTeamName}`;
   identity.append(name, meta);
   const edge = document.createElement("span");
   edge.className = "keeper-market-edge";
@@ -1900,10 +1924,10 @@ function keeperTradeOpportunityCard(opportunity, market) {
     const replacement = opportunity.displacedPlayer
       ? `It would replace ${opportunity.displacedPlayer.playerName} (${opportunity.displacedPlayer.surplus >= 0 ? "+" : ""}${currency(opportunity.displacedPlayer.surplus)}).`
       : "It fills an open positive-value keeper slot.";
-    rationale.textContent = `${opportunity.ownerKeeperRank > 2 ? "The owner currently has at least two stronger keeper values. " : "This is currently in the owner’s top two, so the price includes their lost keeper value. "}${replacement}`;
+    rationale.textContent = `${ownerKeeperStatusRationale(opportunity)} ${replacement}`;
   } else {
     const buyerFits = opportunity.buyerFits.map((buyer) => `${buyer.teamName} up to ${currency(buyer.ceiling)}`).join(" · ");
-    rationale.textContent = `${opportunity.protectedKeeper ? `Trading him costs ${currency(opportunity.sellerPortfolioLoss)} from ${market.teamName}’s current top two. ` : `Trading him does not reduce ${market.teamName}’s current top-two keeper surplus. `}Modeled fits: ${buyerFits}.`;
+    rationale.textContent = `${ownerKeeperStatusRationale(opportunity)} Modeled fits: ${buyerFits}.`;
   }
 
   const calculator = document.createElement("div");

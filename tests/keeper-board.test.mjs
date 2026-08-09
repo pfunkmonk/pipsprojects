@@ -227,3 +227,41 @@ test("declared keepers are locked out of every trade direction and anchor the tw
   assert.equal(buyerMarket.acquire.some((row) => row.playerId === "target"), false);
   assert.equal(sellerMarket.tradeAway.some((row) => row.playerId === "target"), false);
 });
+
+test("an owner with two declared keepers gives remaining rights a dynamic zero-loss seller floor", () => {
+  const synthetic = {
+    schemaVersion: 1,
+    packId: "full-owner-keeper-status-test",
+    asOf: "2026-08-08T12:00:00.000Z",
+    leagueConfig: {
+      teams: [
+        { id: "orange-crush", name: "Orange Crush" },
+        { id: "buyer", name: "Buyer" },
+      ],
+    },
+    keeperCandidates: [
+      candidate("declared-one", "Declared One", "orange-crush", 1),
+      candidate("declared-two", "Declared Two", "orange-crush", 2),
+      candidate("target", "Jaxon Smith-Njigba", "orange-crush", 10),
+      candidate("alternative", "Tyler Warren", "orange-crush", 9),
+      candidate("buyer-one", "Buyer One", "buyer", 0),
+      candidate("buyer-two", "Buyer Two", "buyer", 0),
+      candidate("buyer-three", "Buyer Three", "buyer", 0),
+    ],
+  };
+
+  const openOpportunity = buildKeeperTradeMarket(synthetic, { teamId: "buyer" }).acquire.find((row) => row.playerId === "target");
+  assert.equal(openOpportunity.sellerPortfolioLoss, 8);
+  assert.equal(openOpportunity.offerFloor, 8);
+
+  const lockedOpportunity = buildKeeperTradeMarket(synthetic, {
+    teamId: "buyer",
+    declaredKeeperIds: ["declared-one", "declared-two"],
+  }).acquire.find((row) => row.playerId === "target");
+  assert.equal(lockedOpportunity.ownerDeclaredKeeperCount, 2);
+  assert.deepEqual(lockedOpportunity.ownerDeclaredKeeperNames, ["Declared One", "Declared Two"]);
+  assert.equal(lockedOpportunity.ownerOpenKeeperSlots, 0);
+  assert.equal(lockedOpportunity.ownerPortfolioIncludesPlayer, false);
+  assert.equal(lockedOpportunity.sellerPortfolioLoss, 0);
+  assert.equal(lockedOpportunity.offerFloor, 1);
+});
