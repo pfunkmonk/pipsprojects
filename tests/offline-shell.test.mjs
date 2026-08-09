@@ -54,12 +54,15 @@ test("the private draft room can safely switch between auctioneer feed and manua
   }
   assert.match(indexHtml, /Auctioneer feed/);
   assert.match(indexHtml, /Manual backup/);
+  assert.match(indexHtml, /<div class="app-navigation">[\s\S]*<nav class="app-tabs"[\s\S]*<section id="sales-entry-control"/);
+  assert.doesNotMatch(indexHtml, /<form id="sale-form"[^>]*>[\s\S]{0,200}id="sales-entry-control"/);
   assert.match(appSource, /normalizeSalesEntryMode\(await getMeta\("salesEntryMode"/);
   assert.match(appSource, /setMeta\("salesEntryMode", salesEntryMode\)/);
   assert.match(appSource, /salesEntryMode !== SALES_ENTRY_MODES\.MANUAL/);
   assert.match(appSource, /Pulling the latest confirmed auctioneer sale before manual takeover/);
   assert.match(appSource, /currentSalesEntryPolicy\(\)\.pollIntervalMs/);
   assert.match(appCss, /\.sale-bar\.is-auctioneer-mode \.manual-sale-control \{ display: none; \}/);
+  assert.match(appCss, /\.sale-bar\.is-auctioneer-mode \{ display: none; \}/);
   assert.match(serviceWorker, /sales-entry-mode\.mjs\?v=/);
 });
 

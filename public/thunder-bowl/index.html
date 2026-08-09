@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260808j" />
+  <link rel="stylesheet" href="./app.css?v=20260808k" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -64,11 +64,23 @@
       </div>
     </header>
 
-    <nav class="app-tabs" aria-label="Thunder Bowl pages" role="tablist">
-      <button class="app-tab is-active" id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="view-draft" data-view="draft" tabindex="0">Draft room</button>
-      <button class="app-tab" id="tab-keepers" type="button" role="tab" aria-selected="false" aria-controls="view-keepers" data-view="keepers" tabindex="-1">Keeper strategy</button>
-      <button class="app-tab" id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="view-settings" data-view="settings" tabindex="-1">Admin &amp; data</button>
-    </nav>
+    <div class="app-navigation">
+      <nav class="app-tabs" aria-label="Thunder Bowl pages" role="tablist">
+        <button class="app-tab is-active" id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="view-draft" data-view="draft" tabindex="0">Draft room</button>
+        <button class="app-tab" id="tab-keepers" type="button" role="tab" aria-selected="false" aria-controls="view-keepers" data-view="keepers" tabindex="-1">Keeper strategy</button>
+        <button class="app-tab" id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="view-settings" data-view="settings" tabindex="-1">Admin &amp; data</button>
+      </nav>
+      <section id="sales-entry-control" class="sales-entry-control" aria-label="Winning sale entry source">
+        <div class="sales-entry-copy">
+          <span id="sales-entry-health" class="sales-entry-health" aria-hidden="true"></span>
+          <div><strong id="sales-entry-title">Auctioneer is entering sales</strong><small id="sales-entry-detail">Live sales will appear automatically.</small></div>
+        </div>
+        <div class="sales-entry-switch" role="group" aria-label="Choose who records winning sales">
+          <button id="sales-mode-auctioneer" class="button button-primary" type="button" aria-pressed="true">Auctioneer feed</button>
+          <button id="sales-mode-manual" class="button button-secondary" type="button" aria-pressed="false">Manual backup</button>
+        </div>
+      </section>
+    </div>
 
     <div id="sample-warning" class="evidence-banner" role="status">
       <strong id="pack-warning-title">Loading data status.</strong>
@@ -235,16 +247,6 @@
           </section>
 
           <form id="sale-form" class="sale-bar" aria-label="Record winning auction bid">
-            <div id="sales-entry-control" class="sales-entry-control">
-              <div class="sales-entry-copy">
-                <span id="sales-entry-health" class="sales-entry-health" aria-hidden="true"></span>
-                <div><strong id="sales-entry-title">Auctioneer is entering sales</strong><small id="sales-entry-detail">Live sales will appear automatically.</small></div>
-              </div>
-              <div class="sales-entry-switch" role="group" aria-label="Choose who records winning sales">
-                <button id="sales-mode-auctioneer" class="button button-primary" type="button" aria-pressed="true">Auctioneer feed</button>
-                <button id="sales-mode-manual" class="button button-secondary" type="button" aria-pressed="false">Manual backup</button>
-              </div>
-            </div>
             <label class="sale-player-field manual-sale-control" for="sale-player">
               <span>Winning player</span>
               <input id="sale-player" type="text" readonly placeholder="Select a player" />

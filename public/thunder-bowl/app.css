@@ -168,12 +168,17 @@ input[readonly] { color: var(--muted); }
 .status-good { color: var(--good); }
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
-.app-tabs {
+.app-navigation {
   display: flex;
-  gap: 0.2rem;
-  padding: 0 1.25rem;
+  align-items: stretch;
   border-bottom: 1px solid var(--line);
   background: var(--navy-850);
+}
+.app-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+  padding: 0 0 0 1.25rem;
 }
 .app-tab {
   border: 0;
@@ -350,7 +355,8 @@ input[readonly] { color: var(--muted); }
   background: var(--navy-800);
   box-shadow: var(--shadow);
 }
-.sales-entry-control { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; border-bottom: 1px solid var(--line); padding-bottom: 0.65rem; }
+.sales-entry-control { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; }
+.app-navigation .sales-entry-control { flex: 1 1 auto; min-width: 0; justify-content: flex-end; margin-left: auto; border-left: 1px solid var(--line); padding: 0.38rem clamp(1rem, 2vw, 2rem) 0.38rem 0.8rem; }
 .sales-entry-copy { display: flex; align-items: center; gap: 0.65rem; min-width: 0; }
 .sales-entry-copy strong, .sales-entry-copy small { display: block; }
 .sales-entry-copy strong { color: var(--text); font-size: 0.95rem; }
@@ -358,9 +364,8 @@ input[readonly] { color: var(--muted); }
 .sales-entry-health { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 50%; background: var(--good); box-shadow: 0 0 12px rgba(111, 221, 167, 0.8); }
 .sales-entry-health.is-warning { background: var(--danger); box-shadow: 0 0 12px rgba(255, 135, 127, 0.7); }
 .sales-entry-switch { display: flex; flex: 0 0 auto; gap: 0.45rem; }
-.sales-entry-switch .button { min-height: 44px; padding: 0.55rem 0.8rem; white-space: nowrap; }
-.sale-bar.is-auctioneer-mode { grid-template-columns: 1fr; }
-.sale-bar.is-auctioneer-mode .sales-entry-control { border-bottom: 0; padding-bottom: 0; }
+.sales-entry-switch .button { min-height: 40px; padding: 0.48rem 0.72rem; white-space: nowrap; }
+.sale-bar.is-auctioneer-mode { display: none; }
 .sale-bar.is-auctioneer-mode .manual-sale-control { display: none; }
 .sale-status { grid-column: 1 / -1; min-height: 1.2em; margin: 0; color: var(--good); font-size: 0.82rem; }
 .sale-status.is-error { color: var(--danger); }
@@ -433,6 +438,9 @@ input[readonly] { color: var(--muted); }
   .topbar .button { min-height: 40px; padding: 0.42rem 0.68rem; }
   .topbar .status-row { display: none; }
   .app-tab { padding-block: 0.55rem 0.45rem; }
+  .app-navigation .sales-entry-control { padding-block: 0.25rem; }
+  .sales-entry-copy small { display: none; }
+  .sales-entry-switch .button { min-height: 36px; padding-block: 0.35rem; }
   .evidence-banner { padding-block: 0.42rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .evidence-banner span { display: none; }
   .page-view { padding-top: 0.55rem; }
@@ -810,6 +818,9 @@ input[readonly] { color: var(--muted); }
   .topbar { grid-template-columns: 1fr auto; }
   .status-row { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
   .top-actions { grid-column: 2; grid-row: 1; }
+  .app-navigation { flex-wrap: wrap; }
+  .app-tabs { flex: 1 1 auto; }
+  .app-navigation .sales-entry-control { flex: 1 1 100%; border-top: 1px solid var(--line); border-left: 0; padding-left: 1rem; }
   .sale-bar { grid-template-columns: 1fr 120px 1fr; }
   .sale-bar .button { width: 100%; }
   .practice-console { grid-template-columns: 1fr 1fr; }
@@ -835,7 +846,7 @@ input[readonly] { color: var(--muted); }
   .pressure-panel section { border-right: 0; border-bottom: 1px solid var(--line); }
   .sale-bar { grid-column: auto; grid-template-columns: 1fr 100px; }
   .sale-player-field, .sale-bar label:nth-of-type(3), .sale-status { grid-column: 1 / -1; }
-  .sales-entry-control { align-items: stretch; flex-direction: column; }
+  .app-navigation .sales-entry-control { align-items: stretch; flex-direction: column; }
   .sales-entry-switch .button { flex: 1; }
   .practice-actions { grid-template-columns: 1fr 1fr; }
   .section-intro { display: block; }
