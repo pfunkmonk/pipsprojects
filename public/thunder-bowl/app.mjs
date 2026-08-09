@@ -75,6 +75,7 @@ import {
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
+import { buildProjectionLabPreview } from "./projection-lab.mjs?v=20260809b";
 import {
   HUMAN_REHEARSAL_ITEMS,
   createHumanRehearsalEvidence,
@@ -730,6 +731,36 @@ function renderProjectionSources(player) {
     item.append(heading, points, detail);
     container.append(item);
   }
+}
+
+function renderProjectionLab(player) {
+  const disclosure = byId("selected-projection-lab");
+  if (!player) {
+    disclosure.hidden = true;
+    return;
+  }
+  const preview = buildProjectionLabPreview(player, {
+    divisionWeeks: draftPack.weeklyContext?.divisionWeeks || [],
+    playoffWeeks: draftPack.weeklyContext?.playoffWeeks || [15, 16, 17],
+  });
+  disclosure.hidden = false;
+  const summaryStatus = preview.status === "complete_three_source"
+    ? `${preview.sourceCoverage}/3 sources`
+    : preview.status === "partial_consensus"
+      ? `${preview.sourceCoverage}/3 sources · partial`
+      : "fallback";
+  byId("projection-lab-summary").textContent = `${preview.modified.toFixed(1)} candidate · ${preview.consensus.toFixed(1)} consensus · ${summaryStatus}`;
+  byId("projection-lab-primary").textContent = `${preview.currentPrimary.points.toFixed(1)} (${preview.currentPrimary.source})`;
+  byId("projection-lab-consensus").textContent = preview.consensus.toFixed(1);
+  byId("projection-lab-modified").textContent = preview.modified.toFixed(1);
+  byId("projection-lab-range").textContent = preview.interval80
+    ? `${preview.interval80.low.toFixed(1)}–${preview.interval80.high.toFixed(1)}`
+    : "Not calibrated";
+  const weekly = preview.weekly
+    ? `Weekly shape preserves ${preview.weekly.seasonTotal.toFixed(1)} · division ${preview.weekly.divisionTotal.toFixed(1)} · playoffs ${preview.weekly.playoffTotal.toFixed(1)}.`
+    : "Weekly context is unavailable for this player.";
+  byId("projection-lab-breakdown").textContent = `Equal-source consensus ${preview.consensus.toFixed(1)} · surrogate-gated mean reversion ${signed(preview.meanReversionDelta)} = ${preview.modified.toFixed(1)}. ${weekly}`;
+  byId("projection-lab-evidence").textContent = `Surrogate time-forward MAE 39.5 versus 41.7 for one source across 1,153 player-seasons. Exact premium-source history is unavailable, so this has no VBD, dollar, keeper, or bid effect.`;
 }
 
 function renderIntelProjectionSources(player) {
@@ -1482,6 +1513,7 @@ function renderSelectedPlayer() {
     ? `Your note: ${annotation.note} · Pack: ${player?.notes || "No additional pack note."}`
     : player?.notes || "Player evidence and decision notes appear here.";
   renderProjectionSources(player);
+  renderProjectionLab(player);
   renderOpponentPressure(player, live?.marketValue || 1, available);
   byId("sale-player").value = player?.name || "";
   byId("sale-player-id").value = player?.id || "";

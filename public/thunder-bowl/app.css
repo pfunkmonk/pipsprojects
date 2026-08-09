@@ -300,6 +300,20 @@ input[readonly] { color: var(--muted); }
 .projection-source-supplemental { border-left-color: var(--gold); }
 .projection-source-row.is-disagreement { background: rgba(245, 199, 71, 0.1); }
 .projection-source-empty { color: var(--quiet); font-size: 0.78rem; }
+.projection-lab-disclosure { margin-top: 0.55rem; border: 1px solid var(--line-strong); border-radius: 10px; background: rgba(30, 62, 92, 0.34); }
+.projection-lab-disclosure > summary { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.65rem; min-height: 44px; padding: 0.5rem 0.65rem; cursor: pointer; list-style-position: inside; }
+.projection-lab-disclosure > summary span { color: var(--gold-light); font-size: 0.72rem; font-weight: 850; letter-spacing: 0.04em; text-transform: uppercase; }
+.projection-lab-disclosure > summary strong { overflow: hidden; font-size: 0.86rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.projection-lab-body { display: grid; gap: 0.55rem; border-top: 1px solid var(--line); padding: 0.65rem; }
+.projection-lab-authority { width: max-content; border: 1px solid var(--gold); border-radius: 999px; padding: 0.14rem 0.4rem; color: var(--gold-light); font-size: 0.66rem; font-weight: 900; }
+.projection-lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.projection-lab-grid div { min-width: 0; padding: 0.48rem; background: var(--navy-950); }
+.projection-lab-grid div + div { border-left: 1px solid var(--line); }
+.projection-lab-grid div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+.projection-lab-grid div:nth-child(4) { border-top: 1px solid var(--line); }
+.projection-lab-grid dt { color: var(--quiet); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
+.projection-lab-grid dd { margin: 0.16rem 0 0; color: var(--text); font-size: 0.98rem; font-weight: 850; }
+.projection-lab-body p { margin: 0; font-size: 0.8rem; line-height: 1.42; }
 .opponent-pressure-summary { margin: 0.25rem 0 0.55rem; font-size: 0.78rem; line-height: 1.35; }
 .auction-forecast { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; margin: 0 0 0.55rem; }
 .auction-forecast > div { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 0.42rem 0.5rem; background: var(--navy-950); }
