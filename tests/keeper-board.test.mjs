@@ -183,3 +183,47 @@ test("trade-away market finds surplus outside Dogs of War's top two and names th
   assert.ok(market.acquire.every((row) => row.modelEffect === "none" && row.ledgerEffect === "none"));
   assert.ok(market.tradeAway.every((row) => row.modelEffect === "none" && row.ledgerEffect === "none"));
 });
+
+test("declared keepers are locked out of every trade direction and anchor the two-keeper portfolio", () => {
+  const synthetic = {
+    schemaVersion: 1,
+    packId: "declared-keeper-market-test",
+    asOf: "2026-08-08T12:00:00.000Z",
+    leagueConfig: {
+      teams: [
+        { id: "seller", name: "Seller" },
+        { id: "buyer", name: "Buyer" },
+      ],
+    },
+    keeperCandidates: [
+      candidate("seller-top", "Seller Top", "seller", 11),
+      candidate("target", "Brock Bowers", "seller", 10),
+      candidate("seller-alt", "Seller Alt", "seller", 9),
+      candidate("buyer-locked", "Buyer Declared", "buyer", 1),
+      candidate("buyer-best", "Buyer Best", "buyer", 8),
+      candidate("buyer-zero", "Buyer Zero", "buyer", 0),
+    ],
+  };
+
+  const openMarket = buildKeeperTradeMarket(synthetic, { teamId: "buyer" });
+  assert.equal(openMarket.acquire.find((row) => row.playerId === "target").offerCeiling, 8);
+
+  const anchoredMarket = buildKeeperTradeMarket(synthetic, { teamId: "buyer", declaredKeeperIds: ["buyer-locked"] });
+  const anchoredTarget = anchoredMarket.acquire.find((row) => row.playerId === "target");
+  assert.deepEqual(anchoredMarket.currentPortfolio.map((row) => row.playerId), ["buyer-locked", "buyer-best"]);
+  assert.equal(anchoredTarget.offerCeiling, 1);
+  assert.equal(anchoredTarget.incrementalSurplus, 2);
+  assert.equal(anchoredTarget.displacedPlayer.playerId, "buyer-best");
+
+  const declaredBoard = buildKeeperBoard(synthetic, { declaredKeeperIds: ["target"] });
+  const declaredBowers = declaredBoard.find((row) => row.playerId === "target");
+  assert.equal(declaredBowers.declaredKeeper, true);
+  assert.equal(declaredBowers.strategy, "Declared keeper");
+  assert.equal(declaredBowers.tradeRead, "Already declared - locked keeper");
+  assert.equal(declaredBowers.bestBuyerCeiling, 0);
+
+  const buyerMarket = buildKeeperTradeMarket(synthetic, { teamId: "buyer", declaredKeeperIds: ["target"] });
+  const sellerMarket = buildKeeperTradeMarket(synthetic, { teamId: "seller", declaredKeeperIds: ["target"] });
+  assert.equal(buyerMarket.acquire.some((row) => row.playerId === "target"), false);
+  assert.equal(sellerMarket.tradeAway.some((row) => row.playerId === "target"), false);
+});

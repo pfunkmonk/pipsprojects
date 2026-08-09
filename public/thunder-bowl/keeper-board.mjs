@@ -24,31 +24,51 @@ export function keeperContractTenure(keeperYear) {
   };
 }
 
-function selectedPortfolio(candidates) {
-  return candidates
+function selectedPortfolio(candidates, declaredKeeperIds = new Set()) {
+  const eligible = candidates
     .filter((candidate) => candidate.keeperYear <= MAX_KEEPER_YEAR)
-    .map((candidate) => ({ ...candidate, surplus: Math.max(0, finiteWhole(candidate.surplus, `${candidate.playerName} surplus`)) }))
-    .filter((candidate) => candidate.surplus > 0)
-    .sort((left, right) => right.surplus - left.surplus || left.keeperSalary - right.keeperSalary || left.playerName.localeCompare(right.playerName))
-    .slice(0, MAX_KEEPERS);
+    .map((candidate) => ({ ...candidate, surplus: Math.max(0, finiteWhole(candidate.surplus, `${candidate.playerName} surplus`)) }));
+  const sortCandidates = (left, right) => right.surplus - left.surplus || left.keeperSalary - right.keeperSalary || left.playerName.localeCompare(right.playerName);
+  const declared = eligible.filter((candidate) => declaredKeeperIds.has(candidate.playerId)).sort(sortCandidates);
+  const openOptions = eligible.filter((candidate) => !declaredKeeperIds.has(candidate.playerId) && candidate.surplus > 0).sort(sortCandidates);
+  return [...declared, ...openOptions].slice(0, MAX_KEEPERS);
 }
 
-function portfolioValue(candidates) {
-  return selectedPortfolio(candidates).reduce((sum, candidate) => sum + candidate.surplus, 0);
+function portfolioValue(candidates, declaredKeeperIds = new Set()) {
+  return selectedPortfolio(candidates, declaredKeeperIds).reduce((sum, candidate) => sum + candidate.surplus, 0);
 }
 
-function strategyLabel(candidate, portfolioRank) {
+function strategyLabel(candidate, portfolioRank, declaredKeeper) {
   if (candidate.keeperYear > MAX_KEEPER_YEAR) return "Forced pool";
+  if (declaredKeeper) return "Declared keeper";
   if (candidate.surplus > 0 && portfolioRank <= MAX_KEEPERS) return "Current top-two keeper";
   if (candidate.surplus > 0) return "Trade-bait surplus";
   return "Pass at current values";
 }
 
-export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) {
+function declaredKeeperSet(pack, declaredKeeperIds) {
+  if (!Array.isArray(declaredKeeperIds)) throw new Error("Declared keeper ids must be an array.");
+  const candidateById = new Map(pack.keeperCandidates.map((candidate) => [candidate.playerId, candidate]));
+  const declared = new Set();
+  const countByTeam = new Map();
+  for (const playerId of declaredKeeperIds) {
+    if (typeof playerId !== "string" || !playerId) throw new Error("Declared keeper ids must contain player ids.");
+    if (declared.has(playerId)) throw new Error(`Duplicate declared keeper: ${playerId}.`);
+    const candidate = candidateById.get(playerId);
+    if (!candidate) throw new Error(`Unknown declared keeper: ${playerId}.`);
+    declared.add(playerId);
+    countByTeam.set(candidate.teamId, (countByTeam.get(candidate.teamId) || 0) + 1);
+    if (countByTeam.get(candidate.teamId) > MAX_KEEPERS) throw new Error(`${candidate.teamId} has more than ${MAX_KEEPERS} declared keepers.`);
+  }
+  return declared;
+}
+
+export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER, declaredKeeperIds = [] } = {}) {
   if (!pack || !Array.isArray(pack.keeperCandidates) || !Array.isArray(pack.leagueConfig?.teams)) {
     throw new Error("Keeper board requires the validated draft pack.");
   }
   if (!Number.isSafeInteger(riskBuffer) || riskBuffer < 0 || riskBuffer > 10) throw new Error("Keeper trade risk buffer must be 0-10 whole dollars.");
+  const declaredKeepers = declaredKeeperSet(pack, declaredKeeperIds);
   const teamsById = new Map(pack.leagueConfig.teams.map((team) => [team.id, team]));
   const fbgByPlayerId = new Map((pack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
   const groups = new Map(pack.leagueConfig.teams.map((team) => [team.id, []]));
@@ -71,16 +91,17 @@ export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) 
   for (const candidate of pack.keeperCandidates) {
     const tenure = keeperContractTenure(candidate.keeperYear);
     const eligible = tenure.eligible;
+    const declaredKeeper = declaredKeepers.has(candidate.playerId);
     const sellerCandidates = groups.get(candidate.teamId);
-    const sellerBase = portfolioValue(sellerCandidates);
-    const sellerWithout = portfolioValue(sellerCandidates.filter((row) => row.playerId !== candidate.playerId));
+    const sellerBase = portfolioValue(sellerCandidates, declaredKeepers);
+    const sellerWithout = portfolioValue(sellerCandidates.filter((row) => row.playerId !== candidate.playerId), declaredKeepers);
     const rawSellerFloor = eligible ? Math.max(0, sellerBase - sellerWithout) : 0;
     const buyerOffers = [];
-    if (eligible && candidate.surplus > 0) {
+    if (eligible && candidate.surplus > 0 && !declaredKeeper) {
       for (const team of pack.leagueConfig.teams) {
         if (team.id === candidate.teamId) continue;
         const buyerCandidates = groups.get(team.id);
-        const incrementalSurplus = portfolioValue([...buyerCandidates, candidate]) - portfolioValue(buyerCandidates);
+        const incrementalSurplus = portfolioValue([...buyerCandidates, candidate], declaredKeepers) - portfolioValue(buyerCandidates, declaredKeepers);
         buyerOffers.push({ teamId: team.id, teamName: team.name, ceiling: Math.max(0, Math.floor(incrementalSurplus - riskBuffer)) });
       }
     }
@@ -91,7 +112,9 @@ export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) 
     const bestBuyers = bestBuyerCeiling > 0
       ? buyerOffers.filter((offer) => offer.ceiling === bestBuyerCeiling).map((offer) => offer.teamName)
       : [];
-    const tradeRead = !eligible
+    const tradeRead = declaredKeeper
+      ? "Already declared - locked keeper"
+      : !eligible
       ? "Ineligible - must return to pool"
       : negotiable
         ? `$${sellerFloor}-$${bestBuyerCeiling} current cap range`
@@ -115,8 +138,9 @@ export function buildKeeperBoard(pack, { riskBuffer = TRADE_RISK_BUFFER } = {}) 
       fbgAuctionRank: fbgByPlayerId.get(candidate.playerId)?.rank ?? null,
       surplus: candidate.surplus,
       eligible,
+      declaredKeeper,
       portfolioRank: ranks.get(candidate.playerId),
-      strategy: strategyLabel(candidate, ranks.get(candidate.playerId)),
+      strategy: strategyLabel(candidate, ranks.get(candidate.playerId), declaredKeeper),
       sellerFloor,
       sellerPortfolioLoss: rawSellerFloor,
       bestBuyerCeiling,
@@ -174,13 +198,14 @@ export function keeperTradeScenario(opportunity, capAmount) {
   };
 }
 
-export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffer = TRADE_RISK_BUFFER } = {}) {
-  const board = buildKeeperBoard(pack, { riskBuffer });
+export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffer = TRADE_RISK_BUFFER, declaredKeeperIds = [] } = {}) {
+  const declaredKeepers = declaredKeeperSet(pack, declaredKeeperIds);
+  const board = buildKeeperBoard(pack, { riskBuffer, declaredKeeperIds });
   const team = pack.leagueConfig.teams.find((candidate) => candidate.id === teamId);
   if (!team) throw new Error("Keeper trade market requires a known team.");
   const teamCandidates = pack.keeperCandidates.filter((candidate) => candidate.teamId === teamId);
-  const currentPortfolio = selectedPortfolio(teamCandidates);
-  const currentPortfolioValue = portfolioValue(teamCandidates);
+  const currentPortfolio = selectedPortfolio(teamCandidates, declaredKeepers);
+  const currentPortfolioValue = portfolioValue(teamCandidates, declaredKeepers);
   const currentIds = new Set(currentPortfolio.map((candidate) => candidate.playerId));
   const candidateCounts = pack.leagueConfig.teams.map((candidateTeam) => ({
     teamId: candidateTeam.id,
@@ -189,14 +214,14 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
   }));
 
   const acquire = [];
-  for (const row of board.filter((candidate) => candidate.currentTeamId !== teamId && candidate.eligible && candidate.surplus > 0)) {
+  for (const row of board.filter((candidate) => candidate.currentTeamId !== teamId && candidate.eligible && candidate.surplus > 0 && !candidate.declaredKeeper)) {
     const buyerOffer = row.buyerOffers.find((offer) => offer.teamId === teamId);
     if (!buyerOffer || buyerOffer.ceiling < 1 || buyerOffer.ceiling < row.sellerFloor) continue;
     const candidate = pack.keeperCandidates.find((item) => item.playerId === row.playerId);
-    const afterPortfolio = selectedPortfolio([...teamCandidates, candidate]);
+    const afterPortfolio = selectedPortfolio([...teamCandidates, candidate], declaredKeepers);
     const afterIds = new Set(afterPortfolio.map((item) => item.playerId));
     const displaced = currentPortfolio.find((item) => !afterIds.has(item.playerId)) || null;
-    const incrementalSurplus = portfolioValue([...teamCandidates, candidate]) - currentPortfolioValue;
+    const incrementalSurplus = portfolioValue([...teamCandidates, candidate], declaredKeepers) - currentPortfolioValue;
     const openingScenario = keeperTradeScenario({
       ...opportunityBase(row),
       kind: "acquire",
@@ -224,7 +249,7 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
   acquire.sort((left, right) => right.portfolioGainAtOpening - left.portfolioGainAtOpening || right.incrementalSurplus - left.incrementalSurplus || left.playerName.localeCompare(right.playerName));
 
   const tradeAway = board
-    .filter((row) => row.currentTeamId === teamId && row.eligible && row.surplus > 0 && row.negotiable)
+    .filter((row) => row.currentTeamId === teamId && row.eligible && row.surplus > 0 && row.negotiable && !row.declaredKeeper)
     .map((row) => {
       const bestOffer = row.buyerOffers.find((offer) => offer.ceiling === row.bestBuyerCeiling);
       const highScenario = keeperTradeScenario({
@@ -257,6 +282,7 @@ export function buildKeeperTradeMarket(pack, { teamId = "dogs-of-war", riskBuffe
     teamName: team.name,
     currentPortfolioValue,
     currentPortfolio: currentPortfolio.map((candidate) => opportunityBase(candidate)),
+    declaredKeeperIds: [...declaredKeepers],
     candidateCounts,
     completeTradeDiscovery: candidateCounts.every((candidate) => candidate.count > MAX_KEEPERS),
     acquire,

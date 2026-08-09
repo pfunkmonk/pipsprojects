@@ -378,7 +378,10 @@ test("keeper strategy exposes ranked trade-for and trade-away proposals without 
     "keeper-sell-list",
     "keeper-market-status",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
-  assert.match(appSource, /buildKeeperTradeMarket\(keeperScenarioPack\(\), \{ teamId: selectedKeeperMarketTeamId \}\)/);
+  assert.match(appSource, /buildKeeperTradeMarket\(keeperScenarioPack\(\), \{ teamId: selectedKeeperMarketTeamId, declaredKeeperIds \}\)/);
+  assert.match(appSource, /function activeDeclaredKeeperIds\(\)[\s\S]*acquisitionType === "keeper"/);
+  assert.match(appSource, /buildKeeperBoard\(keeperScenarioPack\(\), \{ declaredKeeperIds: activeDeclaredKeeperIds\(\) \}\)/);
+  assert.match(appSource, /declared keeper\$\{declaredKeeperIds\.length === 1 \? " is" : "s are"\} locked out of the trade market/);
   assert.match(appSource, /selectedKeeperMarketTeamId = "dogs-of-war"/);
   assert.match(appSource, /byId\("keeper-market-team"\)\.addEventListener\("change"/);
   assert.match(appSource, /keeperTradeScenario\(opportunity, amount\)/);

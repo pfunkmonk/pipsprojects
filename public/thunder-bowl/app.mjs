@@ -60,7 +60,7 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808g";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808j";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808g";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
@@ -1535,6 +1535,13 @@ function keeperScenarioPack() {
   return { ...draftPack, keeperCandidates: candidates };
 }
 
+function activeDeclaredKeeperIds() {
+  return Object.values(keeperWorkspaceState().teams)
+    .flatMap((team) => team.roster)
+    .filter((player) => player.acquisitionType === "keeper")
+    .map((player) => player.playerId);
+}
+
 function keeperCandidatesForTeam(teamId) {
   return currentKeeperCandidates().filter((candidate) => candidate.teamId === teamId);
 }
@@ -1982,13 +1989,14 @@ function renderKeeperTradeMarket() {
     select.append(option);
   }
   select.value = selectedKeeperMarketTeamId;
-  const market = buildKeeperTradeMarket(keeperScenarioPack(), { teamId: selectedKeeperMarketTeamId });
+  const declaredKeeperIds = activeDeclaredKeeperIds();
+  const market = buildKeeperTradeMarket(keeperScenarioPack(), { teamId: selectedKeeperMarketTeamId, declaredKeeperIds });
   const acquireList = byId("keeper-acquire-list");
   const sellList = byId("keeper-sell-list");
   acquireList.replaceChildren();
   sellList.replaceChildren();
   byId("keeper-market-summary").textContent = `${currency(market.currentPortfolioValue)} current top-two surplus`;
-  byId("keeper-market-note").textContent = `Ranked by the change to ${market.teamName}’s best two-keeper portfolio—not just a player’s raw discount. Test the separate cap payment before loading a proposal into the audited trade form.`;
+  byId("keeper-market-note").textContent = `Ranked by the change to ${market.teamName}’s best two-keeper portfolio—not just a player’s raw discount. ${declaredKeeperIds.length} declared keeper${declaredKeeperIds.length === 1 ? " is" : "s are"} locked out of the trade market. Test the separate cap payment before loading a proposal into the audited trade form.`;
   byId("keeper-acquire-count").textContent = keeperTradeResultCount(market.acquire.length);
   byId("keeper-sell-count").textContent = keeperTradeResultCount(market.tradeAway.length);
   const evidence = byId("keeper-market-evidence");
@@ -2568,7 +2576,7 @@ function renderAll() {
   replayKeeperSandbox();
   liveMarket = computeLiveMarket();
   keeperScenario = calculateKeeperScenarioValues(draftPack, keeperWorkspaceState());
-  keeperBoardRows = buildKeeperBoard(keeperScenarioPack());
+  keeperBoardRows = buildKeeperBoard(keeperScenarioPack(), { declaredKeeperIds: activeDeclaredKeeperIds() });
   renderMetrics();
   renderPlayerPool();
   renderSelectedPlayer();
