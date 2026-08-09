@@ -7,5 +7,13 @@
   "display": "standalone",
   "background_color": "#071a31",
   "theme_color": "#071a31",
+  "icons": [
+    {
+      "src": "/thunder-bowl/favicon.svg?v=20260808h",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
   "categories": ["sports", "utilities", "productivity"]
 }

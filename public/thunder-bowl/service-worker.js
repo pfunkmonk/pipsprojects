@@ -1,8 +1,9 @@
-const CACHE_VERSION = "thunder-bowl-shell-v58";
+const CACHE_VERSION = "thunder-bowl-shell-v59";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
   "/thunder-bowl/public.html",
+  "/thunder-bowl/favicon.svg?v=20260808h",
   "/thunder-bowl/auctioneer/",
   "/thunder-bowl/auctioneer/index.html",
   "/thunder-bowl/auctioneer/auctioneer.css",
@@ -47,7 +48,7 @@ const APP_SHELL = [
   "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260805g",
   "/thunder-bowl/emergency-print.css?v=20260805g",
   "/thunder-bowl/sample-draft-pack.json",
-  "/thunder-bowl/manifest.webmanifest?v=20260805g"
+  "/thunder-bowl/manifest.webmanifest?v=20260808h"
 ];
 
 self.addEventListener("install", (event) => {

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Thunder Bowl 20</title>
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#0076b6" stroke="#b0b7bc" stroke-width="3" />
+  <text
+    x="32"
+    y="45"
+    fill="#f7f8fa"
+    stroke="#9ea7b1"
+    stroke-width="1.5"
+    paint-order="stroke fill"
+    text-anchor="middle"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="38"
+    font-weight="900"
+  >20</text>
+</svg>

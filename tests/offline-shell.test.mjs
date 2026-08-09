@@ -4,6 +4,12 @@ import { readFile } from "node:fs/promises";
 
 const indexHtml = await readFile(new URL("../public/thunder-bowl/index.html", import.meta.url), "utf8");
 const publicHtml = await readFile(new URL("../public/thunder-bowl/public.html", import.meta.url), "utf8");
+const boardHtml = await readFile(new URL("../public/thunder-bowl/board.html", import.meta.url), "utf8");
+const auctioneerHtml = await readFile(new URL("../public/thunder-bowl/auctioneer/index.html", import.meta.url), "utf8");
+const boardIndexHtml = await readFile(new URL("../public/thunder-bowl/board/index.html", import.meta.url), "utf8");
+const guidesHtml = await readFile(new URL("../public/thunder-bowl/guides/index.html", import.meta.url), "utf8");
+const manifest = JSON.parse(await readFile(new URL("../public/thunder-bowl/manifest.webmanifest", import.meta.url), "utf8"));
+const favicon = await readFile(new URL("../public/thunder-bowl/favicon.svg", import.meta.url), "utf8");
 const serviceWorker = await readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8");
 const appSource = await readFile(new URL("../public/thunder-bowl/app.mjs", import.meta.url), "utf8");
 const appCss = await readFile(new URL("../public/thunder-bowl/app.css", import.meta.url), "utf8");
@@ -16,6 +22,19 @@ test("release assets are versioned across private, public, and offline shells", 
   assert.match(indexHtml, /app\.css\?v=\d{8}[a-z]/);
   assert.match(publicHtml, /public-board\.mjs\?v=\d{8}[a-z]/);
   assert.match(serviceWorker, /app\.mjs\?v=\d{8}[a-z]/);
+});
+
+test("every Thunder Bowl surface uses the blue and silver-white number 20 favicon", () => {
+  assert.match(favicon, /fill="#0076b6"/i);
+  assert.match(favicon, /fill="#f7f8fa"/i);
+  assert.match(favicon, /stroke="#9ea7b1"/i);
+  assert.match(favicon, />20<\/text>/);
+  for (const html of [indexHtml, publicHtml, boardHtml, auctioneerHtml, boardIndexHtml, guidesHtml]) {
+    assert.match(html, /rel="icon"[^>]+favicon\.svg\?v=20260808h/);
+  }
+  assert.equal(manifest.icons[0].src, "/thunder-bowl/favicon.svg?v=20260808h");
+  assert.equal(manifest.icons[0].purpose, "any maskable");
+  assert.match(serviceWorker, /favicon\.svg\?v=20260808h/);
 });
 
 test("desktop draft controls remain pinned above the fold", () => {
