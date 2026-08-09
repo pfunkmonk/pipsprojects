@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808c";
+} from "./state-engine.mjs?v=20260808d";
 import {
   appendEvents,
   getMeta,
@@ -60,9 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808c";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808c";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808c";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808d";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808d";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808d";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -128,9 +128,7 @@ const capTransferForm = byId("cap-transfer-form");
 const capFromTeam = byId("cap-from-team");
 const capToTeam = byId("cap-to-team");
 const capTransferAmount = byId("cap-transfer-amount");
-const capTransferPlayerSearch = byId("cap-transfer-player-search");
 const capTransferPlayer = byId("cap-transfer-player");
-const capReturnPlayerSearch = byId("cap-return-player-search");
 const capReturnPlayer = byId("cap-return-player");
 const practiceConsole = byId("practice-console");
 const practiceStartButton = byId("practice-start");
@@ -1593,7 +1591,16 @@ function keeperRows() {
   const tbody = byId("keeper-rows");
   tbody.replaceChildren();
   renderKeeperEvidenceTeamSelector();
-  const candidates = keeperCandidatesForTeam(selectedKeeperEvidenceTeamId);
+  const boardByPlayerId = new Map(keeperBoardRows.map((row) => [row.playerId, row]));
+  const dynamicKeeperSurplus = (candidate) => boardByPlayerId.get(candidate.playerId)?.surplus ?? candidate.surplus;
+  const dynamicKeeperValue = (candidate) => boardByPlayerId.get(candidate.playerId)?.marketValue ?? candidate.marketValue;
+  const candidates = keeperCandidatesForTeam(selectedKeeperEvidenceTeamId)
+    .slice()
+    .sort((left, right) =>
+      dynamicKeeperSurplus(right) - dynamicKeeperSurplus(left)
+      || dynamicKeeperValue(right) - dynamicKeeperValue(left)
+      || left.playerName.localeCompare(right.playerName),
+    );
   const workspaceState = keeperWorkspaceState();
   const fbgRows = new Map((draftPack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
   const fbgCoverage = draftPack.fbgAuctionValues;
@@ -1611,7 +1618,6 @@ function keeperRows() {
     tbody.append(row);
     return candidates;
   }
-  const boardByPlayerId = new Map(keeperBoardRows.map((row) => [row.playerId, row]));
   for (const candidate of candidates) {
     const row = document.createElement("tr");
     const boardRow = boardByPlayerId.get(candidate.playerId);
@@ -1848,8 +1854,6 @@ function loadKeeperTradeProposal(opportunity, amount) {
   capTransferAmount.value = String(amount);
   teamASendsPlayerIds = new Set();
   teamBSendsPlayerIds = new Set([opportunity.playerId]);
-  capTransferPlayerSearch.value = "";
-  capReturnPlayerSearch.value = "";
   renderKeeperOperations();
   updateCapTransferSummary();
   capTransferForm.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2072,8 +2076,6 @@ function addPlayerToTrade(direction) {
   if (!playerId) return;
   const destination = teamAtoB ? teamASendsPlayerIds : teamBSendsPlayerIds;
   destination.add(playerId);
-  if (teamAtoB) capReturnPlayerSearch.value = "";
-  else capTransferPlayerSearch.value = "";
   renderKeeperOperations();
 }
 
@@ -2220,7 +2222,7 @@ function renderKeeperOperations() {
   const teamBCandidates = candidates.filter((candidate) => candidate.teamId === capToTeam.value);
   teamASendsPlayerIds = new Set([...teamASendsPlayerIds].filter((playerId) => teamACandidates.some((candidate) => candidate.playerId === playerId)));
   teamBSendsPlayerIds = new Set([...teamBSendsPlayerIds].filter((playerId) => teamBCandidates.some((candidate) => candidate.playerId === playerId)));
-  const tradeMatches = teamBCandidates.filter((candidate) => !teamBSendsPlayerIds.has(candidate.playerId) && playerNameMatches(candidate, capTransferPlayerSearch.value));
+  const tradeMatches = teamBCandidates.filter((candidate) => !teamBSendsPlayerIds.has(candidate.playerId));
   capTransferPlayer.replaceChildren();
   for (const candidate of tradeMatches) {
     const tenure = keeperContractTenure(candidate.keeperYear);
@@ -2230,11 +2232,9 @@ function renderKeeperOperations() {
     capTransferPlayer.append(option);
   }
   if (tradeMatches.some((candidate) => candidate.playerId === priorTradePlayerId)) capTransferPlayer.value = priorTradePlayerId;
-  byId("cap-transfer-player-search-status").textContent = capTransferPlayerSearch.value
-    ? `${tradeMatches.length} matching player${tradeMatches.length === 1 ? "" : "s"} owned by ${teamName(capToTeam.value)}.`
-    : `${teamBCandidates.length} eligible player${teamBCandidates.length === 1 ? "" : "s"} owned by ${teamName(capToTeam.value)}.`;
+  byId("cap-transfer-player-status").textContent = `${tradeMatches.length} available player${tradeMatches.length === 1 ? "" : "s"} owned by ${teamName(capToTeam.value)}.`;
 
-  const returnMatches = teamACandidates.filter((candidate) => !teamASendsPlayerIds.has(candidate.playerId) && playerNameMatches(candidate, capReturnPlayerSearch.value));
+  const returnMatches = teamACandidates.filter((candidate) => !teamASendsPlayerIds.has(candidate.playerId));
   capReturnPlayer.replaceChildren();
   for (const candidate of returnMatches) {
     const tenure = keeperContractTenure(candidate.keeperYear);
@@ -2244,9 +2244,7 @@ function renderKeeperOperations() {
     capReturnPlayer.append(option);
   }
   if (returnMatches.some((candidate) => candidate.playerId === priorReturnPlayerId)) capReturnPlayer.value = priorReturnPlayerId;
-  byId("cap-return-player-search-status").textContent = capReturnPlayerSearch.value
-    ? `${returnMatches.length} matching player${returnMatches.length === 1 ? "" : "s"} owned by ${teamName(capFromTeam.value)}.`
-    : `${teamACandidates.length} eligible player${teamACandidates.length === 1 ? "" : "s"} owned by ${teamName(capFromTeam.value)}.`;
+  byId("cap-return-player-status").textContent = `${returnMatches.length} available player${returnMatches.length === 1 ? "" : "s"} owned by ${teamName(capFromTeam.value)}.`;
   renderSelectedTradeList("cap-transfer-player-list", teamBSendsPlayerIds, capFromTeam.value);
   renderSelectedTradeList("cap-return-player-list", teamASendsPlayerIds, capToTeam.value);
 
@@ -2255,13 +2253,11 @@ function renderKeeperOperations() {
   for (const form of [keeperAssignmentForm, capTransferForm]) form.setAttribute("aria-disabled", String(auctionStarted));
   keeperTeam.disabled = true;
   for (const control of [keeperPlayerSearch, keeperPlayer, byId("record-keeper")]) control.disabled = auctionStarted || keeperSelectionComplete || !keeperCandidates.length;
-  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferPlayerSearch, capTransferPlayer, capReturnPlayerSearch, capReturnPlayer, byId("add-cap-transfer-player"), byId("add-cap-return-player"), byId("record-cap-transfer")]) control.disabled = auctionStarted;
+  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferPlayer, capReturnPlayer, byId("add-cap-transfer-player"), byId("add-cap-return-player"), byId("record-cap-transfer")]) control.disabled = auctionStarted;
   capFromTeam.disabled = auctionStarted;
   capToTeam.disabled = auctionStarted;
-  capTransferPlayerSearch.disabled = auctionStarted || !teamBCandidates.length;
   capTransferPlayer.disabled = auctionStarted || !tradeMatches.length;
   byId("add-cap-transfer-player").disabled = auctionStarted || !tradeMatches.length;
-  capReturnPlayerSearch.disabled = auctionStarted || !teamACandidates.length;
   capReturnPlayer.disabled = auctionStarted || !returnMatches.length;
   byId("add-cap-return-player").disabled = auctionStarted || !returnMatches.length;
   const evidencePass = byId("keeper-evidence-pass");
@@ -2609,8 +2605,6 @@ async function resetKeeperSandbox() {
   teamASendsPlayerIds = new Set();
   teamBSendsPlayerIds = new Set();
   keeperPlayerSearch.value = "";
-  capTransferPlayerSearch.value = "";
-  capReturnPlayerSearch.value = "";
   await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
   renderAll();
   setStatus(keeperOperationStatus, "Prediction sandbox reset. Official keeper ledger and public board were not changed.");
@@ -2780,8 +2774,6 @@ async function recordCapTransfer(event) {
       `Recorded complete trade package between ${buyerName} and ${sellerName}${amount ? ` with ${currency(amount)} moving to ${sellerName}` : " with no cap payment"}.`,
     );
     capTransferAmount.value = "0";
-    capTransferPlayerSearch.value = "";
-    capReturnPlayerSearch.value = "";
     teamASendsPlayerIds = new Set();
     teamBSendsPlayerIds = new Set();
     selectedKeeperEvidenceTeamId = buyerTeamId;
@@ -3859,13 +3851,10 @@ function bindInteractions() {
     renderKeeperOperations();
   });
   capToTeam.addEventListener("change", () => {
-    capTransferPlayerSearch.value = "";
     renderKeeperOperations();
   });
   byId("add-cap-transfer-player").addEventListener("click", () => addPlayerToTrade("B_TO_A"));
   byId("add-cap-return-player").addEventListener("click", () => addPlayerToTrade("A_TO_B"));
-  capTransferPlayerSearch.addEventListener("input", renderKeeperOperations);
-  capReturnPlayerSearch.addEventListener("input", renderKeeperOperations);
   capTransferPlayer.addEventListener("change", updateCapTransferSummary);
   capReturnPlayer.addEventListener("change", updateCapTransferSummary);
   capTransferAmount.addEventListener("input", updateCapTransferSummary);

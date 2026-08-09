@@ -270,11 +270,11 @@ test("keeper declarations and cap trades use the offline-first audited ledger", 
     "cap-from-team",
     "cap-to-team",
     "cap-transfer-amount",
-    "cap-transfer-player-search",
+    "cap-transfer-player-status",
     "cap-transfer-player",
     "add-cap-transfer-player",
     "cap-transfer-player-list",
-    "cap-return-player-search",
+    "cap-return-player-status",
     "cap-return-player",
     "add-cap-return-player",
     "cap-return-player-list",
@@ -316,6 +316,8 @@ test("league-wide candidate evidence has a remembered team selector and accessib
   assert.match(appSource, /setMeta\("keeperEvidenceExpanded", event\.currentTarget\.open\)/);
   assert.match(appSource, /details\.open \? "Hide table" : "Show table"/);
   assert.match(appSource, /keeperCandidatesForTeam\(selectedKeeperEvidenceTeamId\)/);
+  assert.match(appSource, /dynamicKeeperSurplus\(right\) - dynamicKeeperSurplus\(left\)/);
+  assert.match(indexHtml, /aria-sort="descending">Surplus ↓<\/th>/);
   assert.match(appSource, /getMeta\("keeperEvidenceTeamId", "dogs-of-war"\)/);
   assert.match(appSource, /setMeta\("keeperEvidenceTeamId", teamId\)/);
   assert.match(appSource, /renderKeeperScenarios\(keeperCandidatesForTeam\("dogs-of-war"\)\)/);

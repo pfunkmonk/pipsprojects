@@ -16,7 +16,7 @@
   <meta property="og:image:height" content="910" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260805g" />
-  <link rel="stylesheet" href="./app.css?v=20260808c" />
+  <link rel="stylesheet" href="./app.css?v=20260808d" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -324,16 +324,14 @@
               <div class="keeper-trade-player-lanes">
                 <fieldset class="keeper-trade-player-lane">
                   <legend>Team B sends players to Team A</legend>
-                  <label for="cap-transfer-player-search"><span>Search Team B players</span><input id="cap-transfer-player-search" type="search" maxlength="80" autocomplete="off" placeholder="Type a player name" aria-describedby="cap-transfer-player-search-status" /></label>
-                  <p id="cap-transfer-player-search-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team B to load its players.</p>
-                  <div class="keeper-trade-add-row"><label for="cap-transfer-player"><span>Eligible player</span><select id="cap-transfer-player"></select></label><button id="add-cap-transfer-player" class="button button-secondary" type="button">Add player</button></div>
+                  <p id="cap-transfer-player-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team B to load its players.</p>
+                  <div class="keeper-trade-add-row"><label for="cap-transfer-player"><span>Team B player</span><select id="cap-transfer-player" aria-describedby="cap-transfer-player-status"></select></label><button id="add-cap-transfer-player" class="button button-secondary" type="button">Add player</button></div>
                   <div id="cap-transfer-player-list" class="keeper-trade-selected" aria-live="polite">No players added.</div>
                 </fieldset>
                 <fieldset class="keeper-trade-player-lane">
                   <legend>Team A sends players to Team B (optional)</legend>
-                  <label for="cap-return-player-search"><span>Search Team A players</span><input id="cap-return-player-search" type="search" maxlength="80" autocomplete="off" placeholder="Type a player name" aria-describedby="cap-return-player-search-status" /></label>
-                  <p id="cap-return-player-search-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team A to load its players.</p>
-                  <div class="keeper-trade-add-row"><label for="cap-return-player"><span>Eligible player</span><select id="cap-return-player"></select></label><button id="add-cap-return-player" class="button button-secondary" type="button">Add player</button></div>
+                  <p id="cap-return-player-status" class="keeper-search-status" role="status" aria-live="polite">Choose Team A to load its players.</p>
+                  <div class="keeper-trade-add-row"><label for="cap-return-player"><span>Team A player</span><select id="cap-return-player" aria-describedby="cap-return-player-status"></select></label><button id="add-cap-return-player" class="button button-secondary" type="button">Add player</button></div>
                   <div id="cap-return-player-list" class="keeper-trade-selected" aria-live="polite">No players added.</div>
                 </fieldset>
               </div>
@@ -372,7 +370,7 @@
               <p id="keeper-fbg-coverage" class="keeper-fbg-coverage">FBG comparison coverage is loading.</p>
               <div class="table-wrap">
                 <table class="data-table">
-                  <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">FBG value</th><th class="number">Surplus</th><th>Trade read</th><th>Evidence</th></tr></thead>
+                  <thead><tr><th>Player</th><th>Contract</th><th class="number">2026 cost</th><th class="number">Value</th><th class="number">FBG value</th><th class="number" aria-sort="descending">Surplus ↓</th><th>Trade read</th><th>Evidence</th></tr></thead>
                   <tbody id="keeper-rows"></tbody>
                 </table>
               </div>
@@ -770,6 +768,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260808c"></script>
+  <script type="module" src="./app.mjs?v=20260808d"></script>
 </body>
 </html>
