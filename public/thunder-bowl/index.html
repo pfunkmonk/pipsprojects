@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260808g" />
+  <link rel="stylesheet" href="./app.css?v=20260808i" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -404,12 +404,12 @@
             <section class="keeper-market-lane" aria-labelledby="keeper-acquire-title">
               <header><div><p class="eyebrow">Upgrade this team’s keepers</p><h4 id="keeper-acquire-title">Players to trade for</h4></div><span id="keeper-acquire-count">0 viable</span></header>
               <p class="keeper-market-help">A player appears only when another owner’s minimum model price fits below the selected team’s risk-buffered ceiling.</p>
-              <div id="keeper-acquire-list" class="keeper-market-list"></div>
+              <div id="keeper-acquire-list" class="keeper-market-list" tabindex="0" aria-label="Ranked players to trade for, up to 20 results with five visible at a time"></div>
             </section>
             <section class="keeper-market-lane" aria-labelledby="keeper-sell-title">
               <header><div><p class="eyebrow">Turn this team’s excess value into cash</p><h4 id="keeper-sell-title">Players to trade away</h4></div><span id="keeper-sell-count">0 viable</span></header>
               <p class="keeper-market-help">The strongest fits are teams whose current keeper options leave room for one of the selected team’s surplus players.</p>
-              <div id="keeper-sell-list" class="keeper-market-list"></div>
+              <div id="keeper-sell-list" class="keeper-market-list" tabindex="0" aria-label="Ranked players to trade away, up to 20 results with five visible at a time"></div>
             </section>
           </div>
           <p id="keeper-market-status" class="sale-status keeper-market-status" role="status" aria-live="polite">Trade suggestions are advisory and never record a transaction automatically.</p>
@@ -775,6 +775,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260808g"></script>
+  <script type="module" src="./app.mjs?v=20260808i"></script>
 </body>
 </html>

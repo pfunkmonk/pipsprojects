@@ -573,7 +573,9 @@ input[readonly] { color: var(--muted); }
 .keeper-market-lane h4 { margin: 0; font-size: 1.12rem; }
 .keeper-market-lane > header > span { color: var(--gold-light); font-weight: 850; white-space: nowrap; }
 .keeper-market-help { min-height: 2.8em; margin: 0.45rem 0 0.8rem; color: var(--muted); line-height: 1.4; }
-.keeper-market-list { display: grid; gap: 0.7rem; }
+.keeper-market-list { display: grid; gap: 0.7rem; max-height: var(--keeper-market-window-height, none); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 0.35rem; }
+.keeper-market-list:not(.is-scrollable) { overflow-y: visible; padding-right: 0; }
+.keeper-market-list:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .keeper-market-card { min-width: 0; border: 1px solid var(--line-strong); border-radius: 11px; padding: 0.85rem; background: var(--navy-800); }
 .keeper-market-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.65rem; }
 .keeper-market-card h5 { margin: 0; color: var(--text); font-size: 1.05rem; }

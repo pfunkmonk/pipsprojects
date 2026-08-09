@@ -387,6 +387,18 @@ test("keeper strategy exposes ranked trade-for and trade-away proposals without 
   assert.match(appSource, /loadKeeperTradeProposal/);
   assert.match(appSource, /Review it, negotiate, and record the atomic rights trade only after both teams agree/);
   assert.doesNotMatch(appSource, /loadKeeperTradeProposal[\s\S]{0,1200}commitLocalEvents/);
+  assert.match(appSource, /KEEPER_TRADE_RESULT_LIMIT = 20/);
+  assert.match(appSource, /KEEPER_TRADE_VISIBLE_CARDS = 5/);
+  assert.match(appSource, /market\.acquire\.slice\(0, KEEPER_TRADE_RESULT_LIMIT\)/);
+  assert.match(appSource, /market\.tradeAway\.slice\(0, KEEPER_TRADE_RESULT_LIMIT\)/);
+  assert.match(appSource, /cards\.slice\(0, KEEPER_TRADE_VISIBLE_CARDS\)/);
+  assert.match(appSource, /requestAnimationFrame\(sizeKeeperTradeResultWindows\)/);
+  assert.match(appSource, /top \$\{shown\} shown/);
+  assert.match(indexHtml, /id="keeper-acquire-list"[^>]+tabindex="0"[^>]+up to 20 results with five visible at a time/);
+  assert.match(indexHtml, /id="keeper-sell-list"[^>]+tabindex="0"[^>]+up to 20 results with five visible at a time/);
+  assert.match(appCss, /\.keeper-market-list \{[^}]*max-height: var\(--keeper-market-window-height, none\);[^}]*overflow-y: auto;/);
+  assert.match(appCss, /\.keeper-market-list:not\(\.is-scrollable\)/);
+  assert.match(appCss, /\.keeper-market-list:focus-visible/);
 });
 
 test("data setup exports a clean chronological draft history for CBS entry and future modeling", () => {

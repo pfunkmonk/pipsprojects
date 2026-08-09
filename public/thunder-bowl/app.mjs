@@ -1939,6 +1939,37 @@ function keeperTradeOpportunityCard(opportunity, market) {
   return card;
 }
 
+const KEEPER_TRADE_RESULT_LIMIT = 20;
+const KEEPER_TRADE_VISIBLE_CARDS = 5;
+
+function keeperTradeResultCount(total) {
+  const shown = Math.min(total, KEEPER_TRADE_RESULT_LIMIT);
+  return total > KEEPER_TRADE_RESULT_LIMIT
+    ? `${total} viable · top ${shown} shown`
+    : `${total} viable · ${shown} shown`;
+}
+
+function sizeKeeperTradeResultWindow(list) {
+  const cards = [...list.querySelectorAll(":scope > .keeper-market-card")];
+  const scrollable = cards.length > KEEPER_TRADE_VISIBLE_CARDS;
+  list.classList.toggle("is-scrollable", scrollable);
+  if (!scrollable) {
+    list.style.removeProperty("--keeper-market-window-height");
+    return;
+  }
+  const visibleCards = cards.slice(0, KEEPER_TRADE_VISIBLE_CARDS);
+  if (!visibleCards.every((card) => card.getBoundingClientRect().height > 0)) return;
+  const rowGap = Number.parseFloat(getComputedStyle(list).rowGap) || 0;
+  const visibleHeight = visibleCards.reduce((total, card) => total + card.getBoundingClientRect().height, 0)
+    + (rowGap * (visibleCards.length - 1));
+  list.style.setProperty("--keeper-market-window-height", `${Math.ceil(visibleHeight)}px`);
+}
+
+function sizeKeeperTradeResultWindows() {
+  sizeKeeperTradeResultWindow(byId("keeper-acquire-list"));
+  sizeKeeperTradeResultWindow(byId("keeper-sell-list"));
+}
+
 function renderKeeperTradeMarket() {
   const select = byId("keeper-market-team");
   const teamIds = draftState.config.nominationOrder;
@@ -1958,16 +1989,16 @@ function renderKeeperTradeMarket() {
   sellList.replaceChildren();
   byId("keeper-market-summary").textContent = `${currency(market.currentPortfolioValue)} current top-two surplus`;
   byId("keeper-market-note").textContent = `Ranked by the change to ${market.teamName}’s best two-keeper portfolio—not just a player’s raw discount. Test the separate cap payment before loading a proposal into the audited trade form.`;
-  byId("keeper-acquire-count").textContent = `${market.acquire.length} viable`;
-  byId("keeper-sell-count").textContent = `${market.tradeAway.length} viable`;
+  byId("keeper-acquire-count").textContent = keeperTradeResultCount(market.acquire.length);
+  byId("keeper-sell-count").textContent = keeperTradeResultCount(market.tradeAway.length);
   const evidence = byId("keeper-market-evidence");
   evidence.hidden = market.completeTradeDiscovery;
   evidence.textContent = market.completeTradeDiscovery
     ? ""
     : "Historical replay limitation: this pack contains only the two preserved keeper candidates per team. It can price those players, but it cannot discover third-choice trade targets until the complete end-of-season rosters are loaded. The live 2026 pack has complete roster coverage.";
 
-  for (const opportunity of market.acquire.slice(0, 6)) acquireList.append(keeperTradeOpportunityCard(opportunity, market));
-  for (const opportunity of market.tradeAway.slice(0, 6)) sellList.append(keeperTradeOpportunityCard(opportunity, market));
+  for (const opportunity of market.acquire.slice(0, KEEPER_TRADE_RESULT_LIMIT)) acquireList.append(keeperTradeOpportunityCard(opportunity, market));
+  for (const opportunity of market.tradeAway.slice(0, KEEPER_TRADE_RESULT_LIMIT)) sellList.append(keeperTradeOpportunityCard(opportunity, market));
   if (!market.acquire.length) {
     const empty = document.createElement("p");
     empty.className = "keeper-market-empty";
@@ -1980,6 +2011,7 @@ function renderKeeperTradeMarket() {
     empty.textContent = `No ${market.teamName} surplus player currently has a buyer whose modeled ceiling clears that team’s keeper loss.`;
     sellList.append(empty);
   }
+  requestAnimationFrame(sizeKeeperTradeResultWindows);
 }
 
 const KEEPER_SETUP_EVENT_TYPES = [EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_RIGHTS_TRADED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED];
@@ -2841,6 +2873,7 @@ function showView(view) {
     page.hidden = page.id !== `view-${view}`;
   });
   if (view === "draft") playerSearch.focus();
+  if (view === "keepers") requestAnimationFrame(sizeKeeperTradeResultWindows);
   if (view === "settings") void runDraftReadinessCheck({ announce: false });
 }
 
@@ -3865,6 +3898,7 @@ function bindInteractions() {
     selectedKeeperMarketTeamId = teamId;
     renderKeeperTradeMarket();
   });
+  window.addEventListener("resize", () => requestAnimationFrame(sizeKeeperTradeResultWindows));
   keeperPlayerSearch.addEventListener("input", renderKeeperOperations);
   keeperPlayer.addEventListener("change", () => {
     updateKeeperSelectionSummary();
