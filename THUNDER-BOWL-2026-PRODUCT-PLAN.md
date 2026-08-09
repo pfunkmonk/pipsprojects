@@ -79,6 +79,14 @@ The August 9 surrogate test scored 1,153 player-seasons in strict time-forward f
 
 This result validates the architecture, not a live premium-source replacement: the archived history contains Sleeper/ESPN forecasts rather than the exact dated Footballguys/CBS/FantasyPros trio. The draft room therefore shows the Thunder result only in a collapsed, private **candidate only / no value effect** disclosure until exact-source evidence earns promotion.
 
+### League schedule configuration and weekly-context gate
+
+The private Admin screen owns a strict, portable annual league-setup record rather than hard-coded commissioner data. Pip can assign all 12 teams to divisions, enter Dogs of War's Week 1-14 opponent or explicitly mark an all-play week, set playoff weeks and qualification berths, save it offline, and export/import a validated JSON backup. The verified 2026 setup is West Division with T-Dogs and Three Amigos; division-priority games are Weeks 1, 2, 12, and 13. Week 14 is all-play with no head-to-head opponent and receives ordinary weight. Playoff qualification is four division winners plus two wild cards, with Weeks 15-17 marked as playoffs.
+
+The user-proposed importance scenario remains 1.20× for division weeks and 1.40× for playoff weeks. Its preview is normalized against replacement-level players, shrunk to 25% preseason forecast authority, and capped at ±3 VBD points so the UI can show the intended tie-breaker without overstating it.
+
+On August 9, the weekly engine was tested on 31,486 player-weeks in strict time-forward folds from 2018-2025. Both models received the same realized player-season total, isolating whether prior-career venue/weather/rest splits and prior-season opponent defense distributed points across weeks more accurately than a flat per-game baseline. The best challenger (matchup only) worsened MAE by 0.36%, won only 2/8 season folds and 1/4 position folds. The full context model worsened MAE by 1.10% and won 0/8 seasons and 0/4 positions. The promotion gate therefore **held**: the draft room may display the labeled what-if, but it cannot alter authoritative VBD, Market, Max, keeper surplus, or auction events. Reports live in `reports/weekly-context-time-forward-backtest.{json,md}` and the repeatable runner is `scripts/backtest-weekly-context.py`.
+
 ### Projection updater handoff contract
 
 - exactly one row for every one of the 716 active pack players;

@@ -664,6 +664,21 @@ input[readonly] { color: var(--muted); }
 .settings-facts dt { color: var(--quiet); font-size: 0.72rem; text-transform: uppercase; }
 .settings-facts dd { margin: 0.15rem 0 0; font-weight: 800; }
 .button-stack { display: flex; gap: 0.55rem; flex-wrap: wrap; }
+.league-setup-card { grid-column: 1 / -1; padding: 0; border-color: rgba(89, 169, 255, 0.55); }
+.league-setup-card > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 72px; padding: 1rem; cursor: pointer; list-style: none; }
+.league-setup-card > summary::-webkit-details-marker { display: none; }
+.league-setup-card > summary strong, .league-setup-card > summary .eyebrow { display: block; }
+.league-setup-card > summary .count-label { color: var(--gold-light); font-weight: 850; }
+.league-setup-card[open] > summary { border-bottom: 1px solid var(--line); }
+.league-setup-card > p, .league-setup-card > form { margin-right: 1rem; margin-left: 1rem; }
+.league-setup-card > form { margin-bottom: 1rem; }
+.league-setup-card h4 { margin: 1rem 0 0.55rem; color: var(--gold-light); }
+.league-setup-rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; }
+.league-setup-grid { display: grid; gap: 0.55rem; }
+.division-setup-grid, .schedule-setup-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.league-setup-rules label, .league-setup-grid label { display: grid; gap: 0.28rem; min-width: 0; color: var(--muted); font-size: 0.78rem; font-weight: 800; }
+.league-setup-rules input, .league-setup-grid select { min-width: 0; min-height: 46px; color: var(--text); font-size: 0.94rem; font-weight: 750; }
+.league-setup-actions { margin-top: 1rem; }
 .priority-settings-card { grid-column: 1 / -1; border-color: rgba(240, 186, 54, 0.58); }
 .priority-weight-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; margin: 0.9rem 0; }
 .priority-weight-grid label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.8rem; font-weight: 800; }
@@ -882,6 +897,7 @@ input[readonly] { color: var(--muted); }
   .settings-grid { grid-template-columns: 1fr; }
   .readiness-list { grid-template-columns: 1fr; }
   .human-rehearsal-list { grid-template-columns: 1fr; }
+  .league-setup-rules, .division-setup-grid, .schedule-setup-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .order-card { grid-row: auto; }
   .intel-layout { grid-template-columns: 1fr; }
 }
@@ -916,6 +932,8 @@ input[readonly] { color: var(--muted); }
   .public-summary { grid-column: 1; grid-row: auto; }
   .intel-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .priority-weight-grid { grid-template-columns: 1fr; }
+  .league-setup-rules, .division-setup-grid, .schedule-setup-grid { grid-template-columns: 1fr; }
+  .league-setup-card > summary { align-items: flex-start; flex-direction: column; }
   .keeper-market-card > header { display: grid; }
   .keeper-market-edge { justify-self: start; }
   .keeper-market-calculator { grid-template-columns: 1fr; align-items: stretch; }

@@ -7,6 +7,7 @@ import { auditDraftPack, renderAuditMarkdown } from "../scripts/pack-release-gat
 
 const current = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
 const clone = (value) => structuredClone(value);
+const afterCurrent = (hours = 1) => new Date(Date.parse(current.asOf) + hours * 60 * 60 * 1000).toISOString();
 
 test("the active private practice pack clears every release invariant", () => {
   const audit = auditDraftPack(current, current);
@@ -117,17 +118,17 @@ test("schedule evidence remains paired with context and value neutral", () => {
     asOf: "2026-08-04T02:36:00Z",
     source: "CBS Sports authenticated Thunder Bowl pages",
     modelEffect: "none",
-    weightingStatus: "disabled_pending_preregistered_historical_gate",
+    weightingStatus: "disabled_historical_gate_failed_2018_2025",
     cbsTeamId: 4,
-    division: "North",
-    divisionRivals: ["Crime and Punishment", "The Hobbits"],
+    division: "West",
+    divisionRivals: ["T-Dogs", "Three Amigos"],
     divisionWeeks: [
-      { week: 1, opponent: "Crime and Punishment" },
-      { week: 3, opponent: "The Hobbits" },
-      { week: 11, opponent: "The Hobbits" },
-      { week: 12, opponent: "Crime and Punishment" },
+      { week: 1, opponent: "Three Amigos" },
+      { week: 2, opponent: "T-Dogs" },
+      { week: 12, opponent: "Three Amigos" },
+      { week: 13, opponent: "T-Dogs" },
     ],
-    randomWeek14Opponent: "Crime and Punishment",
+    randomWeek14Opponent: "All-play (no head-to-head opponent)",
     playoffWeeks: [15, 16, 17],
   };
   assert.equal(auditDraftPack(candidate, current).approved, true);
@@ -224,7 +225,7 @@ test("an advisory manager-profile release cannot alter any strategy value", () =
 test("Footballguys top-400 auction values remain a comparison-only source", () => {
   const candidate = clone(current);
   candidate.packId = "tb26-fbg-comparison-refresh";
-  candidate.asOf = "2026-08-09T12:00:00.000Z";
+  candidate.asOf = afterCurrent();
   candidate.fbgAuctionValues.values[0].value = 2;
   const accepted = auditDraftPack(candidate, current);
   assert.equal(accepted.approved, true);
@@ -245,10 +246,11 @@ test("Footballguys top-400 auction values remain a comparison-only source", () =
 test("a declared primary projection source may change values only through the classic champion", () => {
   const candidate = clone(current);
   candidate.packId = "tb26-candidate-projection-lab-test";
-  candidate.asOf = "2026-08-09T14:05:00.000Z";
+  const sourceAsOf = afterCurrent();
+  candidate.asOf = afterCurrent(2);
   candidate.sources.push({
     name: "Projection Lab",
-    asOf: "2026-08-09T14:00:00.000Z",
+    asOf: sourceAsOf,
     authority: "primary projection; Thunder Bowl computes value",
     scoringFingerprint: candidate.sources[0].scoringFingerprint,
   });
@@ -268,7 +270,7 @@ test("a declared primary projection source may change values only through the cl
     player.projectionSources.push({
       source: "Projection Lab",
       points: player.projectedPoints,
-      asOf: "2026-08-09T14:00:00.000Z",
+      asOf: sourceAsOf,
       role: "primary",
       modelEffect: "primary_projection",
       note: "Candidate forecast from immutable model projection-lab-test",

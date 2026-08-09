@@ -1027,8 +1027,8 @@ function validateWeeklyContext(input) {
     input.status !== "loaded_experimental_scenario_only"
     || input.source !== "Thunder Bowl weekly context v3"
     || input.modelEffect !== "none"
-    || input.engineBacktestStatus !== "pending_historical_context_engine_backtest"
-    || input.priorityDefaultStatus !== "baseline_only_user_candidate_held"
+    || input.engineBacktestStatus !== "completed_time_forward_hold_2018_2025"
+    || input.priorityDefaultStatus !== "baseline_only_historical_gate_failed"
   ) {
     fail("WEEKLY_CONTEXT_AUTHORITY", "Weekly context must remain an experimental, value-neutral scenario layer.");
   }
@@ -1044,8 +1044,8 @@ function validateWeeklyContext(input) {
   ) {
     fail("WEEKLY_CONTEXT_SCENARIO", "The preregistered user scenario must remain a 1.20/1.40 experimental preview.");
   }
-  if (!Array.isArray(input.divisionWeeks) || input.divisionWeeks.join(",") !== "1,3,11,12") {
-    fail("WEEKLY_CONTEXT_DIVISION_WEEKS", "Weekly context division weeks must be 1, 3, 11, and 12.");
+  if (!Array.isArray(input.divisionWeeks) || input.divisionWeeks.join(",") !== "1,2,12,13") {
+    fail("WEEKLY_CONTEXT_DIVISION_WEEKS", "Weekly context division weeks must be 1, 2, 12, and 13.");
   }
   if (!Array.isArray(input.playoffWeeks) || input.playoffWeeks.join(",") !== "15,16,17") {
     fail("WEEKLY_CONTEXT_PLAYOFF_WEEKS", "Weekly context playoff weeks must be 15, 16, and 17.");
@@ -1070,7 +1070,7 @@ function validateWeeklyContext(input) {
     priorityDefaultStatus: input.priorityDefaultStatus,
     defaultWeights: { baseline: 1, division: 1, playoffs: 1 },
     suggestedScenario: { division: 1.2, playoffs: 1.4, status: "experimental_preview_only" },
-    divisionWeeks: [1, 3, 11, 12],
+    divisionWeeks: [1, 2, 12, 13],
     playoffWeeks: [15, 16, 17],
     coveredPlayers: assertInteger(input.coveredPlayers, "weekly context covered players", 1, 5000),
     top168Coverage,
@@ -1085,7 +1085,7 @@ function validateScheduleContext(input) {
   const status = assertString(input.status, "schedule context status", 3, 40);
   const modelEffect = assertString(input.modelEffect, "schedule context model effect", 3, 20);
   const weightingStatus = assertString(input.weightingStatus, "schedule context weighting status", 3, 60);
-  if (status !== "loaded_value_neutral" || modelEffect !== "none" || weightingStatus !== "disabled_pending_preregistered_historical_gate") {
+  if (status !== "loaded_value_neutral" || modelEffect !== "none" || weightingStatus !== "disabled_historical_gate_failed_2018_2025") {
     fail("SCHEDULE_CONTEXT_AUTHORITY", "Schedule context must remain value-neutral until its historical gate passes.");
   }
   const cbsTeamId = assertInteger(input.cbsTeamId, "schedule context CBS team id", 1, 12);
@@ -1106,8 +1106,8 @@ function validateScheduleContext(input) {
     if (!divisionRivals.includes(opponent)) fail("SCHEDULE_CONTEXT_RIVALS", "A division week references a non-rival.");
     return { week: assertInteger(row.week, `division week ${index + 1}`, 1, 14), opponent };
   });
-  if (divisionWeeks.map((row) => row.week).join(",") !== "1,3,11,12") {
-    fail("SCHEDULE_CONTEXT_WEEKS", "Division weeks must be 1, 3, 11, and 12.");
+  if (divisionWeeks.map((row) => row.week).join(",") !== "1,2,12,13") {
+    fail("SCHEDULE_CONTEXT_WEEKS", "Division weeks must be 1, 2, 12, and 13.");
   }
   for (const rival of divisionRivals) {
     if (divisionWeeks.filter((row) => row.opponent === rival).length !== 2) {
@@ -1116,6 +1116,10 @@ function validateScheduleContext(input) {
   }
   if (!Array.isArray(input.playoffWeeks) || input.playoffWeeks.join(",") !== "15,16,17") {
     fail("SCHEDULE_CONTEXT_PLAYOFFS", "Playoff weeks must be 15, 16, and 17.");
+  }
+  const week14Format = assertString(input.randomWeek14Opponent, "Week 14 format", 2, 60);
+  if (week14Format !== "All-play (no head-to-head opponent)") {
+    fail("SCHEDULE_CONTEXT_WEEK_14", "Week 14 must remain all-play with no head-to-head opponent.");
   }
   return {
     status,
@@ -1127,7 +1131,7 @@ function validateScheduleContext(input) {
     division,
     divisionRivals,
     divisionWeeks,
-    randomWeek14Opponent: assertString(input.randomWeek14Opponent, "random Week 14 opponent", 2, 60),
+    randomWeek14Opponent: week14Format,
     playoffWeeks: [15, 16, 17],
   };
 }

@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-09T16:52:15.178538+00:00",
+  "source": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\_AGENT_HANDOFF\\data\\player_week_context.csv",
+  "targetSeasons": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "method": "Time-forward weekly-shape test. Both models receive the same realized player-season total; only preseason-available prior-season/prior-career context may redistribute it.",
+  "models": {
+    "matchup_only": {
+      "rows": 31486,
+      "flatMae": 4.6706,
+      "contextMae": 4.6873,
+      "maeChange": 0.0167,
+      "maeChangePercent": 0.358,
+      "seasonWins": 2,
+      "seasonFolds": 8,
+      "positionWins": 1,
+      "positionFolds": 4,
+      "bySeason": {
+        "2018": {
+          "rows": 3425,
+          "flatMae": 4.945,
+          "contextMae": 4.9312,
+          "maeChange": -0.0138
+        },
+        "2019": {
+          "rows": 3311,
+          "flatMae": 5.2181,
+          "contextMae": 5.2788,
+          "maeChange": 0.0607
+        },
+        "2020": {
+          "rows": 3772,
+          "flatMae": 4.8069,
+          "contextMae": 4.8051,
+          "maeChange": -0.0018
+        },
+        "2021": {
+          "rows": 4172,
+          "flatMae": 4.6831,
+          "contextMae": 4.6961,
+          "maeChange": 0.013
+        },
+        "2022": {
+          "rows": 4160,
+          "flatMae": 4.6133,
+          "contextMae": 4.6222,
+          "maeChange": 0.0089
+        },
+        "2023": {
+          "rows": 4181,
+          "flatMae": 4.3255,
+          "contextMae": 4.3442,
+          "maeChange": 0.0187
+        },
+        "2024": {
+          "rows": 4277,
+          "flatMae": 4.5194,
+          "contextMae": 4.5388,
+          "maeChange": 0.0194
+        },
+        "2025": {
+          "rows": 4188,
+          "flatMae": 4.4344,
+          "contextMae": 4.4643,
+          "maeChange": 0.0299
+        }
+      },
+      "byPosition": {
+        "QB": {
+          "rows": 3341,
+          "flatMae": 7.2998,
+          "contextMae": 7.3385,
+          "maeChange": 0.0387
+        },
+        "RB": {
+          "rows": 8137,
+          "flatMae": 4.6787,
+          "contextMae": 4.6769,
+          "maeChange": -0.0018
+        },
+        "WR": {
+          "rows": 13208,
+          "flatMae": 4.5741,
+          "contextMae": 4.5883,
+          "maeChange": 0.0142
+        },
+        "TE": {
+          "rows": 6800,
+          "flatMae": 3.5568,
+          "contextMae": 3.5895,
+          "maeChange": 0.0327
+        }
+      }
+    },
+    "personal_only": {
+      "rows": 31486,
+      "flatMae": 4.6706,
+      "contextMae": 4.7046,
+      "maeChange": 0.034,
+      "maeChangePercent": 0.728,
+      "seasonWins": 0,
+      "seasonFolds": 8,
+      "positionWins": 0,
+      "positionFolds": 4,
+      "bySeason": {
+        "2018": {
+          "rows": 3425,
+          "flatMae": 4.945,
+          "contextMae": 4.9688,
+          "maeChange": 0.0238
+        },
+        "2019": {
+          "rows": 3311,
+          "flatMae": 5.2181,
+          "contextMae": 5.2659,
+          "maeChange": 0.0478
+        },
+        "2020": {
+          "rows": 3772,
+          "flatMae": 4.8069,
+          "contextMae": 4.8383,
+          "maeChange": 0.0314
+        },
+        "2021": {
+          "rows": 4172,
+          "flatMae": 4.6831,
+          "contextMae": 4.7269,
+          "maeChange": 0.0438
+        },
+        "2022": {
+          "rows": 4160,
+          "flatMae": 4.6133,
+          "contextMae": 4.6419,
+          "maeChange": 0.0286
+        },
+        "2023": {
+          "rows": 4181,
+          "flatMae": 4.3255,
+          "contextMae": 4.3501,
+          "maeChange": 0.0246
+        },
+        "2024": {
+          "rows": 4277,
+          "flatMae": 4.5194,
+          "contextMae": 4.5559,
+          "maeChange": 0.0365
+        },
+        "2025": {
+          "rows": 4188,
+          "flatMae": 4.4344,
+          "contextMae": 4.4703,
+          "maeChange": 0.0359
+        }
+      },
+      "byPosition": {
+        "QB": {
+          "rows": 3341,
+          "flatMae": 7.2998,
+          "contextMae": 7.3184,
+          "maeChange": 0.0186
+        },
+        "RB": {
+          "rows": 8137,
+          "flatMae": 4.6787,
+          "contextMae": 4.7157,
+          "maeChange": 0.037
+        },
+        "WR": {
+          "rows": 13208,
+          "flatMae": 4.5741,
+          "contextMae": 4.6059,
+          "maeChange": 0.0318
+        },
+        "TE": {
+          "rows": 6800,
+          "flatMae": 3.5568,
+          "contextMae": 3.5989,
+          "maeChange": 0.0421
+        }
+      }
+    },
+    "full_context": {
+      "rows": 31486,
+      "flatMae": 4.6706,
+      "contextMae": 4.7218,
+      "maeChange": 0.0512,
+      "maeChangePercent": 1.096,
+      "seasonWins": 0,
+      "seasonFolds": 8,
+      "positionWins": 0,
+      "positionFolds": 4,
+      "bySeason": {
+        "2018": {
+          "rows": 3425,
+          "flatMae": 4.945,
+          "contextMae": 4.9642,
+          "maeChange": 0.0192
+        },
+        "2019": {
+          "rows": 3311,
+          "flatMae": 5.2181,
+          "contextMae": 5.3223,
+          "maeChange": 0.1042
+        },
+        "2020": {
+          "rows": 3772,
+          "flatMae": 4.8069,
+          "contextMae": 4.8383,
+          "maeChange": 0.0314
+        },
+        "2021": {
+          "rows": 4172,
+          "flatMae": 4.6831,
+          "contextMae": 4.7399,
+          "maeChange": 0.0568
+        },
+        "2022": {
+          "rows": 4160,
+          "flatMae": 4.6133,
+          "contextMae": 4.6519,
+          "maeChange": 0.0386
+        },
+        "2023": {
+          "rows": 4181,
+          "flatMae": 4.3255,
+          "contextMae": 4.3616,
+          "maeChange": 0.0361
+        },
+        "2024": {
+          "rows": 4277,
+          "flatMae": 4.5194,
+          "contextMae": 4.5766,
+          "maeChange": 0.0572
+        },
+        "2025": {
+          "rows": 4188,
+          "flatMae": 4.4344,
+          "contextMae": 4.5034,
+          "maeChange": 0.069
+        }
+      },
+      "byPosition": {
+        "QB": {
+          "rows": 3341,
+          "flatMae": 7.2998,
+          "contextMae": 7.3694,
+          "maeChange": 0.0696
+        },
+        "RB": {
+          "rows": 8137,
+          "flatMae": 4.6787,
+          "contextMae": 4.7154,
+          "maeChange": 0.0367
+        },
+        "WR": {
+          "rows": 13208,
+          "flatMae": 4.5741,
+          "contextMae": 4.6204,
+          "maeChange": 0.0463
+        },
+        "TE": {
+          "rows": 6800,
+          "flatMae": 3.5568,
+          "contextMae": 3.6258,
+          "maeChange": 0.069
+        }
+      }
+    }
+  },
+  "champion": "matchup_only",
+  "promotionGate": {
+    "passed": false,
+    "rule": "Lower aggregate MAE, wins at least 6/8 seasons, and improves all four positions."
+  }
+}

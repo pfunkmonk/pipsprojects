@@ -14,7 +14,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808g";
+} from "./state-engine.mjs?v=20260809a";
 import {
   appendEvents,
   getMeta,
@@ -82,10 +82,19 @@ import {
   humanRehearsalStatus,
 } from "./human-rehearsal.mjs?v=20260805g";
 import {
+  buildPriorityVbdOverlay,
   DEFAULT_PRIORITY_SCENARIO,
+  PRIORITY_EDGE_POLICY,
+  RECOMMENDED_PRIORITY_SCENARIO,
   priorityProjection,
   validatePriorityScenario,
-} from "./priority-weights.mjs?v=20260805g";
+} from "./priority-weights.mjs?v=20260809d";
+import {
+  cloneDefaultLeagueSetup2026,
+  deriveLeagueScheduleContext,
+  effectiveWeeklyContext,
+  validateLeagueSetup,
+} from "./league-setup.mjs?v=20260809a";
 import {
   compareCbsRosterSnapshots,
   requestCbsRosterCapture,
@@ -111,6 +120,7 @@ const STATUS_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const NEWS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RESEARCH_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 const MORNING_INTELLIGENCE_SCHEMA_VERSION = 1;
+const PRIORITY_POLICY_VERSION = 2;
 const LATEST_PACK_URL = REPLAY_2025 ? "/api/thunder-bowl/replay-2025/pack" : "/api/thunder-bowl/pack";
 const LIVE_STATUS_URL = "/api/thunder-bowl/status";
 const LIVE_NEWS_URL = "/api/thunder-bowl/news";
@@ -215,6 +225,8 @@ let playerAnnotations = {};
 let intelPlayerId = null;
 let priorityScenario = DEFAULT_PRIORITY_SCENARIO;
 let priorityControlsDirty = false;
+let leagueSetup = null;
+let priorityVbdOverlay = {};
 let cbsRosterSnapshot = null;
 let cbsRosterChanges = null;
 let humanRehearsalEvidence = null;
@@ -387,6 +399,35 @@ function availablePlayers() {
   return draftPack.players.filter((player) => !draftState.draftedPlayers[player.id]);
 }
 
+function leagueSetupOptions() {
+  return { teams: draftPack?.leagueConfig?.teams || [], expectedSeason: draftPack?.season };
+}
+
+function effectiveScheduleContext() {
+  if (!leagueSetup || !draftPack) return null;
+  return deriveLeagueScheduleContext(leagueSetup, leagueSetupOptions());
+}
+
+function currentWeeklyContext() {
+  return effectiveWeeklyContext(draftPack?.weeklyContext, leagueSetup, leagueSetupOptions());
+}
+
+function rebuildPriorityVbdOverlay() {
+  if (!draftPack) return null;
+  priorityVbdOverlay = buildPriorityVbdOverlay(draftPack.players, priorityScenario, currentWeeklyContext());
+  return priorityVbdOverlay;
+}
+
+function priorityVbdFor(player) {
+  return priorityVbdOverlay[player?.id] || {
+    available: false,
+    baseVbd: Number(player?.vbd) || 0,
+    adjustedVbd: Number(player?.vbd) || 0,
+    vbdDelta: 0,
+    adjustedProjectedPoints: Number(player?.projectedPoints) || 0,
+  };
+}
+
 function computeLiveMarket() {
   return calculateAuctionDemandMarket(draftPack, draftState);
 }
@@ -449,7 +490,7 @@ function playerDecisionLabel(annotation) {
 }
 
 function priorityForPlayer(player) {
-  return priorityProjection(player, priorityScenario, draftPack?.weeklyContext);
+  return priorityProjection(player, priorityScenario, currentWeeklyContext());
 }
 
 function priorityScenarioFromControls() {
@@ -469,7 +510,7 @@ function syncPriorityControls() {
 }
 
 function renderPrioritySettings() {
-  const context = draftPack?.weeklyContext;
+  const context = currentWeeklyContext();
   const controls = [
     byId("priority-experimental-mode"),
     byId("priority-baseline-weight"),
@@ -479,7 +520,9 @@ function renderPrioritySettings() {
     byId("priority-apply"),
   ];
   controls.forEach((control) => { control.disabled = !context; });
-  byId("priority-context-status").textContent = context ? "Loaded · experimental only" : REPLAY_2025 ? "Not used in replay" : "Not loaded";
+  byId("priority-context-status").textContent = context
+    ? priorityScenario.mode === "experimental" ? "Loaded · held candidate visible" : "Loaded · baseline active"
+    : REPLAY_2025 ? "Not used in replay" : "Not loaded";
   byId("priority-context-coverage").textContent = context
     ? `${context.coveredPlayers}/${draftPack.players.length} players · ${(context.top168Coverage * 100).toFixed(1)}% of auction top 168`
     : "—";
@@ -494,6 +537,150 @@ async function savePriorityScenario(nextScenario, message) {
   await setMeta("priorityWeightScenario", priorityScenario);
   renderAll();
   setStatus(byId("priority-settings-status"), message);
+}
+
+function teamNameForSetup(teamId) {
+  return draftPack?.leagueConfig?.teams.find((team) => team.id === teamId)?.name || teamId;
+}
+
+function renderLeagueSetupEditor() {
+  const card = byId("league-setup-details");
+  if (!card) return;
+  card.hidden = REPLAY_2025 || !leagueSetup;
+  if (card.hidden) return;
+  byId("league-setup-season").value = String(leagueSetup.season);
+  byId("league-setup-playoff-weeks").value = leagueSetup.playoffWeeks.join(", ");
+  byId("league-setup-division-winners").value = String(leagueSetup.playoffQualification.divisionWinners);
+  byId("league-setup-wild-cards").value = String(leagueSetup.playoffQualification.wildCards);
+  byId("league-setup-summary").textContent = `${leagueSetup.divisions.length} divisions · ${leagueSetup.playoffQualification.divisionWinners} division winners + ${leagueSetup.playoffQualification.wildCards} wild cards`;
+
+  const divisionGrid = byId("league-setup-divisions");
+  divisionGrid.replaceChildren();
+  for (const team of draftPack.leagueConfig.teams) {
+    const label = document.createElement("label");
+    const name = document.createElement("span");
+    name.textContent = team.name;
+    const select = document.createElement("select");
+    select.dataset.teamDivision = team.id;
+    select.setAttribute("aria-label", `${team.name} division`);
+    for (const division of leagueSetup.divisions) {
+      const option = document.createElement("option");
+      option.value = division.name;
+      option.textContent = division.name;
+      select.append(option);
+    }
+    select.value = leagueSetup.divisions.find((division) => division.teamIds.includes(team.id))?.name || "";
+    label.append(name, select);
+    divisionGrid.append(label);
+  }
+
+  const scheduleGrid = byId("league-setup-schedule");
+  scheduleGrid.replaceChildren();
+  for (const row of leagueSetup.userSchedule) {
+    const label = document.createElement("label");
+    const week = document.createElement("span");
+    week.textContent = `Week ${row.week}`;
+    const select = document.createElement("select");
+    select.dataset.scheduleWeek = String(row.week);
+    select.setAttribute("aria-label", `Dogs of War Week ${row.week} format or opponent`);
+    const allPlay = document.createElement("option");
+    allPlay.value = "__all_play__";
+    allPlay.textContent = "All-play · no H2H";
+    select.append(allPlay);
+    for (const team of draftPack.leagueConfig.teams.filter((team) => team.id !== leagueSetup.userTeamId)) {
+      const option = document.createElement("option");
+      option.value = team.id;
+      option.textContent = team.name;
+      select.append(option);
+    }
+    select.value = row.format === "all_play" ? "__all_play__" : row.opponentTeamId;
+    label.append(week, select);
+    scheduleGrid.append(label);
+  }
+}
+
+function leagueSetupFromControls() {
+  const divisions = leagueSetup.divisions.map((division) => ({ name: division.name, teamIds: [] }));
+  for (const select of byId("league-setup-divisions").querySelectorAll("select[data-team-division]")) {
+    const division = divisions.find((row) => row.name === select.value);
+    if (division) division.teamIds.push(select.dataset.teamDivision);
+  }
+  const userSchedule = [...byId("league-setup-schedule").querySelectorAll("select[data-schedule-week]")]
+    .sort((left, right) => Number(left.dataset.scheduleWeek) - Number(right.dataset.scheduleWeek))
+    .map((select) => ({
+      week: Number(select.dataset.scheduleWeek),
+      format: select.value === "__all_play__" ? "all_play" : "head_to_head",
+      opponentTeamId: select.value === "__all_play__" ? null : select.value,
+    }));
+  const playoffWeeks = byId("league-setup-playoff-weeks").value
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isFinite(value));
+  return validateLeagueSetup({
+    schemaVersion: leagueSetup.schemaVersion,
+    kind: leagueSetup.kind,
+    season: Number(byId("league-setup-season").value),
+    userTeamId: leagueSetup.userTeamId,
+    regularSeasonWeeks: leagueSetup.regularSeasonWeeks,
+    divisions,
+    userSchedule,
+    playoffWeeks,
+    playoffQualification: {
+      divisionWinners: Number(byId("league-setup-division-winners").value),
+      wildCards: Number(byId("league-setup-wild-cards").value),
+    },
+    source: "Thunder Bowl annual setup editor",
+    asOf: new Date().toISOString(),
+  }, leagueSetupOptions());
+}
+
+async function saveLeagueSetupFromControls(event) {
+  event.preventDefault();
+  try {
+    leagueSetup = leagueSetupFromControls();
+    await setMeta("leagueSetup", leagueSetup);
+    renderAll();
+    const context = effectiveScheduleContext();
+    setStatus(byId("league-setup-status"), `Saved on this device. Priority weeks: ${context.divisionWeeks.map((row) => `W${row.week}`).join(" / ")}; playoffs: ${context.playoffWeeks.map((week) => `W${week}`).join(" / ")}.`);
+  } catch (error) {
+    setStatus(byId("league-setup-status"), errorMessage(error), true);
+  }
+}
+
+function exportLeagueSetup() {
+  try {
+    const setup = leagueSetupFromControls();
+    downloadJSON(`thunder-bowl-${setup.season}-league-setup.json`, setup);
+    setStatus(byId("league-setup-status"), "League setup backup downloaded. It can be imported next year without editing code.");
+  } catch (error) {
+    setStatus(byId("league-setup-status"), errorMessage(error), true);
+  }
+}
+
+async function importLeagueSetup(file) {
+  if (!file) return;
+  try {
+    const imported = validateLeagueSetup(JSON.parse(await file.text()), leagueSetupOptions());
+    leagueSetup = imported;
+    await setMeta("leagueSetup", leagueSetup);
+    renderAll();
+    setStatus(byId("league-setup-status"), `Imported the ${leagueSetup.season} league setup and recalculated the held schedule-VBD candidate.`);
+  } catch (error) {
+    setStatus(byId("league-setup-status"), `League setup was not imported: ${errorMessage(error)}`, true);
+  } finally {
+    byId("league-setup-file").value = "";
+  }
+}
+
+async function restoreDefaultLeagueSetup() {
+  try {
+    leagueSetup = validateLeagueSetup(cloneDefaultLeagueSetup2026(), leagueSetupOptions());
+    await setMeta("leagueSetup", leagueSetup);
+    renderAll();
+    setStatus(byId("league-setup-status"), "Restored the verified 2026 CBS divisions, Dogs schedule, and Week 14 all-play format.");
+  } catch (error) {
+    setStatus(byId("league-setup-status"), errorMessage(error), true);
+  }
 }
 
 function renderCbsBridgeStatus() {
@@ -642,11 +829,12 @@ function makePlayerCell(player) {
   }
   if (priorityScenario.mode === "experimental") {
     const priority = priorityForPlayer(player);
+    const priorityVbd = priorityVbdFor(player);
     const chip = document.createElement("span");
     if (priority.available) {
-      chip.className = `mini-personal-chip ${priority.delta >= 0 ? "priority-positive" : "priority-negative"}`;
-      chip.textContent = `P ${signed(priority.delta)}`;
-      chip.title = `Experimental priority projection ${priority.projectedPoints.toFixed(1)}; no VBD or bid-limit effect`;
+      chip.className = `mini-personal-chip ${priorityVbd.vbdDelta >= 0 ? "priority-positive" : "priority-negative"}`;
+      chip.textContent = `Test ${signed(priorityVbd.vbdDelta)}`;
+      chip.title = `Held schedule candidate ${signed(priorityVbd.vbdDelta)} VBD; no live value effect after the time-forward gate failed`;
     } else {
       chip.className = "mini-personal-chip";
       chip.textContent = "P n/a";
@@ -739,9 +927,10 @@ function renderProjectionLab(player) {
     disclosure.hidden = true;
     return;
   }
+  const weeklyContext = currentWeeklyContext();
   const preview = buildProjectionLabPreview(player, {
-    divisionWeeks: draftPack.weeklyContext?.divisionWeeks || [],
-    playoffWeeks: draftPack.weeklyContext?.playoffWeeks || [15, 16, 17],
+    divisionWeeks: weeklyContext?.divisionWeeks || [],
+    playoffWeeks: weeklyContext?.playoffWeeks || [15, 16, 17],
   });
   disclosure.hidden = false;
   const summaryStatus = preview.status === "complete_three_source"
@@ -1501,7 +1690,8 @@ function renderSelectedPlayer() {
     byId("selected-priority-detail").textContent = `Baseline ${player.projectedPoints.toFixed(1)} remains authoritative; no adjustment was invented.`;
   } else {
     byId("selected-priority").textContent = `${priority.projectedPoints.toFixed(1)} (${signed(priority.delta)})`;
-    byId("selected-priority-detail").textContent = `Experimental only · ordinary ${priorityScenario.baseline.toFixed(2)}× · division ${priorityScenario.division.toFixed(2)}× · playoffs ${priorityScenario.playoffs.toFixed(2)}× · no VBD, price, or max-bid effect`;
+    const scheduleVbd = priorityVbdFor(player);
+    byId("selected-priority-detail").textContent = `Held candidate ${signed(scheduleVbd.vbdDelta)} VBD · ordinary ${priorityScenario.baseline.toFixed(2)}× · division ${priorityScenario.division.toFixed(2)}× · playoffs ${priorityScenario.playoffs.toFixed(2)}× · 2018-2025 time-forward gate failed, so VBD, prices, keepers, and bids stay unchanged.`;
   }
   byId("selected-vbd").textContent = player ? signed(player.vbd) : "—";
   byId("selected-rank").textContent = player ? `${player.position}${player.sourceRank}` : "—";
@@ -1596,17 +1786,18 @@ function renderPackStatus() {
       ? `Unavailable — ${liveStatusError}`
       : "Saved pack";
 
-  const schedule = draftPack.scheduleContext;
-  byId("schedule-status").textContent = schedule ? "Loaded - candidate held" : REPLAY_2025 ? "Not used in replay" : "Not loaded";
-  byId("schedule-division").textContent = schedule?.division || "â€”";
-  byId("schedule-rivals").textContent = schedule?.divisionRivals?.join(" / ") || "â€”";
+  const schedule = effectiveScheduleContext();
+  byId("schedule-status").textContent = schedule ? `Configured · ${schedule.season}` : REPLAY_2025 ? "Not used in replay" : "Not loaded";
+  byId("schedule-division").textContent = schedule?.division || "—";
+  byId("schedule-rivals").textContent = schedule?.divisionRivals?.join(" / ") || "—";
   byId("schedule-division-weeks").textContent = schedule?.divisionWeeks
     ?.map((row) => `W${row.week} ${row.opponent}`)
-    .join(" / ") || "â€”";
-  byId("schedule-week-14").textContent = schedule?.randomWeek14Opponent || "â€”";
-  byId("schedule-playoffs").textContent = schedule?.playoffWeeks?.map((week) => `W${week}`).join(" / ") || "â€”";
+    .join(" / ") || "—";
+  byId("schedule-week-14").textContent = schedule?.allPlayWeeks?.includes(14) ? "All-play · ordinary weight" : "Head-to-head";
+  byId("schedule-playoffs").textContent = schedule?.playoffWeeks?.map((week) => `W${week}`).join(" / ") || "—";
 
   renderPrioritySettings();
+  renderLeagueSetupEditor();
   renderCbsBridgeStatus();
   renderMorningIntelligenceStatus();
   renderHumanRehearsal();
@@ -2912,6 +3103,7 @@ function renderAll() {
   draftState = replayDraft(events);
   reconcileAuctionTelemetry();
   replayKeeperSandbox();
+  rebuildPriorityVbdOverlay();
   liveMarket = computeLiveMarket();
   keeperScenario = calculateKeeperScenarioValues(draftPack, keeperWorkspaceState());
   keeperBoardRows = buildKeeperBoard(keeperScenarioPack(), { declaredKeeperIds: activeDeclaredKeeperIds() });
@@ -4451,15 +4643,17 @@ function bindInteractions() {
   byId("load-bundled-pack").addEventListener("click", () => void loadBundledDraftPack());
   byId("capture-cbs-rosters").addEventListener("click", () => void captureCbsRosters());
   byId("export-cbs-rosters").addEventListener("click", exportCbsRosterSnapshot);
+  byId("league-setup-form").addEventListener("submit", (event) => void saveLeagueSetupFromControls(event));
+  byId("export-league-setup").addEventListener("click", exportLeagueSetup);
+  byId("league-setup-file").addEventListener("change", (event) => void importLeagueSetup(event.target.files?.[0]));
+  byId("restore-league-setup").addEventListener("click", () => void restoreDefaultLeagueSetup());
   byId("priority-use-suggested").addEventListener("click", () => {
-    const suggested = draftPack?.weeklyContext?.suggestedScenario;
-    if (!suggested) return;
-    byId("priority-baseline-weight").value = "1.00";
-    byId("priority-division-weight").value = Number(suggested.division).toFixed(2);
-    byId("priority-playoff-weight").value = Number(suggested.playoffs).toFixed(2);
+    byId("priority-baseline-weight").value = RECOMMENDED_PRIORITY_SCENARIO.baseline.toFixed(2);
+    byId("priority-division-weight").value = RECOMMENDED_PRIORITY_SCENARIO.division.toFixed(2);
+    byId("priority-playoff-weight").value = RECOMMENDED_PRIORITY_SCENARIO.playoffs.toFixed(2);
     byId("priority-experimental-mode").checked = true;
     priorityControlsDirty = true;
-    setStatus(byId("priority-settings-status"), "The 1.20 division / 1.40 playoff idea is staged. Choose Save preview settings to apply it privately.");
+    setStatus(byId("priority-settings-status"), "Recommended 1.20 division / 1.40 playoff importance is staged as a held what-if. It will not alter live values unless a future backtest passes.");
   });
   for (const controlId of ["priority-experimental-mode", "priority-baseline-weight", "priority-division-weight", "priority-playoff-weight"]) {
     byId(controlId).addEventListener("input", () => { priorityControlsDirty = true; });
@@ -4470,8 +4664,8 @@ function bindInteractions() {
       await savePriorityScenario(
         next,
         next.mode === "experimental"
-          ? `Experimental preview saved: ordinary ${next.baseline.toFixed(2)}×, division ${next.division.toFixed(2)}×, playoffs ${next.playoffs.toFixed(2)}×. VBD and bid limits are unchanged.`
-          : "Baseline saved. Experimental timing is off and authoritative projections are unchanged.",
+          ? `Held schedule candidate visible: ordinary ${next.baseline.toFixed(2)}×, division ${next.division.toFixed(2)}×, playoffs ${next.playoffs.toFixed(2)}×. The failed historical gate prevents any VBD, price, keeper, or bid effect.`
+          : "Baseline saved. The schedule what-if is hidden and all live values remain the unweighted pack.",
       );
     } catch (error) {
       setStatus(byId("priority-settings-status"), errorMessage(error), true);
@@ -4479,7 +4673,7 @@ function bindInteractions() {
   });
   byId("priority-reset").addEventListener("click", () => void savePriorityScenario(
     DEFAULT_PRIORITY_SCENARIO,
-    "Reset to baseline 1.00 / 1.00 / 1.00. No draft value or ledger data changed.",
+    "Reset to baseline 1.00 / 1.00 / 1.00. Live values were already protected by the failed historical gate; no draft event changed.",
   ));
   byId("draft-pack-file").addEventListener("change", (event) => void importDraftPack(event.target.files?.[0]));
   byId("recovery-file").addEventListener("change", (event) => void importRecovery(event.target.files?.[0]));
@@ -4610,6 +4804,15 @@ async function bootstrap() {
     deviceId = await getOrCreateDeviceId();
     const session = await fetchSession().catch(() => null);
     draftPack = await loadPack(Boolean(session?.authenticated));
+    if (!REPLAY_2025 && draftPack.season === 2026) {
+      const savedLeagueSetup = await getMeta("leagueSetup");
+      try {
+        leagueSetup = validateLeagueSetup(savedLeagueSetup || cloneDefaultLeagueSetup2026(), leagueSetupOptions());
+      } catch {
+        leagueSetup = validateLeagueSetup(cloneDefaultLeagueSetup2026(), leagueSetupOptions());
+      }
+      await setMeta("leagueSetup", leagueSetup);
+    }
     const savedKeeperEvidenceTeamId = await getMeta("keeperEvidenceTeamId", "dogs-of-war");
     selectedKeeperEvidenceTeamId = draftPack.leagueConfig.teams.some((team) => team.id === savedKeeperEvidenceTeamId)
       ? savedKeeperEvidenceTeamId
@@ -4618,7 +4821,12 @@ async function bootstrap() {
     byId("keeper-evidence-details").open = await getMeta("keeperEvidenceExpanded", false) === true;
     renderKeeperEvidenceDisclosure();
     try {
-      priorityScenario = validatePriorityScenario(await getMeta("priorityWeightScenario", DEFAULT_PRIORITY_SCENARIO));
+      const policyVersion = await getMeta("priorityPolicyVersion", 0);
+      priorityScenario = policyVersion === PRIORITY_POLICY_VERSION
+        ? validatePriorityScenario(await getMeta("priorityWeightScenario", DEFAULT_PRIORITY_SCENARIO))
+        : validatePriorityScenario(DEFAULT_PRIORITY_SCENARIO);
+      await setMeta("priorityWeightScenario", priorityScenario);
+      await setMeta("priorityPolicyVersion", PRIORITY_POLICY_VERSION);
     } catch {
       priorityScenario = DEFAULT_PRIORITY_SCENARIO;
       await setMeta("priorityWeightScenario", priorityScenario);

@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260809c" />
+  <link rel="stylesheet" href="./app.css?v=20260809d" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -645,16 +645,45 @@
               <div><dt>Dogs division</dt><dd id="schedule-division">â€”</dd></div>
               <div><dt>Division rivals</dt><dd id="schedule-rivals">â€”</dd></div>
               <div><dt>Priority weeks</dt><dd id="schedule-division-weeks">â€”</dd></div>
-              <div><dt>Random Week 14</dt><dd id="schedule-week-14">â€”</dd></div>
+              <div><dt>Week 14 format</dt><dd id="schedule-week-14">—</dd></div>
               <div><dt>Playoffs</dt><dd id="schedule-playoffs">â€”</dd></div>
             </dl>
-            <p class="panel-note">Schedule evidence is visible. The historical gate held automatic weighting, so schedule context does not change VBD or bid limits.</p>
+            <p class="panel-note">Only head-to-head games against division rivals receive the division weight. Week 14 is all-play and remains an ordinary week.</p>
           </section>
 
+          <details id="league-setup-details" class="product-panel settings-card league-setup-card">
+            <summary>
+              <span><span class="eyebrow">Year-to-year control</span><strong>League divisions, Dogs schedule &amp; playoffs</strong></span>
+              <span id="league-setup-summary" class="count-label">4 divisions · 4 winners + 2 wild cards</span>
+            </summary>
+            <p>Update this once when CBS publishes a new season. Dogs of War’s 14-week schedule is the only fantasy schedule the valuation engine needs; the NFL player matchup, venue, weather, and rest evidence stays in the projection data.</p>
+            <form id="league-setup-form">
+              <div class="league-setup-rules">
+                <label for="league-setup-season"><span>Season</span><input id="league-setup-season" type="number" min="2020" max="2100" inputmode="numeric" required /></label>
+                <label for="league-setup-playoff-weeks"><span>Playoff weeks</span><input id="league-setup-playoff-weeks" type="text" placeholder="15, 16, 17" required /></label>
+                <label for="league-setup-division-winners"><span>Division-winner berths</span><input id="league-setup-division-winners" type="number" min="0" max="12" inputmode="numeric" required /></label>
+                <label for="league-setup-wild-cards"><span>Wild-card berths</span><input id="league-setup-wild-cards" type="number" min="0" max="12" inputmode="numeric" required /></label>
+              </div>
+              <h4>Division assignment</h4>
+              <div id="league-setup-divisions" class="league-setup-grid division-setup-grid"></div>
+              <h4>Dogs of War regular-season format and opponents</h4>
+              <p class="panel-note">Choose “All-play · no H2H” for a special week such as Week 14. It will not be treated as a division game even if CBS displays a paired team.</p>
+              <div id="league-setup-schedule" class="league-setup-grid schedule-setup-grid"></div>
+              <div class="button-stack league-setup-actions">
+                <button class="button button-primary" type="submit">Save &amp; recalculate</button>
+                <button id="export-league-setup" class="button button-secondary" type="button">Download setup backup</button>
+                <label class="file-button" for="league-setup-file">Import setup JSON</label>
+                <input id="league-setup-file" class="sr-only" type="file" accept="application/json,.json" />
+                <button id="restore-league-setup" class="button button-secondary" type="button">Restore verified 2026 CBS setup</button>
+              </div>
+              <p id="league-setup-status" class="form-status" role="status" aria-live="polite">Saved locally for offline use. Download the JSON when the season setup is final.</p>
+            </form>
+          </details>
+
           <section class="product-panel settings-card priority-settings-card" aria-labelledby="priority-settings-title">
-            <p class="eyebrow">Experimental scenario — private only</p>
-            <h3 id="priority-settings-title">Weekly priority weights</h3>
-            <p>Compare players after emphasizing the weeks that matter most to Dogs of War. The calculation is normalized so a steady player is not rewarded merely because some weeks have larger weights.</p>
+            <p class="eyebrow">Held challenger · private only</p>
+            <h3 id="priority-settings-title">Schedule-adjusted VBD lab</h3>
+            <p>Explore the 1.20× division / 1.40× playoff idea without risking the live model. The candidate is replacement-relative, trusts only 25% of the preseason signal, and caps at ±3 VBD—but its 2018–2025 time-forward test failed, so it cannot change VBD, prices, keeper comparisons, or bids.</p>
             <dl class="settings-facts">
               <div><dt>Weekly context</dt><dd id="priority-context-status">Not loaded</dd></div>
               <div><dt>Coverage</dt><dd id="priority-context-coverage">—</dd></div>
@@ -668,14 +697,14 @@
             </div>
             <label class="priority-mode-toggle" for="priority-experimental-mode">
               <input id="priority-experimental-mode" type="checkbox" />
-              <span>Show experimental priority preview in the draft room</span>
+              <span>Show the held schedule-VBD what-if beside players</span>
             </label>
             <div class="button-stack priority-actions">
-              <button id="priority-use-suggested" class="button button-secondary" type="button">Use 1.20 / 1.40 idea</button>
+              <button id="priority-use-suggested" class="button button-secondary" type="button">Use recommended 1.20 / 1.40</button>
               <button id="priority-apply" class="button button-primary" type="button">Save preview settings</button>
               <button id="priority-reset" class="button button-secondary" type="button">Reset to baseline</button>
             </div>
-            <p id="priority-settings-status" class="form-status" role="status" aria-live="polite">Baseline is active. No VBD, market value, max bid, sale, or public-board field is changed.</p>
+            <p id="priority-settings-status" class="form-status" role="status" aria-live="polite">Baseline is active. The failed historical gate protects every live value and draft event.</p>
           </section>
 
           <section class="product-panel settings-card order-card">
@@ -840,6 +869,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260809c"></script>
+  <script type="module" src="./app.mjs?v=20260809d"></script>
 </body>
 </html>

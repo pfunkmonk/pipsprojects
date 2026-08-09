@@ -140,20 +140,30 @@ test("primary pages implement keyboard-roving tabs and reduced-motion safety", (
   assert.match(appCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("the Admin screen exposes schedule evidence and configurable experimental weekly priority without value authority", () => {
+test("the Admin screen exposes annual schedule setup and a historically gated VBD lab", () => {
   assert.match(indexHtml, /Schedule and division gate/);
   assert.match(indexHtml, /id="schedule-division-weeks"/);
-  assert.match(indexHtml, /does not change VBD or bid limits/);
-  assert.match(indexHtml, /Weekly priority weights/);
+  assert.match(indexHtml, /id="league-setup-form"/);
+  assert.match(indexHtml, /All-play · no H2H/);
+  assert.match(indexHtml, /Download setup backup/);
+  assert.match(indexHtml, /Schedule-adjusted VBD lab/);
   assert.match(indexHtml, /id="priority-experimental-mode"/);
-  assert.match(indexHtml, /Use 1\.20 \/ 1\.40 idea/);
-  assert.match(appSource, /Loaded - candidate held/);
-  assert.match(appSource, /draftPack\.scheduleContext/);
+  assert.match(indexHtml, /Use recommended 1\.20 \/ 1\.40/);
+  assert.match(indexHtml, /25% of the preseason signal/);
+  assert.match(indexHtml, /caps at ±3 VBD/);
+  assert.match(indexHtml, /time-forward test failed/);
+  assert.match(indexHtml, /cannot change VBD, prices, keeper comparisons, or bids/);
+  assert.match(appSource, /effectiveScheduleContext\(\)/);
+  assert.match(appSource, /validateLeagueSetup/);
+  assert.match(appSource, /setMeta\("leagueSetup", leagueSetup\)/);
   assert.match(appSource, /setMeta\("priorityWeightScenario", priorityScenario\)/);
-  assert.match(appSource, /no VBD, price, or max-bid effect/);
+  assert.match(appSource, /buildPriorityVbdOverlay/);
+  assert.match(appSource, /calculateAuctionDemandMarket\(draftPack, draftState\)/);
+  assert.match(appSource, /failed historical gate prevents any VBD, price, keeper, or bid effect/);
   assert.match(appSource, /if \(!priorityControlsDirty\) syncPriorityControls\(\)/);
   assert.match(appSource, /priorityControlsDirty = false/);
   assert.match(serviceWorker, /priority-weights\.mjs\?v=/);
+  assert.match(serviceWorker, /league-setup\.mjs\?v=/);
 });
 
 test("the CBS bridge is user-triggered, locally persisted, and offline code remains cached", () => {
