@@ -80,6 +80,24 @@ test("selected-player scarcity and source confidence are dynamic display-only ev
   assert.match(serviceWorker, /decision-context\.mjs\?v=/);
 });
 
+test("the projection lab exposes an auditable challenger without changing live values", () => {
+  for (const id of [
+    "selected-projection-lab",
+    "projection-lab-summary",
+    "projection-lab-primary",
+    "projection-lab-consensus",
+    "projection-lab-modified",
+    "projection-lab-range",
+    "projection-lab-breakdown",
+    "projection-lab-evidence",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(indexHtml, /CANDIDATE ONLY · NO VALUE EFFECT/);
+  assert.match(appSource, /buildProjectionLabPreview\(player/);
+  assert.match(appSource, /no VBD, dollar, keeper, or bid effect/);
+  assert.match(serviceWorker, /projection-lab\.mjs\?v=20260809b/);
+  assert.doesNotMatch(publicBoardSource, /projection-lab|Thunder candidate/i);
+});
+
 test("auction intelligence stays private, optional, fast to capture, and offline cached", () => {
   for (const id of [
     "auction-forecast",

@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260809a" />
+  <link rel="stylesheet" href="./app.css?v=20260809c" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -183,6 +183,23 @@
               </div>
               <ul id="selected-projection-sources" class="projection-source-list"></ul>
             </section>
+            <details id="selected-projection-lab" class="projection-lab-disclosure" hidden>
+              <summary>
+                <span>Thunder lab</span>
+                <strong id="projection-lab-summary">Candidate unavailable</strong>
+              </summary>
+              <div class="projection-lab-body">
+                <div class="projection-lab-authority">CANDIDATE ONLY · NO VALUE EFFECT</div>
+                <dl class="projection-lab-grid">
+                  <div><dt>Current primary</dt><dd id="projection-lab-primary">—</dd></div>
+                  <div><dt>Equal consensus</dt><dd id="projection-lab-consensus">—</dd></div>
+                  <div><dt>Modified candidate</dt><dd id="projection-lab-modified">—</dd></div>
+                  <div><dt>Historical 80%</dt><dd id="projection-lab-range">—</dd></div>
+                </dl>
+                <p id="projection-lab-breakdown">Select a player to inspect the candidate calculation.</p>
+                <p id="projection-lab-evidence" class="muted">The active FBG projection remains authoritative.</p>
+              </div>
+            </details>
             <dl class="decision-evidence">
               <div><dt>VBD</dt><dd id="selected-vbd">—</dd></div>
               <div><dt>Source rank</dt><dd id="selected-rank">—</dd></div>
@@ -823,6 +840,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260809a"></script>
+  <script type="module" src="./app.mjs?v=20260809c"></script>
 </body>
 </html>

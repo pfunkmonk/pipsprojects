@@ -1,0 +1,627 @@
+{
+  "schemaVersion": 1,
+  "kind": "thunder-bowl-projection-ensemble-surrogate-backtest",
+  "generatedAt": "2026-08-09T16:13:15.811276+00:00",
+  "authority": "challenger_only",
+  "scope": {
+    "sources": [
+      "Sleeper",
+      "ESPN"
+    ],
+    "seasons": [
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "rows": 1153,
+    "method": "strict time-forward folds; each test season trains only on earlier seasons",
+    "warning": "Historical premium FBG/CBS/FantasyPros snapshots are unavailable. This validates ensemble/sauce mechanics on archived Sleeper/ESPN projections, not the exact 2026 premium trio."
+  },
+  "folds": [
+    {
+      "test_year": 2022,
+      "train_years": [
+        2021
+      ],
+      "rows": 267
+    },
+    {
+      "test_year": 2023,
+      "train_years": [
+        2021,
+        2022
+      ],
+      "rows": 43
+    },
+    {
+      "test_year": 2024,
+      "train_years": [
+        2021,
+        2022,
+        2023
+      ],
+      "rows": 433
+    },
+    {
+      "test_year": 2025,
+      "train_years": [
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "rows": 410
+    }
+  ],
+  "metrics": {
+    "raw_primary": {
+      "overall": {
+        "n": 1153,
+        "mae": 41.748,
+        "rmse": 57.03,
+        "bias": 13.579,
+        "within_position_spearman": 0.7959,
+        "top_tier_hit_rate": 0.7432,
+        "catastrophic_bust_rate": 0.1206
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 57.961,
+          "rmse": 82.157,
+          "bias": 16.325,
+          "within_position_spearman": 0.8471,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.1795
+        },
+        "RB": {
+          "n": 283,
+          "mae": 43.367,
+          "rmse": 56.872,
+          "bias": 14.36,
+          "within_position_spearman": 0.8125,
+          "top_tier_hit_rate": 0.7922,
+          "catastrophic_bust_rate": 0.1039
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.368,
+          "rmse": 37.086,
+          "bias": 1.42,
+          "within_position_spearman": 0.7405,
+          "top_tier_hit_rate": 0.6458,
+          "catastrophic_bust_rate": 0.1042
+        },
+        "WR": {
+          "n": 451,
+          "mae": 42.337,
+          "rmse": 55.148,
+          "bias": 18.932,
+          "within_position_spearman": 0.7978,
+          "top_tier_hit_rate": 0.7634,
+          "catastrophic_bust_rate": 0.1183
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 18.55,
+        "bias": 17.05,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "raw_equal_blend": {
+      "overall": {
+        "n": 1153,
+        "mae": 41.041,
+        "rmse": 56.579,
+        "bias": 10.034,
+        "within_position_spearman": 0.7995,
+        "top_tier_hit_rate": 0.7315,
+        "catastrophic_bust_rate": 0.1206
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 58.871,
+          "rmse": 82.35,
+          "bias": 11.508,
+          "within_position_spearman": 0.8321,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 41.564,
+          "rmse": 55.97,
+          "bias": 10.814,
+          "within_position_spearman": 0.8145,
+          "top_tier_hit_rate": 0.8312,
+          "catastrophic_bust_rate": 0.0909
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.397,
+          "rmse": 37.749,
+          "bias": 0.196,
+          "within_position_spearman": 0.7713,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.1042
+        },
+        "WR": {
+          "n": 451,
+          "mae": 41.312,
+          "rmse": 54.172,
+          "bias": 14.546,
+          "within_position_spearman": 0.7939,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.1183
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.5,
+        "bias": 18.2,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "weighted_blend": {
+      "overall": {
+        "n": 1153,
+        "mae": 41.095,
+        "rmse": 56.636,
+        "bias": 9.86,
+        "within_position_spearman": 0.7985,
+        "top_tier_hit_rate": 0.7315,
+        "catastrophic_bust_rate": 0.1206
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 58.937,
+          "rmse": 82.327,
+          "bias": 11.662,
+          "within_position_spearman": 0.8318,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 41.622,
+          "rmse": 56.052,
+          "bias": 10.679,
+          "within_position_spearman": 0.8148,
+          "top_tier_hit_rate": 0.8312,
+          "catastrophic_bust_rate": 0.0909
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.444,
+          "rmse": 37.839,
+          "bias": 0.163,
+          "within_position_spearman": 0.7707,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.1042
+        },
+        "WR": {
+          "n": 451,
+          "mae": 41.363,
+          "rmse": 54.248,
+          "bias": 14.147,
+          "within_position_spearman": 0.7917,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.1183
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.45,
+        "bias": 18.15,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "within_position": {
+      "overall": {
+        "n": 1153,
+        "mae": 43.097,
+        "rmse": 56.994,
+        "bias": 16.658,
+        "within_position_spearman": 0.7985,
+        "top_tier_hit_rate": 0.7315,
+        "catastrophic_bust_rate": 0.1206
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 62.305,
+          "rmse": 81.877,
+          "bias": 22.764,
+          "within_position_spearman": 0.8318,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 44.159,
+          "rmse": 57.298,
+          "bias": 16.111,
+          "within_position_spearman": 0.8148,
+          "top_tier_hit_rate": 0.8312,
+          "catastrophic_bust_rate": 0.0909
+        },
+        "TE": {
+          "n": 254,
+          "mae": 29.146,
+          "rmse": 37.655,
+          "bias": 5.987,
+          "within_position_spearman": 0.7707,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.0833
+        },
+        "WR": {
+          "n": 451,
+          "mae": 43.26,
+          "rmse": 54.708,
+          "bias": 20.777,
+          "within_position_spearman": 0.7917,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.129
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.45,
+        "bias": 18.15,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "lean_mean_reversion": {
+      "overall": {
+        "n": 1153,
+        "mae": 39.456,
+        "rmse": 54.666,
+        "bias": -4.461,
+        "within_position_spearman": 0.7995,
+        "top_tier_hit_rate": 0.7315,
+        "catastrophic_bust_rate": 0.0856
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 57.657,
+          "rmse": 79.587,
+          "bias": -2.131,
+          "within_position_spearman": 0.8321,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.282,
+          "rmse": 56.982,
+          "bias": -6.602,
+          "within_position_spearman": 0.8145,
+          "top_tier_hit_rate": 0.8312,
+          "catastrophic_bust_rate": 0.0649
+        },
+        "TE": {
+          "n": 254,
+          "mae": 27.576,
+          "rmse": 37.736,
+          "bias": -7.145,
+          "within_position_spearman": 0.7713,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.0417
+        },
+        "WR": {
+          "n": 451,
+          "mae": 37.714,
+          "rmse": 49.831,
+          "bias": -2.459,
+          "within_position_spearman": 0.7939,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.0753
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.2,
+        "bias": 17.7,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "mean_reversion": {
+      "overall": {
+        "n": 1153,
+        "mae": 39.514,
+        "rmse": 54.624,
+        "bias": -2.902,
+        "within_position_spearman": 0.7985,
+        "top_tier_hit_rate": 0.7315,
+        "catastrophic_bust_rate": 0.0778
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 57.506,
+          "rmse": 79.322,
+          "bias": 0.142,
+          "within_position_spearman": 0.8318,
+          "top_tier_hit_rate": 0.7179,
+          "catastrophic_bust_rate": 0.1795
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.202,
+          "rmse": 56.899,
+          "bias": -4.698,
+          "within_position_spearman": 0.8148,
+          "top_tier_hit_rate": 0.8312,
+          "catastrophic_bust_rate": 0.0649
+        },
+        "TE": {
+          "n": 254,
+          "mae": 27.697,
+          "rmse": 37.773,
+          "bias": -6.212,
+          "within_position_spearman": 0.7707,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.0208
+        },
+        "WR": {
+          "n": 451,
+          "mae": 37.899,
+          "rmse": 49.911,
+          "bias": -1.025,
+          "within_position_spearman": 0.7917,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.0753
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.2,
+        "bias": 17.7,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "context_only": {
+      "overall": {
+        "n": 1153,
+        "mae": 39.999,
+        "rmse": 55.324,
+        "bias": -0.642,
+        "within_position_spearman": 0.7954,
+        "top_tier_hit_rate": 0.7198,
+        "catastrophic_bust_rate": 0.0856
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 58.587,
+          "rmse": 81.529,
+          "bias": 3.756,
+          "within_position_spearman": 0.8294,
+          "top_tier_hit_rate": 0.6923,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.623,
+          "rmse": 57.283,
+          "bias": -1.815,
+          "within_position_spearman": 0.8107,
+          "top_tier_hit_rate": 0.8052,
+          "catastrophic_bust_rate": 0.0779
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.005,
+          "rmse": 37.818,
+          "bias": -4.127,
+          "within_position_spearman": 0.7642,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.0208
+        },
+        "WR": {
+          "n": 451,
+          "mae": 38.307,
+          "rmse": 50.286,
+          "bias": 0.448,
+          "within_position_spearman": 0.7908,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.0753
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.65,
+        "bias": 18.35,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "durability": {
+      "overall": {
+        "n": 1153,
+        "mae": 40.032,
+        "rmse": 55.376,
+        "bias": 0.339,
+        "within_position_spearman": 0.7914,
+        "top_tier_hit_rate": 0.7082,
+        "catastrophic_bust_rate": 0.0856
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 59.094,
+          "rmse": 81.683,
+          "bias": 3.142,
+          "within_position_spearman": 0.8141,
+          "top_tier_hit_rate": 0.641,
+          "catastrophic_bust_rate": 0.2051
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.675,
+          "rmse": 57.445,
+          "bias": 1.028,
+          "within_position_spearman": 0.809,
+          "top_tier_hit_rate": 0.7792,
+          "catastrophic_bust_rate": 0.0649
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.099,
+          "rmse": 38.033,
+          "bias": -4.268,
+          "within_position_spearman": 0.7618,
+          "top_tier_hit_rate": 0.625,
+          "catastrophic_bust_rate": 0.0417
+        },
+        "WR": {
+          "n": 451,
+          "mae": 38.12,
+          "rmse": 50.134,
+          "bias": 1.475,
+          "within_position_spearman": 0.7887,
+          "top_tier_hit_rate": 0.7204,
+          "catastrophic_bust_rate": 0.0753
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.75,
+        "bias": 18.45,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "full_model": {
+      "overall": {
+        "n": 1153,
+        "mae": 40.295,
+        "rmse": 55.268,
+        "bias": -0.698,
+        "within_position_spearman": 0.7894,
+        "top_tier_hit_rate": 0.7121,
+        "catastrophic_bust_rate": 0.0934
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 59.198,
+          "rmse": 80.308,
+          "bias": 2.283,
+          "within_position_spearman": 0.8112,
+          "top_tier_hit_rate": 0.641,
+          "catastrophic_bust_rate": 0.1795
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.723,
+          "rmse": 57.577,
+          "bias": -1.155,
+          "within_position_spearman": 0.8114,
+          "top_tier_hit_rate": 0.7922,
+          "catastrophic_bust_rate": 0.0779
+        },
+        "TE": {
+          "n": 254,
+          "mae": 28.001,
+          "rmse": 37.864,
+          "bias": -6.071,
+          "within_position_spearman": 0.7581,
+          "top_tier_hit_rate": 0.6458,
+          "catastrophic_bust_rate": 0.0625
+        },
+        "WR": {
+          "n": 451,
+          "mae": 38.779,
+          "rmse": 50.616,
+          "bias": 1.523,
+          "within_position_spearman": 0.7853,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.086
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.7,
+        "bias": 18.5,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    }
+  },
+  "candidateFormula": {
+    "form": "max(0, intercept[position] + slope[position] * equal_source_consensus)",
+    "coefficients": {
+      "QB": {
+        "n": 198,
+        "intercept": 12.866451,
+        "slope": 0.860639,
+        "authority": "surrogate_candidate_only"
+      },
+      "RB": {
+        "n": 357,
+        "intercept": -2.157168,
+        "slope": 0.909122,
+        "authority": "surrogate_candidate_only"
+      },
+      "TE": {
+        "n": 318,
+        "intercept": 8.751286,
+        "slope": 0.836951,
+        "authority": "surrogate_candidate_only"
+      },
+      "WR": {
+        "n": 556,
+        "intercept": 9.94545,
+        "slope": 0.781309,
+        "authority": "surrogate_candidate_only"
+      }
+    },
+    "warning": "Coefficients were learned on Sleeper/ESPN history and may not transfer unchanged to the FBG/CBS/FantasyPros trio."
+  },
+  "candidateUncertainty": {
+    "method": "time-forward out-of-fold residual deciles for the lowest-MAE surrogate challenger",
+    "byPosition": {
+      "QB": {
+        "n": 165,
+        "p10": -101.297,
+        "p90": 104.933,
+        "coverage": 0.7939
+      },
+      "RB": {
+        "n": 283,
+        "p10": -55.132,
+        "p90": 82.676,
+        "coverage": 0.7951
+      },
+      "TE": {
+        "n": 254,
+        "p10": -32.295,
+        "p90": 54.089,
+        "coverage": 0.7953
+      },
+      "WR": {
+        "n": 451,
+        "p10": -59.545,
+        "p90": 69.196,
+        "coverage": 0.8004
+      }
+    },
+    "authority": "surrogate_candidate_only"
+  },
+  "decision": {
+    "reference": "raw_primary",
+    "lowest_mae_variant": "lean_mean_reversion",
+    "position_mae_delta_vs_reference": {
+      "QB": -0.304,
+      "RB": -1.085,
+      "WR": -4.623,
+      "TE": -0.792
+    },
+    "surrogateGatePassed": true,
+    "livePromotionEligible": false,
+    "rule": "The surrogate must beat the reference overall with no position MAE regression greater than 1 point. Live premium-source promotion remains blocked until exact archived outcomes exist."
+  }
+}

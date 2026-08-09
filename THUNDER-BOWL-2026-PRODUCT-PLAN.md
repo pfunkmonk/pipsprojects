@@ -64,6 +64,33 @@ Until then, the challenger is visible only as a labeled private advisory.
 
 The player-value foundation remains at least as important as price prediction. Every projection or VBD challenger must be evaluated on preseason-only inputs against later results, with injuries and games played reported separately. Required outputs include total/weekly error, rank correlation, lineup/roster surplus, playoff qualification, and simulated auction surplus.
 
+### Projection ensemble architecture
+
+The target pipeline is source evidence → Thunder projection → VBD → intrinsic dollars → historically calibrated auction market → live-room bid guidance. Source projections never write VBD or dollars directly.
+
+1. Rescore every source to the exact Thunder Bowl scoring fingerprint before comparison.
+2. Average the available Footballguys, CBS, and FantasyPros point projections as the transparent raw consensus. Missing sources reduce confidence; they are not silently replaced with zero.
+3. Apply only adjustments that reconcile by named component: mean reversion, within-position correction, season context, durability, and current availability.
+4. Use weekly matchup, venue, travel, weather climatology, short-turnaround, division, and playoff evidence to shape weekly value. It may not manufacture extra season points unless an isolated time-forward season-total test earns that authority.
+5. Emit an honest uncertainty interval and explicit fallback reason for every player.
+6. Recompute VBD, intrinsic value, Market, Max, and keeper surplus inside Thunder Bowl through the released value engine—not in the projection updater.
+
+The August 9 surrogate test scored 1,153 player-seasons in strict time-forward folds. Equal weighting beat the single-source reference (41.041 versus 41.748 MAE), and equal consensus plus a lean position-specific mean-reversion calibration improved MAE to 39.456 with no position regression. Inverse-error source weighting, within-position shrinkage, season-total context, a second durability haircut, and the full feature pile did not beat that challenger and remain rejected for automatic use.
+
+This result validates the architecture, not a live premium-source replacement: the archived history contains Sleeper/ESPN forecasts rather than the exact dated Footballguys/CBS/FantasyPros trio. The draft room therefore shows the Thunder result only in a collapsed, private **candidate only / no value effect** disclosure until exact-source evidence earns promotion.
+
+### Projection updater handoff contract
+
+- exactly one row for every one of the 716 active pack players;
+- exact pack ID plus available FBG, CBS, FantasyPros, and GSIS source IDs;
+- immutable model ID, timezone-bearing source/export timestamps, scoring fingerprint, and `candidate_only` authority;
+- all three raw source values, their equal consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
+- exactly one blank bye week when weekly values are supplied, with weekly values reconciling to the season total;
+- fail-closed rejection of missing/duplicate players, identity drift, stale or malformed metadata, forged consensus values, unreconciled adjustments, or malformed weeks;
+- candidate pack and audit output only. The active pack remains unchanged until the independent projection promotion gate passes.
+
+Beginning with the 2026 snapshot, every dated premium-source input, modified projection, model ID, and later result will be retained so future tests no longer depend on surrogate sources.
+
 Novel ideas from medicine, engineering, finance, operations research, or other sciences are welcome as challengers. At least three unconventional models should be tested, but none receives automatic model weight. Examples queued for controlled tests include:
 
 1. reliability/survival-style workload modeling for injury-adjusted availability;
@@ -72,8 +99,9 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 
 ## Near-term sequence
 
-1. Accumulate 2026 timestamped forecasts, sale outcomes, runner-ups, and nomination order.
-2. Re-run the price challenger after each rehearsal; publish error and interval-calibration reports.
-3. Add new projection data from the separate projection-upgrade application through the validated import boundary.
-4. Rehearse auctioneer-feed failure, manual takeover, Wi-Fi loss, recovery restore, and second-screen board.
-5. Freeze a draft-morning release only after the complete automated and human departure gates pass.
+1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.
+2. Review source omissions, source disagreement, uncertainty, durability, and availability exceptions before any promotion decision.
+3. Accumulate every 2026 timestamped source forecast, modified forecast, sale outcome, runner-up, and nomination position.
+4. Re-run the projection and price challengers after each rehearsal; publish error and interval-calibration reports.
+5. Rehearse auctioneer-feed failure, manual takeover, Wi-Fi loss, recovery restore, and second-screen board.
+6. Freeze a draft-morning release only after the complete automated and human departure gates pass.
