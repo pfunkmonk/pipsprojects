@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808f";
+} from "./state-engine.mjs?v=20260808g";
 import {
   appendEvents,
   getMeta,
@@ -60,9 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808f";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808f";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808f";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808g";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808g";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -2124,11 +2124,18 @@ function renderKeeperSelectionTimeline() {
     const name = document.createElement("strong");
     name.textContent = teamName(slot.teamId);
     const detail = document.createElement("small");
-    if (slot.status === "kept") detail.textContent = `${slot.playerName} · ${currency(slot.salary)}`;
+    let keeperMeta = null;
+    if (slot.status === "kept") {
+      detail.textContent = slot.playerName;
+      keeperMeta = document.createElement("small");
+      keeperMeta.className = "keeper-turn-meta";
+      keeperMeta.textContent = `${slot.position} · ${slot.nflTeam} · ${currency(slot.salary)}`;
+    }
     else if (slot.status === "passed") detail.textContent = "Passed — no keeper";
     else if (current) detail.textContent = "ON THE CLOCK";
     else detail.textContent = "Waiting";
     card.append(turn, name, detail);
+    if (keeperMeta) card.append(keeperMeta);
     container.append(card);
   }
 }

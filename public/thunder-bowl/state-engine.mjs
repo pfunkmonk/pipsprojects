@@ -379,6 +379,8 @@ function buildKeeperSelectionTimeline(operationalEvents, config) {
     eventId: null,
     playerId: null,
     playerName: null,
+    position: null,
+    nflTeam: null,
     salary: null,
     legacyAssignment: false,
   })));
@@ -405,6 +407,8 @@ function buildKeeperSelectionTimeline(operationalEvents, config) {
         eventId: event.id,
         playerId: event.payload.playerId,
         playerName: event.payload.playerName,
+        position: event.payload.position,
+        nflTeam: event.payload.nflTeam,
         salary: event.payload.salary,
         legacyAssignment: explicitRound === undefined,
       });

@@ -366,6 +366,8 @@ test("keeper selection follows 1-12 and then repeats 1-12 with explicit passes",
   assert.equal(state.keeperSelection.completedCount, 2);
   assert.equal(state.keeperSelection.slots[0].status, "passed");
   assert.equal(state.keeperSelection.slots[1].status, "kept");
+  assert.equal(state.keeperSelection.slots[1].position, "RB");
+  assert.equal(state.keeperSelection.slots[1].nflTeam, "DET");
   assert.equal(state.keeperSelection.nextSlot.teamId, "crime-and-punishment");
   assert.equal(state.keeperSelection.nextSlot.round, 1);
 });

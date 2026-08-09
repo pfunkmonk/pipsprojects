@@ -287,6 +287,8 @@ test("keeper declarations and cap trades use the offline-first audited ledger", 
   assert.match(appSource, /EVENT_TYPES\.KEEPER_PASSED/);
   assert.match(appSource, /EVENT_TYPES\.CAP_TRANSFERRED/);
   assert.match(appSource, /EVENT_TYPES\.KEEPER_RIGHTS_TRADED/);
+  assert.match(appSource, /keeperMeta\.textContent = `\$\{slot\.position\} · \$\{slot\.nflTeam\} · \$\{currency\(slot\.salary\)\}`/);
+  assert.match(appCss, /\.keeper-turn-card \.keeper-turn-meta/);
   assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[keeper\]/);
   assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[pass\]/);
   assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[transfer\]/);
