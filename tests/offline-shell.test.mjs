@@ -349,13 +349,17 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
 test("keeper strategy exposes ranked trade-for and trade-away proposals without auto-recording them", () => {
   for (const id of [
     "keeper-market-title",
+    "keeper-market-team",
+    "keeper-market-note",
     "keeper-market-summary",
     "keeper-market-evidence",
     "keeper-acquire-list",
     "keeper-sell-list",
     "keeper-market-status",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
-  assert.match(appSource, /buildKeeperTradeMarket\(keeperScenarioPack\(\)\)/);
+  assert.match(appSource, /buildKeeperTradeMarket\(keeperScenarioPack\(\), \{ teamId: selectedKeeperMarketTeamId \}\)/);
+  assert.match(appSource, /selectedKeeperMarketTeamId = "dogs-of-war"/);
+  assert.match(appSource, /byId\("keeper-market-team"\)\.addEventListener\("change"/);
   assert.match(appSource, /keeperTradeScenario\(opportunity, amount\)/);
   assert.match(appSource, /addKeeperTradeFact\(facts, "Contract", `\$\{opportunity\.contractYearLabel\} · \$\{opportunity\.contractYearsLeft\} left`\)/);
   assert.match(appCss, /\.keeper-market-facts \{[^}]*repeat\(4, minmax\(0, 1fr\)\)/);

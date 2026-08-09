@@ -1,4 +1,4 @@
-import { POSITIONS, applyLiveMarketMultiplier, calculateLiveMarketState } from "./state-engine.mjs?v=20260808e";
+import { POSITIONS, applyLiveMarketMultiplier, calculateLiveMarketState } from "./state-engine.mjs?v=20260808f";
 
 const POSITIONAL_SCARCITY_SHARE = 0.35;
 

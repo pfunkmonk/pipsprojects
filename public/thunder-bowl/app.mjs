@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808e";
+} from "./state-engine.mjs?v=20260808f";
 import {
   appendEvents,
   getMeta,
@@ -60,9 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808e";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808e";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808e";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808f";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808f";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808f";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -161,6 +161,7 @@ let draftReadinessReport = null;
 let lastRecoveryExportAt = null;
 let keeperBoardRows = [];
 let selectedKeeperEvidenceTeamId = "dogs-of-war";
+let selectedKeeperMarketTeamId = "dogs-of-war";
 let keeperWorkspaceMode = "sandbox";
 let keeperSandboxEvents = [];
 let keeperSandboxState = replayDraft([]);
@@ -1847,20 +1848,20 @@ function addKeeperTradeFact(container, label, value) {
   container.append(fact);
 }
 
-function loadKeeperTradeProposal(opportunity, amount) {
+function loadKeeperTradeProposal(opportunity, amount, optimizerTeamId) {
   const acquiring = opportunity.kind === "acquire";
-  capFromTeam.value = acquiring ? "dogs-of-war" : opportunity.bestBuyerTeamId;
-  capToTeam.value = acquiring ? opportunity.ownerTeamId : "dogs-of-war";
+  capFromTeam.value = acquiring ? optimizerTeamId : opportunity.bestBuyerTeamId;
+  capToTeam.value = acquiring ? opportunity.ownerTeamId : optimizerTeamId;
   capTransferAmount.value = String(amount);
   teamASendsPlayerIds = new Set();
   teamBSendsPlayerIds = new Set([opportunity.playerId]);
   renderKeeperOperations();
   updateCapTransferSummary();
   capTransferForm.scrollIntoView({ behavior: "smooth", block: "center" });
-  setStatus(byId("keeper-market-status"), `${currency(amount)} ${opportunity.playerName} proposal loaded below. Review it, negotiate, and record the atomic rights trade only after both teams agree.`);
+  setStatus(byId("keeper-market-status"), `${currency(amount)} ${opportunity.playerName} proposal for ${teamName(optimizerTeamId)} loaded below. Review it, negotiate, and record the atomic rights trade only after both teams agree.`);
 }
 
-function keeperTradeOpportunityCard(opportunity) {
+function keeperTradeOpportunityCard(opportunity, market) {
   const card = document.createElement("article");
   card.className = "keeper-market-card";
   const heading = document.createElement("header");
@@ -1870,7 +1871,7 @@ function keeperTradeOpportunityCard(opportunity) {
   const meta = document.createElement("p");
   meta.textContent = opportunity.kind === "acquire"
     ? `${opportunity.position} · ${opportunity.ownerTeamName} · owner option #${opportunity.ownerKeeperRank}`
-    : `${opportunity.position} · your option #${opportunity.portfolioRank} · best fit ${opportunity.bestBuyerTeamName}`;
+    : `${opportunity.position} · ${market.teamName} option #${opportunity.portfolioRank} · best fit ${opportunity.bestBuyerTeamName}`;
   identity.append(name, meta);
   const edge = document.createElement("span");
   edge.className = "keeper-market-edge";
@@ -1895,7 +1896,7 @@ function keeperTradeOpportunityCard(opportunity) {
     rationale.textContent = `${opportunity.ownerKeeperRank > 2 ? "The owner currently has at least two stronger keeper values. " : "This is currently in the owner’s top two, so the price includes their lost keeper value. "}${replacement}`;
   } else {
     const buyerFits = opportunity.buyerFits.map((buyer) => `${buyer.teamName} up to ${currency(buyer.ceiling)}`).join(" · ");
-    rationale.textContent = `${opportunity.protectedKeeper ? `Trading him costs ${currency(opportunity.sellerPortfolioLoss)} from your current top two. ` : "Trading him does not reduce your current top-two keeper surplus. "}Modeled fits: ${buyerFits}.`;
+    rationale.textContent = `${opportunity.protectedKeeper ? `Trading him costs ${currency(opportunity.sellerPortfolioLoss)} from ${market.teamName}’s current top two. ` : `Trading him does not reduce ${market.teamName}’s current top-two keeper surplus. `}Modeled fits: ${buyerFits}.`;
   }
 
   const calculator = document.createElement("div");
@@ -1922,16 +1923,16 @@ function keeperTradeOpportunityCard(opportunity) {
     input.value = String(amount);
     const scenario = keeperTradeScenario(opportunity, amount);
     if (opportunity.kind === "acquire") {
-      result.textContent = `At ${currency(amount)}: ${currency(scenario.allInCost)} all-in (${currency(opportunity.keeperSalary)} keeper + ${currency(amount)} cap), ${scenario.playerNetSurplus >= 0 ? "+" : ""}${currency(scenario.playerNetSurplus)} player net, ${scenario.portfolioGain >= 0 ? "+" : ""}${currency(scenario.portfolioGain)} versus your current two.`;
+      result.textContent = `At ${currency(amount)}: ${currency(scenario.allInCost)} all-in (${currency(opportunity.keeperSalary)} keeper + ${currency(amount)} cap), ${scenario.playerNetSurplus >= 0 ? "+" : ""}${currency(scenario.playerNetSurplus)} player net, ${scenario.portfolioGain >= 0 ? "+" : ""}${currency(scenario.portfolioGain)} versus ${market.teamName}’s current two.`;
       action.textContent = `Load ${currency(amount)} offer`;
     } else {
-      result.textContent = `At ${currency(amount)} received: ${scenario.portfolioGain >= 0 ? "+" : ""}${currency(scenario.portfolioGain)} to your keeper portfolio after ${currency(opportunity.sellerPortfolioLoss)} of displaced keeper value.`;
+      result.textContent = `At ${currency(amount)} received: ${scenario.portfolioGain >= 0 ? "+" : ""}${currency(scenario.portfolioGain)} to ${market.teamName}’s keeper portfolio after ${currency(opportunity.sellerPortfolioLoss)} of displaced keeper value.`;
       action.textContent = `Load ${currency(amount)} proposal`;
     }
   };
   input.addEventListener("input", update);
   input.addEventListener("change", update);
-  action.addEventListener("click", () => loadKeeperTradeProposal(opportunity, Number(input.value)));
+  action.addEventListener("click", () => loadKeeperTradeProposal(opportunity, Number(input.value), market.teamId));
   update();
   calculator.append(label, result, action);
   card.append(heading, facts, rationale, calculator);
@@ -1939,12 +1940,24 @@ function keeperTradeOpportunityCard(opportunity) {
 }
 
 function renderKeeperTradeMarket() {
-  const market = buildKeeperTradeMarket(keeperScenarioPack());
+  const select = byId("keeper-market-team");
+  const teamIds = draftState.config.nominationOrder;
+  if (!teamIds.includes(selectedKeeperMarketTeamId)) selectedKeeperMarketTeamId = "dogs-of-war";
+  select.replaceChildren();
+  for (const teamId of teamIds) {
+    const option = document.createElement("option");
+    option.value = teamId;
+    option.textContent = teamName(teamId);
+    select.append(option);
+  }
+  select.value = selectedKeeperMarketTeamId;
+  const market = buildKeeperTradeMarket(keeperScenarioPack(), { teamId: selectedKeeperMarketTeamId });
   const acquireList = byId("keeper-acquire-list");
   const sellList = byId("keeper-sell-list");
   acquireList.replaceChildren();
   sellList.replaceChildren();
   byId("keeper-market-summary").textContent = `${currency(market.currentPortfolioValue)} current top-two surplus`;
+  byId("keeper-market-note").textContent = `Ranked by the change to ${market.teamName}’s best two-keeper portfolio—not just a player’s raw discount. Test the separate cap payment before loading a proposal into the audited trade form.`;
   byId("keeper-acquire-count").textContent = `${market.acquire.length} viable`;
   byId("keeper-sell-count").textContent = `${market.tradeAway.length} viable`;
   const evidence = byId("keeper-market-evidence");
@@ -1953,18 +1966,18 @@ function renderKeeperTradeMarket() {
     ? ""
     : "Historical replay limitation: this pack contains only the two preserved keeper candidates per team. It can price those players, but it cannot discover third-choice trade targets until the complete end-of-season rosters are loaded. The live 2026 pack has complete roster coverage.";
 
-  for (const opportunity of market.acquire.slice(0, 6)) acquireList.append(keeperTradeOpportunityCard(opportunity));
-  for (const opportunity of market.tradeAway.slice(0, 6)) sellList.append(keeperTradeOpportunityCard(opportunity));
+  for (const opportunity of market.acquire.slice(0, 6)) acquireList.append(keeperTradeOpportunityCard(opportunity, market));
+  for (const opportunity of market.tradeAway.slice(0, 6)) sellList.append(keeperTradeOpportunityCard(opportunity, market));
   if (!market.acquire.length) {
     const empty = document.createElement("p");
     empty.className = "keeper-market-empty";
-    empty.textContent = "No modeled acquisition currently improves your top two at a price that also protects the seller.";
+    empty.textContent = `No modeled acquisition currently improves ${market.teamName}’s top two at a price that also protects the seller.`;
     acquireList.append(empty);
   }
   if (!market.tradeAway.length) {
     const empty = document.createElement("p");
     empty.className = "keeper-market-empty";
-    empty.textContent = "No Dogs of War surplus player currently has a buyer whose modeled ceiling clears your keeper loss.";
+    empty.textContent = `No ${market.teamName} surplus player currently has a buyer whose modeled ceiling clears that team’s keeper loss.`;
     sellList.append(empty);
   }
 }
@@ -3838,6 +3851,12 @@ function bindInteractions() {
     keeperRows();
     renderKeeperOperations();
     void setMeta("keeperEvidenceTeamId", teamId);
+  });
+  byId("keeper-market-team").addEventListener("change", (event) => {
+    const teamId = event.currentTarget.value;
+    if (!draftState.config.nominationOrder.includes(teamId)) return;
+    selectedKeeperMarketTeamId = teamId;
+    renderKeeperTradeMarket();
   });
   keeperPlayerSearch.addEventListener("input", renderKeeperOperations);
   keeperPlayer.addEventListener("change", () => {
