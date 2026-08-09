@@ -341,7 +341,8 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
   assert.match(appSource, /Private prediction only; public board unchanged/);
   assert.match(appSource, /row\.addEventListener\("dblclick"/);
   assert.match(appSource, /FBG comparison loaded/);
-  assert.match(indexHtml, /<th class="number">Value<\/th><th class="number">FBG value<\/th>/);
+  assert.match(indexHtml, /Estimated price if this player were available in the current auction pool/);
+  assert.match(indexHtml, />Auction value<\/th><th class="number">FBG value<\/th>/);
   assert.match(serviceWorker, /keeper-scenario\.mjs\?v=/);
 });
 

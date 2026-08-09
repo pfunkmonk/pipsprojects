@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808d";
+} from "./state-engine.mjs?v=20260808e";
 import {
   appendEvents,
   getMeta,
@@ -60,9 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808d";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808d";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808d";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808e";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808e";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808e";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,

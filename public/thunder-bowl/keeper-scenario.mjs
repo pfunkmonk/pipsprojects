@@ -1,4 +1,4 @@
-import { POSITIONS, applyLiveMarketMultiplier, calculateLiveMarketState } from "./state-engine.mjs?v=20260808d";
+import { POSITIONS, applyLiveMarketMultiplier, calculateLiveMarketState } from "./state-engine.mjs?v=20260808e";
 
 const POSITIONAL_SCARCITY_SHARE = 0.35;
 
@@ -71,7 +71,14 @@ export function calculateKeeperScenarioValues(pack, state, { positionalScarcityS
   for (const player of remainingPlayers) {
     valuesByPlayerId[player.id] = applyLiveMarketMultiplier(player.marketValue, positionImpacts[player.position].multiplier);
   }
-  for (const keeper of keepers) valuesByPlayerId[keeper.playerId] = playersById.get(keeper.playerId)?.marketValue || keeper.price;
+  for (const keeper of keepers) {
+    const player = playersById.get(keeper.playerId);
+    if (!player) continue;
+    valuesByPlayerId[keeper.playerId] = applyLiveMarketMultiplier(
+      player.marketValue,
+      positionImpacts[player.position].multiplier,
+    );
+  }
 
   return {
     modelEffect: "sandbox_only",

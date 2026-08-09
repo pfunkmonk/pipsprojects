@@ -50,6 +50,69 @@ test("six cheap first-round RB keepers dynamically raise remaining RB auction va
   assert.ok(scenario.globalInflationPercent > 0);
   assert.ok(scenario.positionImpacts.RB.displayPercent > scenario.positionImpacts.WR.displayPercent);
   assert.ok(scenario.valuesByPlayerId[bestRemainingRunningBack.id] > baseline.valuesByPlayerId[bestRemainingRunningBack.id]);
+  for (const keptRunningBack of topRunningBacks) {
+    assert.ok(
+      scenario.valuesByPlayerId[keptRunningBack.id] > baseline.valuesByPlayerId[keptRunningBack.id],
+      `${keptRunningBack.name}'s counterfactual auction value should reflect the same RB scarcity as the remaining pool`,
+    );
+  }
+});
+
+test("a cheap Chase Brown keeper cannot lower his counterfactual auction value", () => {
+  const chase = pack.players.find((player) => player.name === "Chase Brown");
+  const candidate = pack.keeperCandidates.find((row) => row.playerId === chase.id);
+  const firstTeamId = pack.leagueConfig.nominationOrder[0];
+  const priorCheapRunningBack = pack.players
+    .filter((player) => player.position === "RB" && player.id !== chase.id)
+    .sort((left, right) => right.marketValue - left.marketValue)[0];
+  const firstKeeper = createEvent(
+    EVENT_TYPES.KEEPER_ASSIGNED,
+    {
+      playerId: priorCheapRunningBack.id,
+      playerName: priorCheapRunningBack.name,
+      position: priorCheapRunningBack.position,
+      nflTeam: priorCheapRunningBack.nflTeam,
+      teamId: firstTeamId,
+      salary: 1,
+      keeperYear: 1,
+      selectionRound: 1,
+      source: "Create existing RB scarcity for the Chase Brown regression",
+    },
+    { id: "scenario-chase-prior-rb", deviceId: "scenario-test", createdAt: "2026-08-08T00:00:00.000Z" },
+  );
+  const priorTurns = pack.leagueConfig.nominationOrder
+    .slice(1, pack.leagueConfig.nominationOrder.indexOf(candidate.teamId))
+    .map((teamId, index) => createEvent(
+      EVENT_TYPES.KEEPER_PASSED,
+      { teamId, round: 1, reason: "Advance to the Chase Brown regression turn" },
+      {
+        id: `scenario-chase-pass-${index}`,
+        deviceId: "scenario-test",
+        createdAt: `2026-08-08T00:00:${String(index).padStart(2, "0")}.000Z`,
+      },
+    ));
+  const priorEvents = [firstKeeper, ...priorTurns];
+  const baseline = calculateKeeperScenarioValues(pack, replayDraft(priorEvents));
+  const keeper = createEvent(
+    EVENT_TYPES.KEEPER_ASSIGNED,
+    {
+      playerId: chase.id,
+      playerName: chase.name,
+      position: chase.position,
+      nflTeam: chase.nflTeam,
+      teamId: candidate.teamId,
+      salary: candidate.keeperSalary,
+      keeperYear: candidate.keeperYear,
+      selectionRound: 1,
+      source: "Chase Brown regression test",
+    },
+    { id: "scenario-chase-brown", deviceId: "scenario-test", createdAt: "2026-08-08T00:01:00.000Z" },
+  );
+  const scenario = calculateKeeperScenarioValues(pack, replayDraft([...priorEvents, keeper]));
+
+  assert.ok(scenario.positionImpacts.RB.displayPercent > 0);
+  assert.ok(baseline.valuesByPlayerId[chase.id] > chase.marketValue);
+  assert.ok(scenario.valuesByPlayerId[chase.id] >= baseline.valuesByPlayerId[chase.id]);
 });
 
 test("cap-only ownership redistribution is recalculated without inventing room dollars", () => {
