@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const AUCTIONEER_COOKIE = "tb_auctioneer_session";
+export const DRAFT_BOARD_COOKIE = "tb_draft_board_session";
 
 function base64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -25,14 +26,26 @@ export function verifyAuctioneerCode(input, expected) {
   return typeof expected === "string" && expected.length >= 6 && secureEqual(input, expected);
 }
 
-export function createAuctioneerCookie(secret, options = {}) {
+export function verifyDraftBoardCode(input, expected) {
+  return typeof expected === "string" && expected.length >= 6 && secureEqual(input, expected);
+}
+
+function createRoleCookie(cookieName, role, secret, options = {}) {
   if (typeof secret !== "string" || secret.length < 32) throw new Error("THUNDER_BOWL_SESSION_SECRET must contain at least 32 characters.");
   const maxAgeSeconds = Number(options.maxAgeSeconds) || 12 * 60 * 60;
-  const payload = base64url(JSON.stringify({ role: "auctioneer", exp: Date.now() + maxAgeSeconds * 1000, nonce: randomUUID() }));
+  const payload = base64url(JSON.stringify({ role, exp: Date.now() + maxAgeSeconds * 1000, nonce: randomUUID() }));
   const token = `${payload}.${signature(payload, secret)}`;
   const path = options.path || "/";
   const secure = options.secure === false ? "" : "; Secure";
-  return `${AUCTIONEER_COOKIE}=${token}; Path=${path}; Max-Age=${maxAgeSeconds}; HttpOnly${secure}; SameSite=Strict`;
+  return `${cookieName}=${token}; Path=${path}; Max-Age=${maxAgeSeconds}; HttpOnly${secure}; SameSite=Strict`;
+}
+
+export function createAuctioneerCookie(secret, options = {}) {
+  return createRoleCookie(AUCTIONEER_COOKIE, "auctioneer", secret, options);
+}
+
+export function createDraftBoardCookie(secret, options = {}) {
+  return createRoleCookie(DRAFT_BOARD_COOKIE, "draft-board", secret, options);
 }
 
 function cookieValue(cookieHeader, name) {
@@ -43,9 +56,9 @@ function cookieValue(cookieHeader, name) {
   return null;
 }
 
-export function verifyAuctioneerSession(cookieHeader, secret) {
+function verifyRoleSession(cookieHeader, cookieName, role, secret) {
   if (typeof secret !== "string" || secret.length < 32) return false;
-  const token = cookieValue(cookieHeader, AUCTIONEER_COOKIE);
+  const token = cookieValue(cookieHeader, cookieName);
   if (!token) return false;
   const [payload, suppliedSignature, extra] = token.split(".");
   if (!payload || !suppliedSignature || extra) return false;
@@ -55,8 +68,16 @@ export function verifyAuctioneerSession(cookieHeader, secret) {
   if (left.length !== right.length || !timingSafeEqual(left, right)) return false;
   try {
     const session = JSON.parse(decodeBase64url(payload));
-    return session.role === "auctioneer" && Number.isFinite(session.exp) && session.exp > Date.now();
+    return session.role === role && Number.isFinite(session.exp) && session.exp > Date.now();
   } catch {
     return false;
   }
+}
+
+export function verifyAuctioneerSession(cookieHeader, secret) {
+  return verifyRoleSession(cookieHeader, AUCTIONEER_COOKIE, "auctioneer", secret);
+}
+
+export function verifyDraftBoardSession(cookieHeader, secret) {
+  return verifyRoleSession(cookieHeader, DRAFT_BOARD_COOKIE, "draft-board", secret);
 }

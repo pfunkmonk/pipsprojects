@@ -217,6 +217,10 @@ async function refresh() {
     }
   } catch (error) {
     lastRefreshError = error;
+    if (error?.status === 401 && !new URLSearchParams(window.location.search).has("demo")) {
+      window.location.replace("/thunder-bowl/draft-board/");
+      return;
+    }
     if (!snapshot) {
       try {
         const cached = JSON.parse(localStorage.getItem(OFFLINE_SNAPSHOT_KEY) || "null");

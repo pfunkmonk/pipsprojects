@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071a31">
+  <title>Thunder Bowl Draft Board</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=20260808h">
+  <link rel="stylesheet" href="./draft-board.css">
+</head>
+<body>
+  <main class="login-panel">
+    <form id="draft-board-login" class="login-card">
+      <span class="brand-mark" aria-hidden="true">20</span>
+      <p>THUNDER BOWL 2026</p>
+      <h1>Draft Board</h1>
+      <div class="intro">Sign in to follow every keeper, winning bid, roster, and remaining team budget live from your own computer.</div>
+      <label for="draft-board-code">Draft Board code</label>
+      <input id="draft-board-code" name="code" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required autofocus>
+      <button id="open-draft-board" type="submit">Open Draft Board</button>
+      <small id="login-status" role="status" aria-live="polite">Read-only access. This sign-in cannot change the draft.</small>
+    </form>
+  </main>
+  <script type="module" src="./draft-board.mjs"></script>
+</body>
+</html>

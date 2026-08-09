@@ -61,6 +61,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/thunder-bowl/draft-board/auth"
+  to = "/.netlify/functions/thunder-bowl-draft-board-auth"
+  status = 200
+
+[[redirects]]
   from = "/api/thunder-bowl/auctioneer/snapshot"
   to = "/.netlify/functions/thunder-bowl-auctioneer-snapshot"
   status = 200

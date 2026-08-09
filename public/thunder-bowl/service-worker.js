@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v62";
+const CACHE_VERSION = "thunder-bowl-shell-v63";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -13,6 +13,10 @@ const APP_SHELL = [
   "/thunder-bowl/auctioneer/auctioneer-mission.css",
   "/thunder-bowl/auctioneer/auctioneer-sticky-sale.css",
   "/thunder-bowl/auctioneer/auctioneer.mjs",
+  "/thunder-bowl/draft-board/",
+  "/thunder-bowl/draft-board/index.html",
+  "/thunder-bowl/draft-board/draft-board.css",
+  "/thunder-bowl/draft-board/draft-board.mjs",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
@@ -73,6 +77,8 @@ async function navigationResponse(request) {
     const pathname = new URL(request.url).pathname;
     const fallback = pathname.startsWith("/thunder-bowl/board")
       ? "/thunder-bowl/board.html"
+      : pathname.startsWith("/thunder-bowl/draft-board")
+        ? "/thunder-bowl/draft-board/index.html"
       : pathname.startsWith("/thunder-bowl/auctioneer")
         ? "/thunder-bowl/auctioneer/index.html"
         : "/thunder-bowl/index.html";

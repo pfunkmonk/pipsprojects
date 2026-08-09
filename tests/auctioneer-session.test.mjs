@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createAuctioneerCookie, verifyAuctioneerCode, verifyAuctioneerSession } from "../netlify/functions/_auctioneer/session.mjs";
+import {
+  createAuctioneerCookie,
+  createDraftBoardCookie,
+  verifyAuctioneerCode,
+  verifyAuctioneerSession,
+  verifyDraftBoardCode,
+  verifyDraftBoardSession,
+} from "../netlify/functions/_auctioneer/session.mjs";
 
 const secret = "a-secure-test-secret-with-more-than-32-characters";
 
@@ -17,4 +24,15 @@ test("creates and verifies an HTTP-only auctioneer session", () => {
   assert.match(cookie, /SameSite=Strict/);
   assert.equal(verifyAuctioneerSession(cookie, secret), true);
   assert.equal(verifyAuctioneerSession(cookie, `${secret}-wrong`), false);
+});
+
+test("creates a distinct read-only Draft Board session", () => {
+  assert.equal(verifyDraftBoardCode("shared-code", "shared-code"), true);
+  assert.equal(verifyDraftBoardCode("wrong-code", "shared-code"), false);
+  const cookie = createDraftBoardCookie(secret, { path: "/thunder-bowl" });
+  assert.match(cookie, /tb_draft_board_session=/);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /SameSite=Strict/);
+  assert.equal(verifyDraftBoardSession(cookie, secret), true);
+  assert.equal(verifyAuctioneerSession(cookie, secret), false);
 });

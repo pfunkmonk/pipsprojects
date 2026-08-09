@@ -4,6 +4,7 @@ import { createHttpHandlers } from "../netlify/functions/_auctioneer/http-handle
 
 const env = {
   THUNDER_BOWL_AUCTIONEER_ACCESS_CODE: "123456",
+  THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE: "shared-code",
   THUNDER_BOWL_SESSION_SECRET: "a-secure-test-secret-with-more-than-32-characters",
 };
 const publicSnapshot = {
@@ -59,4 +60,50 @@ test("rejects an unauthenticated auctioneer snapshot", async () => {
   const handlers = createHttpHandlers({ env, service: { async snapshot() { return publicSnapshot; }, async command() { return publicSnapshot; } } });
   const response = await handlers.auctioneerSnapshot(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/snapshot"));
   assert.equal(response.status, 401);
+});
+
+test("Draft Board sign-in grants only the sanitized live board", async () => {
+  let commandCalls = 0;
+  const handlers = createHttpHandlers({
+    env,
+    service: {
+      async snapshot() { return structuredClone(publicSnapshot); },
+      async command() { commandCalls += 1; return structuredClone(publicSnapshot); },
+    },
+    async authorizeDisplay() { return false; },
+  });
+  const auth = await handlers.draftBoardAuth(new Request("https://pipsprojects.com/api/thunder-bowl/draft-board/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "https://pipsprojects.com" },
+    body: JSON.stringify({ code: "shared-code" }),
+  }));
+  assert.equal(auth.status, 204);
+  const cookie = auth.headers.get("set-cookie");
+  assert.match(cookie, /tb_draft_board_session=/);
+
+  const board = await handlers.boardSnapshot(new Request("https://pipsprojects.com/api/thunder-bowl/board/snapshot", { headers: { Cookie: cookie } }));
+  assert.equal(board.status, 200);
+  const boardBody = await board.json();
+  assert.equal("availablePlayers" in boardBody, false);
+  assert.equal("auditEvents" in boardBody, false);
+  assert.equal("privateStrategy" in boardBody, false);
+
+  const auctioneer = await handlers.auctioneerSnapshot(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/snapshot", { headers: { Cookie: cookie } }));
+  assert.equal(auctioneer.status, 401);
+  const command = await handlers.commands(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/commands", {
+    method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" }, body: JSON.stringify({ type: "record-sale" }),
+  }));
+  assert.equal(command.status, 401);
+  assert.equal(commandCalls, 0);
+});
+
+test("Draft Board sign-in rejects an incorrect code", async () => {
+  const handlers = createHttpHandlers({ env, service: { async snapshot() { return publicSnapshot; }, async command() { return publicSnapshot; } } });
+  const response = await handlers.draftBoardAuth(new Request("https://pipsprojects.com/api/thunder-bowl/draft-board/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "https://pipsprojects.com" },
+    body: JSON.stringify({ code: "not-it" }),
+  }));
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get("set-cookie"), null);
 });
