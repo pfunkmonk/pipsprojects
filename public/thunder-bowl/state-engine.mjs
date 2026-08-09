@@ -1316,6 +1316,8 @@ export function validateDraftPack(input) {
     const rankEnd = assertInteger(input.fbgAuctionValues.rankEnd, "FBG auction rank end", rankStart, 2000);
     const reportedRows = assertInteger(input.fbgAuctionValues.reportedRows, "FBG reported rows", 1, 2000);
     const matchedRows = assertInteger(input.fbgAuctionValues.matchedRows, "FBG matched rows", 0, reportedRows);
+    if (reportedRows !== rankEnd - rankStart + 1) fail("FBG_RANK_COVERAGE", "FBG reported-row count must exactly cover its stated contiguous rank range.");
+    if (matchedRows !== reportedRows) fail("FBG_MATCH_COVERAGE", "Every supplied FBG auction row must resolve to exactly one protected player.");
     if (!Array.isArray(input.fbgAuctionValues.values)) fail("INVALID_FBG_VALUES", "FBG auction values must be an array.");
     const fbgPlayerIds = new Set();
     const fbgRanks = new Set();
@@ -1333,6 +1335,7 @@ export function validateDraftPack(input) {
       return { playerId, rank, value };
     });
     if (values.length !== matchedRows) fail("FBG_MATCHED_ROWS", "FBG matched-row count does not reconcile to its values.");
+    if (fbgRanks.size !== reportedRows) fail("FBG_RANK_COVERAGE", "FBG auction ranks do not completely cover the stated range.");
     fbgAuctionValues = {
       source,
       asOf: fbgAsOf,

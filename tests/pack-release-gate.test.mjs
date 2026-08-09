@@ -221,7 +221,7 @@ test("an advisory manager-profile release cannot alter any strategy value", () =
   assert.ok(audit.blockingIssues.some((issue) => issue.includes("advisory-only manager-profile release")));
 });
 
-test("Footballguys auction values remain a comparison-only partial source", () => {
+test("Footballguys top-400 auction values remain a comparison-only source", () => {
   const candidate = clone(current);
   candidate.packId = "tb26-fbg-comparison-refresh";
   candidate.asOf = "2026-08-09T12:00:00.000Z";

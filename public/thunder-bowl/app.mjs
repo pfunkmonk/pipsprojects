@@ -17,7 +17,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260808b";
+} from "./state-engine.mjs?v=20260808c";
 import {
   appendEvents,
   getMeta,
@@ -60,9 +60,9 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
-import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808b";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808b";
-import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808b";
+import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808c";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808c";
+import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808c";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -1598,7 +1598,7 @@ function keeperRows() {
   const fbgRows = new Map((draftPack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
   const fbgCoverage = draftPack.fbgAuctionValues;
   byId("keeper-fbg-coverage").textContent = fbgCoverage
-    ? `FBG comparison loaded: ${fbgCoverage.matchedRows}/${fbgCoverage.reportedRows} supplied rows matched · supplied PDF covers ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd} only · no model effect.`
+    ? `FBG comparison loaded: ${fbgCoverage.matchedRows}/${fbgCoverage.reportedRows} supplied rows matched · supplied PDF covers ${fbgCoverage.rankStart === 1 ? "complete " : ""}ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd}${fbgCoverage.rankStart === 1 ? "" : " only"} · no model effect.`
     : "No Footballguys auction-value comparison is loaded in this pack.";
   byId("keeper-count").textContent = `${candidates.length} candidate${candidates.length === 1 ? "" : "s"}`;
   if (!candidates.length) {
@@ -1653,7 +1653,9 @@ function keeperRows() {
     const fbgCell = numberCell(fbg ? currency(fbg.value) : "—", fbg ? "fbg-value" : "fbg-missing");
     fbgCell.title = fbg
       ? `Footballguys rank ${fbg.rank} in the supplied August 8 PDF · comparison only`
-      : "Not present in the supplied Footballguys PDF, which contains ranks 301–400 only.";
+      : fbgCoverage
+        ? `Not ranked in the supplied Footballguys ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd} report.`
+        : "No Footballguys auction-value comparison is loaded.";
     row.append(
       playerCell,
       contract,

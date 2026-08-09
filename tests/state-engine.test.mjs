@@ -518,18 +518,23 @@ test("bundled draft pack and recovery format validate end to end", async () => {
   assert.equal(restored.pack.packId, pack.packId);
 });
 
-test("protected Footballguys auction values are complete for the supplied partial PDF and value neutral", async () => {
+test("protected Footballguys auction values cover the complete supplied top 400 and remain value neutral", async () => {
   const raw = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
   const pack = validateDraftPack(raw);
   assert.equal(pack.fbgAuctionValues.modelEffect, "none");
-  assert.equal(pack.fbgAuctionValues.rankStart, 301);
+  assert.equal(pack.fbgAuctionValues.rankStart, 1);
   assert.equal(pack.fbgAuctionValues.rankEnd, 400);
-  assert.equal(pack.fbgAuctionValues.reportedRows, 100);
-  assert.equal(pack.fbgAuctionValues.matchedRows, 100);
-  assert.equal(new Set(pack.fbgAuctionValues.values.map((row) => row.playerId)).size, 100);
+  assert.equal(pack.fbgAuctionValues.reportedRows, 400);
+  assert.equal(pack.fbgAuctionValues.matchedRows, 400);
+  assert.equal(new Set(pack.fbgAuctionValues.values.map((row) => row.playerId)).size, 400);
+  assert.deepEqual(pack.fbgAuctionValues.values.find((row) => row.rank === 1), { playerId: "fbg:GibbJa00", rank: 1, value: 50 });
   const unauthorized = structuredClone(raw);
   unauthorized.fbgAuctionValues.modelEffect = "market_value";
   assert.throws(() => validateDraftPack(unauthorized), (error) => error.code === "FBG_VALUE_AUTHORITY");
+  const incomplete = structuredClone(raw);
+  incomplete.fbgAuctionValues.values.pop();
+  incomplete.fbgAuctionValues.matchedRows -= 1;
+  assert.throws(() => validateDraftPack(incomplete), (error) => error.code === "FBG_MATCH_COVERAGE");
 });
 
 test("dated projection evidence is validated and supplemental sources stay value neutral", async () => {

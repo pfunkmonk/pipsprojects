@@ -11,6 +11,14 @@ from pathlib import Path
 import pdfplumber
 
 
+POSITION_ALIASES = {"PK": "K", "DEF": "DST"}
+NFL_TEAM_ALIASES = {"JAC": "JAX"}
+PLAYER_NAME_ALIASES = {
+    "kennethwalker": "kenwalker",
+    "eddypiaeiro": "eddypineiro",
+}
+
+
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
     value = re.sub(r"\b(?:jr|sr|ii|iii|iv)\b", " ", value)
@@ -19,23 +27,33 @@ def normalize_name(value: str) -> str:
 
 def parse_rows(pdf_path: Path) -> list[dict]:
     with pdfplumber.open(pdf_path) as pdf:
-        if len(pdf.pages) != 1:
-            raise ValueError("Expected a one-page Footballguys value-table export.")
-        tables = pdf.pages[0].extract_tables()
-    if len(tables) != 1 or len(tables[0]) < 2:
-        raise ValueError("Could not locate the Footballguys value table.")
+        page_tables = [page.extract_tables() for page in pdf.pages]
     rows = []
-    for table_row in tables[0][1:]:
-        for offset in (0, 8):
-            rank = int(table_row[offset])
-            position = re.sub(r"[0-9]+$", "", table_row[offset + 1]).replace("PK", "K")
-            rows.append({
-                "rank": rank,
-                "position": position,
-                "name": table_row[offset + 2],
-                "value": int(table_row[offset + 4]),
-            })
-    return sorted(rows, key=lambda row: row["rank"])
+    for page_number, tables in enumerate(page_tables, start=1):
+        if len(tables) != 1 or len(tables[0]) < 2:
+            raise ValueError(f"Could not locate the Footballguys value table on page {page_number}.")
+        header = tables[0][0]
+        if header[:7] != ["Rank", "Pos", "Player", "Team", "$$$", "ADP", "Act"] or header[8:15] != header[:7]:
+            raise ValueError(f"Unexpected Footballguys table header on page {page_number}.")
+        for table_row in tables[0][1:]:
+            for offset in (0, 8):
+                rank = int(table_row[offset])
+                source_position = re.sub(r"[0-9]+$", "", table_row[offset + 1])
+                position = POSITION_ALIASES.get(source_position, source_position)
+                source_team = table_row[offset + 3].split("/", 1)[0].upper()
+                rows.append({
+                    "rank": rank,
+                    "position": position,
+                    "name": table_row[offset + 2],
+                    "nflTeam": NFL_TEAM_ALIASES.get(source_team, source_team),
+                    "value": int(table_row[offset + 4]),
+                })
+    rows.sort(key=lambda row: row["rank"])
+    ranks = [row["rank"] for row in rows]
+    expected_ranks = list(range(ranks[0], ranks[-1] + 1))
+    if ranks != expected_ranks:
+        raise ValueError("Footballguys ranks must be unique, ordered, and contiguous across every supplied page.")
+    return rows
 
 
 def main() -> None:
@@ -51,16 +69,36 @@ def main() -> None:
     pack = json.loads(args.pack.read_text(encoding="utf-8"))
     rows = parse_rows(args.pdf)
     players = {(normalize_name(player["name"]), player["position"]): player for player in pack["players"]}
+    players_by_position = {}
+    for player in pack["players"]:
+        players_by_position.setdefault(player["position"], []).append(player)
+    defenses = {player["nflTeam"]: player for player in pack["players"] if player["position"] == "DST"}
     matched = []
     missing = []
     for row in rows:
-        player = players.get((normalize_name(row["name"]), row["position"]))
+        normalized_name = normalize_name(row["name"])
+        normalized_name = PLAYER_NAME_ALIASES.get(normalized_name, normalized_name)
+        player = defenses.get(row["nflTeam"]) if row["position"] == "DST" else players.get((normalized_name, row["position"]))
+        if not player and row["position"] != "DST":
+            prefix_matches = [
+                candidate
+                for candidate in players_by_position.get(row["position"], [])
+                if abs(len(normalized_name) - len(normalize_name(candidate["name"]))) <= 2
+                and (
+                    normalized_name.startswith(normalize_name(candidate["name"]))
+                    or normalize_name(candidate["name"]).startswith(normalized_name)
+                )
+            ]
+            if len(prefix_matches) == 1:
+                player = prefix_matches[0]
         if not player:
             missing.append(row)
             continue
         matched.append({"playerId": player["id"], "rank": row["rank"], "value": row["value"]})
     if missing:
         raise ValueError(f"{len(missing)} PDF rows did not match the protected player pool: {missing[:10]}")
+    if len({row["playerId"] for row in matched}) != len(matched):
+        raise ValueError("Footballguys rows resolved to duplicate protected players.")
 
     rank_start = min(row["rank"] for row in rows)
     rank_end = max(row["rank"] for row in rows)
@@ -70,14 +108,19 @@ def main() -> None:
     pack["sources"].append({
         "name": source_name,
         "asOf": args.source_as_of,
-        "authority": "value-neutral auction comparison; partial ranks",
+        "authority": f"comparison only; supplied ranks {rank_start}-{rank_end}",
         "scoringFingerprint": scoring_fingerprint,
     })
+    coverage = (
+        f"Supplied PDF contains complete ranks {rank_start}-{rank_end}."
+        if rank_start == 1
+        else f"Supplied PDF contains ranks {rank_start}-{rank_end} only; ranks 1-{rank_start - 1} were not supplied."
+    )
     pack["fbgAuctionValues"] = {
         "source": source_name,
         "asOf": args.source_as_of,
         "modelEffect": "none",
-        "coverage": f"Supplied PDF contains ranks {rank_start}-{rank_end} only; ranks 1-{rank_start - 1} were not supplied.",
+        "coverage": coverage,
         "rankStart": rank_start,
         "rankEnd": rank_end,
         "reportedRows": len(rows),

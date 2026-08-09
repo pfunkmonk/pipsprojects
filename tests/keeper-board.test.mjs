@@ -85,8 +85,12 @@ test("the current board covers every source candidate and preserves value/ledger
   assert.equal(dogs[1].playerName, "DJ Moore");
   assert.equal(dogs[1].strategy, "Current top-two keeper");
   const fbgRows = rows.filter((row) => row.fbgAuctionValue !== null);
-  assert.equal(fbgRows.length, 2);
-  assert.ok(fbgRows.every((row) => row.fbgAuctionValue === 1 && row.fbgAuctionRank >= 301 && row.fbgAuctionRank <= 400));
+  assert.equal(fbgRows.length, 164);
+  assert.ok(fbgRows.every((row) => row.fbgAuctionValue >= 1 && row.fbgAuctionValue <= 50 && row.fbgAuctionRank >= 1 && row.fbgAuctionRank <= 400));
+  assert.deepEqual(
+    Object.fromEntries(fbgRows.filter((row) => ["Chase Brown", "DJ Moore", "Christian McCaffrey"].includes(row.playerName)).map((row) => [row.playerName, [row.fbgAuctionRank, row.fbgAuctionValue]])),
+    { "Christian McCaffrey": [3, 43], "Chase Brown": [18, 21], "DJ Moore": [61, 4] },
+  );
 });
 
 test("CSV is complete, quoted, and spreadsheet-formula safe", () => {
