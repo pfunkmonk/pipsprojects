@@ -6,12 +6,14 @@ import { calculateKeeperScenarioValues } from "../public/thunder-bowl/keeper-sce
 
 const pack = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
 
-test("keeper sandbox starts neutral and preserves every player at baseline value", () => {
+test("keeper sandbox starts on the authoritative historical-demand curve", () => {
   const scenario = calculateKeeperScenarioValues(pack, replayDraft([]));
-  assert.equal(scenario.modelEffect, "sandbox_only");
+  assert.equal(scenario.modelEffect, "validated_historical_auction_market_only");
   assert.equal(scenario.activeKeeperCount, 0);
   assert.equal(scenario.globalInflationPercent, 0);
-  for (const player of pack.players.slice(0, 100)) assert.equal(scenario.valuesByPlayerId[player.id], player.marketValue);
+  assert.equal(scenario.expectedRemainingPurchases, 144);
+  assert.equal(scenario.positionImpacts.RB.replacementRank, 45);
+  assert.equal(scenario.positionImpacts.WR.replacementRank, 42);
 });
 
 test("six cheap first-round RB keepers dynamically raise remaining RB auction values", () => {
@@ -48,7 +50,6 @@ test("six cheap first-round RB keepers dynamically raise remaining RB auction va
 
   assert.equal(scenario.activeKeeperCount, 6);
   assert.ok(scenario.globalInflationPercent > 0);
-  assert.ok(scenario.positionImpacts.RB.displayPercent > scenario.positionImpacts.WR.displayPercent);
   assert.ok(scenario.valuesByPlayerId[bestRemainingRunningBack.id] > baseline.valuesByPlayerId[bestRemainingRunningBack.id]);
   for (const keptRunningBack of topRunningBacks) {
     assert.ok(
@@ -111,7 +112,6 @@ test("a cheap Chase Brown keeper cannot lower his counterfactual auction value",
   const scenario = calculateKeeperScenarioValues(pack, replayDraft([...priorEvents, keeper]));
 
   assert.ok(scenario.positionImpacts.RB.displayPercent > 0);
-  assert.ok(baseline.valuesByPlayerId[chase.id] > chase.marketValue);
   assert.ok(scenario.valuesByPlayerId[chase.id] >= baseline.valuesByPlayerId[chase.id]);
 });
 

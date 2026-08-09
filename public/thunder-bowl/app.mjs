@@ -3,9 +3,7 @@ import {
   EVENT_TYPES,
   POSITIONS,
   RuleViolation,
-  applyLiveMarketMultiplier,
   canReplaceUnstartedConfiguration,
-  calculateLiveMarketState,
   createEvent,
   createRecoveryBundle,
   lastUndoableEvent,
@@ -61,7 +59,9 @@ import {
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
-import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808g";
+import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
+import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260808b";
+import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
 import {
@@ -186,7 +186,12 @@ let cloudReachable = true;
 let ledgerGeneration = null;
 let ledgerResetInFlight = false;
 let ledgerStale = false;
-let liveMarket = { dampedMultiplier: 1, displayPercent: 0, cashDiscretionary: 0, baselineDiscretionary: 0 };
+let liveMarket = {
+  displayPercent: 0,
+  valuesByPlayerId: {},
+  auctionVorpByPlayerId: {},
+  positionImpacts: {},
+};
 let practiceSession = null;
 let practiceTimer = null;
 let practiceFinishing = false;
@@ -365,21 +370,14 @@ function availablePlayers() {
 }
 
 function computeLiveMarket() {
-  const remainingOpenSlots = Object.values(draftState.teams)
-    .reduce((sum, team) => sum + Math.min(team.openSlots, team.cash), 0);
-  const remainingMarketValues = availablePlayers().map((player) => player.marketValue);
-  while (remainingMarketValues.length < remainingOpenSlots) remainingMarketValues.push(1);
-  return calculateLiveMarketState({
-    remainingRoomDollars: draftState.totalCash,
-    remainingOpenSlots,
-    remainingMarketValues,
-  });
+  return calculateAuctionDemandMarket(draftPack, draftState);
 }
 
 function livePlayerValues(player) {
+  const demandValue = liveMarket.valuesByPlayerId[player.id];
   return {
-    marketValue: applyLiveMarketMultiplier(player.marketValue, liveMarket.dampedMultiplier),
-    maxBid: applyLiveMarketMultiplier(player.maxBid, liveMarket.dampedMultiplier),
+    marketValue: demandValue ?? player.marketValue,
+    maxBid: liveMarket.bidCeilingsByPlayerId[player.id] ?? player.maxBid,
   };
 }
 
@@ -1235,7 +1233,9 @@ function renderMetrics() {
   byId("room-slots").textContent = `${openSlots} open slots`;
 
   byId("market-signal").textContent = `${liveMarket.displayPercent >= 0 ? "+" : ""}${liveMarket.displayPercent.toFixed(1)}%`;
-  byId("market-detail").textContent = draftPack.status === "production" ? "Live room inflation" : "Practice room inflation";
+  byId("market-detail").textContent = draftPack.status === "production"
+    ? "Market estimate: historical demand + live cash"
+    : "Market estimate: historical demand + practice cash";
 
   const nominator = draftState.currentNominatorTeamId ? draftState.teams[draftState.currentNominatorTeamId] : null;
   byId("current-nominator").textContent = nominator?.name || "Draft complete";
@@ -1578,7 +1578,7 @@ function renderKeeperWorkspace() {
     const chip = document.createElement("span");
     chip.className = row.displayPercent > 0 ? "is-up" : row.displayPercent < 0 ? "is-down" : "";
     chip.textContent = `${position} ${row.displayPercent >= 0 ? "+" : ""}${row.displayPercent.toFixed(1)}% · ${row.keepers} kept`;
-    chip.title = `${currency(row.keeperSurplus)} keeper surplus currently concentrated at ${position}`;
+    chip.title = `${row.expectedRemainingDemand.toFixed(1)} expected ${position} purchases remain; current replacement rank ${position}${row.replacementRank}. ${currency(row.keeperSurplus)} keeper surplus is concentrated here.`;
     chips.append(chip);
   }
   impact.append(chips);
@@ -1617,7 +1617,7 @@ function keeperRows() {
   const fbgRows = new Map((draftPack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
   const fbgCoverage = draftPack.fbgAuctionValues;
   byId("keeper-fbg-coverage").textContent = fbgCoverage
-    ? `FBG comparison loaded: ${fbgCoverage.matchedRows}/${fbgCoverage.reportedRows} supplied rows matched · supplied PDF covers ${fbgCoverage.rankStart === 1 ? "complete " : ""}ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd}${fbgCoverage.rankStart === 1 ? "" : " only"} · no model effect.`
+    ? `FBG comparison loaded: ${fbgCoverage.matchedRows}/${fbgCoverage.reportedRows} supplied rows matched · supplied PDF covers ${fbgCoverage.rankStart === 1 ? "complete " : ""}ranks ${fbgCoverage.rankStart}–${fbgCoverage.rankEnd}${fbgCoverage.rankStart === 1 ? "" : " only"} · no model effect. ${fbgAuctionValueCompatibilityText()}`
     : "No Footballguys auction-value comparison is loaded in this pack.";
   byId("keeper-count").textContent = `${candidates.length} candidate${candidates.length === 1 ? "" : "s"}`;
   if (!candidates.length) {

@@ -15,6 +15,7 @@ const appSource = await readFile(new URL("../public/thunder-bowl/app.mjs", impor
 const appCss = await readFile(new URL("../public/thunder-bowl/app.css", import.meta.url), "utf8");
 const readinessSource = await readFile(new URL("../public/thunder-bowl/draft-readiness.mjs", import.meta.url), "utf8");
 const publicBoardSource = await readFile(new URL("../public/thunder-bowl/public-board.mjs", import.meta.url), "utf8");
+const fbgConfigurationSource = await readFile(new URL("../public/thunder-bowl/fbg-configuration.mjs", import.meta.url), "utf8");
 const intelligenceCollectorSource = await readFile(new URL("../netlify/functions/thunder-intelligence-collector.mjs", import.meta.url), "utf8");
 
 test("release assets are versioned across private, public, and offline shells", () => {
@@ -383,6 +384,13 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
   assert.match(indexHtml, /Estimated price if this player were available in the current auction pool/);
   assert.match(indexHtml, />Auction value<\/th><th class="number">FBG value<\/th>/);
   assert.match(serviceWorker, /keeper-scenario\.mjs\?v=/);
+  assert.match(serviceWorker, /auction-demand\.mjs\?v=/);
+  assert.match(serviceWorker, /fbg-configuration\.mjs\?v=/);
+  assert.match(appSource, /marketValue: demandValue \?\? player\.marketValue/);
+  assert.match(appSource, /maxBid: liveMarket\.bidCeilingsByPlayerId\[player\.id\] \?\? player\.maxBid/);
+  assert.match(fbgConfigurationSource, /status: "incompatible_with_thunder_bowl"/);
+  assert.match(fbgConfigurationSource, /modelEffect: "none"/);
+  assert.match(fbgConfigurationSource, /raw dollars are not Thunder Bowl-compatible/);
 });
 
 test("keeper strategy exposes ranked trade-for and trade-away proposals without auto-recording them", () => {

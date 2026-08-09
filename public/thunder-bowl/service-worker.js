@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v65";
+const CACHE_VERSION = "thunder-bowl-shell-v67";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -34,7 +34,7 @@ const APP_SHELL = [
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260808k",
-  "/thunder-bowl/app.mjs?v=20260808l",
+  "/thunder-bowl/app.mjs?v=20260808n",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260808g",
   "/thunder-bowl/storage.mjs?v=20260805g",
@@ -44,7 +44,9 @@ const APP_SHELL = [
   "/thunder-bowl/draft-readiness.mjs?v=20260805g",
   "/thunder-bowl/player-search.mjs?v=20260805g",
   "/thunder-bowl/keeper-board.mjs?v=20260808k",
-  "/thunder-bowl/keeper-scenario.mjs?v=20260808g",
+  "/thunder-bowl/keeper-scenario.mjs?v=20260808i",
+  "/thunder-bowl/auction-demand.mjs?v=20260808b",
+  "/thunder-bowl/fbg-configuration.mjs?v=20260808a",
   "/thunder-bowl/draft-history.mjs?v=20260808g",
   "/thunder-bowl/decision-context.mjs?v=20260805g",
   "/thunder-bowl/human-rehearsal.mjs?v=20260805g",

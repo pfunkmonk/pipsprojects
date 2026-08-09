@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "protocol": "time-forward CBS preseason projections; train roster counts and position spend on prior Thunder Bowl seasons; explicit keepers excluded where labeled; unresolved draft/keeper rows retained",
+  "developmentPurchases": 241,
+  "developmentWeightedMae": {
+    "classic": 4.336,
+    "globalDemand": 3.693,
+    "positionBudget": 3.519,
+    "blendedPositionBudget": 3.187
+  },
+  "developmentMatchedPurchases": 141,
+  "developmentMatchedWeightedMae": {
+    "classic": 5.887,
+    "globalDemand": 4.837,
+    "positionBudget": 4.489,
+    "blendedPositionBudget": 4.191
+  },
+  "folds": [
+    {
+      "testSeason": 2023,
+      "evidenceRole": "development_fold",
+      "trainingSeasons": [
+        2021,
+        2022
+      ],
+      "trainingTeamSeasons": 24,
+      "purchases": 121,
+      "matchedPurchases": 73,
+      "totalBudget": 1212,
+      "ranks": {
+        "QB": 18,
+        "RB": 45,
+        "WR": 42,
+        "TE": 15,
+        "K": 13,
+        "DST": 12
+      },
+      "spendShares": {
+        "QB": 0.0719,
+        "RB": 0.462,
+        "WR": 0.3246,
+        "TE": 0.1036,
+        "K": 0.0156,
+        "DST": 0.0224
+      },
+      "mae": {
+        "classic": 4.05,
+        "globalDemand": 3.132,
+        "positionBudget": 3.223,
+        "blendedPositionBudget": 2.835
+      },
+      "matchedMae": {
+        "classic": 5.247,
+        "globalDemand": 4.151,
+        "positionBudget": 4.164,
+        "blendedPositionBudget": 3.753
+      },
+      "positionMae": {
+        "QB": {
+          "n": 14,
+          "classic": 3.857,
+          "globalDemand": 1.571,
+          "positionBudget": 2.857,
+          "blendedPositionBudget": 1.643
+        },
+        "RB": {
+          "n": 37,
+          "classic": 4.081,
+          "globalDemand": 3.514,
+          "positionBudget": 3.676,
+          "blendedPositionBudget": 2.757
+        },
+        "WR": {
+          "n": 32,
+          "classic": 5.594,
+          "globalDemand": 5.313,
+          "positionBudget": 5.156,
+          "blendedPositionBudget": 5
+        },
+        "TE": {
+          "n": 14,
+          "classic": 1.929,
+          "globalDemand": 1.5,
+          "positionBudget": 1.786,
+          "blendedPositionBudget": 1.929
+        },
+        "K": {
+          "n": 12,
+          "classic": 1.917,
+          "globalDemand": 0.75,
+          "positionBudget": 0.583,
+          "blendedPositionBudget": 0.417
+        },
+        "DST": {
+          "n": 12,
+          "classic": 4.667,
+          "globalDemand": 2.25,
+          "positionBudget": 1.417,
+          "blendedPositionBudget": 2.167
+        }
+      }
+    },
+    {
+      "testSeason": 2024,
+      "evidenceRole": "development_fold",
+      "trainingSeasons": [
+        2021,
+        2022,
+        2023
+      ],
+      "trainingTeamSeasons": 36,
+      "purchases": 120,
+      "matchedPurchases": 68,
+      "totalBudget": 1200,
+      "ranks": {
+        "QB": 17,
+        "RB": 45,
+        "WR": 42,
+        "TE": 16,
+        "K": 12,
+        "DST": 12
+      },
+      "spendShares": {
+        "QB": 0.0774,
+        "RB": 0.441,
+        "WR": 0.3419,
+        "TE": 0.099,
+        "K": 0.0171,
+        "DST": 0.0236
+      },
+      "mae": {
+        "classic": 4.625,
+        "globalDemand": 4.258,
+        "positionBudget": 3.817,
+        "blendedPositionBudget": 3.542
+      },
+      "matchedMae": {
+        "classic": 6.574,
+        "globalDemand": 5.574,
+        "positionBudget": 4.838,
+        "blendedPositionBudget": 4.662
+      },
+      "positionMae": {
+        "QB": {
+          "n": 12,
+          "classic": 5.083,
+          "globalDemand": 3.667,
+          "positionBudget": 3.833,
+          "blendedPositionBudget": 3.417
+        },
+        "RB": {
+          "n": 38,
+          "classic": 3.684,
+          "globalDemand": 4.395,
+          "positionBudget": 4.474,
+          "blendedPositionBudget": 3.526
+        },
+        "WR": {
+          "n": 32,
+          "classic": 5.688,
+          "globalDemand": 6,
+          "positionBudget": 5.188,
+          "blendedPositionBudget": 5
+        },
+        "TE": {
+          "n": 13,
+          "classic": 3.769,
+          "globalDemand": 3.615,
+          "positionBudget": 3.462,
+          "blendedPositionBudget": 3.231
+        },
+        "K": {
+          "n": 13,
+          "classic": 1.231,
+          "globalDemand": 1,
+          "positionBudget": 0.923,
+          "blendedPositionBudget": 1
+        },
+        "DST": {
+          "n": 12,
+          "classic": 8.917,
+          "globalDemand": 4,
+          "positionBudget": 1.583,
+          "blendedPositionBudget": 2.917
+        }
+      }
+    },
+    {
+      "testSeason": 2025,
+      "evidenceRole": "descriptive_only_outcomes_previously_seen",
+      "trainingSeasons": [
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "trainingTeamSeasons": 48,
+      "purchases": 118,
+      "matchedPurchases": 0,
+      "totalBudget": 1212,
+      "ranks": {
+        "QB": 16,
+        "RB": 43,
+        "WR": 39,
+        "TE": 15,
+        "K": 13,
+        "DST": 12
+      },
+      "spendShares": {
+        "QB": 0.0825,
+        "RB": 0.426,
+        "WR": 0.3483,
+        "TE": 0.0978,
+        "K": 0.0195,
+        "DST": 0.026
+      },
+      "mae": {
+        "classic": 7.653,
+        "globalDemand": 7.653,
+        "positionBudget": 7.653,
+        "blendedPositionBudget": 7.653
+      },
+      "matchedMae": null,
+      "positionMae": {
+        "QB": {
+          "n": 16,
+          "classic": 6.5,
+          "globalDemand": 6.5,
+          "positionBudget": 6.5,
+          "blendedPositionBudget": 6.5
+        },
+        "RB": {
+          "n": 40,
+          "classic": 10.75,
+          "globalDemand": 10.75,
+          "positionBudget": 10.75,
+          "blendedPositionBudget": 10.75
+        },
+        "WR": {
+          "n": 27,
+          "classic": 10.074,
+          "globalDemand": 10.074,
+          "positionBudget": 10.074,
+          "blendedPositionBudget": 10.074
+        },
+        "TE": {
+          "n": 12,
+          "classic": 4.917,
+          "globalDemand": 4.917,
+          "positionBudget": 4.917,
+          "blendedPositionBudget": 4.917
+        },
+        "K": {
+          "n": 11,
+          "classic": 1,
+          "globalDemand": 1,
+          "positionBudget": 1,
+          "blendedPositionBudget": 1
+        },
+        "DST": {
+          "n": 12,
+          "classic": 2.25,
+          "globalDemand": 2.25,
+          "positionBudget": 2.25,
+          "blendedPositionBudget": 2.25
+        }
+      }
+    }
+  ]
+}
