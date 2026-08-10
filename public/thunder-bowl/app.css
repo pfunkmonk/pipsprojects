@@ -861,7 +861,18 @@ input[readonly] { color: var(--muted); }
   color: var(--text);
 }
 .player-intel-dialog::backdrop { background: rgba(2, 10, 20, 0.84); backdrop-filter: blur(5px); }
+.player-intel-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
 .player-intel-dialog > form {
+  position: relative;
+  z-index: 1;
   width: min(1180px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   margin: 0 auto;

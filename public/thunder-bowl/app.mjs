@@ -1366,7 +1366,7 @@ function closePlayerIntel() {
 
 function closePlayerIntelFromBackdrop(event) {
   if (!playerIntelDialog.open) return;
-  if (event.target === playerIntelDialog) closePlayerIntel();
+  if (event.currentTarget === byId("player-intel-backdrop")) closePlayerIntel();
 }
 
 async function refreshPlayerNewsInApp() {
@@ -5311,7 +5311,7 @@ function bindInteractions() {
   practicePauseButton.addEventListener("click", () => void togglePracticePause());
   playerIntelForm.addEventListener("submit", savePlayerIntel);
   byId("close-player-intel").addEventListener("click", closePlayerIntel);
-  playerIntelDialog.addEventListener("click", closePlayerIntelFromBackdrop);
+  byId("player-intel-backdrop").addEventListener("click", closePlayerIntelFromBackdrop);
   byId("clear-player-intel").addEventListener("click", clearPlayerIntel);
   byId("intel-news-link").addEventListener("click", () => void refreshPlayerNewsInApp());
   byId("intel-cbs-link").addEventListener("click", () => void refreshResearchInApp("cbs"));
