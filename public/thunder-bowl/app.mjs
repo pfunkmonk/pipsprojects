@@ -5311,7 +5311,7 @@ function bindInteractions() {
   practicePauseButton.addEventListener("click", () => void togglePracticePause());
   playerIntelForm.addEventListener("submit", savePlayerIntel);
   byId("close-player-intel").addEventListener("click", closePlayerIntel);
-  document.addEventListener("click", closePlayerIntelFromBackdrop);
+  playerIntelDialog.addEventListener("click", closePlayerIntelFromBackdrop);
   byId("clear-player-intel").addEventListener("click", clearPlayerIntel);
   byId("intel-news-link").addEventListener("click", () => void refreshPlayerNewsInApp());
   byId("intel-cbs-link").addEventListener("click", () => void refreshResearchInApp("cbs"));

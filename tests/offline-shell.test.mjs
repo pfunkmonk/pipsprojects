@@ -346,7 +346,7 @@ test("player intelligence uses an explicit full-screen dismiss layer around the 
   assert.match(appSource, /function closePlayerIntelFromBackdrop\(event\)/);
   assert.match(appSource, /!playerIntelDialog\.open/);
   assert.match(appSource, /event\.target === playerIntelDialog/);
-  assert.match(appSource, /document\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
+  assert.match(appSource, /playerIntelDialog\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
   assert.match(appCss, /\.player-intel-dialog \{[\s\S]*inset: 0;[\s\S]*width: 100vw;[\s\S]*height: 100vh;[\s\S]*background: transparent;/);
   assert.match(appCss, /\.player-intel-dialog > form \{[\s\S]*width: min\(1180px,[\s\S]*overflow: auto;[\s\S]*background: var\(--navy-800\);/);
 });
