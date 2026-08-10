@@ -51,7 +51,11 @@ test("desktop draft controls remain pinned above the fold", () => {
 
 test("wide draft columns share one viewport height and keep secondary content internally scrollable", () => {
   assert.match(indexHtml, /class="nomination-section"/);
-  assert.match(indexHtml, /class="safety-section"/);
+  const draftMarkup = indexHtml.slice(indexHtml.indexOf('id="view-draft"'), indexHtml.indexOf('id="view-keepers"'));
+  const adminMarkup = indexHtml.slice(indexHtml.indexOf('id="view-settings"'));
+  assert.doesNotMatch(draftMarkup, /class="[^"]*safety-section/);
+  assert.match(adminMarkup, /class="[^"]*settings-card safety-section/);
+  assert.match(adminMarkup, /<h3 id="safety-rails-title">Safety rails<\/h3>/);
   const balancedColumns = appCss.slice(
     appCss.indexOf("/* Three-column draft desk"),
     appCss.indexOf(".need-grid"),
@@ -62,6 +66,7 @@ test("wide draft columns share one viewport height and keep secondary content in
   assert.match(balancedColumns, /\.decision-panel \{[\s\S]*overflow-y: auto/);
   assert.match(balancedColumns, /\.decision-coach \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(balancedColumns, /\.opponent-pressure-section \{[\s\S]*overflow-y: auto/);
+  assert.match(balancedColumns, /grid-template-rows: auto auto minmax\(0, 1fr\)/);
   assert.match(appSource, /classList\.toggle\("is-auctioneer-feed", policy\.auctioneer/);
 });
 

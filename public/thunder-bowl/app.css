@@ -454,7 +454,7 @@ input[readonly] { color: var(--muted); }
   #view-draft .current-bid-control { grid-template-columns: 28px minmax(42px, 1fr) 28px; }
   #view-draft .current-bid-control label { display: none; }
   #view-draft .pressure-panel {
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
     overflow: hidden;
   }
   #view-draft .pressure-panel .nomination-section { grid-row: 2; }
@@ -465,7 +465,6 @@ input[readonly] { color: var(--muted); }
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
   }
-  #view-draft .pressure-panel .safety-section { grid-row: 4; }
 }
 .need-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
 .need-chip { border: 1px solid var(--line-strong); border-radius: 8px; padding: 0.45rem 0.5rem; background: var(--navy-750); text-align: center; font-size: 0.8rem; font-weight: 800; }
