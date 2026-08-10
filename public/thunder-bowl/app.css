@@ -870,6 +870,11 @@ input[readonly] { color: var(--muted); }
   background: transparent;
   cursor: default;
 }
+.player-intel-backdrop > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: max(1rem, calc((100vw - min(1180px, calc(100vw - 2rem))) / 2));
+}
 .player-intel-dialog > form {
   position: relative;
   z-index: 1;
