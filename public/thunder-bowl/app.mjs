@@ -11,10 +11,11 @@ import {
   mergeEventStreams,
   nominationOrderEvidence,
   replayDraft,
+  sameEventSequence,
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260809a";
+} from "./state-engine.mjs?v=20260810b";
 import {
   appendEvents,
   getMeta,
@@ -3529,9 +3530,10 @@ async function fetchSession() {
 }
 
 async function rememberDisplayUrl(url) {
-  if (!url) return;
+  if (!url || url === displayBoardUrl) return false;
   displayBoardUrl = url;
   await setMeta("displayBoardUrl", url);
+  return true;
 }
 
 function showApp() {
@@ -3643,20 +3645,26 @@ async function syncNow() {
     cloudReachable = true;
     ledgerStale = false;
     updateNetworkStatus();
-    const priorSaleIds = new Set(activeSaleEvents().map((sale) => sale.id));
     const merged = mergeEventStreams(data.events || [], events);
-    events = merged;
-    const newSaleIds = activeSaleEvents().map((sale) => sale.id).filter((saleId) => !priorSaleIds.has(saleId));
-    reconcileAuctionTelemetry();
+    const eventsChanged = !sameEventSequence(events, merged);
+    const generationChanged = ledgerGeneration !== data.generation;
+    const priorSaleIds = eventsChanged ? new Set(activeSaleEvents().map((sale) => sale.id)) : null;
+    let newSaleIds = [];
+    if (eventsChanged) {
+      events = merged;
+      newSaleIds = activeSaleEvents().map((sale) => sale.id).filter((saleId) => !priorSaleIds.has(saleId));
+      reconcileAuctionTelemetry();
+    }
     ledgerGeneration = data.generation;
-    await Promise.all([
-      replaceEvents(events),
-      setMeta("ledgerGeneration", ledgerGeneration),
-      setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry),
-    ]);
-    await rememberDisplayUrl(data.displayBoardUrl);
-    renderAll();
-    await registerNewSaleTelemetry(newSaleIds);
+    const writes = [];
+    if (eventsChanged) {
+      writes.push(replaceEvents(events), setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry));
+    }
+    if (generationChanged) writes.push(setMeta("ledgerGeneration", ledgerGeneration));
+    const displayUrlChanged = await rememberDisplayUrl(data.displayBoardUrl);
+    await Promise.all(writes);
+    if (eventsChanged || generationChanged || displayUrlChanged) renderAll();
+    if (newSaleIds.length) await registerNewSaleTelemetry(newSaleIds);
     chip.textContent = salesEntryMode === SALES_ENTRY_MODES.AUCTIONEER ? "Auctioneer feed live" : "Cloud synced";
     chip.classList.add("status-good");
   } catch (error) {
@@ -3704,7 +3712,7 @@ async function refreshPackInBackground() {
   packRefreshInFlight = true;
   try {
     const latestPack = await fetchProtectedDraftPack();
-    if (latestPack) {
+    if (latestPack && latestPack.packId !== draftPack.packId) {
       await applyDraftPack(latestPack, byId("pack-import-status"));
       showToast(`Player evidence refreshed: ${latestPack.packId}.`);
     }

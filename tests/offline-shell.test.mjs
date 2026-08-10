@@ -208,6 +208,7 @@ test("background pack refresh is conditional, infrequent, and reconnect-aware", 
   assert.match(appSource, /"If-None-Match": priorEtag/);
   assert.match(appSource, /response\.status === 304/);
   assert.match(appSource, /schedulePackRefresh\(1000\)/);
+  assert.match(appSource, /latestPack\.packId !== draftPack\.packId/);
   assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshPackInBackground/);
 });
 

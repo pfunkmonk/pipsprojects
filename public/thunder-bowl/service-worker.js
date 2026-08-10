@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v74";
+const CACHE_VERSION = "thunder-bowl-shell-v75";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -17,6 +17,10 @@ const APP_SHELL = [
   "/thunder-bowl/draft-board/index.html",
   "/thunder-bowl/draft-board/draft-board.css",
   "/thunder-bowl/draft-board/draft-board.mjs",
+  "/thunder-bowl/guides/",
+  "/thunder-bowl/guides/index.html",
+  "/thunder-bowl/guides/guides.css",
+  "/thunder-bowl/guides/guides.mjs",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
@@ -32,11 +36,12 @@ const APP_SHELL = [
   "/thunder-bowl/shared/projector-presence.mjs",
   "/thunder-bowl/shared/public-core.mjs",
   "/thunder-bowl/shared/readiness.mjs",
+  "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260809d",
-  "/thunder-bowl/app.mjs?v=20260810a",
+  "/thunder-bowl/app.mjs?v=20260810b",
   "/thunder-bowl/public-board.mjs?v=20260805g",
-  "/thunder-bowl/state-engine.mjs?v=20260809a",
+  "/thunder-bowl/state-engine.mjs?v=20260810b",
   "/thunder-bowl/storage.mjs?v=20260805g",
   "/thunder-bowl/practice-engine.mjs?v=20260805g",
   "/thunder-bowl/player-annotations.mjs?v=20260805g",
@@ -85,6 +90,8 @@ async function navigationResponse(request) {
     const pathname = new URL(request.url).pathname;
     const fallback = pathname.startsWith("/thunder-bowl/board")
       ? "/thunder-bowl/board.html"
+      : pathname.startsWith("/thunder-bowl/guides")
+        ? "/thunder-bowl/guides/index.html"
       : pathname.startsWith("/thunder-bowl/draft-board")
         ? "/thunder-bowl/draft-board/index.html"
       : pathname.startsWith("/thunder-bowl/auctioneer")

@@ -9,8 +9,30 @@
 </head>
 <body>
   <main>
-    <header><span>TB</span><div><small>DRAFT-DAY SETUP</small><h1>Auctioneer, Logos & Wi-Fi</h1></div><button id="print-guides" type="button">Print guides</button></header>
-    <nav><a href="#auctioneer">Auctioneer quick guide</a><a href="#logos">Team logos</a><a href="#wifi">Wi-Fi</a><a href="#offline">Internet-out safety</a></nav>
+    <header><span>TB</span><div><small>2026 OPERATIONS</small><h1>Thunder Bowl field guide</h1></div><button id="print-guides" type="button">Print guides</button></header>
+    <nav><a href="#pip">Pip's command center</a><a href="#keepers">Keepers &amp; trades</a><a href="#auctioneer">Auctioneer</a><a href="#board">Draft Board</a><a href="#morning">Draft morning</a><a href="#wifi">Wi-Fi &amp; outage</a><a href="#logos">Team logos</a></nav>
+    <section id="pip">
+      <p class="eyebrow">PIP'S PRIVATE SCREEN</p><h2>Operate the command center</h2>
+      <ol>
+        <li><strong>Sign in before leaving home.</strong> A successful online sign-in saves an offline verifier for this laptop.</li>
+        <li><strong>Choose the sale source at the top.</strong> Leave <strong>Auctioneer feed</strong> selected while the auctioneer is recording. Switch to <strong>Manual backup</strong> only when you must enter winning sales yourself.</li>
+        <li><strong>Find a decision in seconds.</strong> Type a player name, team, or position; typos are accepted. Select the row for VBD, Market, Max, projection evidence, scarcity, and opponent pressure.</li>
+        <li><strong>Open private intelligence in place.</strong> Right-click a player for stored news, injury/role evidence, depth-chart research, Target/Avoid tags, personal prices, and notes.</li>
+        <li><strong>Use the keyboard under pressure.</strong> Command-K focuses search, Command-Enter records a completed manual sale, Command-Z undoes the last manual sale, and Escape clears filters.</li>
+      </ol>
+      <aside>VBD, projections, targets, notes, personal prices, and opponent profiles never appear in the auctioneer or Draft Board payloads.</aside>
+    </section>
+    <section id="keepers">
+      <p class="eyebrow">KEEPER SEASON</p><h2>Model first; publish deliberately</h2>
+      <ol>
+        <li><strong>Use Prediction sandbox for experiments.</strong> Keeper choices, passes, trades, cap movement, and recalculated auction values stay private on this laptop.</li>
+        <li><strong>Follow the 1–12 / 1–12 timeline.</strong> A team may keep zero, one, or two players. Passing closes only that turn; the other round remains available.</li>
+        <li><strong>Record quickly.</strong> Select the team evidence table and double-click an eligible player when that team is on the clock, or use the searchable keeper form.</li>
+        <li><strong>Test complete trade packages.</strong> One transaction may include cap dollars, multiple players in either direction, or a $0 player swap. Contract years travel with the player.</li>
+        <li><strong>Undo freely in the sandbox.</strong> Use <strong>Undo last setup action</strong> or reset the sandbox. Switch to <strong>Official ledger</strong> only for an actual declared keeper, pass, or accepted trade.</li>
+      </ol>
+      <aside>Every sandbox or official keeper/trade action recalculates pool scarcity and forecast auction values; only Official ledger actions reach the shared board.</aside>
+    </section>
     <section id="auctioneer">
       <p class="eyebrow">DRAFT-DAY QUICK GUIDE</p><h2>Run the auction</h2>
       <ol>
@@ -22,6 +44,25 @@
         <li><strong>Correct anything later.</strong> Use Recent sales for quick Edit/Undo or Assignment history for any older entry. Undo requires a second confirmation and remains restorable.</li>
       </ol>
       <aside>The auctioneer console receives public roster data only. VBD, projections, targets, personal prices, and notes stay private.</aside>
+    </section>
+    <section id="board">
+      <p class="eyebrow">READ-ONLY LEAGUE VIEW</p><h2>Open the Draft Board</h2>
+      <ol>
+        <li>Open <code>/thunder-bowl/draft-board/</code> from the Thunder Bowl card on Pip's Projects.</li>
+        <li>Enter the separate Draft Board code. Successful sign-in opens the live board; it cannot record or correct anything.</li>
+        <li>Leave the page open. It updates team cash, legal maximums, nominations, keepers, purchases, positions, and the shared clock automatically.</li>
+        <li>If the connection fails, the last sanitized snapshot stays visible and a warning appears. Never use the public board as a second ledger.</li>
+      </ol>
+    </section>
+    <section id="morning">
+      <p class="eyebrow">BEFORE LEAVING FOR THE AUCTION</p><h2>Run the departure gate</h2>
+      <ol>
+        <li>Load the final governed projection pack. A practice pack intentionally blocks departure readiness.</li>
+        <li>In <strong>Admin &amp; data</strong>, capture all player intelligence so injury, depth-chart, CBS, and news evidence is sealed for offline use.</li>
+        <li>Download a recovery bundle and any private personal-board JSON that the readiness card requests.</li>
+        <li>Open the auctioneer console and Draft Board once, then run <strong>Run departure check</strong>. Leave only after blockers are cleared; warnings explain optional or repeatable safeguards.</li>
+        <li>The pack-pinned automatic rehearsal is the technical evidence. The seven-item physical rehearsal is optional and may be sealed only after those actions were actually performed.</li>
+      </ol>
     </section>
     <section id="logos">
       <p class="eyebrow">TUTORIAL 1</p><h2>Load team logos</h2>
@@ -40,21 +81,21 @@
         <li>Put both computers on the same reliable private Wi-Fi—not a guest network.</li>
         <li>Open the normal deployed Thunder Bowl URLs. Cloud synchronization does not require the computers to see each other directly.</li>
         <li>Use the private command-center login on your computer and the separate auctioneer login on the auctioneer computer.</li>
-        <li>Open the projector, run <strong>Draft-day check</strong>, and record one $1 rehearsal sale.</li>
+        <li>Open the projector and run <strong>Draft-day check</strong>. If you record a $1 test sale, do it only in a named rehearsal and archive/reset that rehearsal afterward.</li>
         <li>Keep a charged phone ready as the simple hotspot fallback.</li>
       </ol>
     </section>
     <section id="offline">
-      <p class="eyebrow">OPTIONAL ADVANCED SAFETY NET</p><h2>Same Wi-Fi when the internet is down</h2>
-      <p>This works only if your command-center computer runs a LAN-accessible copy of the real Thunder Bowl server and its single canonical ledger. The static demo cannot sync different computers.</p>
+      <p class="eyebrow">ACTUAL OUTAGE PLAYBOOK</p><h2>When the internet goes down</h2>
+      <p>The private command center is the only writable offline authority. The auctioneer console intentionally becomes read-only, and the Draft Board keeps its last sanitized snapshot.</p>
       <ol>
-        <li>Find the host computer's private IP address in its Wi-Fi TCP/IP details.</li>
-        <li>Run the real app server on its LAN interface and preserve authentication, display tokens, secure cookies, generation checks, and idempotency.</li>
-        <li>Allow only that app/port through the private-network firewall.</li>
-        <li>Open the host's HTTPS address from the auctioneer computer.</li>
-        <li>Rehearse by disconnecting WAN—not Wi-Fi—and confirm sale, edit, Undo, restore, and reconnection exactly once.</li>
+        <li>Stop entering sales on the auctioneer computer when it shows <strong>OFFLINE — RECORDING DISABLED</strong>.</li>
+        <li>On Pip's already-unlocked command center, switch to <strong>Manual backup</strong> and record each winning sale locally.</li>
+        <li>Keep announcing rosters and prices while the projector displays its last confirmed snapshot. Paper is an emergency visual note only, never a competing ledger.</li>
+        <li>When internet access returns, wait for <strong>Online</strong> and <strong>Cloud synced</strong>. The append-only event merge is idempotent and preserves queued corrections.</li>
+        <li>Confirm the auctioneer and Draft Board match the command center, then switch back to <strong>Auctioneer feed</strong>.</li>
       </ol>
-      <aside>If the real project lacks a safe local-server seam, use the phone hotspot. Never create a second writable shadow ledger.</aside>
+      <aside>A charged phone hotspot is the fastest network fallback. Never run a second writable shadow ledger or let both people record the same sale.</aside>
     </section>
   </main>
   <script type="module" src="./guides.mjs"></script>

@@ -107,6 +107,18 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 2. portfolio optimization that values correlated upside, floor, and playoff paths rather than independent point totals;
 3. robust-control or minimax roster construction that performs well across projection-source disagreement and injury scenarios.
 
+## Release checkpoint — August 9, 2026
+
+- The live practice room carries 716 players, all 12 league teams, the accuracy-weighted FBG/CBS/FantasyPros consensus, authenticated keeper contracts, historical demand, auction simulation, and the verified 2026 division schedule.
+- Production Chrome QA passed the private room, prediction sandbox keeper/undo, atomic two-player-plus-cap trade/undo, auctioneer login and illegal-bid rejection, Draft Board login, 12-team public rendering, and private-field isolation without recording a live sale.
+- The refreshed 716-player valuation audit found 0 VBD formula mismatches and 0 legacy identity-curve repairs. Seventy-nine large source disagreements remain explicitly flagged as forecast uncertainty (not silently promoted), with only one starter/replacement reversal across every available external source; that player remains at the $1 floor.
+- Unchanged 1.5-second ledger polls no longer rewrite IndexedDB or rebuild the 716-player DOM. Rendering now occurs only when the append-only event sequence, ledger generation, or board link actually changes.
+- All role-specific shells use an external CSP-compatible hidden-state rule. Inline CSS that the strict Thunder Bowl security policy would reject has been removed from the auctioneer and board shells.
+- The in-app operation guide covers the private command center, keeper sandbox versus official ledger, auctioneer, Draft Board, draft-morning gate, and the real internet-out failover path.
+- The deterministic catastrophe rehearsal is the accepted technical rehearsal evidence. Physical speaking/projector practice is optional and is never falsely certified by automation.
+- The release-candidate gate passes 264/264 automated tests, the 716-player build validator, the full-auction rehearsal (168 sales), and the catastrophe rehearsal (24 keepers plus 144 sales). The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage.
+- Draft-day release remains intentionally blocked until the two access codes found in public Git history are rotated in Netlify, the final governed projection pack is promoted, all-player intelligence is freshly captured, and a recovery bundle is downloaded on the MacBook.
+
 ## Near-term sequence
 
 1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.

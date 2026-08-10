@@ -1,0 +1,8 @@
+[hidden] {
+  display: none !important;
+}
+
+.team-board {
+  align-self: start;
+  width: 100%;
+}

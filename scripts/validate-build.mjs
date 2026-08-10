@@ -81,8 +81,11 @@ const committedText = await Promise.all(
     .filter((file) => /\.(?:html|css|mjs|js|webmanifest)$/.test(file))
     .map((file) => readFile(resolve(root, file), "utf8")),
 );
-if (committedText.some((text) => text.includes("431743"))) {
-  throw new Error("The private access code must never be committed into public or function source.");
+for (const variable of ["THUNDER_BOWL_ACCESS_CODE", "THUNDER_BOWL_AUCTIONEER_ACCESS_CODE", "THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE", "THUNDER_BOWL_SESSION_SECRET", "THUNDER_BOWL_DISPLAY_TOKEN"]) {
+  const secret = process.env[variable];
+  if (secret && secret.length >= 6 && committedText.some((text) => text.includes(secret))) {
+    throw new Error(`${variable} must never be committed into public or function source.`);
+  }
 }
 
 console.log(`Validated Thunder Bowl shell: ${currentPack.players.length} current practice players, ${state.config.teams.length} teams, private/public field isolation intact.`);

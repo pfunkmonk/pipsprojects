@@ -6,7 +6,7 @@ The Thunder Bowl site now has three synchronized, deliberately separate surfaces
 
 1. `/thunder-bowl/` — Mike's private command center, including VBD, projections, targets, notes, keeper strategy, and the existing offline-first ledger.
 2. `/thunder-bowl/auctioneer/` — a restricted auctioneer console for recording sales and corrections. It exposes only public auction information and uses its own access code and signed session cookie.
-3. `/thunder-bowl/board` — the token-protected, read-only projector board. It shows the twelve teams, keeper/draft stickers, prices, cash, maximum legal bids, nomination order, recent sales, and the shared clock.
+3. `/thunder-bowl/draft-board/` — the league-facing code gate that opens `/thunder-bowl/board`, the token/session-protected, read-only projector board. It shows the twelve teams, keeper/draft stickers, prices, cash, maximum legal bids, nomination order, recent sales, and the shared clock.
 
 All three experiences derive auction truth from the existing Thunder Bowl event ledger. The integration does not create a second sale database and does not copy private VBD or strategy fields into the auctioneer or board payloads.
 
@@ -33,6 +33,7 @@ Set these in the production site's environment before deployment:
 
 - `THUNDER_BOWL_ACCESS_CODE` — existing private command-center code.
 - `THUNDER_BOWL_AUCTIONEER_ACCESS_CODE` — the separate six-digit auctioneer code. Keep it only in Netlify/local process environment; never commit it.
+- `THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE` — the separate read-only league viewer code. Keep it only in Netlify/local process environment; never commit it.
 - `THUNDER_BOWL_SESSION_SECRET` — existing signing secret of at least 32 characters.
 - `THUNDER_BOWL_DISPLAY_TOKEN` — existing random projector token.
 
@@ -68,13 +69,13 @@ Then verify:
 
 ## Release status
 
-The integration was pushed to GitHub and deployed to `https://pipsprojects.com` on August 8, 2026. The production auctioneer secret is configured as a write-only Netlify Functions environment value. Production smoke verification passed the separate login, 12-team/716-player restricted snapshot, tokenized projector snapshot, trailing-slash board redirect, private-field firewall, cloud synchronization, projector presence, and clean browser diagnostics without recording a transaction.
+The integration is deployed at `https://pipsprojects.com`. On August 9, 2026, production Chrome QA passed the separate private, auctioneer, and Draft Board sign-ins; 12-team/716-player restricted snapshots; token/session projector access; private-field firewall; cloud synchronization; typo-tolerant player lookup; illegal-bid rejection; keeper declaration/undo; atomic multi-player trade/undo; and clean browser diagnostics without adding a live sale.
 
-The remaining release-readiness action is one real two-computer projector rehearsal on the venue network or a comparable hotspot. Use the production auctioneer and tokenized board, exercise the documented correction/outage path, then archive/reset the rehearsal ledger before draft day.
+The pack-pinned automatic catastrophe rehearsal satisfies the technical rehearsal gate with 24 keepers, 144 auction sales, auctioneer/manual failover, outage merge, recovery, latency, and public/private isolation. A physical two-computer speaking-speed rehearsal remains useful but optional and is never represented as automated evidence. The actual departure blockers are rotating the private-room and Draft Board codes exposed in public Git history, the final promoted projection pack, and a fresh all-player intelligence capture and recovery download on the draft laptop.
 
 ## Open dependency advisory
 
-As of August 8, 2026, `npm audit` reports two high-severity denial-of-service advisories in `image-size@2.0.2`, a transitive dependency of `@netlify/blobs` through `@netlify/dev-utils`. GitHub lists every published `image-size` version as affected and no patched version. Thunder Bowl does not accept or decode uploaded ICNS, JXL, or HEIF buffers, so the vulnerable parser is not reachable through an application route. Do not use `npm audit fix --force`: its current proposal is a breaking Netlify Blobs downgrade. Re-audit immediately before deployment and take Netlify's patched dependency as soon as one is available.
+As of August 9, 2026, `npm audit` reports three high-severity package entries caused by two denial-of-service advisories in `image-size@2.0.2`, a transitive dependency of `@netlify/blobs` through `@netlify/dev-utils`. GitHub lists every published `image-size` version as affected and no patched version. Thunder Bowl does not accept or decode uploaded ICNS, JXL, or HEIF buffers, so the vulnerable parser is not reachable through an application route. Do not use `npm audit fix --force`: its current proposal is a breaking Netlify Blobs downgrade. Re-audit immediately before deployment and take Netlify's patched dependency as soon as one is available.
 
 - https://github.com/advisories/GHSA-w3rx-r6r6-pgpr
 - https://github.com/advisories/GHSA-5p2g-fcmc-qvqq

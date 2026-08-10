@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-10T02:25:03.607Z",
-  "scope": "Deterministic full-system keeper, cap-trade, auction, offline divergence, reconnect, recovery, public-boundary, and latency gate; not a substitute for the final human-paced usability rehearsal.",
+  "generatedAt": "2026-08-10T02:59:59.323Z",
+  "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
     "packSha256": "74991dc647e6c05e303e249892eed23222d8a2c101499ac0d55d124a14fa944b",
-    "engineSha256": "33b043d547bc2aec27eb6fb66744d84a2e9fe2e4a0eaee1de69ee3a3f68b5a14",
-    "scriptSha256": "242d9af7f213de3e4aa1087ffb9f4356c3317fd327a5a399add49518a4fb75dc"
+    "engineSha256": "858f97ede43e3ccf684275574ce4611e4047e6fe40da36efccc253622d23b252",
+    "scriptSha256": "920dcf44fac92be50d86bc6a159860e405e2b60de7abff090156cfb5b5f0c4e6"
   },
   "pack": {
     "id": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311",
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.1715,
+    "reconnectMs": 1.2574,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 19.6229,
+    "durationMs": 21.7009,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2056,
-      "p95Ms": 0.4335,
-      "maximumMs": 0.5489
+      "medianMs": 0.2273,
+      "p95Ms": 0.5218,
+      "maximumMs": 0.7734
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1453,
-      "p95Ms": 0.2472,
-      "maximumMs": 0.2472
+      "medianMs": 0.1482,
+      "p95Ms": 0.289,
+      "maximumMs": 0.289
     }
   },
   "finalState": {

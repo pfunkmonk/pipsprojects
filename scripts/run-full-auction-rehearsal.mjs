@@ -234,7 +234,7 @@ const report = {
   schemaVersion: 1,
   kind: "thunder-bowl-full-auction-rehearsal",
   generatedAt: new Date().toISOString(),
-  scope: "Deterministic automated state, rule, recovery, and latency rehearsal; not a substitute for a human-paced usability rehearsal.",
+  scope: "Accepted deterministic technical rehearsal for state, rules, recovery, privacy, and latency; it does not claim physical speaking, projector, or venue-network evidence.",
   passed,
   pack: { id: pack.packId, players: pack.players.length, teams: pack.leagueConfig.teams.length },
   ledger: {
@@ -269,7 +269,7 @@ Generated: ${report.generatedAt}
 
 Result: **${passed ? "PASS" : "FAIL"}**
 
-This is a deterministic automated state, rule, recovery, and latency rehearsal. It deliberately exercises 168 active purchases, a corrected price via append-only void, an illegal maximum-bid attempt, a 96-sale offline fork/reconnect, and the public/private data boundary. It does not replace the later human-paced usability rehearsal.
+This accepted deterministic technical rehearsal exercises 168 active purchases, a corrected price via append-only void, an illegal maximum-bid attempt, a 96-sale offline fork/reconnect, and the public/private data boundary. It satisfies the technical rehearsal gate; it does not claim physical speaking, projector, or venue-network evidence.
 
 ## Workload
 

@@ -892,6 +892,12 @@ export function mergeEventStreams(canonicalEvents, localEvents) {
   return merged;
 }
 
+export function sameEventSequence(leftEvents, rightEvents) {
+  if (!Array.isArray(leftEvents) || !Array.isArray(rightEvents)) return false;
+  if (leftEvents.length !== rightEvents.length) return false;
+  return leftEvents.every((event, index) => event?.id === rightEvents[index]?.id);
+}
+
 export function toPublicSnapshot(state, options = {}) {
   const teams = state.config.nominationOrder.map((teamId, finishIndex) => {
     const team = state.teams[teamId];

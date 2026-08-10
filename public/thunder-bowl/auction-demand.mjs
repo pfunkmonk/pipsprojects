@@ -1,4 +1,4 @@
-import { POSITIONS } from "./state-engine.mjs?v=20260808g";
+import { POSITIONS } from "./state-engine.mjs?v=20260810b";
 
 export const HISTORICAL_AUCTION_DEMAND = Object.freeze({
   schemaVersion: 1,

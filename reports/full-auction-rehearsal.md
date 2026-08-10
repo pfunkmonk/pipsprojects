@@ -1,20 +1,20 @@
 # Thunder Bowl 2026 — Automated Full-Auction Rehearsal
 
-Generated: 2026-08-10T02:22:41.076Z
+Generated: 2026-08-10T02:59:59.270Z
 
 Result: **PASS**
 
-This is a deterministic automated state, rule, recovery, and latency rehearsal. It deliberately exercises 168 active purchases, a corrected price via append-only void, an illegal maximum-bid attempt, a 96-sale offline fork/reconnect, and the public/private data boundary. It does not replace the later human-paced usability rehearsal.
+This accepted deterministic technical rehearsal exercises 168 active purchases, a corrected price via append-only void, an illegal maximum-bid attempt, a 96-sale offline fork/reconnect, and the public/private data boundary. It satisfies the technical rehearsal gate; it does not claim physical speaking, projector, or venue-network evidence.
 
 ## Workload
 
 - 168 players
 - 12 teams × 14 roster spots
 - 171 physical audit events; 169 active events
-- Incremental replay p95: 0.5228 ms; maximum: 0.7555 ms
-- Search p95: 0.0334 ms; maximum: 0.155 ms
-- Offline reconnect merge: 1.1747 ms
-- Public snapshot generation: 0.2503 ms
+- Incremental replay p95: 0.489 ms; maximum: 0.6303 ms
+- Search p95: 0.0311 ms; maximum: 0.2149 ms
+- Offline reconnect merge: 1.008 ms
+- Public snapshot generation: 0.2741 ms
 
 ## Gate checks
 

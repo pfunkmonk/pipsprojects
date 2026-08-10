@@ -1,0 +1,95 @@
+# Thunder Bowl 2026 handoff
+
+Updated August 9, 2026. This is the takeover starting point for another developer or Codex task.
+
+## Current outcome
+
+- Production: `https://pipsprojects.com/thunder-bowl/`
+- Branch: `main`
+- Hosting: Netlify; source remote is `origin`
+- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311`
+- Current authority: practice pack; 716 players; 12 teams
+- Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
+- Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
+- Release-candidate verification: 264/264 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 0 VBD formula mismatches, and 0 legacy identity-curve repairs.
+- Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
+
+Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.
+
+Security blocker: the public repository's older history contains the current private-room code and Draft Board code. Current source files no longer contain either value, and the build now compares configured runtime secrets against public/function source without embedding those secrets. Rotate both Netlify environment values, then verify the old values are rejected and the new values work. History rewriting is optional after rotation because the exposed values must be treated as permanently compromised.
+
+## Product mission gate
+
+Every change must be easier, more intuitive, more desirable, and faster than paper or competing services under a loud in-person auction. Fix the failure class, not one symptom. Authority-bearing model changes remain quarantined until time-forward QA earns promotion.
+
+## Authoritative boundaries
+
+1. The append-only event ledger is the only truth for caps, keeper-rights trades, keeper choices/passes, sales, corrections, nominations, and rosters.
+2. The private command center owns VBD, projections, targets, notes, personal prices, opponent profiles, and advisory forecasts.
+3. The auctioneer receives public roster/player data only and writes through revision-checked, idempotent commands.
+4. The Draft Board is read-only and receives a sanitized public snapshot. It never receives private strategy fields.
+5. Prediction-sandbox keeper actions are local and private. Only explicit Official ledger actions may sync to the shared board.
+
+## Code map
+
+- Private UI and orchestration: `public/thunder-bowl/index.html`, `app.mjs`, `app.css`
+- Rules, replay, public sanitization: `public/thunder-bowl/state-engine.mjs`
+- Keeper calculations: `keeper-board.mjs`, `keeper-scenario.mjs`
+- VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`
+- Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`
+- Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
+- Annual divisions/schedule: `league-setup.mjs`; schedule weighting remains a held display-only challenger
+- Auctioneer: `public/thunder-bowl/auctioneer/`
+- Public board and login gate: `public/thunder-bowl/board/`, `board.html`, `draft-board/`
+- Shared public-only services: `public/thunder-bowl/shared/`
+- Cloud functions and ledger service: `netlify/functions/`
+- Automated QA/rehearsals: `tests/`, `scripts/run-full-auction-rehearsal.mjs`, `scripts/run-keeper-auction-catastrophe-rehearsal.mjs`
+- User operations guide: `public/thunder-bowl/guides/index.html`
+
+## Projection and VBD state
+
+- Thunder Bowl Consensus drives projected points: FBG 33.7%, FantasyPros 33.3%, CBS 33.0% when all three are present. Missing sources renormalize; they are never zero-filled.
+- The production blend beat the single-source reference in strict time-forward tests. The source tilt is deliberately small because the clean paired historical difference was not statistically decisive.
+- The value chain is consensus projection → league scoring → replacement-level VBD → intrinsic dollars → historical roster-depth/position market → live room scarcity and cash → Max bid.
+- Weather, travel, venue, rest, durability, mean reversion, and schedule total-point modifiers remain at zero unless separately promoted.
+- The 1.20 division / 1.40 playoff preview failed the 31,486 player-week time-forward gate. It may display a labeled what-if but cannot change VBD, Market, Max, keeper surplus, or bids.
+
+## Final projection refresh
+
+The separate projection application must fill the exact 716-row template in `artifacts/thunder-bowl/projection-handoff-2026/`. Then run:
+
+```powershell
+npm.cmd run refresh:thunder-projections -- completed-handoff.csv candidate-pack.json
+npm.cmd run audit:thunder-pack -- candidate-pack.json public/thunder-bowl/current-draft-pack.json
+npm.cmd run stage:thunder-pack -- candidate-pack.json
+```
+
+Review every blocking issue and outlier. Promotion requires an explicit, separately reviewed `--promote` run followed by the complete test, build, valuation, Monte Carlo, catastrophe, Chrome, and readiness checks. Never edit the active pack by hand.
+
+## Required verification
+
+```powershell
+npm.cmd test
+npm.cmd run build
+npm.cmd run audit:thunder-values
+npm.cmd run rehearsal
+npm.cmd run rehearsal:catastrophe
+npm.cmd audit
+git diff --check
+```
+
+Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×1920 MacBook display at 2× scaling). Verify private, auctioneer, and Draft Board sign-ins; player search/right-click intelligence; keeper/undo; atomic trade/undo; manual-backup visibility; illegal-bid rejection; public-field isolation; status stability; and clean console diagnostics. Do not leave test sales in the live ledger.
+
+## Draft-morning sequence
+
+1. Promote the final governed projection pack.
+2. Sign in online on the MacBook so the offline verifier is current.
+3. Open the auctioneer and Draft Board once.
+4. Capture all player intelligence in Admin & data.
+5. Download the recovery bundle and any requested private-board JSON.
+6. Run the departure check and clear every blocker.
+7. Leave Auctioneer feed selected. If the auctioneer loses cloud access, switch Pip's already-unlocked command center to Manual backup; switch back only after all three screens agree.
+
+## Known dependency advisory
+
+`npm audit` currently reports three high-severity package entries from two `image-size@2.0.2` denial-of-service advisories inherited through `@netlify/blobs` → `@netlify/dev-utils`. The vulnerable ICNS/JXL/HEIF parser is not reachable through Thunder Bowl routes. The offered forced fix is a breaking Netlify Blobs downgrade; do not apply it. Recheck before each deployment and upgrade when Netlify publishes a patched dependency path.

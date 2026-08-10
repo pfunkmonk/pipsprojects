@@ -5,10 +5,14 @@ import { access, readFile } from "node:fs/promises";
 const netlifyConfig = await readFile(new URL("../netlify.toml", import.meta.url), "utf8");
 const environmentExample = await readFile(new URL("../.env.example", import.meta.url), "utf8");
 const serviceWorker = await readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8");
+const auctioneerSource = await readFile(new URL("../public/thunder-bowl/auctioneer/auctioneer.mjs", import.meta.url), "utf8");
+const boardSource = await readFile(new URL("../public/thunder-bowl/board/board.mjs", import.meta.url), "utf8");
 const auctioneerHtmlUrl = new URL("../public/thunder-bowl/auctioneer/index.html", import.meta.url);
 const draftBoardHtmlUrl = new URL("../public/thunder-bowl/draft-board/index.html", import.meta.url);
 const boardHtmlUrl = new URL("../public/thunder-bowl/board.html", import.meta.url);
+const guidesHtmlUrl = new URL("../public/thunder-bowl/guides/index.html", import.meta.url);
 const homeHtmlUrl = new URL("../public/index.html", import.meta.url);
+const shellSafetyCssUrl = new URL("../public/thunder-bowl/shared/shell-safety.css", import.meta.url);
 
 function redirectBlock(from, to) {
   return new RegExp(`\\[\\[redirects\\]\\][\\s\\S]*?from = "${from.replaceAll("/", "\\/")}"[\\s\\S]*?to = "${to.replaceAll("/", "\\/")}"[\\s\\S]*?status = 200`);
@@ -42,6 +46,36 @@ test("auctioneer and flat projector shells have no missing local assets", async 
   await assertLocalAssetsExist(auctioneerHtmlUrl);
   await assertLocalAssetsExist(draftBoardHtmlUrl);
   await assertLocalAssetsExist(boardHtmlUrl);
+  await assertLocalAssetsExist(guidesHtmlUrl);
+});
+
+test("operations guide matches the released keeper, failover, and readiness workflows", async () => {
+  const guide = await readFile(guidesHtmlUrl, "utf8");
+  assert.match(guide, /Prediction sandbox/);
+  assert.match(guide, /Official ledger/);
+  assert.match(guide, /Auctioneer feed/);
+  assert.match(guide, /Manual backup/);
+  assert.match(guide, /practice pack intentionally blocks departure readiness/i);
+  assert.match(guide, /only writable offline authority/i);
+  assert.doesNotMatch(guide, /Run the real app server on its LAN interface/);
+});
+
+test("an unchanged successful auctioneer refresh clears stale offline or rejection indicators", () => {
+  assert.match(auctioneerSource, /else\s*\{\s*renderCloudStatus\(\);\s*updateRecordAvailability\(\);\s*\}/);
+});
+
+test("an unchanged successful projector refresh clears stale connection state", () => {
+  assert.match(boardSource, /else if \(snapshot\) \{\s*renderLiveStatus\(\);\s*\}/);
+});
+
+test("role-specific surfaces obey hidden state under the strict content-security policy", async () => {
+  const shellSafetyCss = await readFile(shellSafetyCssUrl, "utf8");
+  assert.match(shellSafetyCss, /\[hidden\]\s*\{\s*display:\s*none\s*!important\s*;/);
+  for (const htmlUrl of [auctioneerHtmlUrl, draftBoardHtmlUrl, boardHtmlUrl, new URL("../public/thunder-bowl/board/index.html", import.meta.url)]) {
+    const html = await readFile(htmlUrl, "utf8");
+    assert.doesNotMatch(html, /<style\b/i, `${htmlUrl.pathname} cannot rely on inline CSS blocked by the site CSP.`);
+    assert.match(html, /shell-safety\.css/, `${htmlUrl.pathname} must load the external hidden-state safety rule.`);
+  }
 });
 
 test("the project card offers separate private, auctioneer, and Draft Board entrances", async () => {
@@ -56,16 +90,22 @@ test("offline shell caches both auctioneer and projector experiences", () => {
   assert.match(serviceWorker, /"\/thunder-bowl\/auctioneer\/auctioneer\.mjs"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/draft-board\/"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/draft-board\/draft-board\.mjs"/);
+  assert.match(serviceWorker, /"\/thunder-bowl\/guides\/index\.html"/);
+  assert.match(serviceWorker, /"\/thunder-bowl\/guides\/guides\.css"/);
+  assert.match(serviceWorker, /"\/thunder-bowl\/shared\/shell-safety\.css"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/board\.html"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/board\/board\.mjs"/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/board"\)/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/auctioneer"\)/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/draft-board"\)/);
+  assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/guides"\)/);
 });
 
-test("repository configuration documents only an auctioneer-code placeholder", () => {
+test("repository configuration contains placeholders rather than deployable access codes", () => {
+  assert.match(environmentExample, /^THUNDER_BOWL_ACCESS_CODE=replace-with-private-code$/m);
   assert.match(environmentExample, /^THUNDER_BOWL_AUCTIONEER_ACCESS_CODE=replace-with-separate-six-digit-code$/m);
   assert.match(environmentExample, /^THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE=replace-with-separate-draft-board-code$/m);
-  assert.doesNotMatch(environmentExample, /^THUNDER_BOWL_AUCTIONEER_ACCESS_CODE=\d{6}$/m);
-  assert.doesNotMatch(environmentExample, /Barry#1/);
+  for (const line of environmentExample.split(/\r?\n/).filter((entry) => /ACCESS_CODE=/.test(entry))) {
+    assert.match(line, /=replace-with-/);
+  }
 });

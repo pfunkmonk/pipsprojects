@@ -17,6 +17,7 @@ import {
   nominationOrderEvidence,
   rankOpponentPressure,
   replayDraft,
+  sameEventSequence,
   snakeTeamId,
   toPublicSnapshot,
   validateDraftPack,
@@ -75,6 +76,16 @@ test("only a pristine configuration ledger can rebind to new league evidence", (
   assert.equal(canReplaceUnstartedConfiguration([configured]), true);
   assert.equal(canReplaceUnstartedConfiguration([configured, purchase]), false);
   assert.equal(canReplaceUnstartedConfiguration([configured, purchase, purchaseUndo]), true);
+});
+
+test("event sequence change detection suppresses no-op live poll renders", () => {
+  const configured = configEvent();
+  const purchase = sale(1);
+  assert.equal(sameEventSequence([configured, purchase], [configured, purchase]), true);
+  assert.equal(sameEventSequence([configured], [configured, purchase]), false);
+  assert.equal(sameEventSequence([configured, purchase], [purchase, configured]), false);
+  assert.equal(sameEventSequence([configured, purchase], [configured, { ...purchase, id: "replacement" }]), false);
+  assert.equal(sameEventSequence(null, [configured]), false);
 });
 
 test("opponent pressure is dynamic, capped, deterministic, and excludes Dogs of War", () => {

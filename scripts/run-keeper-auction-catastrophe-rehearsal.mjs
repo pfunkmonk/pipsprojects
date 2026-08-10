@@ -330,7 +330,7 @@ const report = {
   schemaVersion: 1,
   kind: "thunder-bowl-keeper-auction-catastrophe-rehearsal",
   generatedAt: new Date().toISOString(),
-  scope: "Deterministic full-system keeper, cap-trade, auction, offline divergence, reconnect, recovery, public-boundary, and latency gate; not a substitute for the final human-paced usability rehearsal.",
+  scope: "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   passed,
   pins: {
     packSha256: sha256(packBytes),
@@ -417,7 +417,7 @@ Generated: ${report.generatedAt}
 
 Result: **${passed ? "PASS" : "FAIL"}**
 
-This deterministic gate uses the active validated 716-player practice pack. It records the Herbert cap trade, corrects a mistaken keeper destination with an append-only void, assigns 24 legal keepers, completes the other 144 purchases, rejects an illegal maximum bid, corrects an offline price, merges a 72-sale outage exactly and idempotently, round-trips the full private recovery bundle, and tests the public/private boundary throughout. It does not replace the final human-paced usability rehearsal.
+This accepted deterministic gate uses the active validated 716-player practice pack. It records the Herbert cap trade, corrects a mistaken keeper destination with an append-only void, assigns 24 legal keepers, completes the other 144 purchases, rejects an illegal maximum bid, corrects an offline price, merges a 72-sale outage exactly and idempotently, round-trips the full private recovery bundle, and tests the public/private boundary throughout. It satisfies the technical rehearsal gate; it does not claim physical speaking, projector, or venue-network evidence.
 
 ## Workload
 

@@ -771,6 +771,11 @@ async function runReadinessCheck() {
   }
 }
 
+function renderCloudStatus() {
+  syncState.textContent = cloudReady ? "CLOUD SYNCED" : "OFFLINE";
+  syncState.classList.toggle("is-error", !cloudReady);
+}
+
 function render() {
   assertPublicSnapshot(snapshot);
   if (snapshot.displayBoardUrl) boardLink.href = snapshot.displayBoardUrl;
@@ -781,8 +786,7 @@ function render() {
   renderActivity();
   updateSelectedPlayer();
   renderPlayerResults();
-  syncState.textContent = cloudReady ? "CLOUD SYNCED" : "OFFLINE";
-  syncState.classList.toggle("is-error", !cloudReady);
+  renderCloudStatus();
 }
 
 async function refresh() {
@@ -795,6 +799,7 @@ async function refresh() {
       snapshot = next;
       render();
     } else {
+      renderCloudStatus();
       updateRecordAvailability();
     }
   } catch (error) {

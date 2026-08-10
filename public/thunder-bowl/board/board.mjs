@@ -63,6 +63,19 @@ function sizeBoard() {
   board.style.height = `${Math.min(fullBoardHeight, fullBoardHeight * visibleGridUnits / fullGridUnits)}px`;
 }
 
+function activeAuctionSales() {
+  return (snapshot?.assignments || [])
+    .filter((assignment) => assignment.status === "active" && assignment.acquisitionType === "auction")
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+}
+
+function renderLiveStatus(auctionSales = activeAuctionSales()) {
+  const time = new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  status.textContent = `Updated ${time} · ${auctionSales.length} sold · ${averageSalePace(auctionSales)} · Keepers pinned at the top`;
+  connection.textContent = "LIVE";
+  connection.classList.remove("is-error");
+}
+
 function render() {
   assertPublicSnapshot(snapshot);
   board.replaceChildren();
@@ -70,7 +83,7 @@ function render() {
   const maximumAuctionRows = Math.max(0, ...snapshot.teams.map((team) =>
     orderedTeamAssignments(snapshot, team.id).filter((assignment) => assignment.acquisitionType === "auction").length));
   visibleRosterRows = Math.min(snapshot.rosterSize, snapshot.keeperSlots + maximumAuctionRows);
-  const auctionSales = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.acquisitionType === "auction").sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const auctionSales = activeAuctionSales();
   const isSubsequentUpdate = renderedRevision !== null && snapshot.revision !== renderedRevision;
   const newSale = isSubsequentUpdate ? auctionSales.find((sale) => !knownAuctionSaleIds.has(sale.id)) : null;
   const newSaleId = newSale?.id || null;
@@ -119,9 +132,7 @@ function render() {
     board.append(column);
   }
   sizeBoard();
-  const time = new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-  const soldCount = auctionSales.length;
-  status.textContent = `Updated ${time} · ${soldCount} sold · ${averageSalePace(auctionSales)} · Keepers pinned at the top`;
+  renderLiveStatus(auctionSales);
   const lastSaleItems = document.getElementById("last-sale-items");
   lastSaleItems.replaceChildren();
   const recentSales = auctionSales.slice(0, 3);
@@ -148,8 +159,6 @@ function render() {
   if (newSale) showSaleSpotlight(newSale);
   auctionSales.forEach((sale) => knownAuctionSaleIds.add(sale.id));
   renderedRevision = snapshot.revision;
-  connection.textContent = "LIVE";
-  connection.classList.remove("is-error");
 }
 
 function showSaleSpotlight(assignment) {
@@ -191,6 +200,8 @@ function updateReliability() {
   if (!dataFresh) {
     connection.textContent = "CONNECTION LOST";
     connection.classList.add("is-error");
+  } else if (snapshot) {
+    renderLiveStatus();
   }
   writeProjectorPresence({
     dataFresh,
