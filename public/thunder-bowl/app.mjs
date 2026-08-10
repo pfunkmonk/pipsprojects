@@ -1364,6 +1364,16 @@ function closePlayerIntel() {
   intelPlayerId = null;
 }
 
+function closePlayerIntelFromBackdrop(event) {
+  if (event.target !== playerIntelDialog) return;
+  const bounds = playerIntelDialog.getBoundingClientRect();
+  const clickedOutside = event.clientX < bounds.left
+    || event.clientX > bounds.right
+    || event.clientY < bounds.top
+    || event.clientY > bounds.bottom;
+  if (clickedOutside) closePlayerIntel();
+}
+
 async function refreshPlayerNewsInApp() {
   const player = draftPack?.players.find((row) => row.id === intelPlayerId);
   const button = byId("intel-news-link");
@@ -5306,6 +5316,7 @@ function bindInteractions() {
   practicePauseButton.addEventListener("click", () => void togglePracticePause());
   playerIntelForm.addEventListener("submit", savePlayerIntel);
   byId("close-player-intel").addEventListener("click", closePlayerIntel);
+  playerIntelDialog.addEventListener("click", closePlayerIntelFromBackdrop);
   byId("clear-player-intel").addEventListener("click", clearPlayerIntel);
   byId("intel-news-link").addEventListener("click", () => void refreshPlayerNewsInApp());
   byId("intel-cbs-link").addEventListener("click", () => void refreshResearchInApp("cbs"));
