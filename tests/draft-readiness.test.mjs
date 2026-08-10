@@ -106,20 +106,29 @@ test("unverified order, provisional cap, stale sources, missing recovery, projec
   assert.match(report.checks.find((check) => check.id === "nomination-order")?.detail || "", /Only 2 of 12/);
 });
 
-test("missing or configuration-stale human rehearsal evidence remains a visible departure warning", () => {
+test("the pack-pinned automatic rehearsal substitutes honestly for missing physical attestation", () => {
   const missingInputs = readyInputs();
   missingInputs.humanRehearsalEvidence = null;
+  missingInputs.now = "2026-08-10T03:00:00.000Z";
   const missingReport = buildDraftReadinessReport(missingInputs);
-  assert.equal(missingReport.overall, "review");
-  assert.equal(missingReport.checks.find((check) => check.id === "human-rehearsal")?.status, "warning");
+  assert.equal(missingReport.checks.find((check) => check.id === "rehearsal")?.status, "pass");
+  assert.match(missingReport.checks.find((check) => check.id === "rehearsal")?.detail || "", /24 keepers, 144 sales/);
+
+  const noEvidenceInputs = readyInputs();
+  noEvidenceInputs.humanRehearsalEvidence = null;
+  noEvidenceInputs.automatedRehearsalEvidence = null;
+  const noEvidenceReport = buildDraftReadinessReport(noEvidenceInputs);
+  assert.equal(noEvidenceReport.checks.find((check) => check.id === "rehearsal")?.status, "warning");
 
   const changedInputs = readyInputs();
+  changedInputs.humanRehearsalEvidence = null;
+  changedInputs.now = "2026-08-10T03:00:00.000Z";
   changedInputs.pack = structuredClone(changedInputs.pack);
   changedInputs.pack.leagueConfig.teams[0].startingCap += 1;
   changedInputs.state = configuredState(changedInputs.pack);
   const changedReport = buildDraftReadinessReport(changedInputs);
-  assert.equal(changedReport.checks.find((check) => check.id === "human-rehearsal")?.status, "warning");
-  assert.match(changedReport.checks.find((check) => check.id === "human-rehearsal")?.detail || "", /configuration changed/i);
+  assert.equal(changedReport.checks.find((check) => check.id === "rehearsal")?.status, "warning");
+  assert.match(changedReport.checks.find((check) => check.id === "rehearsal")?.detail || "", /configuration changed/i);
 });
 
 test("current personal decisions require an exact recent JSON backup or Mac restore", async () => {

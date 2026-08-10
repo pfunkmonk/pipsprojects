@@ -1,4 +1,5 @@
-import { humanRehearsalStatus } from "./human-rehearsal.mjs?v=20260805g";
+import { humanRehearsalStatus, rehearsalConfigSignature } from "./human-rehearsal.mjs?v=20260805g";
+import { AUTOMATED_REHEARSAL_EVIDENCE } from "./automated-rehearsal-evidence.mjs?v=20260810a";
 import { personalBoardEvidenceStatus } from "./personal-board-exchange.mjs?v=20260805g";
 
 const EXPECTED_SEASON = 2026;
@@ -10,6 +11,7 @@ const RECENT_PACK_HOURS = 24;
 const RECENT_STATUS_HOURS = 2;
 const RECENT_MORNING_INTELLIGENCE_HOURS = 6;
 const RECENT_RECOVERY_HOURS = 24;
+const RECENT_AUTOMATED_REHEARSAL_HOURS = 30 * 24;
 
 function finiteTimestamp(value) {
   const timestamp = Date.parse(value || "");
@@ -30,6 +32,33 @@ function wholeHours(value) {
 function result(id, label, status, detail) {
   if (!["pass", "warning", "block"].includes(status)) throw new Error(`Unsupported readiness status '${status}'.`);
   return { id, label, status, detail };
+}
+
+export function automatedRehearsalStatus(evidence, pack, config, { now = new Date().toISOString() } = {}) {
+  const nowTimestamp = finiteTimestamp(now);
+  const completedTimestamp = finiteTimestamp(evidence?.completedAt);
+  const contractValid = evidence?.schemaVersion === 1
+    && evidence?.kind === "thunder-bowl-automated-rehearsal-certificate"
+    && evidence?.passed === true
+    && evidence?.modelEffect === "none"
+    && evidence?.ledgerEffect === "none"
+    && evidence?.checksPassed === evidence?.checksTotal
+    && evidence?.checksTotal >= 16
+    && evidence?.playerCount === pack?.players?.length
+    && evidence?.teamCount === pack?.leagueConfig?.teams?.length
+    && evidence?.activeKeepers === 24
+    && evidence?.activeSales === 144;
+  if (!contractValid || nowTimestamp === null || completedTimestamp === null || completedTimestamp > nowTimestamp) {
+    return { current: false, reason: "No valid automatic full-system rehearsal certificate matches this release." };
+  }
+  if (evidence.packId !== pack.packId) return { current: false, reason: "The automatic rehearsal belongs to an earlier player pack." };
+  if (evidence.configSignature !== rehearsalConfigSignature(config)) return { current: false, reason: "League configuration changed after the automatic rehearsal." };
+  const ageHours = hoursSince(evidence.completedAt, nowTimestamp);
+  if (ageHours > RECENT_AUTOMATED_REHEARSAL_HOURS) return { current: false, reason: `The automatic rehearsal is ${wholeHours(ageHours)}.` };
+  return {
+    current: true,
+    reason: `Pack-pinned automatic rehearsal passed ${evidence.checksPassed}/${evidence.checksTotal} technical gates: 24 keepers, 144 sales, failover, outage merge, recovery, latency, and privacy.`,
+  };
 }
 
 function teamValues(state) {
@@ -58,6 +87,7 @@ export function buildDraftReadinessReport({
   morningIntelligencePlayersScanned = 0,
   morningIntelligenceStaleSources = 0,
   humanRehearsalEvidence = null,
+  automatedRehearsalEvidence = AUTOMATED_REHEARSAL_EVIDENCE,
 } = {}) {
   if (!pack || !state) throw new Error("Draft readiness requires the validated pack and replayed ledger state.");
   const nowTimestamp = finiteTimestamp(now);
@@ -169,9 +199,12 @@ export function buildDraftReadinessReport({
       : "No complete draft-morning player-intelligence capture is stored on this laptop."));
 
   const rehearsal = humanRehearsalStatus(humanRehearsalEvidence, config, { now });
+  const automaticRehearsal = automatedRehearsalStatus(automatedRehearsalEvidence, pack, config, { now });
   checks.push(rehearsal.current
-    ? result("human-rehearsal", "Human-paced two-screen rehearsal", "pass", rehearsal.reason)
-    : result("human-rehearsal", "Human-paced two-screen rehearsal", "warning", `${rehearsal.reason} Complete and seal the seven-step Admin checklist.`));
+    ? result("rehearsal", "Human-paced two-screen rehearsal", "pass", rehearsal.reason)
+    : automaticRehearsal.current
+      ? result("rehearsal", "Automated full-system rehearsal", "pass", `${automaticRehearsal.reason} Physical speaking-speed and projector practice were not claimed.`)
+      : result("rehearsal", "Rehearsal coverage", "warning", `${automaticRehearsal.reason} The optional seven-step physical checklist remains available in Admin.`));
 
   checks.push(online && cloudReachable
     ? result("network-path", "Online synchronization", "pass", "The cloud path is reachable; offline fallback remains available.")

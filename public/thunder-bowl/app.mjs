@@ -55,7 +55,7 @@ import {
   validatePersonalBoardEvidence,
   validatePersonalBoardBundle,
 } from "./personal-board-exchange.mjs?v=20260805g";
-import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260805g";
+import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260810a";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { AUTOMATED_REHEARSAL_EVIDENCE } from "../public/thunder-bowl/automated-rehearsal-evidence.mjs";
 
 const reportUrl = new URL("../reports/thunder-bowl/keeper-auction-catastrophe-rehearsal.json", import.meta.url);
 const packUrl = new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url);
@@ -33,6 +34,18 @@ test("catastrophe rehearsal passes every keeper, auction, outage, recovery, and 
   assert.equal(report.ledger.activeSales, 144);
   assert.equal(report.finalState.totalPlayers, 168);
   assert.ok(report.finalState.teams.every((team) => team.keepers === 2 && team.roster === 14));
+});
+
+test("the browser readiness certificate is the exact sanitized rehearsal result", () => {
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.packId, report.pack.id);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.packSha256, report.pins.packSha256);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.engineSha256, report.pins.engineSha256);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.runnerSha256, report.pins.scriptSha256);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.completedAt, report.generatedAt);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.checksPassed, Object.keys(report.checks).length);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.checksTotal, Object.keys(report.checks).length);
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.modelEffect, "none");
+  assert.equal(AUTOMATED_REHEARSAL_EVIDENCE.ledgerEffect, "none");
 });
 
 test("catastrophe rehearsal proves the Herbert trade and exact reconnect/recovery behavior", () => {

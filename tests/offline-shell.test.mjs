@@ -327,21 +327,24 @@ test("draft-morning readiness and the printable local fallback are offline-cache
   assert.match(serviceWorker, /emergency-print\.css\?v=/);
 });
 
-test("human-paced two-screen rehearsal is an explicit local certificate and departure warning", () => {
+test("automatic rehearsal is pack-pinned while the physical checklist remains optional", () => {
   for (const id of ["human-rehearsal-title", "human-rehearsal-progress", "seal-human-rehearsal", "clear-human-rehearsal", "human-rehearsal-status"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   }
   for (const item of ["full-auction", "second-screen", "wifi-loss", "offline-actions", "reconnect", "recovery-import", "noisy-room"]) {
     assert.match(indexHtml, new RegExp(`data-human-rehearsal=["']${item}["']`));
   }
-  assert.match(indexHtml, /Human-attested evidence only/);
+  assert.match(indexHtml, /Optional human-attested evidence/);
+  assert.match(indexHtml, /pack-pinned automatic full-system rehearsal/);
   assert.match(appSource, /createHumanRehearsalEvidence/);
   assert.match(appSource, /setMeta\("humanRehearsalEvidence", humanRehearsalEvidence\)/);
   assert.match(appSource, /humanRehearsalEvidence,/);
   assert.match(appSource, /if \(status\.current\) input\.checked = true;\s*else if \(humanRehearsalEvidence\) input\.checked = false;/);
   assert.match(appSource, /addEventListener\("change", refreshHumanRehearsalControls\)/);
-  assert.match(readinessSource, /"human-rehearsal"/);
+  assert.match(readinessSource, /"rehearsal"/);
+  assert.match(readinessSource, /AUTOMATED_REHEARSAL_EVIDENCE/);
   assert.match(serviceWorker, /human-rehearsal\.mjs\?v=/);
+  assert.match(serviceWorker, /automated-rehearsal-evidence\.mjs\?v=/);
 });
 
 test("practice reset requires an exact phrase and sends the current ledger generation", () => {

@@ -16,10 +16,12 @@ import {
   validateDraftPack,
   validateRecoveryBundle,
 } from "../public/thunder-bowl/state-engine.mjs";
+import { rehearsalConfigSignature } from "../public/thunder-bowl/human-rehearsal.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const root = resolve(dirname(scriptPath), "..");
 const reportDirectory = resolve(root, "reports", "thunder-bowl");
+const automaticEvidencePath = resolve(root, "public", "thunder-bowl", "automated-rehearsal-evidence.mjs");
 const packPath = resolve(root, "netlify", "functions", "_data", "draft-pack-2026-provisional.json");
 const enginePath = resolve(root, "public", "thunder-bowl", "state-engine.mjs");
 const [packBytes, engineBytes, scriptBytes] = await Promise.all([
@@ -385,6 +387,27 @@ const report = {
   },
   checks,
 };
+const automaticEvidence = {
+  schemaVersion: 1,
+  kind: "thunder-bowl-automated-rehearsal-certificate",
+  completedAt: report.generatedAt,
+  packId: report.pack.id,
+  packSha256: report.pins.packSha256,
+  engineSha256: report.pins.engineSha256,
+  runnerSha256: report.pins.scriptSha256,
+  configSignature: rehearsalConfigSignature(pack.leagueConfig),
+  playerCount: report.pack.players,
+  teamCount: report.pack.teams,
+  activeKeepers: report.ledger.activeKeepers,
+  activeSales: report.ledger.activeSales,
+  passed: report.passed,
+  checksPassed: Object.values(report.checks).filter(Boolean).length,
+  checksTotal: Object.keys(report.checks).length,
+  limitation: "Automated technical evidence; it does not claim human speaking-speed or physical-projector testing.",
+  modelEffect: "none",
+  ledgerEffect: "none",
+};
+const automaticEvidenceModule = `export const AUTOMATED_REHEARSAL_EVIDENCE = Object.freeze(${JSON.stringify(automaticEvidence, null, 2)});\n`;
 
 const checkLines = Object.entries(checks).map(([name, value]) => `| ${name} | ${value ? "PASS" : "FAIL"} |`).join("\n");
 const teamLines = report.finalState.teams.map((team) => `| ${team.name} | $${team.startingCap} | ${team.keepers} | ${team.roster} | $${team.cash} | ${Object.entries(team.positionCounts).map(([position, count]) => `${position} ${count}`).join(", ")} |`).join("\n");
@@ -429,6 +452,7 @@ await mkdir(reportDirectory, { recursive: true });
 await Promise.all([
   writeFile(resolve(reportDirectory, "keeper-auction-catastrophe-rehearsal.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8"),
   writeFile(resolve(reportDirectory, "keeper-auction-catastrophe-rehearsal.md"), markdown, "utf8"),
+  writeFile(automaticEvidencePath, automaticEvidenceModule, "utf8"),
 ]);
 
 if (!passed) throw new Error("Keeper-to-auction catastrophe rehearsal did not pass every gate.");
