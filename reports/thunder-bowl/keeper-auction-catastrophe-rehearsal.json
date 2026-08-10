@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-10T12:05:25.361Z",
+  "generatedAt": "2026-08-10T16:28:21.884Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.1551,
+    "reconnectMs": 1.207,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 21.9896,
+    "durationMs": 22.5181,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2015,
-      "p95Ms": 0.4058,
-      "maximumMs": 0.6927
+      "medianMs": 0.2263,
+      "p95Ms": 0.4195,
+      "maximumMs": 0.5604
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1433,
-      "p95Ms": 0.245,
-      "maximumMs": 0.245
+      "medianMs": 0.1392,
+      "p95Ms": 0.2773,
+      "maximumMs": 0.2773
     }
   },
   "finalState": {

@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildDecisionContext, projectionDisagreement } from "../public/thunder-bowl/decision-context.mjs";
+import {
+  buildBidRecommendation,
+  buildDecisionContext,
+  buildNominationRecommendations,
+  buildTierSnapshot,
+  byeWeekConflicts,
+  cashLeverage,
+  projectionDisagreement,
+} from "../public/thunder-bowl/decision-context.mjs";
 
 const players = [
   { id: "rb1", name: "Alpha", position: "RB", tier: 1, sourceRank: 1, marketValue: 40, maxBid: 42, projectionSources: [
@@ -51,4 +59,90 @@ test("missing alternatives and sources fail soft with explicit unknown evidence"
   assert.equal(context.nextAlternative, null);
   assert.equal(context.maxBidCliff, 1);
   assert.equal(context.disagreement.level, "unknown");
+});
+
+test("tier detail keeps assigned players visible with team, bye, and projection evidence", () => {
+  const tierPlayers = players.slice(0, 3).map((player, index) => ({
+    ...player,
+    weeklyProjection: { byeWeek: index === 2 ? 9 : 7 },
+    projectedPoints: 320 - index * 20,
+  }));
+  const state = {
+    draftedPlayers: { rb2: { teamId: "other" } },
+    teams: { other: { id: "other", name: "Other Team" } },
+  };
+  const rows = buildTierSnapshot({ selectedPlayer: tierPlayers[0], players: tierPlayers, state });
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((row) => [row.name, row.byeWeek, row.status]), [
+    ["Alpha", 7, "Available"],
+    ["Beta", 7, "On Other Team"],
+  ]);
+});
+
+test("bye warning finds every current Dogs player with the same week", () => {
+  const selected = { ...players[0], weeklyProjection: { byeWeek: 7 } };
+  const teammate = { ...players[1], weeklyProjection: { byeWeek: 7 } };
+  const otherWeek = { ...players[2], weeklyProjection: { byeWeek: 9 } };
+  const result = byeWeekConflicts({
+    selectedPlayer: selected,
+    players: [selected, teammate, otherWeek],
+    state: { teams: { "dogs-of-war": { roster: [
+      { playerId: teammate.id, playerName: teammate.name, position: teammate.position, nflTeam: "DET" },
+      { playerId: otherWeek.id, playerName: otherWeek.name, position: otherWeek.position, nflTeam: "CHI" },
+    ] } } },
+  });
+  assert.equal(result.byeWeek, 7);
+  assert.deepEqual(result.conflicts.map((row) => row.playerName), ["Beta"]);
+});
+
+test("bid strip distinguishes bid, hold, and pass without overriding hard stops", () => {
+  const base = { selectedPlayer: players[0], currentBid: 20, personalMaximum: 30, liveMarketValue: 25, sameTierRemaining: 2, nextAlternative: players[1] };
+  assert.equal(buildBidRecommendation(base).verdict, "BID");
+  assert.equal(buildBidRecommendation({ ...base, currentBid: 27, liveMarketValue: 25 }).verdict, "HOLD");
+  assert.equal(buildBidRecommendation({ ...base, currentBid: 30 }).verdict, "PASS");
+  assert.equal(buildBidRecommendation({ ...base, annotation: { tag: "avoid" } }).verdict, "PASS");
+  assert.equal(buildBidRecommendation({ ...base, dogsLeading: true }).verdict, "HOLD");
+});
+
+test("cash leverage compares candidate-position legal maximums against the strongest opponent", () => {
+  const state = { teams: {
+    "dogs-of-war": { id: "dogs-of-war", legalMaxBid: 40, openSlots: 5 },
+    alpha: { id: "alpha", legalMaxBid: 35, openSlots: 4 },
+    beta: { id: "beta", legalMaxBid: 37, openSlots: 3 },
+  } };
+  const result = cashLeverage({ state, position: "RB" });
+  assert.equal(result.delta, 3);
+  assert.equal(result.label, "You +$3");
+});
+
+test("nomination recommendations exclude targets and prefer high-price avoids or over-market players", () => {
+  const candidates = [
+    { ...players[0], marketValue: 30, maxBid: 35 },
+    { ...players[1], marketValue: 27, maxBid: 20 },
+    { ...players[2], marketValue: 24, maxBid: 25 },
+    { ...players[4], marketValue: 22, maxBid: 22 },
+    { ...players[4], id: "wr2", name: "Strong bench bargain", marketValue: 20, maxBid: 25 },
+  ];
+  const annotations = {
+    rb1: { tag: "target" },
+    rb3: { tag: "avoid" },
+  };
+  const state = {
+    draftedPlayers: {},
+    config: { starterRequirements: { RB: 2, WR: 2 } },
+    teams: { "dogs-of-war": { id: "dogs-of-war", positionCounts: { RB: 0, WR: 2 } } },
+  };
+  const result = buildNominationRecommendations({
+    players: candidates,
+    state,
+    annotationFor: (id) => annotations[id] || null,
+    marketValueFor: (player) => player.marketValue,
+    bidLimitFor: (player) => player.maxBid,
+    limit: 3,
+  });
+  assert.equal(result.some((row) => row.player.id === "rb1"), false);
+  assert.equal(result[0].player.id, "rb2");
+  assert.equal(result.some((row) => row.player.id === "rb3"), true);
+  assert.equal(result.some((row) => row.player.id === "wr1"), true);
+  assert.equal(result.some((row) => row.player.id === "wr2"), false);
 });

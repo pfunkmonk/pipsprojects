@@ -85,3 +85,158 @@ export function buildDecisionContext({ selectedPlayer, availablePlayers, valueFo
     modelEffect: "none",
   };
 }
+
+export function byeWeekFor(player) {
+  const week = Number(player?.weeklyProjection?.byeWeek);
+  return Number.isSafeInteger(week) && week >= 1 && week <= 18 ? week : null;
+}
+
+export function buildTierSnapshot({ selectedPlayer, players, state } = {}) {
+  if (!selectedPlayer) return [];
+  if (!Array.isArray(players)) throw new TypeError("Tier detail requires the complete player pool.");
+  const draftedPlayers = state?.draftedPlayers || {};
+  const teams = state?.teams || {};
+  return players
+    .filter((player) => player?.position === selectedPlayer.position && tierNumber(player) === tierNumber(selectedPlayer))
+    .sort((left, right) => rankNumber(left) - rankNumber(right)
+      || finiteNumber(right?.projectedPoints) - finiteNumber(left?.projectedPoints)
+      || String(left?.name || "").localeCompare(String(right?.name || "")))
+    .map((player) => {
+      const teamId = draftedPlayers[player.id]?.teamId || null;
+      const teamName = teamId ? teams[teamId]?.name || teamId : null;
+      return {
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        nflTeam: player.nflTeam,
+        byeWeek: byeWeekFor(player),
+        projectedPoints: finiteNumber(player.projectedPoints),
+        sourceRank: rankNumber(player),
+        available: !teamId,
+        teamId,
+        teamName,
+        status: teamName ? `On ${teamName}` : "Available",
+      };
+    });
+}
+
+export function byeWeekConflicts({ selectedPlayer, players, state, userTeamId = "dogs-of-war" } = {}) {
+  const byeWeek = byeWeekFor(selectedPlayer);
+  if (!selectedPlayer || !byeWeek) return { byeWeek, conflicts: [] };
+  if (!Array.isArray(players)) throw new TypeError("Bye-week checking requires the complete player pool.");
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const roster = state?.teams?.[userTeamId]?.roster || [];
+  const conflicts = roster.flatMap((entry) => {
+    const rosterPlayer = playerById.get(entry.playerId);
+    return byeWeekFor(rosterPlayer) === byeWeek
+      ? [{
+        playerId: entry.playerId,
+        playerName: entry.playerName,
+        position: entry.position,
+        nflTeam: entry.nflTeam,
+        byeWeek,
+      }]
+      : [];
+  });
+  return { byeWeek, conflicts };
+}
+
+export function cashLeverage({ state, position, userTeamId = "dogs-of-war", legalMaximumFor } = {}) {
+  if (!state?.teams) return { available: false, userMaximum: 0, topOpponentMaximum: 0, delta: 0, label: "--" };
+  const maximumFor = typeof legalMaximumFor === "function"
+    ? legalMaximumFor
+    : (team) => finiteNumber(team?.legalMaxBid);
+  const userMaximum = Math.max(0, finiteNumber(maximumFor(state.teams[userTeamId], position)));
+  const opponentMaximums = Object.values(state.teams)
+    .filter((team) => team?.id !== userTeamId && finiteNumber(team?.openSlots, 1) > 0)
+    .map((team) => Math.max(0, finiteNumber(maximumFor(team, position))));
+  const topOpponentMaximum = opponentMaximums.length ? Math.max(...opponentMaximums) : 0;
+  const delta = userMaximum - topOpponentMaximum;
+  return {
+    available: true,
+    userMaximum,
+    topOpponentMaximum,
+    delta,
+    label: delta > 0 ? `You +$${delta}` : delta < 0 ? `Room +$${Math.abs(delta)}` : "Even",
+  };
+}
+
+export function buildBidRecommendation({
+  selectedPlayer,
+  available = true,
+  currentBid = 0,
+  personalMaximum = 0,
+  liveMarketValue = 0,
+  sameTierRemaining = 0,
+  nextAlternative = null,
+  annotation = null,
+  dogsLeading = false,
+} = {}) {
+  const normalizedCurrentBid = Math.max(0, Math.floor(finiteNumber(currentBid)));
+  const nextBid = normalizedCurrentBid + 1;
+  const maximum = Math.max(0, Math.floor(finiteNumber(personalMaximum)));
+  const market = Math.max(0, Math.floor(finiteNumber(liveMarketValue)));
+  const tierSupply = Math.max(0, Math.floor(finiteNumber(sameTierRemaining)));
+  if (!selectedPlayer) return { verdict: "WAIT", tone: "neutral", nextBid, reason: "Select the nominated player." };
+  if (!available) return { verdict: "PASS", tone: "danger", nextBid, reason: "This player is already assigned." };
+  if (annotation?.tag === "avoid") return { verdict: "PASS", tone: "danger", nextBid, reason: "You marked this player Avoid." };
+  if (dogsLeading) return { verdict: "HOLD", tone: "warning", nextBid, reason: "You already have the high bid. Do not bid against yourself." };
+  if (nextBid > maximum) return { verdict: "PASS", tone: "danger", nextBid, reason: `The next bid is above your $${maximum} hard stop.` };
+  if (Number.isSafeInteger(annotation?.stealPrice) && nextBid <= annotation.stealPrice) {
+    return { verdict: "BID", tone: "good", nextBid, reason: `The next bid is inside your $${annotation.stealPrice} steal price.` };
+  }
+  if (annotation?.tag === "target") return { verdict: "BID", tone: "good", nextBid, reason: "Target player and still inside your hard stop." };
+  if (nextBid <= market) return { verdict: "BID", tone: "good", nextBid, reason: `The next bid remains at or below the $${market} live market estimate.` };
+  if (tierSupply <= 1) return { verdict: "BID", tone: "good", nextBid, reason: "Last available player in this tier and still inside your hard stop." };
+  if (nextAlternative) {
+    return { verdict: "HOLD", tone: "warning", nextBid, reason: `${tierSupply} tier peers remain; hold the extra dollar for ${nextAlternative.name}.` };
+  }
+  return { verdict: "BID", tone: "good", nextBid, reason: "Still inside your personal maximum and no stronger alternative signal is available." };
+}
+
+function nominationReason({ annotation, needOpen, market, maximum }) {
+  if (annotation?.tag === "avoid") return "Marked Avoid";
+  if (Number.isSafeInteger(annotation?.personalMax) && annotation.personalMax < market) return `Your max $${annotation.personalMax} vs $${market} market`;
+  if (!needOpen) return "Starter need already filled";
+  if (maximum < market) return `Model max $${maximum} vs $${market} market`;
+  return "High-cost room drain";
+}
+
+export function buildNominationRecommendations({
+  players,
+  state,
+  userTeamId = "dogs-of-war",
+  annotationFor = () => null,
+  marketValueFor = (player) => player?.marketValue,
+  bidLimitFor = (player) => player?.maxBid,
+  limit = 3,
+} = {}) {
+  if (!Array.isArray(players)) throw new TypeError("Nomination recommendations require the complete player pool.");
+  if (!state?.teams?.[userTeamId]) return [];
+  const team = state.teams[userTeamId];
+  const requirements = state.config?.starterRequirements || {};
+  const available = players.filter((player) => !state.draftedPlayers?.[player.id]);
+  const ranked = available.flatMap((player) => {
+    const annotation = annotationFor(player.id) || null;
+    if (annotation?.tag === "target") return [];
+    const market = Math.max(1, Math.floor(finiteNumber(marketValueFor(player), 1)));
+    const maximum = Math.max(0, Math.floor(finiteNumber(bidLimitFor(player))));
+    const needOpen = finiteNumber(team.positionCounts?.[player.position]) < finiteNumber(requirements[player.position]);
+    const avoid = annotation?.tag === "avoid";
+    const personalGap = Number.isSafeInteger(annotation?.personalMax) ? market - annotation.personalMax : 0;
+    const modelGap = market - maximum;
+    const unlikely = avoid || personalGap > 0 || modelGap > 0 || (!needOpen && maximum <= market);
+    if (!unlikely || market < 5) return [];
+    const score = market * 100 + (avoid ? 60 : 0) + (!needOpen ? 25 : 0) + Math.max(personalGap, modelGap, 0) * 8;
+    return [{
+      player,
+      marketValue: market,
+      personalMaximum: maximum,
+      reason: nominationReason({ annotation, needOpen, market, maximum }),
+      score,
+    }];
+  }).sort((left, right) => right.score - left.score
+    || rankNumber(left.player) - rankNumber(right.player)
+    || left.player.name.localeCompare(right.player.name));
+  return ranked.slice(0, Math.max(0, Math.floor(finiteNumber(limit, 3))));
+}

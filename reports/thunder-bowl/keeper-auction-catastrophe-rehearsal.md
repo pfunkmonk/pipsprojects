@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 — Keeper-to-Auction Catastrophe Rehearsal
 
-Generated: 2026-08-10T12:05:25.361Z
+Generated: 2026-08-10T16:28:21.884Z
 
 Result: **PASS**
 
@@ -11,10 +11,10 @@ This accepted deterministic gate uses the active validated 716-player practice p
 - 716 current practice players and 177 authenticated keeper candidates
 - 12 teams × 2 keepers + 144 auction purchases = 168 final rostered players
 - 174 physical audit events; 170 active events
-- Event replay p95: 0.4058 ms; maximum: 0.6927 ms
-- Public snapshot p95: 0.245 ms; maximum: 0.245 ms
-- Offline reconnect merge: 1.1551 ms
-- Recovery validation/replay: 21.9896 ms
+- Event replay p95: 0.4195 ms; maximum: 0.5604 ms
+- Public snapshot p95: 0.2773 ms; maximum: 0.2773 ms
+- Offline reconnect merge: 1.207 ms
+- Recovery validation/replay: 22.5181 ms
 
 ## Gate checks
 

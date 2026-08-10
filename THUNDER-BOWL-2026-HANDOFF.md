@@ -11,7 +11,8 @@ Updated August 10, 2026. This is the takeover starting point for another develop
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 270/270 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and both known legacy identity-curve anomalies repaired without changing room dollars.
+- Release-candidate verification: 276/276 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and both known legacy identity-curve anomalies repaired without changing room dollars.
+- The command center now has a single live bidding decision strip (BID/HOLD/PASS, next bid, hard maximum, comparable supply, cash leverage, and best alternative), clickable same-tier detail, roster-aware bye warnings, and a Dogs-turn nomination drain coach. All four read from the same authoritative live market, roster, annotation, and legal-max state; none creates a second ledger.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
 Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.
@@ -46,6 +47,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Cloud functions and ledger service: `netlify/functions/`
 - Automated QA/rehearsals: `tests/`, `scripts/run-full-auction-rehearsal.mjs`, `scripts/run-keeper-auction-catastrophe-rehearsal.mjs`
 - User operations guide: `public/thunder-bowl/guides/index.html`
+- Draft-pressure decision helpers: `decision-context.mjs`; rendering and interaction wiring are in `app.mjs`
 
 ## Projection and VBD state
 

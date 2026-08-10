@@ -92,6 +92,32 @@ test("selected-player scarcity and source confidence are dynamic display-only ev
   assert.match(serviceWorker, /decision-context\.mjs\?v=/);
 });
 
+test("draft-pressure helpers share the live player, roster, legal-max, and nomination state", () => {
+  for (const id of [
+    "decision-coach",
+    "decision-coach-verdict",
+    "decision-current-bid",
+    "decision-comparables",
+    "decision-cash-leverage",
+    "decision-best-alternative",
+    "selected-bye-warning",
+    "open-tier-dialog",
+    "tier-dialog",
+    "tier-dialog-rows",
+    "nomination-coach",
+    "nomination-recommendations",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(indexHtml, /id="decision-coach-verdict">WAIT<\/span>/);
+  assert.match(indexHtml, /<th>NFL team<\/th><th>Player<\/th><th class="number">Bye<\/th><th class="number">Projected<\/th><th>Status<\/th>/);
+  assert.match(appSource, /buildBidRecommendation\(\{/);
+  assert.match(appSource, /byeWeekConflicts\(\{/);
+  assert.match(appSource, /buildTierSnapshot\(\{/);
+  assert.match(appSource, /buildNominationRecommendations\(\{/);
+  assert.match(appSource, /draftState\.currentNominatorTeamId === USER_TEAM_ID/);
+  assert.match(appSource, /legalMaximumBid\(team, draftState\.config, position\)/);
+  assert.doesNotMatch(publicBoardSource, /decision-coach|nomination-recommendations|personalMaximum/i);
+});
+
 test("the Thunder projection exposes its live consensus and rejected corrections", () => {
   for (const id of [
     "selected-projection-lab",

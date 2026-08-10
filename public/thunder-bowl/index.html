@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260809d" />
+  <link rel="stylesheet" href="./app.css?v=20260810h" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -147,10 +147,27 @@
                 <span id="selected-availability" class="availability-badge">Available</span>
               </div>
             </div>
-            <div class="bid-verdict">
-              <span>Bid up to</span>
-              <strong id="selected-max-bid">—</strong>
-            </div>
+            <section id="decision-coach" class="decision-coach coach-neutral" aria-labelledby="decision-coach-verdict" aria-live="polite">
+              <div class="decision-coach-verdict">
+                <span id="decision-coach-verdict">WAIT</span>
+                <small id="decision-coach-reason">Select the nominated player.</small>
+              </div>
+              <div class="decision-coach-fact decision-next-bid">
+                <span>Next bid</span>
+                <strong id="decision-next-bid">$1</strong>
+                <div class="current-bid-control" aria-label="Current room bid">
+                  <button id="decision-bid-down" type="button" aria-label="Decrease current bid by one dollar">−</button>
+                  <label for="decision-current-bid">Current</label>
+                  <input id="decision-current-bid" type="number" min="0" max="300" step="1" inputmode="numeric" value="0" />
+                  <button id="decision-bid-up" type="button" aria-label="Increase current bid by one dollar">+</button>
+                </div>
+              </div>
+              <div class="decision-coach-fact"><span>Your maximum</span><strong id="selected-max-bid">—</strong></div>
+              <div class="decision-coach-fact"><span>Comparable players</span><strong id="decision-comparables">—</strong></div>
+              <div class="decision-coach-fact"><span>Cash leverage</span><strong id="decision-cash-leverage">—</strong><small id="decision-cash-detail">Room maximum unavailable</small></div>
+              <div class="decision-coach-fact decision-best-alternative"><span>Best alternative</span><strong id="decision-best-alternative">—</strong></div>
+            </section>
+            <div id="selected-bye-warning" class="bye-warning" role="alert" hidden></div>
             <div class="value-trio">
               <div><span>Intrinsic</span><strong id="selected-intrinsic">—</strong></div>
               <div><span>Market</span><strong id="selected-market">—</strong></div>
@@ -162,7 +179,7 @@
                 <span>DISPLAY ONLY</span>
               </div>
               <dl class="decision-context-grid">
-                <div><dt>Tier supply</dt><dd id="selected-tier-supply">—</dd></div>
+                <div class="tier-supply-action"><dt>Tier supply</dt><dd><button id="open-tier-dialog" type="button"><span id="selected-tier-supply">—</span><small>View tier ›</small></button></dd></div>
                 <div><dt>Next tier</dt><dd id="selected-next-alternative">—</dd></div>
                 <div><dt>Max-bid cliff</dt><dd id="selected-tier-cliff">—</dd></div>
                 <div><dt>Source spread</dt><dd id="selected-source-spread">—</dd></div>
@@ -230,6 +247,11 @@
               <p class="eyebrow">Next nomination</p>
               <p class="large-line" id="next-nomination-line">Goon Skwad</p>
               <p class="muted" id="nomination-warning">Only the first two order positions are verified; the next position is provisional.</p>
+              <div id="nomination-coach" class="nomination-coach" hidden>
+                <p class="eyebrow">Drain recommendations</p>
+                <p class="nomination-coach-copy">High-price players your board says you are unlikely to buy. Click one to load it.</p>
+                <div id="nomination-recommendations" class="nomination-recommendations"></div>
+              </div>
             </section>
             <section>
               <p class="eyebrow">Safety rails</p>
@@ -774,6 +796,22 @@
       <p id="emergency-board-status" class="form-status" role="status" aria-live="polite">Use Print, then keep the paper copy with the draft laptop.</p>
     </dialog>
 
+    <dialog id="tier-dialog" class="tier-dialog" aria-labelledby="tier-dialog-title">
+      <form method="dialog">
+        <header>
+          <div><p class="eyebrow">Live tier inventory</p><h2 id="tier-dialog-title">Player tier</h2></div>
+          <button id="close-tier-dialog" class="button button-secondary" type="submit">Close</button>
+        </header>
+        <p id="tier-dialog-summary">Select a player to inspect the complete tier.</p>
+        <div class="table-wrap tier-dialog-table-wrap">
+          <table class="data-table tier-dialog-table">
+            <thead><tr><th>NFL team</th><th>Player</th><th class="number">Bye</th><th class="number">Projected</th><th>Status</th></tr></thead>
+            <tbody id="tier-dialog-rows"></tbody>
+          </table>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="player-intel-dialog" class="player-intel-dialog" aria-labelledby="player-intel-name">
       <form id="player-intel-form">
         <header class="intel-header">
@@ -870,6 +908,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260810f"></script>
+  <script type="module" src="./app.mjs?v=20260810h"></script>
 </body>
 </html>

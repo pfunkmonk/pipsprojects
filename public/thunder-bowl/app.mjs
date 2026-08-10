@@ -8,6 +8,7 @@ import {
   createRecoveryBundle,
   lastUndoableEvent,
   lastUndoableSale,
+  legalMaximumBid,
   mergeEventStreams,
   nominationOrderEvidence,
   replayDraft,
@@ -75,7 +76,14 @@ import {
 } from "./auction-telemetry.mjs?v=20260809a";
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
-import { buildDecisionContext } from "./decision-context.mjs?v=20260805g";
+import {
+  buildBidRecommendation,
+  buildDecisionContext,
+  buildNominationRecommendations,
+  buildTierSnapshot,
+  byeWeekConflicts,
+  cashLeverage,
+} from "./decision-context.mjs?v=20260810h";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -173,6 +181,7 @@ let draftPack;
 let events = [];
 let draftState = replayDraft([]);
 let selectedPlayerId = null;
+let decisionCurrentBid = 0;
 let visiblePlayerIds = [];
 let displayBoardUrl = null;
 let syncInFlight = false;
@@ -878,6 +887,7 @@ function renderPlayerPool() {
   }
   if (selectedPlayerId !== previousSelection) {
     salePrice.value = "";
+    decisionCurrentBid = 0;
   }
   playerRows.replaceChildren();
   for (const player of players) {
@@ -1670,6 +1680,148 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
   }
 }
 
+function currentDecisionBid(player) {
+  const activePracticePlayer = PRACTICE_AUCTION && practiceSession?.playerId === player?.id;
+  return activePracticePlayer ? practiceSession.currentBid : decisionCurrentBid;
+}
+
+function renderDecisionCoach(player, { available, live, context, annotation, personalMaximum }) {
+  const activePracticePlayer = PRACTICE_AUCTION && practiceSession?.playerId === player?.id;
+  const currentBid = currentDecisionBid(player);
+  const dogsLeading = Boolean(activePracticePlayer && practiceSession.leaderTeamId === USER_TEAM_ID);
+  const recommendation = buildBidRecommendation({
+    selectedPlayer: player,
+    available,
+    currentBid,
+    personalMaximum,
+    liveMarketValue: live?.marketValue || 0,
+    sameTierRemaining: context?.sameTierRemaining || 0,
+    nextAlternative: context?.nextAlternative || null,
+    annotation,
+    dogsLeading,
+  });
+  const coach = byId("decision-coach");
+  coach.className = `decision-coach coach-${recommendation.tone}`;
+  byId("decision-coach-verdict").textContent = recommendation.verdict;
+  byId("decision-coach-reason").textContent = recommendation.reason;
+  byId("decision-next-bid").textContent = currency(recommendation.nextBid);
+  byId("decision-current-bid").value = String(currentBid);
+  byId("decision-current-bid").disabled = activePracticePlayer;
+  byId("decision-bid-down").disabled = activePracticePlayer || currentBid <= 0;
+  byId("decision-bid-up").disabled = activePracticePlayer || currentBid >= 299;
+  byId("decision-comparables").textContent = context ? `${context.sameTierRemaining} in Tier ${player.tier}` : "—";
+  byId("decision-best-alternative").textContent = context?.nextAlternative
+    ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
+    : player ? "No lower-tier option" : "—";
+
+  const leverage = player ? cashLeverage({
+    state: draftState,
+    position: player.position,
+    userTeamId: USER_TEAM_ID,
+    legalMaximumFor: (team, position) => legalMaximumBid(team, draftState.config, position),
+  }) : null;
+  byId("decision-cash-leverage").textContent = leverage?.label || "—";
+  byId("decision-cash-detail").textContent = leverage?.available
+    ? `You ${currency(leverage.userMaximum)} · top opponent ${currency(leverage.topOpponentMaximum)}`
+    : "Room maximum unavailable";
+
+  const bye = player ? byeWeekConflicts({ selectedPlayer: player, players: draftPack.players, state: draftState, userTeamId: USER_TEAM_ID }) : { byeWeek: null, conflicts: [] };
+  const warning = byId("selected-bye-warning");
+  warning.hidden = bye.conflicts.length === 0;
+  warning.textContent = bye.conflicts.length
+    ? `BYE WEEK ${bye.byeWeek} CONFLICT: ${player.name} overlaps ${bye.conflicts.map((row) => `${row.playerName} (${row.position})`).join(", ")}. This is a warning, not an automatic value penalty.`
+    : "";
+}
+
+function renderTierDialog() {
+  const player = selectedPlayer();
+  const rows = buildTierSnapshot({ selectedPlayer: player, players: draftPack.players, state: draftState });
+  byId("tier-dialog-title").textContent = player ? `${player.position} · Tier ${player.tier}` : "Player tier";
+  const availableCount = rows.filter((row) => row.available).length;
+  byId("tier-dialog-summary").textContent = player
+    ? `${availableCount} of ${rows.length} players remain available. Projections and ownership use the current live ledger.`
+    : "Select a player to inspect the complete tier.";
+  const body = byId("tier-dialog-rows");
+  body.replaceChildren();
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    tr.className = `${row.id === player?.id ? "is-selected " : ""}${row.available ? "" : "is-assigned"}`.trim();
+    const teamCell = document.createElement("td");
+    teamCell.textContent = row.nflTeam;
+    const playerCell = document.createElement("td");
+    if (row.available) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tier-dialog-player";
+      button.dataset.tierPlayerId = row.id;
+      button.textContent = row.name;
+      playerCell.append(button);
+    } else {
+      playerCell.textContent = row.name;
+    }
+    const byeCell = numberCell(row.byeWeek ? `W${row.byeWeek}` : "—");
+    const projectedCell = numberCell(row.projectedPoints.toFixed(1));
+    const statusCell = document.createElement("td");
+    statusCell.className = row.available ? "tier-status-available" : "tier-status-assigned";
+    statusCell.textContent = row.status;
+    tr.append(teamCell, playerCell, byeCell, projectedCell, statusCell);
+    body.append(tr);
+  }
+}
+
+function openTierDialog() {
+  if (!selectedPlayer()) {
+    showToast("Select a player before opening tier detail.", true);
+    return;
+  }
+  renderTierDialog();
+  byId("tier-dialog").showModal();
+}
+
+function setDecisionCurrentBid(value) {
+  decisionCurrentBid = Math.max(0, Math.min(299, Math.floor(Number(value) || 0)));
+  renderSelectedPlayer();
+}
+
+function renderNominationCoach() {
+  const coach = byId("nomination-coach");
+  const container = byId("nomination-recommendations");
+  const dogsTurn = draftState.currentNominatorTeamId === USER_TEAM_ID;
+  coach.hidden = !dogsTurn;
+  container.replaceChildren();
+  if (!dogsTurn) return;
+  const recommendations = buildNominationRecommendations({
+    players: draftPack.players,
+    state: draftState,
+    userTeamId: USER_TEAM_ID,
+    annotationFor,
+    marketValueFor: (candidate) => livePlayerValues(candidate).marketValue,
+    bidLimitFor: effectivePlayerBidLimit,
+    limit: 3,
+  });
+  if (!recommendations.length) {
+    const empty = document.createElement("p");
+    empty.className = "nomination-coach-copy";
+    empty.textContent = "No safe drain nomination is identified. Mark Targets/Avoids or personal maximums to sharpen this list.";
+    container.append(empty);
+    return;
+  }
+  for (const recommendation of recommendations) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "nomination-recommendation";
+    button.dataset.nominationPlayerId = recommendation.player.id;
+    const name = document.createElement("strong");
+    name.textContent = `${recommendation.player.name} · ${recommendation.player.position}`;
+    const price = document.createElement("b");
+    price.textContent = currency(recommendation.marketValue);
+    const reason = document.createElement("small");
+    reason.textContent = recommendation.reason;
+    button.append(name, price, reason);
+    container.append(button);
+  }
+}
+
 function renderSelectedPlayer() {
   const player = selectedPlayer();
   const annotation = player ? annotationFor(player.id) : null;
@@ -1693,6 +1845,7 @@ function renderSelectedPlayer() {
     availablePlayers: availablePlayers(),
     valueFor: (candidate) => effectivePlayerBidLimit(candidate),
   }) : null;
+  renderDecisionCoach(player, { available, live, context, annotation, personalMaximum });
   byId("selected-tier-supply").textContent = context ? `${context.sameTierRemaining} left` : "—";
   byId("selected-next-alternative").textContent = context?.nextAlternative
     ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
@@ -1735,6 +1888,7 @@ function renderSelectedPlayer() {
   renderProjectionSources(player);
   renderProjectionLab(player);
   renderOpponentPressure(player, live?.marketValue || 1, available);
+  if (byId("tier-dialog").open) renderTierDialog();
   byId("sale-player").value = player?.name || "";
   byId("sale-player-id").value = player?.id || "";
   if (player && !salePrice.value) salePrice.value = String(Math.max(1, Math.round(personalMaximum || live.maxBid || 1)));
@@ -3140,6 +3294,7 @@ function renderAll() {
   renderMetrics();
   renderPlayerPool();
   renderSelectedPlayer();
+  renderNominationCoach();
   renderNeeds();
   teamOptions();
   renderPackStatus();
@@ -3222,6 +3377,7 @@ async function changeSalesEntryMode(nextMode) {
 
 function selectPlayer(playerId, focusPrice = false) {
   if (!draftPack.players.some((player) => player.id === playerId)) return;
+  if (selectedPlayerId !== playerId) decisionCurrentBid = 0;
   selectedPlayerId = playerId;
   salePrice.value = "";
   renderPlayerPool();
@@ -4645,6 +4801,22 @@ function bindInteractions() {
     if (!target) return;
     event.preventDefault();
     openPlayerIntel(target.dataset.playerId);
+  });
+  byId("open-tier-dialog").addEventListener("click", openTierDialog);
+  byId("tier-dialog-rows").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-tier-player-id]");
+    if (!button) return;
+    byId("tier-dialog").close();
+    selectPlayer(button.dataset.tierPlayerId);
+  });
+  byId("decision-current-bid").addEventListener("input", (event) => setDecisionCurrentBid(event.currentTarget.value));
+  byId("decision-bid-down").addEventListener("click", () => setDecisionCurrentBid(decisionCurrentBid - 1));
+  byId("decision-bid-up").addEventListener("click", () => setDecisionCurrentBid(decisionCurrentBid + 1));
+  byId("nomination-recommendations").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-nomination-player-id]");
+    if (!button) return;
+    selectPlayer(button.dataset.nominationPlayerId);
+    showToast(`${selectedPlayer().name} loaded as a drain nomination. Confirm the room before nominating.`);
   });
   playerSearch.addEventListener("keydown", (event) => {
     if (!["ArrowDown", "ArrowUp", "Enter"].includes(event.key) || !visiblePlayerIds.length) return;
