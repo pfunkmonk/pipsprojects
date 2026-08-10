@@ -344,10 +344,11 @@ test("player intelligence embeds source-linked news with a separate offline-safe
 
 test("player intelligence closes on the true backdrop without treating inner padding as outside", () => {
   assert.match(appSource, /function closePlayerIntelFromBackdrop\(event\)/);
-  assert.match(appSource, /event\.target !== playerIntelDialog/);
+  assert.match(appSource, /!playerIntelDialog\.open/);
+  assert.match(appSource, /event\.target !== playerIntelDialog && playerIntelDialog\.contains\(event\.target\)/);
   assert.match(appSource, /getBoundingClientRect\(\)/);
   assert.match(appSource, /event\.clientX < bounds\.left[\s\S]*event\.clientX > bounds\.right[\s\S]*event\.clientY < bounds\.top[\s\S]*event\.clientY > bounds\.bottom/);
-  assert.match(appSource, /playerIntelDialog\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
+  assert.match(appSource, /document\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
 });
 
 test("Footballguys news/depth charts and CBS news refresh and render internally without Google search", () => {
