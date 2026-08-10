@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v72";
+const CACHE_VERSION = "thunder-bowl-shell-v73";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -34,7 +34,7 @@ const APP_SHELL = [
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260809d",
-  "/thunder-bowl/app.mjs?v=20260809e",
+  "/thunder-bowl/app.mjs?v=20260809f",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260809a",
   "/thunder-bowl/storage.mjs?v=20260805g",

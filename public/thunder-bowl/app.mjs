@@ -3621,8 +3621,9 @@ async function syncNow() {
   if (syncInFlight || ledgerResetInFlight || ledgerStale || !navigator.onLine || appView.hidden) return;
   syncInFlight = true;
   const chip = byId("sync-status");
-  chip.textContent = "Syncing…";
-  chip.classList.remove("status-warning", "status-danger");
+  // Auctioneer polling runs every 1.5 seconds. Keep a healthy status visually
+  // stable; only a completed success or a real failure may change the chip.
+  chip.setAttribute("aria-busy", "true");
   try {
     const response = await fetch("/api/thunder-bowl/ledger", {
       method: "POST",
@@ -3676,6 +3677,7 @@ async function syncNow() {
       if (error instanceof RuleViolation && error.code === "SESSION_EXPIRED") showToast(error.message, true);
     }
   } finally {
+    chip.removeAttribute("aria-busy");
     syncInFlight = false;
   }
 }

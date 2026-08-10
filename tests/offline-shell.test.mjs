@@ -67,6 +67,12 @@ test("the private draft room can safely switch between auctioneer feed and manua
   assert.match(serviceWorker, /sales-entry-mode\.mjs\?v=/);
 });
 
+test("background auctioneer polling never flashes a syncing label", () => {
+  assert.doesNotMatch(appSource, /chip\.textContent = "Syncing/);
+  assert.match(appSource, /chip\.setAttribute\("aria-busy", "true"\)/);
+  assert.match(appSource, /chip\.removeAttribute\("aria-busy"\)/);
+});
+
 test("selected-player scarcity and source confidence are dynamic display-only evidence", () => {
   for (const id of ["selected-tier-supply", "selected-next-alternative", "selected-tier-cliff", "selected-source-spread", "selected-context-detail"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
