@@ -1366,13 +1366,7 @@ function closePlayerIntel() {
 
 function closePlayerIntelFromBackdrop(event) {
   if (!playerIntelDialog.open) return;
-  if (event.target !== playerIntelDialog && playerIntelDialog.contains(event.target)) return;
-  const bounds = playerIntelDialog.getBoundingClientRect();
-  const clickedOutside = event.clientX < bounds.left
-    || event.clientX > bounds.right
-    || event.clientY < bounds.top
-    || event.clientY > bounds.bottom;
-  if (clickedOutside) closePlayerIntel();
+  if (event.target === playerIntelDialog) closePlayerIntel();
 }
 
 async function refreshPlayerNewsInApp() {

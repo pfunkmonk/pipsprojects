@@ -342,13 +342,13 @@ test("player intelligence embeds source-linked news with a separate offline-safe
   assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshLiveNews/);
 });
 
-test("player intelligence closes on the true backdrop without treating inner padding as outside", () => {
+test("player intelligence uses an explicit full-screen dismiss layer around the interactive card", () => {
   assert.match(appSource, /function closePlayerIntelFromBackdrop\(event\)/);
   assert.match(appSource, /!playerIntelDialog\.open/);
-  assert.match(appSource, /event\.target !== playerIntelDialog && playerIntelDialog\.contains\(event\.target\)/);
-  assert.match(appSource, /getBoundingClientRect\(\)/);
-  assert.match(appSource, /event\.clientX < bounds\.left[\s\S]*event\.clientX > bounds\.right[\s\S]*event\.clientY < bounds\.top[\s\S]*event\.clientY > bounds\.bottom/);
+  assert.match(appSource, /event\.target === playerIntelDialog/);
   assert.match(appSource, /document\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
+  assert.match(appCss, /\.player-intel-dialog \{[\s\S]*inset: 0;[\s\S]*width: 100vw;[\s\S]*height: 100vh;[\s\S]*background: transparent;/);
+  assert.match(appCss, /\.player-intel-dialog > form \{[\s\S]*width: min\(1180px,[\s\S]*overflow: auto;[\s\S]*background: var\(--navy-800\);/);
 });
 
 test("Footballguys news/depth charts and CBS news refresh and render internally without Google search", () => {
