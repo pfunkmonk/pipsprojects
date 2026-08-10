@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-10T02:59:59.323Z",
+  "generatedAt": "2026-08-10T03:34:12.382Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "74991dc647e6c05e303e249892eed23222d8a2c101499ac0d55d124a14fa944b",
-    "engineSha256": "858f97ede43e3ccf684275574ce4611e4047e6fe40da36efccc253622d23b252",
+    "packSha256": "756c41777792b278f591245515b32eec908b59ff27e75d94f4a82b4554c98f1a",
+    "engineSha256": "8c7b7f09496751f1504607620989f7799af98976abfb70267f0ae538aba51b87",
     "scriptSha256": "920dcf44fac92be50d86bc6a159860e405e2b60de7abff090156cfb5b5f0c4e6"
   },
   "pack": {
-    "id": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311",
+    "id": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.2574,
+    "reconnectMs": 1.1402,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 21.7009,
+    "durationMs": 25.9421,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2273,
-      "p95Ms": 0.5218,
-      "maximumMs": 0.7734
+      "medianMs": 0.2445,
+      "p95Ms": 0.5561,
+      "maximumMs": 0.8749
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1482,
-      "p95Ms": 0.289,
-      "maximumMs": 0.289
+      "medianMs": 0.1734,
+      "p95Ms": 0.3304,
+      "maximumMs": 0.3304
     }
   },
   "finalState": {

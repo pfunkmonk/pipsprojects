@@ -15,7 +15,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260810b";
+} from "./state-engine.mjs?v=20260810c";
 import {
   appendEvents,
   getMeta,

@@ -229,7 +229,7 @@ export function auditDraftPack(candidateInput, currentInput = null) {
   const primaryProjectionUpdate = primaryProjectionChanged(candidate, current, primaryProjectionSource);
   const managerAdvisorySources = candidate.sources.filter((source) => /manager.*profile|advisory/i.test(`${source.name} ${source.authority}`));
   const scheduleEvidenceSources = candidate.sources.filter((source) => /Thunder Bowl 2026 schedule/i.test(source.name));
-  const weeklyContextSources = candidate.sources.filter((source) => source.name === "Thunder Bowl weekly context v3");
+  const weeklyContextSources = candidate.sources.filter((source) => ["Thunder Bowl weekly context v3", "Thunder Bowl weekly assets"].includes(source.name));
   const fbgAuctionValueSources = candidate.sources.filter((source) => source.name === "Footballguys 2026 Draft Dominator auction values");
   const weeklyProjectionRows = candidate.players.filter((player) => player.weeklyProjection?.modelEffect === "none").length;
   const supplementalProjectionRows = candidate.players.reduce(

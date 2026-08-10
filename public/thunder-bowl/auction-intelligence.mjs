@@ -1,4 +1,4 @@
-import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810b";
+import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810c";
 import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260809a";
 
 export const AUCTION_INTELLIGENCE_VERSION = "auction-intelligence-v1";

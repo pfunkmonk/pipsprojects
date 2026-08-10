@@ -146,8 +146,8 @@ test("weekly context is paired, scale preserving, and forbidden from changing st
   const candidate = clone(current);
   candidate.packId = "tb26-weekly-context-test";
   assert.equal(auditDraftPack(candidate, current).approved, true);
-  assert.equal(candidate.weeklyContext.coveredPlayers, 447);
-  assert.equal(candidate.players.filter((player) => player.weeklyProjection).length, 447);
+  assert.equal(candidate.weeklyContext.coveredPlayers, current.players.length);
+  assert.equal(candidate.players.filter((player) => player.weeklyProjection).length, current.players.length);
   for (const player of candidate.players.filter((row) => row.weeklyProjection)) {
     assert.ok(Math.abs(player.weeklyProjection.points.reduce((sum, value) => sum + (value ?? 0), 0) - player.projectedPoints) <= 0.11);
   }

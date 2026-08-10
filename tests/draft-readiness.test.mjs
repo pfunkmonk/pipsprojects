@@ -6,6 +6,7 @@ import { HUMAN_REHEARSAL_ITEMS, createHumanRehearsalEvidence } from "../public/t
 import { createPersonalBoardBundle, createPersonalBoardEvidence, personalBoardFingerprint } from "../public/thunder-bowl/personal-board-exchange.mjs";
 import { createPlayerAnnotation } from "../public/thunder-bowl/player-annotations.mjs";
 import { EVENT_TYPES, createEvent, replayDraft, toPublicSnapshot, validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
+import { AUTOMATED_REHEARSAL_EVIDENCE } from "../public/thunder-bowl/automated-rehearsal-evidence.mjs";
 
 const rawPack = JSON.parse(await readFile(new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url), "utf8"));
 
@@ -109,7 +110,7 @@ test("unverified order, provisional cap, stale sources, missing recovery, projec
 test("the pack-pinned automatic rehearsal substitutes honestly for missing physical attestation", () => {
   const missingInputs = readyInputs();
   missingInputs.humanRehearsalEvidence = null;
-  missingInputs.now = "2026-08-10T03:00:00.000Z";
+  missingInputs.now = new Date(Date.parse(AUTOMATED_REHEARSAL_EVIDENCE.completedAt) + 60_000).toISOString();
   const missingReport = buildDraftReadinessReport(missingInputs);
   assert.equal(missingReport.checks.find((check) => check.id === "rehearsal")?.status, "pass");
   assert.match(missingReport.checks.find((check) => check.id === "rehearsal")?.detail || "", /24 keepers, 144 sales/);
@@ -122,7 +123,7 @@ test("the pack-pinned automatic rehearsal substitutes honestly for missing physi
 
   const changedInputs = readyInputs();
   changedInputs.humanRehearsalEvidence = null;
-  changedInputs.now = "2026-08-10T03:00:00.000Z";
+  changedInputs.now = new Date(Date.parse(AUTOMATED_REHEARSAL_EVIDENCE.completedAt) + 60_000).toISOString();
   changedInputs.pack = structuredClone(changedInputs.pack);
   changedInputs.pack.leagueConfig.teams[0].startingCap += 1;
   changedInputs.state = configuredState(changedInputs.pack);

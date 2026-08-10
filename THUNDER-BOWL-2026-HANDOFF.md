@@ -7,11 +7,11 @@ Updated August 9, 2026. This is the takeover starting point for another develope
 - Production: `https://pipsprojects.com/thunder-bowl/`
 - Branch: `main`
 - Hosting: Netlify; source remote is `origin`
-- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311`
+- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019`
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 265/265 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 0 VBD formula mismatches, and 0 legacy identity-curve repairs.
+- Release-candidate verification: 268/268 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and 0 legacy identity-curve repairs.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
 Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.
@@ -38,6 +38,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`
 - Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`
 - Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
+- Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; raw component files remain outside the web tree
 - Annual divisions/schedule: `league-setup.mjs`; schedule weighting remains a held display-only challenger
 - Auctioneer: `public/thunder-bowl/auctioneer/`
 - Public board and login gate: `public/thunder-bowl/board/`, `board.html`, `draft-board/`
@@ -53,6 +54,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - The value chain is consensus projection → league scoring → replacement-level VBD → intrinsic dollars → historical roster-depth/position market → live room scarcity and cash → Max bid.
 - Weather, travel, venue, rest, durability, mean reversion, and schedule total-point modifiers remain at zero unless separately promoted.
 - The 1.20 division / 1.40 playoff preview failed the 31,486 player-week time-forward gate. It may display a labeled what-if but cannot change VBD, Market, Max, keeper surplus, or bids.
+- The August 9 weekly-asset bundle now passes a private fail-closed intake: 716 players, 12,888 week rows, complete bye coverage, maximum component reconciliation delta 0.0008, and zero changes to season projections or strategy values. It expands weekly timing coverage from 447 to 716. Honest nonzero component coverage is 623/716; all 93 component-empty players are $1 players and retain their approved consensus total plus a source/team weekly shape.
 
 ## Final projection refresh
 
@@ -65,6 +67,15 @@ npm.cmd run stage:thunder-pack -- candidate-pack.json
 ```
 
 Review every blocking issue and outlier. Promotion requires an explicit, separately reviewed `--promote` run followed by the complete test, build, valuation, Monte Carlo, catastrophe, Chrome, and readiness checks. Never edit the active pack by hand.
+
+After a final season projection pack is promoted, rebuild and attach the private weekly assets:
+
+```powershell
+npm.cmd run import:thunder-weekly-assets -- "C:\Users\mailp\Dropbox\Personal\FAMILY STUFF\Mike Stuff\Fantasy Football\_weekly_assets\output" "tmp\draft-pack-2026-weekly-assets.json"
+npm.cmd run stage:thunder-pack -- "tmp\draft-pack-2026-weekly-assets.json"
+```
+
+The raw CSVs must never enter `public/`. Promotion remains a separate explicit `--promote` action.
 
 ## Required verification
 
@@ -82,7 +93,7 @@ Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×19
 
 ## Draft-morning sequence
 
-1. Promote the final governed projection pack.
+1. Promote the final governed season projection pack, then refresh/validate/promote its private weekly-asset layer.
 2. Sign in online on the MacBook so the offline verifier is current.
 3. Open the auctioneer and Draft Board once.
 4. Capture all player intelligence in Admin & data.

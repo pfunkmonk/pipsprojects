@@ -980,11 +980,13 @@ const WEEKLY_CONTEXT_KEYS = [
   "defaultWeights", "suggestedScenario", "divisionWeeks", "playoffWeeks", "coveredPlayers",
   "top168Coverage", "contextFactors", "sourceManifestSha256",
 ];
+const LEGACY_WEEKLY_CONTEXT_SOURCE = "Thunder Bowl weekly context v3";
+const WEEKLY_ASSET_CONTEXT_SOURCE = "Thunder Bowl weekly assets v1";
 
 function validateWeeklyProjection(input, projectedPoints, label) {
   if (input == null) return null;
   assertExactKeys(input, WEEKLY_PROJECTION_KEYS, [], label);
-  if (input.source !== "Thunder Bowl weekly context v3" || input.modelEffect !== "none" || input.games !== 17) {
+  if (![LEGACY_WEEKLY_CONTEXT_SOURCE, WEEKLY_ASSET_CONTEXT_SOURCE].includes(input.source) || input.modelEffect !== "none" || input.games !== 17) {
     fail("WEEKLY_PROJECTION_AUTHORITY", `${label} must remain a value-neutral 17-game Thunder Bowl context.`);
   }
   const byeWeek = assertInteger(input.byeWeek, `${label} bye week`, 1, 18);
@@ -1029,13 +1031,14 @@ function validateWeeklyProjection(input, projectedPoints, label) {
 function validateWeeklyContext(input) {
   if (input == null) return null;
   assertExactKeys(input, WEEKLY_CONTEXT_KEYS, [], "weekly context");
-  if (
-    input.status !== "loaded_experimental_scenario_only"
-    || input.source !== "Thunder Bowl weekly context v3"
-    || input.modelEffect !== "none"
-    || input.engineBacktestStatus !== "completed_time_forward_hold_2018_2025"
-    || input.priorityDefaultStatus !== "baseline_only_historical_gate_failed"
-  ) {
+  const legacyProfile = input.source === LEGACY_WEEKLY_CONTEXT_SOURCE
+    && input.status === "loaded_experimental_scenario_only"
+    && input.engineBacktestStatus === "completed_time_forward_hold_2018_2025";
+  const weeklyAssetProfile = input.source === WEEKLY_ASSET_CONTEXT_SOURCE
+    && input.status === "loaded_candidate_shape_only"
+    && input.engineBacktestStatus === "source_shape_unscored_priority_hold";
+  if ((!legacyProfile && !weeklyAssetProfile) || input.modelEffect !== "none"
+      || input.priorityDefaultStatus !== "baseline_only_historical_gate_failed") {
     fail("WEEKLY_CONTEXT_AUTHORITY", "Weekly context must remain an experimental, value-neutral scenario layer.");
   }
   assertExactKeys(input.defaultWeights, ["baseline", "division", "playoffs"], [], "weekly context default weights");
@@ -1056,7 +1059,9 @@ function validateWeeklyContext(input) {
   if (!Array.isArray(input.playoffWeeks) || input.playoffWeeks.join(",") !== "15,16,17") {
     fail("WEEKLY_CONTEXT_PLAYOFF_WEEKS", "Weekly context playoff weeks must be 15, 16, and 17.");
   }
-  const factors = ["matchup", "venue", "cold_climatology", "home_away", "short_week"];
+  const factors = legacyProfile
+    ? ["matchup", "venue", "cold_climatology", "home_away", "short_week"]
+    : ["source_weekly_shape", "team_schedule_shape", "bye", "matchup", "weather", "short_week"];
   if (!Array.isArray(input.contextFactors) || input.contextFactors.join(",") !== factors.join(",")) {
     fail("WEEKLY_CONTEXT_FACTORS", "Weekly context factor coverage changed unexpectedly.");
   }
