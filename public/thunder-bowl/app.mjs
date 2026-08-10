@@ -3540,6 +3540,7 @@ function renderSalesEntryMode() {
   const control = byId("sales-entry-control");
   control.hidden = LOCAL_ONLY;
   saleForm.classList.toggle("is-auctioneer-mode", policy.auctioneer && !LOCAL_ONLY);
+  byId("view-draft").classList.toggle("is-auctioneer-feed", policy.auctioneer && !LOCAL_ONLY);
   byId("sales-entry-title").textContent = policy.title;
   byId("sales-entry-detail").textContent = policy.detail;
   byId("sales-entry-health").classList.toggle("is-warning", !policy.healthy);

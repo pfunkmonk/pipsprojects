@@ -420,6 +420,53 @@ input[readonly] { color: var(--muted); }
 .pressure-panel { display: grid; grid-template-rows: auto auto 1fr; }
 .pressure-panel section { padding: 0.9rem; border-bottom: 1px solid var(--line); }
 .pressure-panel section:last-child { border-bottom: 0; }
+
+/* Three-column draft desk: every column consumes the same remaining viewport.
+   Primary controls stay at the top; long lists and expanded evidence scroll
+   inside their own panel instead of lengthening the whole page. */
+@media (min-width: 1251px) and (min-height: 700px) {
+  #view-draft.is-auctioneer-feed { padding-bottom: 0; }
+  #view-draft .draft-workspace {
+    height: max(36rem, calc(100dvh - 21.5rem));
+    min-height: 0;
+  }
+  #view-draft .draft-workspace > .product-panel {
+    height: 100%;
+    min-height: 0;
+  }
+  #view-draft .player-pool-panel {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+  #view-draft .player-table-wrap {
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  #view-draft .decision-panel {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  #view-draft .decision-coach { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #view-draft .current-bid-control { grid-template-columns: 28px minmax(42px, 1fr) 28px; }
+  #view-draft .current-bid-control label { display: none; }
+  #view-draft .pressure-panel {
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    overflow: hidden;
+  }
+  #view-draft .pressure-panel .nomination-section { grid-row: 2; }
+  #view-draft .pressure-panel .opponent-pressure-section {
+    grid-row: 3;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  #view-draft .pressure-panel .safety-section { grid-row: 4; }
+}
 .need-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
 .need-chip { border: 1px solid var(--line-strong); border-radius: 8px; padding: 0.45rem 0.5rem; background: var(--navy-750); text-align: center; font-size: 0.8rem; font-weight: 800; }
 .large-line { margin: 0; color: var(--gold-light); font-size: 1.35rem; font-weight: 850; }

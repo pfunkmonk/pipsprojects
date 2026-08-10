@@ -49,6 +49,22 @@ test("desktop draft controls remain pinned above the fold", () => {
   assert.match(wideDraftRule, /left: clamp\(1rem, 2vw, 2rem\);/);
 });
 
+test("wide draft columns share one viewport height and keep secondary content internally scrollable", () => {
+  assert.match(indexHtml, /class="nomination-section"/);
+  assert.match(indexHtml, /class="safety-section"/);
+  const balancedColumns = appCss.slice(
+    appCss.indexOf("/* Three-column draft desk"),
+    appCss.indexOf(".need-grid"),
+  );
+  assert.match(balancedColumns, /@media \(min-width: 1251px\) and \(min-height: 700px\)/);
+  assert.match(balancedColumns, /height: max\(36rem, calc\(100dvh - 21\.5rem\)\)/);
+  assert.match(balancedColumns, /grid-template-rows: auto auto auto minmax\(0, 1fr\) auto/);
+  assert.match(balancedColumns, /\.decision-panel \{[\s\S]*overflow-y: auto/);
+  assert.match(balancedColumns, /\.decision-coach \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(balancedColumns, /\.opponent-pressure-section \{[\s\S]*overflow-y: auto/);
+  assert.match(appSource, /classList\.toggle\("is-auctioneer-feed", policy\.auctioneer/);
+});
+
 test("the private draft room can safely switch between auctioneer feed and manual backup", () => {
   for (const id of ["sales-entry-control", "sales-entry-title", "sales-entry-detail", "sales-entry-health", "sales-mode-auctioneer", "sales-mode-manual"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
