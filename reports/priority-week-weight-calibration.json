@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-10T12:05:21.285368+00:00",
+  "randomSeed": 20260829,
+  "historicalSeasons": [
+    2015,
+    2017,
+    2018,
+    2023
+  ],
+  "sources": {
+    "actualPlayerWeeks": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\_AGENT_HANDOFF\\data\\player_week_context.csv",
+    "preseasonDraftsAndWeeklyForecasts": [
+      "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2015",
+      "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2017\\DraftDominator",
+      "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2018\\DraftDominator",
+      "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2023\\DraftDominator"
+    ]
+  },
+  "leagueModel": {
+    "teams": 12,
+    "divisions": 4,
+    "teamsPerDivision": 3,
+    "divisionWeeks": [
+      1,
+      2,
+      12,
+      13
+    ],
+    "ordinaryHeadToHeadWeeks": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "week14": "all-play points tiebreaker; no head-to-head win",
+    "playoffTeams": 6,
+    "playoffRounds": 3
+  },
+  "coverage": {
+    "2015": {
+      "teams": 12,
+      "draftedSkillPlayers": 123,
+      "projectedTeamRows": 12,
+      "actualMatches": 108,
+      "projectionCoverage": 1.0,
+      "actualCoverage": 0.878
+    },
+    "2017": {
+      "teams": 12,
+      "draftedSkillPlayers": 132,
+      "projectedTeamRows": 12,
+      "actualMatches": 122,
+      "projectionCoverage": 1.0,
+      "actualCoverage": 0.9242
+    },
+    "2018": {
+      "teams": 12,
+      "draftedSkillPlayers": 137,
+      "projectedTeamRows": 12,
+      "actualMatches": 129,
+      "projectionCoverage": 1.0,
+      "actualCoverage": 0.9416
+    },
+    "2023": {
+      "teams": 12,
+      "draftedSkillPlayers": 120,
+      "projectedTeamRows": 12,
+      "actualMatches": 120,
+      "projectionCoverage": 1.0,
+      "actualCoverage": 1.0
+    }
+  },
+  "forecastReliability": {
+    "rows": 780,
+    "centeredWeeklyPearson": 0.20970273652855084,
+    "centeredWeeklyCalibrationSlope": 0.3708473827199907
+  },
+  "monteCarlo": {
+    "trials": 150000,
+    "boost": 3.0,
+    "probabilities": {
+      "baseline": {
+        "division": 0.34058666666666665,
+        "playoffs": 0.49684,
+        "champion": 0.08152666666666666
+      },
+      "ordinary": {
+        "division": 0.37362,
+        "playoffs": 0.5392133333333333,
+        "champion": 0.08794666666666667
+      },
+      "division": {
+        "division": 0.3586,
+        "playoffs": 0.5153733333333333,
+        "champion": 0.08498
+      },
+      "playoffs": {
+        "division": 0.34058666666666665,
+        "playoffs": 0.49684,
+        "champion": 0.09620666666666666
+      }
+    },
+    "derivativesPerPointWeek": {
+      "ordinary": {
+        "division": 0.0012234567901234577,
+        "playoffs": 0.0015693827160493821,
+        "champion": 0.0002377777777777781
+      },
+      "division": {
+        "division": 0.0015011111111111104,
+        "playoffs": 0.0015444444444444455,
+        "champion": 0.000287777777777778
+      },
+      "playoffs": {
+        "division": 0.0,
+        "playoffs": 0.0,
+        "champion": 0.001631111111111111
+      }
+    },
+    "ratios": {
+      "divisionToOrdinaryPlayoffQualification": 0.9841095028319709,
+      "divisionToOrdinaryChampionship": 1.2102803738317751,
+      "playoffToOrdinaryChampionship": 6.859813084112139
+    }
+  },
+  "historicalGrid": {
+    "baseline": {
+      "divisionWeight": 1.0,
+      "playoffWeight": 1.0,
+      "playoffSpearman": 0.3145908003973486,
+      "championshipSpearman": 0.2502065882303718,
+      "bySeason": {
+        "2015": {
+          "playoffSpearman": 0.2727272727272727,
+          "championshipSpearman": 0.3480546162297779
+        },
+        "2017": {
+          "playoffSpearman": 0.07692307692307693,
+          "championshipSpearman": 0.3203553814896085
+        },
+        "2018": {
+          "playoffSpearman": 0.6795106742881958,
+          "championshipSpearman": 0.2796581477334804
+        },
+        "2023": {
+          "playoffSpearman": 0.23776223776223776,
+          "championshipSpearman": 0.07251137838120374
+        }
+      }
+    },
+    "champion": {
+      "divisionWeight": 1.3,
+      "playoffWeight": 1.85,
+      "playoffSpearman": 0.32867132867132864,
+      "championshipSpearman": 0.2702387942368853,
+      "bySeason": {
+        "2015": {
+          "playoffSpearman": 0.34965034965034963,
+          "championshipSpearman": 0.4133148567728613
+        },
+        "2017": {
+          "playoffSpearman": 0.06993006993006994,
+          "championshipSpearman": 0.26626940799136295
+        },
+        "2018": {
+          "playoffSpearman": 0.6993006993006993,
+          "championshipSpearman": 0.3045477892010557
+        },
+        "2023": {
+          "playoffSpearman": 0.1958041958041958,
+          "championshipSpearman": 0.05800910270496299
+        }
+      }
+    },
+    "topCandidates": [
+      {
+        "divisionWeight": 1.25,
+        "playoffWeight": 1.9,
+        "playoffSpearman": 0.32867132867132864,
+        "championshipSpearman": 0.2702387942368853,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.34965034965034963,
+            "championshipSpearman": 0.4133148567728613
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.1958041958041958,
+            "championshipSpearman": 0.05800910270496299
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.3,
+        "playoffWeight": 1.85,
+        "playoffSpearman": 0.32867132867132864,
+        "championshipSpearman": 0.2702387942368853,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.34965034965034963,
+            "championshipSpearman": 0.4133148567728613
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.1958041958041958,
+            "championshipSpearman": 0.05800910270496299
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.3,
+        "playoffWeight": 1.9,
+        "playoffSpearman": 0.32867132867132864,
+        "championshipSpearman": 0.2702387942368853,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.34965034965034963,
+            "championshipSpearman": 0.4133148567728613
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.1958041958041958,
+            "championshipSpearman": 0.05800910270496299
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.5,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.55,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.6,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.65,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.7,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.75,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      },
+      {
+        "divisionWeight": 1.1,
+        "playoffWeight": 1.8,
+        "playoffSpearman": 0.3321678321678322,
+        "championshipSpearman": 0.2655756761769226,
+        "bySeason": {
+          "2015": {
+            "playoffSpearman": 0.32167832167832167,
+            "championshipSpearman": 0.3915614432585002
+          },
+          "2017": {
+            "playoffSpearman": 0.06993006993006994,
+            "championshipSpearman": 0.26626940799136295
+          },
+          "2018": {
+            "playoffSpearman": 0.6993006993006993,
+            "championshipSpearman": 0.3045477892010557
+          },
+          "2023": {
+            "playoffSpearman": 0.23776223776223776,
+            "championshipSpearman": 0.07251137838120374
+          }
+        }
+      }
+    ],
+    "leaveOneSeasonOut": [
+      {
+        "heldOutSeason": 2015,
+        "selectedDivisionWeight": 1.0,
+        "selectedPlayoffWeight": 1.0,
+        "heldOutPlayoffDelta": 0.0,
+        "heldOutChampionshipDelta": 0.0
+      },
+      {
+        "heldOutSeason": 2017,
+        "selectedDivisionWeight": 1.05,
+        "selectedPlayoffWeight": 1.3,
+        "heldOutPlayoffDelta": -0.006993006993006992,
+        "heldOutChampionshipDelta": -0.054085973498245565
+      },
+      {
+        "heldOutSeason": 2018,
+        "selectedDivisionWeight": 1.0,
+        "selectedPlayoffWeight": 1.0,
+        "heldOutPlayoffDelta": 0.0,
+        "heldOutChampionshipDelta": 0.0
+      },
+      {
+        "heldOutSeason": 2023,
+        "selectedDivisionWeight": 1.0,
+        "selectedPlayoffWeight": 1.0,
+        "heldOutPlayoffDelta": 0.0,
+        "heldOutChampionshipDelta": 0.0
+      }
+    ]
+  },
+  "recommendation": {
+    "ordinaryWeight": 1.0,
+    "divisionWeight": 1.2,
+    "playoffWeight": 1.5,
+    "forecastAuthority": 0.35,
+    "maxVbdDelta": 3.0,
+    "week18Weight": 0.0,
+    "status": "validated_live_bounded",
+    "decision": "Use structural leverage and published guidance, then shrink below the in-sample grid optimum because weekly timing correlation and leave-one-season-out stability are limited.",
+    "research": [
+      "https://www.footballguys.com/article/WaiverTradeDominator17?article=WaiverTradeDominator17",
+      "https://www2.isye.gatech.edu/~xsun84/publications/FantasyFootball-abstract.pdf",
+      "https://www.pff.com/news/fantasy-football-easiest-hardest-strength-of-schedule-2019",
+      "https://www.pff.com/news/fantasy-football-the-worst-early-season-schedules-for-fantasy-purposes"
+    ]
+  }
+}

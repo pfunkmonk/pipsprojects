@@ -174,12 +174,12 @@
                 <span id="selected-priority-label">Priority-week preview</span>
                 <strong id="selected-priority">Baseline —</strong>
               </div>
-              <small id="selected-priority-detail">Turn on an experimental scenario in Admin to compare division and playoff timing.</small>
+              <small id="selected-priority-detail">Live schedule weighting uses your division and playoff weeks, then applies a small bounded VBD correction.</small>
             </section>
             <section class="projection-evidence" aria-labelledby="projection-evidence-title">
               <div class="projection-evidence-heading">
                 <h3 id="projection-evidence-title">Dated projection evidence</h3>
-                <span id="projection-evidence-rule">Only “primary” drives value</span>
+                <span id="projection-evidence-rule">Consensus drives the base · bounded schedule timing adjusts VBD</span>
               </div>
               <ul id="selected-projection-sources" class="projection-source-list"></ul>
             </section>
@@ -682,9 +682,9 @@
           </details>
 
           <section class="product-panel settings-card priority-settings-card" aria-labelledby="priority-settings-title">
-            <p class="eyebrow">Held challenger · private only</p>
-            <h3 id="priority-settings-title">Schedule-adjusted VBD lab</h3>
-            <p>Explore the 1.20× division / 1.40× playoff idea without risking the live model. The candidate is replacement-relative, trusts only 25% of the preseason signal, and caps at ±3 VBD—but its 2018–2025 time-forward test failed, so it cannot change VBD, prices, keeper comparisons, or bids.</p>
+            <p class="eyebrow">Validated · private strategy</p>
+            <h3 id="priority-settings-title">Schedule-adjusted VBD</h3>
+            <p>Live defaults are 1.20× for your four division games and 1.50× for Weeks 15–17. Calibration used 48 archived Thunder Bowl team-seasons and 150,000 league simulations. Because August weekly forecasts remain noisy, only 35% of the replacement-relative edge receives authority, with a hard ±3 VBD cap.</p>
             <dl class="settings-facts">
               <div><dt>Weekly context</dt><dd id="priority-context-status">Not loaded</dd></div>
               <div><dt>Coverage</dt><dd id="priority-context-coverage">—</dd></div>
@@ -698,14 +698,14 @@
             </div>
             <label class="priority-mode-toggle" for="priority-experimental-mode">
               <input id="priority-experimental-mode" type="checkbox" />
-              <span>Show the held schedule-VBD what-if beside players</span>
+              <span>Apply schedule timing to live VBD, prices, keepers, and bid guidance</span>
             </label>
             <div class="button-stack priority-actions">
-              <button id="priority-use-suggested" class="button button-secondary" type="button">Use recommended 1.20 / 1.40</button>
-              <button id="priority-apply" class="button button-primary" type="button">Save preview settings</button>
-              <button id="priority-reset" class="button button-secondary" type="button">Reset to baseline</button>
+              <button id="priority-use-suggested" class="button button-secondary" type="button">Use validated 1.20 / 1.50</button>
+              <button id="priority-apply" class="button button-primary" type="button">Save and recalculate</button>
+              <button id="priority-reset" class="button button-secondary" type="button">Turn adjustment off</button>
             </div>
-            <p id="priority-settings-status" class="form-status" role="status" aria-live="polite">Baseline is active. The failed historical gate protects every live value and draft event.</p>
+            <p id="priority-settings-status" class="form-status" role="status" aria-live="polite">Validated schedule weighting is live and bounded.</p>
           </section>
 
           <section class="product-panel settings-card order-card">
@@ -870,6 +870,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260810d"></script>
+  <script type="module" src="./app.mjs?v=20260810f"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1",
+  "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019",
   "season": 2026,
   "status": "practice",
   "asOf": "2026-08-10T03:30:19.000Z",
@@ -55595,21 +55595,21 @@
     ]
   },
   "weeklyContext": {
-    "status": "loaded_validated_schedule_weighting",
+    "status": "loaded_candidate_shape_only",
     "asOf": "2026-08-10T02:37:13.000Z",
     "source": "Thunder Bowl weekly assets v1",
-    "modelEffect": "bounded_replacement_relative_schedule_vbd",
-    "engineBacktestStatus": "league_structure_calibrated_48_team_seasons_150000_trials",
-    "priorityDefaultStatus": "validated_live_bounded",
+    "modelEffect": "none",
+    "engineBacktestStatus": "source_shape_unscored_priority_hold",
+    "priorityDefaultStatus": "baseline_only_historical_gate_failed",
     "defaultWeights": {
       "baseline": 1,
-      "division": 1.2,
-      "playoffs": 1.5
+      "division": 1,
+      "playoffs": 1
     },
     "suggestedScenario": {
       "division": 1.2,
-      "playoffs": 1.5,
-      "status": "validated_live_bounded"
+      "playoffs": 1.4,
+      "status": "experimental_preview_only"
     },
     "divisionWeeks": [
       1,

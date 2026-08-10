@@ -1,4 +1,4 @@
-import { POSITIONS } from "./state-engine.mjs?v=20260810c";
+import { POSITIONS } from "./state-engine.mjs?v=20260810d";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
 
 function activeKeeperRows(state) {

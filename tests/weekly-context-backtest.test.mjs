@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [report, script, appSource] = await Promise.all([
+const [report, priorityReport, script, appSource] = await Promise.all([
   readFile(new URL("../reports/weekly-context-time-forward-backtest.json", import.meta.url), "utf8").then(JSON.parse),
+  readFile(new URL("../reports/priority-week-weight-calibration.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../scripts/backtest-weekly-context.py", import.meta.url), "utf8"),
   readFile(new URL("../public/thunder-bowl/app.mjs", import.meta.url), "utf8"),
 ]);
@@ -16,14 +17,18 @@ test("weekly context is scored in strict time-forward folds on a large historica
   assert.match(script, /defense_factors\(training, season - 1\)/);
 });
 
-test("failed schedule challengers remain visible but cannot alter live draft authority", () => {
+test("failed raw context correctors stay out while calibrated week utility receives bounded authority", () => {
   assert.equal(report.promotionGate.passed, false);
   assert.equal(report.champion, "matchup_only");
   assert.ok(report.models.matchup_only.contextMae > report.models.matchup_only.flatMae);
   assert.equal(report.models.full_context.seasonWins, 0);
   assert.equal(report.models.full_context.positionWins, 0);
+  assert.equal(priorityReport.monteCarlo.trials, 150000);
+  assert.equal(priorityReport.historicalGrid.champion.divisionWeight, 1.3);
+  assert.equal(priorityReport.historicalGrid.champion.playoffWeight, 1.85);
+  assert.ok(priorityReport.forecastReliability.centeredWeeklyCalibrationSlope > 0.3);
   assert.match(appSource, /buildPriorityVbdOverlay/);
-  assert.match(appSource, /calculateAuctionDemandMarket\(draftPack, draftState\)/);
-  assert.match(appSource, /calculateKeeperScenarioValues\(draftPack, keeperWorkspaceState\(\)\)/);
-  assert.doesNotMatch(appSource, /projectedPoints:\s*priorityVbdOverlay/);
+  assert.match(appSource, /applyPriorityVbdOverlay/);
+  assert.match(appSource, /calculateAuctionDemandMarket\(valuationPack \|\| draftPack, draftState\)/);
+  assert.match(appSource, /calculateKeeperScenarioValues\(valuationPack \|\| draftPack, keeperWorkspaceState\(\)\)/);
 });

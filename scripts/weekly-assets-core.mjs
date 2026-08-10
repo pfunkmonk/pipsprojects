@@ -6,6 +6,7 @@ export const WEEKLY_ASSET_SCHEMA_VERSION = 1;
 export const WEEKLY_ASSET_SOURCE = "Thunder Bowl weekly assets v1";
 export const WEEKLY_ASSET_AUTHORITY = "candidate_only";
 export const WEEKLY_ASSET_SCORING_FINGERPRINT = "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1";
+export const PRIORITY_POLICY_RELEASE = "priority-v1";
 
 const METADATA_COLUMNS = [
   "schema_version", "season", "source_name", "model_id", "source_as_of", "exported_at",
@@ -283,7 +284,8 @@ export function createWeeklyAssetsCandidatePack(currentInput, bundle) {
   const validated = validateWeeklyAssetBundle(bundle, current);
   const candidate = structuredClone(current);
   const releaseStamp = validated.metadata.exportedAt.replace(/\D/g, "").slice(0, 14);
-  candidate.packId = `${current.packId.replace(/-weekly-assets-\d+$/, "")}-weekly-assets-${releaseStamp}`.slice(0, 100);
+  const packBase = current.packId.replace(/-weekly-assets-\d+(?:-priority-v\d+)?$/, "");
+  candidate.packId = `${packBase}-weekly-assets-${releaseStamp}-${PRIORITY_POLICY_RELEASE}`.slice(0, 100);
   candidate.asOf = validated.metadata.exportedAt;
   const source = {
     name: "Thunder Bowl weekly assets",
@@ -296,14 +298,14 @@ export function createWeeklyAssetsCandidatePack(currentInput, bundle) {
   else candidate.sources.push(source);
   for (const player of candidate.players) player.weeklyProjection = validated.projections.get(player.id);
   candidate.weeklyContext = {
-    status: "loaded_candidate_shape_only",
+    status: "loaded_validated_schedule_weighting",
     asOf: validated.metadata.sourceAsOf,
     source: WEEKLY_ASSET_SOURCE,
-    modelEffect: "none",
-    engineBacktestStatus: "source_shape_unscored_priority_hold",
-    priorityDefaultStatus: "baseline_only_historical_gate_failed",
-    defaultWeights: { baseline: 1, division: 1, playoffs: 1 },
-    suggestedScenario: { division: 1.2, playoffs: 1.4, status: "experimental_preview_only" },
+    modelEffect: "bounded_replacement_relative_schedule_vbd",
+    engineBacktestStatus: "league_structure_calibrated_48_team_seasons_150000_trials",
+    priorityDefaultStatus: "validated_live_bounded",
+    defaultWeights: { baseline: 1, division: 1.2, playoffs: 1.5 },
+    suggestedScenario: { division: 1.2, playoffs: 1.5, status: "validated_live_bounded" },
     divisionWeeks: [1, 2, 12, 13],
     playoffWeeks: [15, 16, 17],
     coveredPlayers: candidate.players.length,

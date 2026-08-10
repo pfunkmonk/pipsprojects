@@ -1,4 +1,4 @@
-import { EVENT_TYPES, replayDraft, validateEvent } from "./state-engine.mjs?v=20260810c";
+import { EVENT_TYPES, replayDraft, validateEvent } from "./state-engine.mjs?v=20260810d";
 
 const ACTIVE_EXPORT_TYPES = new Set([
   EVENT_TYPES.CAP_TRANSFERRED,

@@ -1034,24 +1034,36 @@ function validateWeeklyContext(input) {
   const legacyProfile = input.source === LEGACY_WEEKLY_CONTEXT_SOURCE
     && input.status === "loaded_experimental_scenario_only"
     && input.engineBacktestStatus === "completed_time_forward_hold_2018_2025";
-  const weeklyAssetProfile = input.source === WEEKLY_ASSET_CONTEXT_SOURCE
+  const heldWeeklyAssetProfile = input.source === WEEKLY_ASSET_CONTEXT_SOURCE
     && input.status === "loaded_candidate_shape_only"
     && input.engineBacktestStatus === "source_shape_unscored_priority_hold";
-  if ((!legacyProfile && !weeklyAssetProfile) || input.modelEffect !== "none"
-      || input.priorityDefaultStatus !== "baseline_only_historical_gate_failed") {
-    fail("WEEKLY_CONTEXT_AUTHORITY", "Weekly context must remain an experimental, value-neutral scenario layer.");
+  const validatedWeeklyAssetProfile = input.source === WEEKLY_ASSET_CONTEXT_SOURCE
+    && input.status === "loaded_validated_schedule_weighting"
+    && input.engineBacktestStatus === "league_structure_calibrated_48_team_seasons_150000_trials";
+  const heldProfile = legacyProfile || heldWeeklyAssetProfile;
+  if (
+    (!heldProfile && !validatedWeeklyAssetProfile)
+    || (heldProfile && (input.modelEffect !== "none" || input.priorityDefaultStatus !== "baseline_only_historical_gate_failed"))
+    || (validatedWeeklyAssetProfile && (
+      input.modelEffect !== "bounded_replacement_relative_schedule_vbd"
+      || input.priorityDefaultStatus !== "validated_live_bounded"
+    ))
+  ) {
+    fail("WEEKLY_CONTEXT_AUTHORITY", "Weekly context authority does not match a recognized held or validated policy.");
   }
   assertExactKeys(input.defaultWeights, ["baseline", "division", "playoffs"], [], "weekly context default weights");
-  if (input.defaultWeights.baseline !== 1 || input.defaultWeights.division !== 1 || input.defaultWeights.playoffs !== 1) {
-    fail("WEEKLY_CONTEXT_DEFAULTS", "Weekly context defaults must reproduce the unweighted baseline exactly.");
+  const expectedDefaults = validatedWeeklyAssetProfile
+    ? { baseline: 1, division: 1.2, playoffs: 1.5 }
+    : { baseline: 1, division: 1, playoffs: 1 };
+  if (Object.keys(expectedDefaults).some((key) => input.defaultWeights[key] !== expectedDefaults[key])) {
+    fail("WEEKLY_CONTEXT_DEFAULTS", "Weekly context defaults do not match their validated policy.");
   }
   assertExactKeys(input.suggestedScenario, ["division", "playoffs", "status"], [], "weekly context suggested scenario");
-  if (
-    input.suggestedScenario.division !== 1.2
-    || input.suggestedScenario.playoffs !== 1.4
-    || input.suggestedScenario.status !== "experimental_preview_only"
-  ) {
-    fail("WEEKLY_CONTEXT_SCENARIO", "The preregistered user scenario must remain a 1.20/1.40 experimental preview.");
+  const expectedScenario = validatedWeeklyAssetProfile
+    ? { division: 1.2, playoffs: 1.5, status: "validated_live_bounded" }
+    : { division: 1.2, playoffs: 1.4, status: "experimental_preview_only" };
+  if (Object.keys(expectedScenario).some((key) => input.suggestedScenario[key] !== expectedScenario[key])) {
+    fail("WEEKLY_CONTEXT_SCENARIO", "Weekly context scenario does not match its registered policy.");
   }
   if (!Array.isArray(input.divisionWeeks) || input.divisionWeeks.join(",") !== "1,2,12,13") {
     fail("WEEKLY_CONTEXT_DIVISION_WEEKS", "Weekly context division weeks must be 1, 2, 12, and 13.");
@@ -1079,8 +1091,8 @@ function validateWeeklyContext(input) {
     modelEffect: input.modelEffect,
     engineBacktestStatus: input.engineBacktestStatus,
     priorityDefaultStatus: input.priorityDefaultStatus,
-    defaultWeights: { baseline: 1, division: 1, playoffs: 1 },
-    suggestedScenario: { division: 1.2, playoffs: 1.4, status: "experimental_preview_only" },
+    defaultWeights: expectedDefaults,
+    suggestedScenario: expectedScenario,
     divisionWeeks: [1, 2, 12, 13],
     playoffWeeks: [15, 16, 17],
     coveredPlayers: assertInteger(input.coveredPlayers, "weekly context covered players", 1, 5000),

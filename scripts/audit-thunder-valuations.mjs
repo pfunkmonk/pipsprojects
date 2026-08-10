@@ -3,6 +3,11 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { replayDraft } from "../public/thunder-bowl/state-engine.mjs";
 import { calculateAuctionDemandMarket } from "../public/thunder-bowl/auction-demand.mjs";
+import {
+  DEFAULT_PRIORITY_SCENARIO,
+  applyPriorityVbdOverlay,
+  buildPriorityVbdOverlay,
+} from "../public/thunder-bowl/priority-weights.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -237,11 +242,17 @@ const fbgWeeklyDstByTeam = new Map(fbgWeeklyRows.filter((row) => row.position ==
 const modelByKey = byKey(modelRows);
 const modelingByKey = byKey(modelingRows);
 const fbgValues = new Map((pack.fbgAuctionValues?.values || []).map((row) => [row.playerId, row]));
-const liveMarket = calculateAuctionDemandMarket(pack, replayDraft([]));
+const sourcePlayersById = new Map(pack.players.map((player) => [player.id, player]));
+const priorityOverlay = buildPriorityVbdOverlay(pack.players, DEFAULT_PRIORITY_SCENARIO, {
+  divisionWeeks: pack.weeklyContext?.divisionWeeks || [],
+  playoffWeeks: pack.weeklyContext?.playoffWeeks || [],
+});
+const valuePack = applyPriorityVbdOverlay(pack, priorityOverlay);
+const liveMarket = calculateAuctionDemandMarket(valuePack, replayDraft([]));
 const teamCount = pack.leagueConfig.teams.length;
 const starterReplacementPoints = Object.fromEntries(
   Object.entries(pack.leagueConfig.starterRequirements).map(([pos, starters]) => {
-    const rows = pack.players
+    const rows = valuePack.players
       .filter((player) => player.position === pos)
       .sort((left, right) => right.projectedPoints - left.projectedPoints || left.id.localeCompare(right.id));
     const replacementRank = teamCount * starters;
@@ -260,7 +271,8 @@ const sourceReplacementPoints = Object.fromEntries(
   )]),
 );
 
-const auditRows = pack.players.map((player) => {
+const auditRows = valuePack.players.map((player) => {
+  const sourcePlayer = sourcePlayersById.get(player.id);
   const key = playerKey(player.name, player.position);
   const latestFbg = player.position === "DST" ? fbgWeeklyDstByTeam.get(normalizedTeam(player.nflTeam)) : fbgWeeklyByKey.get(key);
   const model = modelByKey.get(key);
@@ -268,8 +280,8 @@ const auditRows = pack.players.map((player) => {
   const fbgProjection = projectionSource(player, "Footballguys");
   const cbs = projectionSource(player, "CBS");
   const fantasyPros = projectionSource(player, "FantasyPros");
-  const primary = player.projectedPoints;
-  const primarySource = (player.projectionSources || []).find((row) => row.role === "primary")?.source || "Unknown";
+  const primary = sourcePlayer.projectedPoints;
+  const primarySource = (sourcePlayer.projectionSources || []).find((row) => row.role === "primary")?.source || "Unknown";
   const latestFbgPoints = latestFbg?.total ?? null;
   const currentSourceValues = [fbgProjection, cbs, fantasyPros].filter(Number.isFinite);
   const sourceMedian = median(currentSourceValues);
@@ -282,7 +294,7 @@ const auditRows = pack.players.map((player) => {
   const modelProjection = numberOrNull(model?.proj_final_pts);
   const mflAav = numberOrNull(modeling?.mfl_aav);
   const expectedVbd = Number.isFinite(starterReplacementPoints[player.position])
-    ? Math.round((primary - starterReplacementPoints[player.position]) * 10) / 10
+    ? Math.round((player.projectedPoints - starterReplacementPoints[player.position]) * 10) / 10
     : null;
   const vbdDelta = Number.isFinite(expectedVbd) ? player.vbd - expectedVbd : null;
   const cbsVbd = Number.isFinite(cbs) && Number.isFinite(sourceReplacementPoints.CBS[player.position])
@@ -315,6 +327,8 @@ const auditRows = pack.players.map((player) => {
     sourceRank: player.sourceRank,
     primarySource,
     primaryProjection: formatNumber(primary),
+    scheduleProjection: formatNumber(player.projectedPoints),
+    scheduleVbdDelta: formatNumber(priorityOverlay[player.id]?.vbdDelta),
     fbg: formatNumber(fbgProjection),
     latestFbgAug8: formatNumber(latestFbgPoints),
     cbs: formatNumber(cbs),

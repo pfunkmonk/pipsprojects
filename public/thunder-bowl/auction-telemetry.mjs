@@ -1,4 +1,4 @@
-import { EVENT_TYPES, validateEvent } from "./state-engine.mjs?v=20260810c";
+import { EVENT_TYPES, validateEvent } from "./state-engine.mjs?v=20260810d";
 
 export const AUCTION_TELEMETRY_SCHEMA_VERSION = 1;
 export const AUCTION_TELEMETRY_META_KEY = "privateAuctionTelemetryV1";

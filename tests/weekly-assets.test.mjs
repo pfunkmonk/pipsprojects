@@ -99,6 +99,9 @@ test("weekly-asset intake covers every player while preserving every season proj
   assert.equal(candidate.players.every((player) => player.weeklyProjection?.source === "Thunder Bowl weekly assets v1"), true);
   assert.equal(candidate.weeklyContext.coveredPlayers, pack.players.length);
   assert.equal(candidate.weeklyContext.top168Coverage, 1);
+  assert.equal(candidate.weeklyContext.status, "loaded_validated_schedule_weighting");
+  assert.equal(candidate.weeklyContext.modelEffect, "bounded_replacement_relative_schedule_vbd");
+  assert.deepEqual(candidate.weeklyContext.defaultWeights, { baseline: 1, division: 1.2, playoffs: 1.5 });
   for (let index = 0; index < pack.players.length; index += 1) {
     const before = pack.players[index];
     const after = candidate.players[index];

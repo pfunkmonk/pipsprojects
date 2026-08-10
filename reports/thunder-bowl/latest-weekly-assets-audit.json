@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-08-10T03:33:58.695Z",
+  "auditedAt": "2026-08-10T05:40:28.730Z",
   "approved": true,
   "candidate": {
-    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019",
+    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1",
     "asOf": "2026-08-10T03:30:19.000Z",
-    "sha256": "ab4d2627952edd2dd6e20d3d28ffc36fe099ab8c25ac5af8df2d185f55f3904e",
+    "sha256": "88258f480497977193168024294adaa127a6ab42e910b76b27ec59f676d2d680",
     "players": 716,
     "keeperCandidates": 177,
     "keeperTeams": 12,
@@ -13,7 +13,7 @@
     "supplementalProjectionRows": 509,
     "managerProfiles": 12,
     "scheduleContext": "loaded_value_neutral",
-    "weeklyContext": "loaded_candidate_shape_only",
+    "weeklyContext": "loaded_validated_schedule_weighting",
     "weeklyProjectionRows": 716,
     "fbgAuctionValueRows": 400,
     "primaryProjectionSource": "Thunder Bowl Consensus",
@@ -22,9 +22,9 @@
     "allocatedMarketDollars": 1212
   },
   "current": {
-    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311",
-    "asOf": "2026-08-09T22:43:11.813Z",
-    "sha256": "be526a16a73df0add7ede82cf12e5beda16ead8239e1e934771b1cf621af20fe",
+    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019",
+    "asOf": "2026-08-10T03:30:19.000Z",
+    "sha256": "ab4d2627952edd2dd6e20d3d28ffc36fe099ab8c25ac5af8df2d185f55f3904e",
     "players": 716
   },
   "contentChanged": true,

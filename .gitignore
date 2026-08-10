@@ -10,3 +10,5 @@ node_modules
 
 # Local development and QA output
 *.log
+__pycache__/
+*.pyc

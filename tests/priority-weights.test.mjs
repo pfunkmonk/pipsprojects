@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  applyPriorityVbdOverlay,
+  BASELINE_PRIORITY_SCENARIO,
   buildPriorityVbdOverlay,
   DEFAULT_PRIORITY_SCENARIO,
   PRIORITY_EDGE_POLICY,
@@ -20,32 +22,32 @@ function player(points) {
 
 test("baseline mode exactly reproduces the authoritative projection", () => {
   const input = player([10, 11, 12, 13, 14, 15, null, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]);
-  const result = priorityProjection(input, DEFAULT_PRIORITY_SCENARIO, context);
+  const result = priorityProjection(input, BASELINE_PRIORITY_SCENARIO, context);
   assert.equal(result.projectedPoints, input.projectedPoints);
   assert.equal(result.delta, 0);
 });
 
-test("scale-preserving weighting leaves a flat weekly player unchanged", () => {
+test("live weighting excludes unused Week 18 and does not normalize away a bye", () => {
   const input = player([10, 10, 10, 10, 10, 10, null, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]);
-  const result = priorityProjection(input, { mode: "experimental", baseline: 1, division: 1.2, playoffs: 1.4 }, context);
-  assert.ok(Math.abs(result.projectedPoints - 170) < 1e-9);
-  assert.ok(Math.abs(result.delta) < 1e-9);
+  const result = priorityProjection(input, { mode: "live", baseline: 1, division: 1, playoffs: 1 }, context);
+  assert.ok(Math.abs(result.projectedPoints - 160) < 1e-9);
+  assert.ok(Math.abs(result.delta + 10) < 1e-9);
 });
 
-test("experimental priority rewards correlation with division and playoff output", () => {
+test("live priority rewards correlation with division and playoff output", () => {
   const points = Array(18).fill(5);
   points[6] = null;
   for (const week of [...context.divisionWeeks, ...context.playoffWeeks]) points[week - 1] = 15;
   const input = player(points);
-  const result = priorityProjection(input, { mode: "experimental", baseline: 1, division: 1.2, playoffs: 1.4 }, context);
+  const result = priorityProjection(input, { mode: "live", baseline: 1, division: 1.2, playoffs: 1.5 }, context);
   assert.equal(result.available, true);
   assert.ok(result.delta > 0);
   assert.equal(input.projectedPoints, 155, "the source projection is not mutated");
 });
 
 test("admin weights are bounded and missing weekly context fails value-neutral", () => {
-  assert.throws(() => validatePriorityScenario({ mode: "experimental", baseline: 1, division: 2.01, playoffs: 1 }), RangeError);
-  const result = priorityProjection({ projectedPoints: 200 }, { mode: "experimental", baseline: 1, division: 1.2, playoffs: 1.4 }, context);
+  assert.throws(() => validatePriorityScenario({ mode: "live", baseline: 1, division: 2.01, playoffs: 1 }), RangeError);
+  const result = priorityProjection({ projectedPoints: 200 }, { mode: "live", baseline: 1, division: 1.2, playoffs: 1.5 }, context);
   assert.deepEqual({ available: result.available, projectedPoints: result.projectedPoints, delta: result.delta }, { available: false, projectedPoints: 200, delta: 0 });
 });
 
@@ -56,7 +58,7 @@ test("schedule VBD is replacement-relative, shrunk, and hard capped", () => {
   Object.assign(favorable, { id: "favorable", position: "RB", vbd: 20 });
   const overlay = buildPriorityVbdOverlay(
     [replacement, favorable],
-    { mode: "experimental", baseline: 1, division: 1.2, playoffs: 1.4 },
+    { mode: "live", baseline: 1, division: 1.2, playoffs: 1.5 },
     context,
     PRIORITY_EDGE_POLICY,
   );
@@ -68,8 +70,22 @@ test("schedule VBD is replacement-relative, shrunk, and hard capped", () => {
 test("baseline mode leaves all VBD and projections exactly unchanged", () => {
   const input = player([10, 11, 12, 13, 14, 15, null, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]);
   Object.assign(input, { id: "baseline", position: "WR", vbd: 12.4 });
-  const overlay = buildPriorityVbdOverlay([input], DEFAULT_PRIORITY_SCENARIO, context);
+  const overlay = buildPriorityVbdOverlay([input], BASELINE_PRIORITY_SCENARIO, context);
   assert.equal(overlay.baseline.vbdDelta, 0);
   assert.equal(overlay.baseline.adjustedVbd, 12.4);
   assert.equal(overlay.baseline.adjustedProjectedPoints, input.projectedPoints);
+});
+
+test("validated defaults are live and the runtime pack applies the same bounded adjustment everywhere", () => {
+  assert.deepEqual(DEFAULT_PRIORITY_SCENARIO, { mode: "live", baseline: 1, division: 1.2, playoffs: 1.5 });
+  const replacement = player([10, 10, 10, 10, 10, 10, null, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]);
+  Object.assign(replacement, { id: "replacement", position: "RB", vbd: 0 });
+  const favorable = player([30, 5, 30, 5, 5, 5, null, 5, 5, 5, 30, 30, 5, 5, 30, 30, 30, 5]);
+  Object.assign(favorable, { id: "favorable", position: "RB", vbd: 20 });
+  const pack = { players: [replacement, favorable], leagueConfig: {} };
+  const overlay = buildPriorityVbdOverlay(pack.players, DEFAULT_PRIORITY_SCENARIO, context);
+  const adjusted = applyPriorityVbdOverlay(pack, overlay);
+  assert.notEqual(adjusted.players[1].projectedPoints, favorable.projectedPoints);
+  assert.equal(adjusted.players[1].vbd, overlay.favorable.adjustedVbd);
+  assert.equal(favorable.vbd, 20, "the signed source pack remains immutable");
 });

@@ -1,13 +1,13 @@
 # Thunder Bowl 2026 valuation and VBD discrepancy audit
 
-- Pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019` (716 players; as of 2026-08-10T03:30:19.000Z)
+- Pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1` (716 players; as of 2026-08-10T03:30:19.000Z)
 - FBG August 8 weekly coverage: 604/716 ({"QB":78,"RB":115,"WR":209,"TE":127,"K":43,"DST":32})
 - FBG auction-value coverage: 400/716 (supplied ranks 1-400)
 - Candidate projection coverage: 416/716
 - FBG weekly rows with at least one negative projected week: 148/604
 - FBG Draft Dominator configuration compatibility: **MISMATCH** (23 settings)
 - Starter-baseline VBD formula mismatches: 0/716
-- Legacy player-identity curve repairs of at least $3: 0/716
+- Legacy player-identity curve repairs of at least $3: 2/716
 - Players whose starter/replacement classification reverses against every available external source: 1/716
 
 ## Systemic findings
@@ -69,9 +69,10 @@ Point totals have systematic level differences, but VBD subtracts a same-positio
 | MARKET_RANK_VS_MFL_12 | 46 |
 | CANDIDATE_MODEL_OUTLIER | 37 |
 | TEAM_CONFLICT_FBG | 15 |
-| BENCH_DEMAND_VALUE | 6 |
+| BENCH_DEMAND_VALUE | 5 |
 | FBG_LATEST_ZERO | 4 |
 | PRIMARY_OUTSIDE_CONSENSUS | 3 |
+| LEGACY_CURVE_IDENTITY_REPAIR | 2 |
 | MARKET_RANK_VS_FBG_12 | 2 |
 | STARTER_VBD_SOURCE_DISAGREEMENT | 1 |
 
@@ -116,7 +117,7 @@ These are the source differences most capable of changing VBD rather than merely
 
 | Player | Pos | Thunder VBD | CBS VBD | FantasyPros VBD | Market | Max | Flags |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Blake Grupe | K | -19.6 | 16.0 | - | $1 | $1 | PROJECTION_SOURCE_RANGE_50|STARTER_VBD_SOURCE_DISAGREEMENT |
+| Blake Grupe | K | -20.1 | 16.0 | - | $1 | $1 | PROJECTION_SOURCE_RANGE_50|STARTER_VBD_SOURCE_DISAGREEMENT |
 
 ## Investigated high-variance cases
 
@@ -134,42 +135,42 @@ These are the source differences most capable of changing VBD rather than merely
 
 | Player | Pos | VBD | Market | Max | FBG raw $ | Market/FBG pos rank | MFL mixed-budget AAV | Market/MFL pos rank | Flags |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| Justin Joly | TE | -152.0 | $1 | $1 | $1 | 101/71 | $4.03 | 101/22 | MARKET_RANK_VS_MFL_12 |
-| Oscar Delp | TE | -150.2 | $1 | $1 | $1 | 99/57 | $3.63 | 99/24 | MARKET_RANK_VS_MFL_12 |
-| Jonah Coleman | RB | -162.4 | $1 | $1 | $1 | 83/67 | $14.95 | 83/18 | MARKET_RANK_VS_MFL_12 |
-| Max Klare | TE | -143.0 | $1 | $1 | $1 | 73/48 | $6.42 | 73/12 | MARKET_RANK_VS_MFL_12 |
-| Omar Cooper Jr. | WR | -91.4 | $1 | $1 | $1 | 70/66 | $14.75 | 70/17 | MARKET_RANK_VS_MFL_12 |
-| KC Concepcion | WR | -71.4 | $1 | $1 | $1 | 57/52 | $20.64 | 57/7 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Makai Lemon | WR | -58.9 | $1 | $1 | $1 | 50/53 | $27.20 | 50/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Jordyn Tyson | WR | -42.7 | $1 | $1 | $1 | 45/43 | $31.59 | 45/2 | MARKET_RANK_VS_MFL_12 |
-| Eli Raridon | TE | -130.2 | $1 | $1 | $1 | 58/59 | $4.97 | 58/18 | MARKET_RANK_VS_MFL_12 |
-| Carnell Tate | WR | -34.7 | $1 | $1 | $2 | 40/31 | $38.62 | 40/1 | MARKET_RANK_VS_MFL_12 |
-| Eli Stowers | TE | -112.8 | $1 | $1 | $1 | 44/43 | $12.37 | 44/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Antonio Williams | WR | -104.6 | $1 | $1 | $1 | 74/99 | $8.58 | 74/35 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
-| Denzel Boston | WR | -87.1 | $1 | $1 | $1 | 67/60 | $10.79 | 67/31 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Drew Allar | QB | -335.9 | $1 | $1 | - | 70/- | $3.82 | 70/34 | MARKET_RANK_VS_MFL_12 |
-| Nate Boerkircher | TE | -136.4 | $1 | $1 | $1 | 65/68 | $2.01 | 65/35 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Fernando Mendoza | QB | -166.1 | $1 | $1 | - | 31/- | $35.27 | 31/1 | PROJECTION_SOURCE_RANGE_50|PRIMARY_OUTSIDE_CONSENSUS|MARKET_RANK_VS_MFL_12 |
-| Luther Burden III | WR | 2.0 | $7 | $5 | $5 | 23/20 | $5.46 | 23/52 | MARKET_RANK_VS_MFL_12 |
-| Jadarian Price | RB | -12.2 | $7 | $4 | $6 | 30/27 | $36.55 | 30/2 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Ty Simpson | QB | -317.0 | $1 | $1 | - | 36/- | $12.98 | 36/8 | MARKET_RANK_VS_MFL_12 |
-| Bucky Irving | RB | 27.3 | $12 | $9 | $10 | 20/22 | $6.21 | 20/41 | MARKET_RANK_VS_MFL_12 |
-| Emeka Egbuka | WR | 12.2 | $9 | $8 | $6 | 18/18 | $8.24 | 18/38 | MARKET_RANK_VS_MFL_12 |
-| Kenyon Sadiq | TE | -42.0 | $1 | $1 | $1 | 22/17 | $17.17 | 22/2 | MARKET_RANK_VS_MFL_12 |
-| Dalton Schultz | TE | -26.1 | $1 | $1 | $1 | 19/23 | $1.85 | 19/38 | MARKET_RANK_VS_MFL_12 |
-| Tetairoa McMillan | WR | 11.5 | $9 | $7 | $5 | 19/19 | $8.29 | 19/37 | MARKET_RANK_VS_MFL_12 |
-| Rashee Rice | WR | 58.8 | $18 | $21 | $10 | 7/11 | $12.07 | 7/24 | PROJECTION_SOURCE_RANGE_50|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
-| Ladd McConkey | WR | 3.6 | $8 | $6 | $6 | 22/17 | $8.13 | 22/39 | MARKET_RANK_VS_MFL_12 |
-| De'Von Achane | RB | 97.8 | $24 | $34 | $25 | 5/10 | $12.14 | 5/21 | MARKET_RANK_VS_MFL_12 |
-| Evan Engram | TE | -62.8 | $1 | $1 | $1 | 28/31 | $1.08 | 28/44 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Jameson Williams | WR | 4.0 | $8 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
-| Malik Nabers | WR | 19.3 | $10 | $9 | $3 | 16/22 | $10.87 | 16/30 | CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
+| Justin Joly | TE | -152.7 | $1 | $1 | $1 | 101/71 | $4.03 | 101/22 | MARKET_RANK_VS_MFL_12 |
+| Oscar Delp | TE | -150.9 | $1 | $1 | $1 | 99/57 | $3.63 | 99/24 | MARKET_RANK_VS_MFL_12 |
+| Jonah Coleman | RB | -163.3 | $1 | $1 | $1 | 83/67 | $14.95 | 83/18 | MARKET_RANK_VS_MFL_12 |
+| Max Klare | TE | -143.7 | $1 | $1 | $1 | 73/48 | $6.42 | 73/12 | MARKET_RANK_VS_MFL_12 |
+| Omar Cooper Jr. | WR | -92.1 | $1 | $1 | $1 | 70/66 | $14.75 | 70/17 | MARKET_RANK_VS_MFL_12 |
+| KC Concepcion | WR | -70.7 | $1 | $1 | $1 | 57/52 | $20.64 | 57/7 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Makai Lemon | WR | -58.6 | $1 | $1 | $1 | 50/53 | $27.20 | 50/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Jordyn Tyson | WR | -42.4 | $1 | $1 | $1 | 45/43 | $31.59 | 45/2 | MARKET_RANK_VS_MFL_12 |
+| Eli Raridon | TE | -130.9 | $1 | $1 | $1 | 58/59 | $4.97 | 58/18 | MARKET_RANK_VS_MFL_12 |
+| Carnell Tate | WR | -34.5 | $1 | $1 | $2 | 40/31 | $38.62 | 40/1 | MARKET_RANK_VS_MFL_12 |
+| Eli Stowers | TE | -113.4 | $1 | $1 | $1 | 44/43 | $12.37 | 44/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Antonio Williams | WR | -104.2 | $1 | $1 | $1 | 74/99 | $8.58 | 74/35 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
+| Denzel Boston | WR | -86.5 | $1 | $1 | $1 | 67/60 | $10.79 | 67/31 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Drew Allar | QB | -336.8 | $1 | $1 | - | 70/- | $3.82 | 70/34 | MARKET_RANK_VS_MFL_12 |
+| Nate Boerkircher | TE | -137.0 | $1 | $1 | $1 | 65/68 | $2.01 | 65/35 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Fernando Mendoza | QB | -167.2 | $1 | $1 | - | 31/- | $35.27 | 31/1 | PROJECTION_SOURCE_RANGE_50|PRIMARY_OUTSIDE_CONSENSUS|MARKET_RANK_VS_MFL_12 |
+| Luther Burden III | WR | 3.2 | $7 | $5 | $5 | 23/20 | $5.46 | 23/52 | MARKET_RANK_VS_MFL_12 |
+| Jadarian Price | RB | -12.1 | $7 | $4 | $6 | 30/27 | $36.55 | 30/2 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Ty Simpson | QB | -317.7 | $1 | $1 | - | 36/- | $12.98 | 36/8 | MARKET_RANK_VS_MFL_12 |
+| Bucky Irving | RB | 24.3 | $12 | $8 | $10 | 20/22 | $6.21 | 20/41 | MARKET_RANK_VS_MFL_12 |
+| Emeka Egbuka | WR | 12.2 | $9 | $7 | $6 | 18/18 | $8.24 | 18/38 | MARKET_RANK_VS_MFL_12 |
+| Kenyon Sadiq | TE | -43.0 | $1 | $1 | $1 | 22/17 | $17.17 | 22/2 | MARKET_RANK_VS_MFL_12 |
+| Dalton Schultz | TE | -26.8 | $1 | $1 | $1 | 19/23 | $1.85 | 19/38 | MARKET_RANK_VS_MFL_12 |
+| Tetairoa McMillan | WR | 12.6 | $9 | $8 | $5 | 19/19 | $8.29 | 19/37 | MARKET_RANK_VS_MFL_12 |
+| Ladd McConkey | WR | 6.6 | $8 | $6 | $6 | 22/17 | $8.13 | 22/39 | MARKET_RANK_VS_MFL_12 |
+| De'Von Achane | RB | 98.1 | $24 | $34 | $25 | 5/10 | $12.14 | 5/21 | MARKET_RANK_VS_MFL_12 |
+| Rashee Rice | WR | 55.8 | $17 | $18 | $10 | 8/11 | $12.07 | 8/24 | PROJECTION_SOURCE_RANGE_50|CANDIDATE_MODEL_OUTLIER|LEGACY_CURVE_IDENTITY_REPAIR|MARKET_RANK_VS_MFL_12 |
+| Evan Engram | TE | -63.2 | $1 | $1 | $1 | 28/31 | $1.08 | 28/44 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Jameson Williams | WR | 5.0 | $8 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
+| Malik Nabers | WR | 16.3 | $10 | $9 | $3 | 16/22 | $10.87 | 16/30 | CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
 
 ## Runtime invariants checked
 
 - Historical-demand market values were computed for all 716 players.
 - Starter-count VBD was independently recomputed for every player; mismatches: 0.
-- Runtime market and bid curves are monotone within position; material legacy identity repairs: 0.
+- Runtime market and bid curves are monotone within position; material legacy identity repairs: 2.
 - Initial expected auction purchases: 144.
 - Demand-only auction allocation reconciles: $1212 / $1212.
 - Bid authority: `classic_starter_vbd_control`.

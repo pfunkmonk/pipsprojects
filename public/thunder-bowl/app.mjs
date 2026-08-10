@@ -15,7 +15,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260810c";
+} from "./state-engine.mjs?v=20260810d";
 import {
   appendEvents,
   getMeta,
@@ -83,13 +83,15 @@ import {
   humanRehearsalStatus,
 } from "./human-rehearsal.mjs?v=20260805g";
 import {
+  applyPriorityVbdOverlay,
+  BASELINE_PRIORITY_SCENARIO,
   buildPriorityVbdOverlay,
   DEFAULT_PRIORITY_SCENARIO,
   PRIORITY_EDGE_POLICY,
   RECOMMENDED_PRIORITY_SCENARIO,
   priorityProjection,
   validatePriorityScenario,
-} from "./priority-weights.mjs?v=20260809d";
+} from "./priority-weights.mjs?v=20260810b";
 import {
   cloneDefaultLeagueSetup2026,
   deriveLeagueScheduleContext,
@@ -121,7 +123,7 @@ const STATUS_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const NEWS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RESEARCH_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 const MORNING_INTELLIGENCE_SCHEMA_VERSION = 1;
-const PRIORITY_POLICY_VERSION = 2;
+const PRIORITY_POLICY_VERSION = 3;
 const LATEST_PACK_URL = REPLAY_2025 ? "/api/thunder-bowl/replay-2025/pack" : "/api/thunder-bowl/pack";
 const LIVE_STATUS_URL = "/api/thunder-bowl/status";
 const LIVE_NEWS_URL = "/api/thunder-bowl/news";
@@ -228,6 +230,7 @@ let priorityScenario = DEFAULT_PRIORITY_SCENARIO;
 let priorityControlsDirty = false;
 let leagueSetup = null;
 let priorityVbdOverlay = {};
+let valuationPack = null;
 let cbsRosterSnapshot = null;
 let cbsRosterChanges = null;
 let humanRehearsalEvidence = null;
@@ -416,6 +419,7 @@ function currentWeeklyContext() {
 function rebuildPriorityVbdOverlay() {
   if (!draftPack) return null;
   priorityVbdOverlay = buildPriorityVbdOverlay(draftPack.players, priorityScenario, currentWeeklyContext());
+  valuationPack = applyPriorityVbdOverlay(draftPack, priorityVbdOverlay);
   return priorityVbdOverlay;
 }
 
@@ -430,7 +434,7 @@ function priorityVbdFor(player) {
 }
 
 function computeLiveMarket() {
-  return calculateAuctionDemandMarket(draftPack, draftState);
+  return calculateAuctionDemandMarket(valuationPack || draftPack, draftState);
 }
 
 function livePlayerValues(player) {
@@ -494,9 +498,19 @@ function priorityForPlayer(player) {
   return priorityProjection(player, priorityScenario, currentWeeklyContext());
 }
 
+function scheduleEvidenceForPlayer(player) {
+  if (!player) return "No schedule evidence available";
+  const base = String(player.sos || "Baseline only")
+    .replace("; 2026 league schedule loaded; division/playoff value effect pending historical gate", "");
+  const adjustment = priorityVbdFor(player);
+  if (priorityScenario.mode !== "live") return `${base}; schedule weighting is off.`;
+  if (!adjustment.available) return `${base}; no schedule adjustment because complete weekly timing is unavailable.`;
+  return `${base}; live schedule adjustment ${signed(adjustment.vbdDelta)} VBD (1.20× division / 1.50× playoffs, 35% authority, ±3 cap).`;
+}
+
 function priorityScenarioFromControls() {
   return validatePriorityScenario({
-    mode: byId("priority-experimental-mode").checked ? "experimental" : "baseline",
+    mode: byId("priority-experimental-mode").checked ? "live" : "baseline",
     baseline: byId("priority-baseline-weight").value,
     division: byId("priority-division-weight").value,
     playoffs: byId("priority-playoff-weight").value,
@@ -504,7 +518,7 @@ function priorityScenarioFromControls() {
 }
 
 function syncPriorityControls() {
-  byId("priority-experimental-mode").checked = priorityScenario.mode === "experimental";
+  byId("priority-experimental-mode").checked = priorityScenario.mode === "live";
   byId("priority-baseline-weight").value = priorityScenario.baseline.toFixed(2);
   byId("priority-division-weight").value = priorityScenario.division.toFixed(2);
   byId("priority-playoff-weight").value = priorityScenario.playoffs.toFixed(2);
@@ -522,7 +536,7 @@ function renderPrioritySettings() {
   ];
   controls.forEach((control) => { control.disabled = !context; });
   byId("priority-context-status").textContent = context
-    ? priorityScenario.mode === "experimental" ? "Loaded · held candidate visible" : "Loaded · baseline active"
+    ? priorityScenario.mode === "live" ? "Loaded · bounded adjustment live" : "Loaded · adjustment off"
     : REPLAY_2025 ? "Not used in replay" : "Not loaded";
   byId("priority-context-coverage").textContent = context
     ? `${context.coveredPlayers}/${draftPack.players.length} players · ${(context.top168Coverage * 100).toFixed(1)}% of auction top 168`
@@ -828,14 +842,14 @@ function makePlayerCell(player) {
     chip.textContent = `Max $${annotation.personalMax}`;
     personal.append(chip);
   }
-  if (priorityScenario.mode === "experimental") {
+  if (priorityScenario.mode === "live") {
     const priority = priorityForPlayer(player);
     const priorityVbd = priorityVbdFor(player);
     const chip = document.createElement("span");
     if (priority.available) {
       chip.className = `mini-personal-chip ${priorityVbd.vbdDelta >= 0 ? "priority-positive" : "priority-negative"}`;
-      chip.textContent = `Test ${signed(priorityVbd.vbdDelta)}`;
-      chip.title = `Held schedule candidate ${signed(priorityVbd.vbdDelta)} VBD; no live value effect after the time-forward gate failed`;
+      chip.textContent = `Schedule ${signed(priorityVbd.vbdDelta)}`;
+      chip.title = `Live replacement-relative schedule adjustment: ${signed(priorityVbd.vbdDelta)} VBD (35% authority, capped at ±3)`;
     } else {
       chip.className = "mini-personal-chip";
       chip.textContent = "P n/a";
@@ -874,7 +888,7 @@ function renderPlayerPool() {
     row.dataset.playerId = player.id;
     row.append(
       makePlayerCell(player),
-      numberCell(signed(player.vbd), player.vbd > 0 ? "positive" : ""),
+      numberCell(signed(priorityVbdFor(player).adjustedVbd), priorityVbdFor(player).adjustedVbd > 0 ? "positive" : ""),
       numberCell(currency(live.marketValue), "gold"),
       numberCell(
         annotation?.tag === "avoid" ? "AVOID" : currency(effectivePlayerBidLimit(player)),
@@ -907,8 +921,10 @@ function renderProjectionSources(player) {
   const premiumSources = sources.filter((source) => ["Footballguys", "CBS", "FantasyPros"].includes(source.source));
   const blendWeights = projectionSourceWeights(premiumSources.map((source) => source.source));
   byId("projection-evidence-rule").textContent = liveConsensus
-    ? "Accuracy-weighted consensus drives value"
-    : "Only “primary” drives value";
+    ? priorityScenario.mode === "live"
+      ? "Consensus drives the base · bounded schedule timing adjusts VBD"
+      : "Accuracy-weighted consensus drives value"
+    : priorityScenario.mode === "live" ? "Primary drives the base · bounded schedule timing adjusts VBD" : "Only “primary” drives value";
   for (const source of sources) {
     const delta = primary && source !== primary ? source.points - primary.points : null;
     const item = document.createElement("li");
@@ -920,7 +936,7 @@ function renderProjectionSources(player) {
     badge.textContent = liveConsensus && blendWeights[source.source]
       ? `BLEND ${(blendWeights[source.source] * 100).toFixed(1)}%`
       : source.modelEffect === "primary_projection"
-        ? "PRIMARY · DRIVES VBD"
+        ? priorityScenario.mode === "live" ? "PRIMARY · BASE PROJECTION" : "PRIMARY · DRIVES VBD"
         : source.role === "supplemental" ? "NO VALUE EFFECT" : source.role.toUpperCase();
     heading.append(name, badge);
     const points = document.createElement("b");
@@ -1195,7 +1211,7 @@ function renderPlayerIntel() {
   byId("player-intel-meta").textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier}`;
   byId("intel-model-max").textContent = currency(live.maxBid);
   byId("intel-market").textContent = currency(live.marketValue);
-  byId("intel-vbd").textContent = signed(player.vbd);
+  byId("intel-vbd").textContent = signed(priorityVbdFor(player).adjustedVbd);
   byId("intel-projected").textContent = Number(player.projectedPoints).toFixed(1);
   byId("intel-injury").textContent = liveInjuryEvidence(player);
   byId("intel-injury-detail").textContent = liveAvailabilityDetails(player);
@@ -1205,7 +1221,7 @@ function renderPlayerIntel() {
       ? `Live refresh unavailable · ${liveStatusError}`
       : "Saved draft-pack evidence; no newer player status mapped";
   byId("intel-depth-role").textContent = liveDepthRoleEvidence(player);
-  byId("intel-sos").textContent = player.sos || "No schedule evidence available";
+  byId("intel-sos").textContent = scheduleEvidenceForPlayer(player);
   byId("intel-rank").textContent = `Tier ${player.tier} · ${player.position}${player.sourceRank}`;
   const newestSource = (player.projectionSources || []).map((source) => source.asOf).sort().at(-1);
   byId("intel-source-date").textContent = newestSource ? dateTime(newestSource) : dateTime(draftPack.asOf);
@@ -1371,7 +1387,7 @@ function auctionForecastForState(player, state, market, forecastEvents, telemetr
     state,
     player,
     liveMarketValue: market.valuesByPlayerId[player.id] ?? player.marketValue,
-    packPlayers: draftPack.players,
+    packPlayers: (valuationPack || draftPack).players,
     baselineValuesByPlayerId: market.baselineValuesByPlayerId,
     marketValuesByPlayerId: market.valuesByPlayerId,
     events: forecastEvents,
@@ -1394,7 +1410,7 @@ function attachForecastsForSales(saleEventIds) {
     if (!player) continue;
     const priorEvents = events.slice(0, saleIndex);
     const priorState = replayDraft(priorEvents);
-    const priorMarket = calculateAuctionDemandMarket(draftPack, priorState);
+    const priorMarket = calculateAuctionDemandMarket(valuationPack || draftPack, priorState);
     const priorTelemetry = reconcileAuctionTelemetryStore(auctionTelemetry, {
       events: priorEvents,
       teamIds: priorState.config.teams.map((team) => team.id),
@@ -1692,27 +1708,27 @@ function renderSelectedPlayer() {
     : player ? "No lower-tier alternative remains in the current position pool. Display-only evidence; no value authority." : "Dynamic pool evidence only; it never changes VBD, prices, or bid limits.";
   const priority = player ? priorityForPlayer(player) : null;
   const priorityCard = byId("selected-priority-card");
-  priorityCard.classList.toggle("is-experimental", priorityScenario.mode === "experimental");
+  priorityCard.classList.toggle("is-experimental", priorityScenario.mode === "live");
   if (!player) {
     byId("selected-priority").textContent = "Baseline —";
     byId("selected-priority-detail").textContent = "Select a player to inspect weekly timing.";
-  } else if (priorityScenario.mode !== "experimental") {
+  } else if (priorityScenario.mode !== "live") {
     byId("selected-priority").textContent = `Baseline ${player.projectedPoints.toFixed(1)}`;
-    byId("selected-priority-detail").textContent = "Experimental weighting is off; authoritative VBD and bid limits remain unchanged.";
+    byId("selected-priority-detail").textContent = "Schedule weighting is off; VBD and live prices use the unweighted projection.";
   } else if (!priority.available) {
     byId("selected-priority").textContent = "No weekly context";
-    byId("selected-priority-detail").textContent = `Baseline ${player.projectedPoints.toFixed(1)} remains authoritative; no adjustment was invented.`;
+    byId("selected-priority-detail").textContent = `Baseline ${player.projectedPoints.toFixed(1)} remains authoritative because complete weekly evidence is unavailable.`;
   } else {
-    byId("selected-priority").textContent = `${priority.projectedPoints.toFixed(1)} (${signed(priority.delta)})`;
+    byId("selected-priority").textContent = `Week-weighted ${priority.projectedPoints.toFixed(1)}`;
     const scheduleVbd = priorityVbdFor(player);
-    byId("selected-priority-detail").textContent = `Held candidate ${signed(scheduleVbd.vbdDelta)} VBD · ordinary ${priorityScenario.baseline.toFixed(2)}× · division ${priorityScenario.division.toFixed(2)}× · playoffs ${priorityScenario.playoffs.toFixed(2)}× · 2018-2025 time-forward gate failed, so VBD, prices, keepers, and bids stay unchanged.`;
+    byId("selected-priority-detail").textContent = `Live ${signed(scheduleVbd.vbdDelta)} VBD · ordinary ${priorityScenario.baseline.toFixed(2)}× · division ${priorityScenario.division.toFixed(2)}× · playoffs ${priorityScenario.playoffs.toFixed(2)}× · 35% historical timing authority · ±3 VBD safety cap · Week 18 excluded.`;
   }
-  byId("selected-vbd").textContent = player ? signed(player.vbd) : "—";
+  byId("selected-vbd").textContent = player ? signed(priorityVbdFor(player).adjustedVbd) : "—";
   byId("selected-rank").textContent = player ? `${player.position}${player.sourceRank}` : "—";
   const injuryEvidence = byId("selected-injury");
   injuryEvidence.textContent = liveInjuryEvidence(player);
   injuryEvidence.classList.toggle("evidence-alert", injuryEvidence.textContent.startsWith("Sleeper"));
-  byId("selected-sos").textContent = player?.sos || "—";
+  byId("selected-sos").textContent = player ? scheduleEvidenceForPlayer(player) : "—";
   byId("selected-notes").textContent = annotation?.note
     ? `Your note: ${annotation.note} · Pack: ${player?.notes || "No additional pack note."}`
     : player?.notes || "Player evidence and decision notes appear here.";
@@ -1780,7 +1796,7 @@ function renderPackStatus() {
     byId("pack-warning-title").textContent = illustrative ? "Illustrative values only." : "Current practice pack.";
     byId("pack-warning-copy").textContent = illustrative
       ? "The interface is live; the displayed player projections and prices are placeholders until the approved 2026 draft pack is imported."
-      : "The accuracy-weighted Footballguys, CBS, and FantasyPros consensus now drives VBD. The 2026 division schedule is loaded and visible, but its small matchup modifier stays display-only until it passes the historical promotion gate. Values remain provisional until the final keeper, injury, and source refreshes pass.";
+      : "The accuracy-weighted Footballguys, CBS, and FantasyPros consensus drives VBD. Validated 1.20× division and 1.50× playoff timing is live at 35% authority with a hard ±3 VBD cap. This release candidate is ready for practice; the only planned model-data replacement is next week's final projection refresh.";
     }
   }
   const packChip = byId("pack-status");
@@ -3119,7 +3135,7 @@ function renderAll() {
   replayKeeperSandbox();
   rebuildPriorityVbdOverlay();
   liveMarket = computeLiveMarket();
-  keeperScenario = calculateKeeperScenarioValues(draftPack, keeperWorkspaceState());
+  keeperScenario = calculateKeeperScenarioValues(valuationPack || draftPack, keeperWorkspaceState());
   keeperBoardRows = buildKeeperBoard(keeperScenarioPack(), { declaredKeeperIds: activeDeclaredKeeperIds() });
   renderMetrics();
   renderPlayerPool();
@@ -4676,7 +4692,7 @@ function bindInteractions() {
     byId("priority-playoff-weight").value = RECOMMENDED_PRIORITY_SCENARIO.playoffs.toFixed(2);
     byId("priority-experimental-mode").checked = true;
     priorityControlsDirty = true;
-    setStatus(byId("priority-settings-status"), "Recommended 1.20 division / 1.40 playoff importance is staged as a held what-if. It will not alter live values unless a future backtest passes.");
+    setStatus(byId("priority-settings-status"), "Validated 1.20 division / 1.50 playoff weights are staged. Save to recalculate VBD, prices, keeper comparisons, and bid guidance.");
   });
   for (const controlId of ["priority-experimental-mode", "priority-baseline-weight", "priority-division-weight", "priority-playoff-weight"]) {
     byId(controlId).addEventListener("input", () => { priorityControlsDirty = true; });
@@ -4686,17 +4702,17 @@ function bindInteractions() {
       const next = priorityScenarioFromControls();
       await savePriorityScenario(
         next,
-        next.mode === "experimental"
-          ? `Held schedule candidate visible: ordinary ${next.baseline.toFixed(2)}×, division ${next.division.toFixed(2)}×, playoffs ${next.playoffs.toFixed(2)}×. The failed historical gate prevents any VBD, price, keeper, or bid effect.`
-          : "Baseline saved. The schedule what-if is hidden and all live values remain the unweighted pack.",
+        next.mode === "live"
+          ? `Live schedule weighting saved: ordinary ${next.baseline.toFixed(2)}×, division ${next.division.toFixed(2)}×, playoffs ${next.playoffs.toFixed(2)}×. VBD, prices, keeper comparisons, and bid guidance recalculated.`
+          : "Schedule weighting is off. VBD and live prices now use the unweighted projection.",
       );
     } catch (error) {
       setStatus(byId("priority-settings-status"), errorMessage(error), true);
     }
   });
   byId("priority-reset").addEventListener("click", () => void savePriorityScenario(
-    DEFAULT_PRIORITY_SCENARIO,
-    "Reset to baseline 1.00 / 1.00 / 1.00. Live values were already protected by the failed historical gate; no draft event changed.",
+    BASELINE_PRIORITY_SCENARIO,
+    "Schedule weighting turned off: 1.00 / 1.00 / 1.00. VBD and live prices recalculated from the unweighted projection.",
   ));
   byId("draft-pack-file").addEventListener("change", (event) => void importDraftPack(event.target.files?.[0]));
   byId("recovery-file").addEventListener("change", (event) => void importRecovery(event.target.files?.[0]));
@@ -4854,7 +4870,7 @@ async function bootstrap() {
       priorityScenario = DEFAULT_PRIORITY_SCENARIO;
       await setMeta("priorityWeightScenario", priorityScenario);
     }
-    if (!draftPack.weeklyContext) priorityScenario = DEFAULT_PRIORITY_SCENARIO;
+    if (!draftPack.weeklyContext) priorityScenario = BASELINE_PRIORITY_SCENARIO;
     if (!REPLAY_2025) {
       const savedCbsSnapshot = await getMeta("cbsRosterSnapshot");
       if (savedCbsSnapshot) {

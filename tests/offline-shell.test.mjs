@@ -154,26 +154,28 @@ test("primary pages implement keyboard-roving tabs and reduced-motion safety", (
   assert.match(appCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("the Admin screen exposes annual schedule setup and a historically gated VBD lab", () => {
+test("the Admin screen exposes annual schedule setup and bounded live schedule VBD", () => {
   assert.match(indexHtml, /Schedule and division gate/);
   assert.match(indexHtml, /id="schedule-division-weeks"/);
   assert.match(indexHtml, /id="league-setup-form"/);
   assert.match(indexHtml, /All-play · no H2H/);
   assert.match(indexHtml, /Download setup backup/);
-  assert.match(indexHtml, /Schedule-adjusted VBD lab/);
+  assert.match(indexHtml, /Schedule-adjusted VBD/);
   assert.match(indexHtml, /id="priority-experimental-mode"/);
-  assert.match(indexHtml, /Use recommended 1\.20 \/ 1\.40/);
-  assert.match(indexHtml, /25% of the preseason signal/);
-  assert.match(indexHtml, /caps at ±3 VBD/);
-  assert.match(indexHtml, /time-forward test failed/);
-  assert.match(indexHtml, /cannot change VBD, prices, keeper comparisons, or bids/);
+  assert.match(indexHtml, /Use validated 1\.20 \/ 1\.50/);
+  assert.match(indexHtml, /only 35% of the replacement-relative edge receives authority/);
+  assert.match(indexHtml, /hard ±3 VBD cap/);
+  assert.match(indexHtml, /150,000 league simulations/);
   assert.match(appSource, /effectiveScheduleContext\(\)/);
   assert.match(appSource, /validateLeagueSetup/);
   assert.match(appSource, /setMeta\("leagueSetup", leagueSetup\)/);
   assert.match(appSource, /setMeta\("priorityWeightScenario", priorityScenario\)/);
   assert.match(appSource, /buildPriorityVbdOverlay/);
-  assert.match(appSource, /calculateAuctionDemandMarket\(draftPack, draftState\)/);
-  assert.match(appSource, /failed historical gate prevents any VBD, price, keeper, or bid effect/);
+  assert.match(appSource, /calculateAuctionDemandMarket\(valuationPack \|\| draftPack, draftState\)/);
+  assert.match(appSource, /applyPriorityVbdOverlay/);
+  assert.match(appSource, /Validated 1\.20.* division and 1\.50.* playoff timing is live/);
+  assert.match(appSource, /live schedule adjustment/);
+  assert.doesNotMatch(appSource, /stays display-only until it passes the historical promotion gate/);
   assert.match(appSource, /if \(!priorityControlsDirty\) syncPriorityControls\(\)/);
   assert.match(appSource, /priorityControlsDirty = false/);
   assert.match(serviceWorker, /priority-weights\.mjs\?v=/);
@@ -442,7 +444,7 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
     "keeper-scenario-impact",
     "keeper-fbg-coverage",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
-  assert.match(appSource, /calculateKeeperScenarioValues\(draftPack, keeperWorkspaceState\(\)\)/);
+  assert.match(appSource, /calculateKeeperScenarioValues\(valuationPack \|\| draftPack, keeperWorkspaceState\(\)\)/);
   assert.match(appSource, /keeperWorkspaceMode === "sandbox"/);
   assert.match(appSource, /keeperPredictionSandboxEvents/);
   assert.match(appSource, /Private prediction only; public board unchanged/);
