@@ -746,7 +746,7 @@ function liveInjuryEvidence(player) {
   const live = liveStatusByPlayerId.get(player.id);
   if (live && live.freshness === "fresh" && ["critical", "high", "moderate"].includes(live.severity) && freshStatusDate(live.newsUpdated)) {
     const label = live.injuryStatus || live.status || "status flag";
-    const bodyPart = live.injuryBodyPart ? ` â€” ${live.injuryBodyPart}` : "";
+    const bodyPart = live.injuryBodyPart ? ` — ${live.injuryBodyPart}` : "";
     return `Sleeper live: ${label}${bodyPart} (${live.severity}; updated ${live.newsUpdated.slice(0, 10)}); CBS: ${base}`;
   }
   if (player.injury.startsWith("Sleeper:") && /updated (\d{4}-\d{2}-\d{2})/.test(player.injury)) {

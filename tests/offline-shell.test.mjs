@@ -67,6 +67,12 @@ test("the private draft room can safely switch between auctioneer feed and manua
   assert.match(serviceWorker, /sales-entry-mode\.mjs\?v=/);
 });
 
+test("private command-center source has no visible UTF-8 decoding artifacts", () => {
+  for (const source of [indexHtml, appSource]) {
+    assert.doesNotMatch(source, /â€|â€¦|Â·|Ã—|ï¿½|�/u);
+  }
+});
+
 test("background auctioneer polling never flashes a syncing label", () => {
   assert.doesNotMatch(appSource, /chip\.textContent = "Syncing/);
   assert.match(appSource, /chip\.setAttribute\("aria-busy", "true"\)/);

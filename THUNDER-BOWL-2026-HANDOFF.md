@@ -11,7 +11,7 @@ Updated August 9, 2026. This is the takeover starting point for another develope
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 264/264 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 0 VBD formula mismatches, and 0 legacy identity-curve repairs.
+- Release-candidate verification: 265/265 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 0 VBD formula mismatches, and 0 legacy identity-curve repairs.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
 Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.

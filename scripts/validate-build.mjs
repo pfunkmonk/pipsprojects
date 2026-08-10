@@ -1,9 +1,19 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { replayDraft, toPublicSnapshot, validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname.replace(/^\/(.:)/, "$1"));
+
+async function listTextFiles(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await listTextFiles(path));
+    else if (/\.(?:html|css|mjs|js|json|webmanifest)$/.test(entry.name)) files.push(path);
+  }
+  return files;
+}
 const required = [
   "public/index.html",
   "public/thunder-bowl/index.html",
@@ -81,6 +91,16 @@ const committedText = await Promise.all(
     .filter((file) => /\.(?:html|css|mjs|js|webmanifest)$/.test(file))
     .map((file) => readFile(resolve(root, file), "utf8")),
 );
+const userFacingFiles = [
+  ...await listTextFiles(resolve(root, "public/thunder-bowl")),
+  ...await listTextFiles(resolve(root, "netlify/functions")),
+];
+const commonMojibakeMarkers = ["â€", "â€¦", "Â·", "Ã—", "ï¿½", "�"];
+for (const file of userFacingFiles) {
+  const contents = await readFile(file, "utf8");
+  const marker = commonMojibakeMarkers.find((candidate) => contents.includes(candidate));
+  if (marker) throw new Error(`User-facing source contains a likely UTF-8 decoding artifact (${JSON.stringify(marker)}): ${file}`);
+}
 for (const variable of ["THUNDER_BOWL_ACCESS_CODE", "THUNDER_BOWL_AUCTIONEER_ACCESS_CODE", "THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE", "THUNDER_BOWL_SESSION_SECRET", "THUNDER_BOWL_DISPLAY_TOKEN"]) {
   const secret = process.env[variable];
   if (secret && secret.length >= 6 && committedText.some((text) => text.includes(secret))) {
