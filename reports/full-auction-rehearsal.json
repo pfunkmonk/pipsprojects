@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-full-auction-rehearsal",
-  "generatedAt": "2026-08-09T22:44:20.156Z",
+  "generatedAt": "2026-08-10T02:22:41.076Z",
   "scope": "Deterministic automated state, rule, recovery, and latency rehearsal; not a substitute for a human-paced usability rehearsal.",
   "passed": true,
   "pack": {
@@ -203,22 +203,22 @@
   "offlineReconnect": {
     "canonicalActiveSales": 96,
     "mergedPhysicalEvents": 171,
-    "durationMs": 0.9975
+    "durationMs": 1.1747
   },
   "performance": {
     "incrementalReplay": {
       "samples": 168,
-      "medianMs": 0.218,
-      "p95Ms": 0.4069,
-      "maximumMs": 0.5866
+      "medianMs": 0.2353,
+      "p95Ms": 0.5228,
+      "maximumMs": 0.7555
     },
     "playerSearch": {
       "samples": 80,
-      "medianMs": 0.0184,
+      "medianMs": 0.0173,
       "p95Ms": 0.0334,
-      "maximumMs": 0.0775
+      "maximumMs": 0.155
     },
-    "publicSnapshotMs": 0.2758
+    "publicSnapshotMs": 0.2503
   },
   "checks": {
     "activeSalesExactly168": true,

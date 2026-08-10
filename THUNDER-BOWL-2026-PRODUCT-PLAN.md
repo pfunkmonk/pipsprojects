@@ -113,5 +113,6 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 2. Review source omissions, source disagreement, uncertainty, durability, and availability exceptions before any promotion decision.
 3. Accumulate every 2026 timestamped source forecast, modified forecast, sale outcome, runner-up, and nomination position.
 4. Re-run the projection and price challengers after each rehearsal; publish error and interval-calibration reports.
-5. Rehearse auctioneer-feed failure, manual takeover, Wi-Fi loss, recovery restore, and second-screen board.
-6. Freeze a draft-morning release only after the complete automated and human departure gates pass.
+5. Run the deterministic full-system and catastrophe rehearsals after every authority-bearing pack change. They must cover the complete auction, keeper/cap trades, auctioneer/manual failover, offline divergence, reconnect, recovery restore, latency, and public/private isolation. A physical speaking/projector exercise remains useful but optional and is never falsely certified as automated evidence.
+6. Keeper selection and rights trading begin August 15. When the final projection export arrives, rebuild the accuracy-weighted consensus, apply league scoring, recompute weekly shapes and classic VBD, rerun keeper scarcity and the live auction market, rerank every keeper/trade board, run the valuation/outlier and Monte Carlo audits, and promote only the governed candidate. Every recorded keeper, pass, or trade must then recalculate the remaining auction pool immediately.
+7. Freeze the draft-morning release only after the complete automated gate passes and the user completes the fresh intelligence capture and recovery download.
