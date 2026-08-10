@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260810l" />
+  <link rel="stylesheet" href="./app.css?v=20260810m" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -147,7 +147,7 @@
             <div class="decision-heading">
               <div>
                 <span id="selected-position" class="position-badge">—</span>
-                <h2 id="selected-player-name">Select a player</h2>
+                <h2 id="selected-player-name" class="selected-player-name-line">Select a player</h2>
                 <p id="selected-team-line" class="muted">Search or use the arrow keys.</p>
               </div>
               <div class="decision-badges">
@@ -556,7 +556,7 @@
           <section class="product-panel settings-card morning-intelligence-card" aria-labelledby="morning-intelligence-title">
             <p class="eyebrow">One-button offline lockbox</p>
             <h3 id="morning-intelligence-title">Draft-morning player intelligence</h3>
-            <p>Force a fresh injury, depth-chart, CBS, and RotoWire check, scan every player in the active pack, and seal the complete source snapshots on this laptop. A player with no published story is reported honestly—not treated as missing data or given an invented update.</p>
+            <p>Force a fresh injury, Footballguys news/depth-chart, CBS, and RotoWire check, scan every player in the active pack, and seal the complete source snapshots on this laptop. A player with no published story is reported honestly—not treated as missing data or given an invented update.</p>
             <dl class="settings-facts">
               <div><dt>Last full capture</dt><dd id="morning-intelligence-time">Not captured</dd></div>
               <div><dt>Players scanned</dt><dd id="morning-intelligence-players">0 / 0</dd></div>
@@ -894,6 +894,13 @@
               </div>
               <ul id="intel-cbs-news-list" class="intel-news-list"></ul>
             </div>
+            <div class="intel-news-section">
+              <div class="intel-news-heading">
+                <p class="eyebrow">Footballguys player news</p>
+                <small id="intel-fbg-news-freshness">Saved FBG news unavailable</small>
+              </div>
+              <ul id="intel-fbg-news-list" class="intel-news-list"></ul>
+            </div>
             <div class="intel-depth-section">
               <div class="intel-news-heading">
                 <p class="eyebrow">Footballguys depth chart</p>
@@ -904,9 +911,9 @@
             <div class="intel-research-links" aria-label="Player research controls">
               <button id="intel-news-link" class="button button-secondary" type="button">Refresh latest news</button>
               <button id="intel-cbs-link" class="button button-secondary" type="button">Refresh CBS news</button>
-              <button id="intel-fbg-link" class="button button-secondary" type="button">Refresh FBG depth chart</button>
+              <button id="intel-fbg-link" class="button button-secondary" type="button">Refresh FBG news &amp; depth</button>
             </div>
-            <p class="intel-source-caveat">All three refresh controls stay inside Thunder Bowl. RotoWire RSS headlines and summaries, CBS headlines and summaries, and Footballguys depth order are embedded without model authority; opening an individual source article remains optional. Saved evidence remains usable without Wi-Fi and never silently changes VBD or your prices.</p>
+            <p class="intel-source-caveat">All three refresh controls stay inside Thunder Bowl. RotoWire, CBS, and Footballguys headlines and summaries—including Footballguys View analysis—plus Footballguys depth order are embedded without model authority; opening an individual source article remains optional. Saved evidence remains usable without Wi-Fi and never silently changes VBD or your prices.</p>
           </section>
 
           <section class="intel-personal" aria-labelledby="intel-personal-title">
@@ -936,6 +943,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260810l"></script>
+  <script type="module" src="./app.mjs?v=20260810m"></script>
 </body>
 </html>

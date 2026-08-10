@@ -2,11 +2,12 @@ import { getStore } from "@netlify/blobs";
 import { createHash } from "node:crypto";
 
 const STORE_NAME = "thunder-bowl-2026-research";
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const CACHE_MINUTES = 30;
 const CBS_ARCHIVE_WINDOW_DAYS = 45;
 const CBS_ARCHIVE_MAX_ITEMS = 1_500;
 export const FBG_DEPTH_URL = "https://www.footballguys.com/depth-charts";
+export const FBG_NEWS_URL = "https://www.footballguys.com/news.php?pos=sp";
 export const CBS_NEWS_URLS = ["QB", "RB", "WR", "TE", "K"].map((position) => `https://www.cbssports.com/fantasy/football/players/news/${position}/`);
 
 function store() {
@@ -80,6 +81,39 @@ export function parseFootballguysDepthChart(html) {
   return { updatedText, teams: teams.size, entries };
 }
 
+export function parseFootballguysNews(html) {
+  if (typeof html !== "string" || !/<title>Latest News(?:\s*-\s*Footballguys)?<\/title>/i.test(html) || !/<b>\s*Footballguys view\s*<\/b>/i.test(html) || !/<a name="\d+"><\/a>/i.test(html)) {
+    throw new Error("Footballguys news response failed its page contract.");
+  }
+  const items = [];
+  for (const match of html.matchAll(/<a name="(\d+)"><\/a>([\s\S]*?)(?=<hr\s*\/?>\s*<p\s*\/?>)/gi)) {
+    const anchorId = match[1];
+    const block = match[2];
+    const titleMatch = block.match(/<span[^>]*font-size\s*:\s*18px[^>]*>([\s\S]*?)<\/span>/i);
+    if (!titleMatch) continue;
+    const title = decodeHtml(titleMatch[1]);
+    const afterTitle = block.slice((titleMatch.index || 0) + titleMatch[0].length);
+    const publishedText = decodeHtml(afterTitle.match(/^([\s\S]*?)<p>/i)?.[1]);
+    const description = decodeHtml(afterTitle.match(/<p>(?!\s*<table)([\s\S]*?)<\/p>/i)?.[1]).slice(0, 1_600);
+    const footballguysView = decodeHtml(block.match(/<b>\s*Footballguys view\s*<\/b>\s*:\s*([\s\S]*?)<\/td>/i)?.[1]).slice(0, 1_600);
+    const playerNames = [...block.matchAll(/<a href="https:\/\/(?:www\.)?footballguys\.com\/player\/[^"]+"[^>]*>([\s\S]*?)\s+player page<\/a>/gi)]
+      .map((playerMatch) => decodeHtml(playerMatch[1]))
+      .filter(Boolean);
+    if (!title || title.length > 240 || !description || !publishedText) continue;
+    items.push({
+      id: `fbg-${anchorId}`,
+      playerNames: [...new Set(playerNames)],
+      title,
+      description,
+      footballguysView,
+      publishedText,
+      url: `${FBG_NEWS_URL}#${anchorId}`,
+    });
+  }
+  if (items.length < 10 || items.length > 100) throw new Error(`Footballguys news response has unexpected item coverage (${items.length}).`);
+  return items;
+}
+
 export function parseCbsPlayerNews(html, position) {
   if (typeof html !== "string" || !/id="playerNewsContent"/i.test(html) || !/NFL Player News/i.test(html)) {
     throw new Error(`CBS ${position} player-news response failed its page contract.`);
@@ -115,8 +149,16 @@ export function parseCbsPlayerNews(html, position) {
 }
 
 export function mergeCbsNewsArchive(currentItems, priorItems = [], capturedAt = new Date().toISOString()) {
+  return mergeResearchNewsArchive(currentItems, priorItems, capturedAt, CBS_ARCHIVE_MAX_ITEMS);
+}
+
+export function mergeFootballguysNewsArchive(currentItems, priorItems = [], capturedAt = new Date().toISOString()) {
+  return mergeResearchNewsArchive(currentItems, priorItems, capturedAt, CBS_ARCHIVE_MAX_ITEMS);
+}
+
+function mergeResearchNewsArchive(currentItems, priorItems, capturedAt, maxItems) {
   const capturedTimestamp = Date.parse(capturedAt);
-  if (!Number.isFinite(capturedTimestamp) || !Array.isArray(currentItems) || !Array.isArray(priorItems)) throw new Error("CBS news archive input is invalid.");
+  if (!Number.isFinite(capturedTimestamp) || !Array.isArray(currentItems) || !Array.isArray(priorItems)) throw new Error("Research news archive input is invalid.");
   const oldestAllowed = capturedTimestamp - CBS_ARCHIVE_WINDOW_DAYS * 86_400_000;
   const priorById = new Map(priorItems.map((item) => [item.id, item]));
   const merged = new Map();
@@ -135,19 +177,27 @@ export function mergeCbsNewsArchive(currentItems, priorItems = [], capturedAt = 
     merged.set(item.id, item);
   }
   return [...merged.values()]
-    .sort((left, right) => Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt) || left.playerName.localeCompare(right.playerName))
-    .slice(0, CBS_ARCHIVE_MAX_ITEMS);
+    .sort((left, right) => {
+      const recency = Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt);
+      if (recency) return recency;
+      const leftLabel = left.playerName || left.playerNames?.[0] || left.title || left.id;
+      const rightLabel = right.playerName || right.playerNames?.[0] || right.title || right.id;
+      return String(leftLabel).localeCompare(String(rightLabel));
+    })
+    .slice(0, maxItems);
 }
 
-export function buildResearchSnapshot({ fbgHtml, cbsPages, priorSnapshot = null }, capturedAt = new Date().toISOString()) {
-  if (!Number.isFinite(Date.parse(capturedAt)) || !Array.isArray(cbsPages) || cbsPages.length !== CBS_NEWS_URLS.length) throw new Error("Research snapshot input is incomplete.");
+export function buildResearchSnapshot({ fbgHtml, fbgNewsHtml, cbsPages, priorSnapshot = null }, capturedAt = new Date().toISOString()) {
+  if (!Number.isFinite(Date.parse(capturedAt)) || typeof fbgNewsHtml !== "string" || !Array.isArray(cbsPages) || cbsPages.length !== CBS_NEWS_URLS.length) throw new Error("Research snapshot input is incomplete.");
   const depth = parseFootballguysDepthChart(fbgHtml);
+  const currentFbgNews = parseFootballguysNews(fbgNewsHtml);
+  const archivedFbgNews = mergeFootballguysNewsArchive(currentFbgNews, priorSnapshot?.fbgNews?.items || [], capturedAt);
   const news = cbsPages.flatMap((page, index) => parseCbsPlayerNews(page, ["QB", "RB", "WR", "TE", "K"][index]));
   const currentNews = [...new Map(news.map((item) => [item.id, item])).values()];
   const archivedNews = mergeCbsNewsArchive(currentNews, priorSnapshot?.cbsNews?.items || [], capturedAt);
   return {
     schemaVersion: SCHEMA_VERSION,
-    source: "Footballguys depth charts and CBS Sports player news",
+    source: "Footballguys depth charts and news plus CBS Sports player news",
     authority: "supplemental role and news evidence; no value effect",
     capturedAt,
     refreshMinutes: CACHE_MINUTES,
@@ -159,6 +209,15 @@ export function buildResearchSnapshot({ fbgHtml, cbsPages, priorSnapshot = null 
       teamCount: depth.teams,
       rawSha256: createHash("sha256").update(fbgHtml).digest("hex"),
       entries: depth.entries,
+    },
+    fbgNews: {
+      source: "Footballguys Latest News",
+      sourceUrl: FBG_NEWS_URL,
+      rawSha256: createHash("sha256").update(fbgNewsHtml).digest("hex"),
+      archiveWindowDays: CBS_ARCHIVE_WINDOW_DAYS,
+      currentItemCount: currentFbgNews.length,
+      archiveItemCount: archivedFbgNews.length,
+      items: archivedFbgNews,
     },
     cbsNews: {
       source: "CBS Sports NFL Player News",
@@ -175,17 +234,22 @@ export function buildResearchSnapshot({ fbgHtml, cbsPages, priorSnapshot = null 
 export function validateResearchSnapshot(value) {
   if (!value || value.schemaVersion !== SCHEMA_VERSION || value.modelEffect !== "none" || value.refreshMinutes !== CACHE_MINUTES || !Number.isFinite(Date.parse(value.capturedAt))) throw new Error("Research snapshot failed its source contract.");
   if (value.depthChart?.sourceUrl !== FBG_DEPTH_URL || value.depthChart?.teamCount !== 32 || !/^[a-f0-9]{64}$/.test(value.depthChart?.rawSha256 || "") || !Array.isArray(value.depthChart?.entries) || value.depthChart.entries.length < 400) throw new Error("Research depth-chart provenance is invalid.");
+  if (value.fbgNews?.sourceUrl !== FBG_NEWS_URL || !/^[a-f0-9]{64}$/.test(value.fbgNews?.rawSha256 || "") || value.fbgNews?.archiveWindowDays !== CBS_ARCHIVE_WINDOW_DAYS || !Number.isSafeInteger(value.fbgNews?.currentItemCount) || value.fbgNews.currentItemCount < 10 || !Number.isSafeInteger(value.fbgNews?.archiveItemCount) || value.fbgNews.archiveItemCount !== value.fbgNews?.items?.length || value.fbgNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.fbgNews?.items)) throw new Error("Research Footballguys-news provenance is invalid.");
   if (!Array.isArray(value.cbsNews?.sourceUrls) || value.cbsNews.sourceUrls.join("|") !== CBS_NEWS_URLS.join("|") || !/^[a-f0-9]{64}$/.test(value.cbsNews?.rawSha256 || "") || value.cbsNews?.archiveWindowDays !== CBS_ARCHIVE_WINDOW_DAYS || !Number.isSafeInteger(value.cbsNews?.currentItemCount) || value.cbsNews.currentItemCount < 1 || !Number.isSafeInteger(value.cbsNews?.archiveItemCount) || value.cbsNews.archiveItemCount !== value.cbsNews?.items?.length || value.cbsNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.cbsNews?.items)) throw new Error("Research CBS-news provenance is invalid.");
   for (const entry of value.depthChart.entries) {
     if (!entry.playerName || !entry.nflTeam || !["QB", "RB", "WR", "TE", "K"].includes(entry.position) || !Number.isInteger(entry.depthOrder) || entry.depthOrder < 1) throw new Error("Research depth-chart entry is invalid.");
     safeUrl(entry.url, ["footballguys.com", "www.footballguys.com"]);
+  }
+  for (const item of value.fbgNews.items) {
+    if (!item.id || !Array.isArray(item.playerNames) || item.playerNames.some((name) => typeof name !== "string" || !name || name.length > 120) || !item.title || !item.description || typeof item.footballguysView !== "string" || !item.publishedText || !Number.isFinite(Date.parse(item.firstSeenAt)) || !Number.isFinite(Date.parse(item.lastSeenAt))) throw new Error("Research Footballguys-news item is invalid.");
+    safeUrl(item.url, ["footballguys.com", "www.footballguys.com"]);
   }
   for (const item of value.cbsNews.items) {
     if (!item.id || !item.playerName || !item.title || !item.description || !item.ageText || !Number.isFinite(Date.parse(item.firstSeenAt)) || !Number.isFinite(Date.parse(item.lastSeenAt))) throw new Error("Research CBS-news item is invalid.");
     safeUrl(item.url, ["cbssports.com", "www.cbssports.com"]);
   }
   for (const forbidden of ["projectedPoints", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
-    if (forbidden in value || value.depthChart.entries.some((entry) => forbidden in entry) || value.cbsNews.items.some((item) => forbidden in item)) throw new Error(`Research snapshot attempted to supply ${forbidden}.`);
+    if (forbidden in value || value.depthChart.entries.some((entry) => forbidden in entry) || value.fbgNews.items.some((item) => forbidden in item) || value.cbsNews.items.some((item) => forbidden in item)) throw new Error(`Research snapshot attempted to supply ${forbidden}.`);
   }
   return value;
 }
@@ -229,12 +293,13 @@ export async function currentResearchSnapshot({ force = false } = {}) {
   try {
     const priorSnapshot = await readStored(latestKey);
     const fbgHtml = await sourceHtml(FBG_DEPTH_URL);
+    const fbgNewsHtml = await sourceHtml(FBG_NEWS_URL);
     const cbsPages = [];
     for (const url of CBS_NEWS_URLS) {
       cbsPages.push(await sourceHtml(url));
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    const snapshot = validateResearchSnapshot(buildResearchSnapshot({ fbgHtml, cbsPages, priorSnapshot }));
+    const snapshot = validateResearchSnapshot(buildResearchSnapshot({ fbgHtml, fbgNewsHtml, cbsPages, priorSnapshot }));
     let winner = snapshot;
     if (force) {
       await store().setJSON(bucketKey, snapshot);

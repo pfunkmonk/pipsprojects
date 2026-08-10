@@ -17,6 +17,6 @@ export default async function handler(request) {
     console.error(`Thunder Bowl internal research refresh failed: ${diagnostic}`);
     const configured = configurationError(error);
     if (configured) return configured;
-    return json({ error: "Footballguys/CBS research refresh failed safely; the saved snapshot remains active.", diagnostic }, 503);
+    return json({ error: "Footballguys news/depth and CBS research refresh failed safely; the saved snapshot remains active.", diagnostic }, 503);
   }
 }

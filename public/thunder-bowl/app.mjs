@@ -133,7 +133,7 @@ const PACK_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 const STATUS_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const NEWS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RESEARCH_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
-const MORNING_INTELLIGENCE_SCHEMA_VERSION = 1;
+const MORNING_INTELLIGENCE_SCHEMA_VERSION = 2;
 const PRIORITY_POLICY_VERSION = 3;
 const LATEST_PACK_URL = REPLAY_2025 ? "/api/thunder-bowl/replay-2025/pack" : "/api/thunder-bowl/pack";
 const LIVE_STATUS_URL = "/api/thunder-bowl/status";
@@ -213,6 +213,7 @@ let newsRefreshTimer = null;
 let newsRefreshInFlight = false;
 let liveNewsSnapshot = null;
 let liveNewsError = null;
+let playerNewsSignals = new Map();
 let researchRefreshTimer = null;
 let researchRefreshInFlight = false;
 let liveResearchSnapshot = null;
@@ -860,10 +861,16 @@ function makePlayerCell(player) {
   button.className = "player-select";
   button.type = "button";
   button.dataset.playerId = player.id;
-  button.setAttribute("aria-label", `Select ${player.name}, ${player.position}, ${player.nflTeam}`);
+  const newsSignal = playerNewsSignal(player);
+  button.setAttribute("aria-label", `Select ${player.name}, ${player.position}, ${player.nflTeam}${newsSignal ? "; saved news available, right-click for the full player record" : ""}`);
+  const nameLine = document.createElement("span");
+  nameLine.className = "player-name-line";
   const name = document.createElement("span");
   name.className = "player-name";
   name.textContent = player.name;
+  nameLine.append(name);
+  const newsAlert = makePlayerNewsAlert(player);
+  if (newsAlert) nameLine.append(newsAlert);
   const meta = document.createElement("span");
   meta.className = "player-meta";
   meta.textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier} · ${shortIntelAge()}`;
@@ -909,7 +916,7 @@ function makePlayerCell(player) {
   heatChip.textContent = heat.label;
   heatChip.title = "Private surplus heat compares the next bid with your effective hard stop.";
   personal.append(heatChip);
-  button.append(name, meta, personal);
+  button.append(nameLine, meta, personal);
   cell.append(button);
   return cell;
 }
@@ -1126,13 +1133,14 @@ function canonicalResearchTeam(value) {
 }
 
 function validateResearchSnapshot(input) {
-  if (!input || input.schemaVersion !== 2 || input.modelEffect !== "none" || !Number.isFinite(Date.parse(input.capturedAt)) || input.refreshMinutes !== 30) {
+  if (!input || input.schemaVersion !== 3 || input.modelEffect !== "none" || !Number.isFinite(Date.parse(input.capturedAt)) || input.refreshMinutes !== 30) {
     throw new Error("The FBG/CBS research response failed its source contract.");
   }
   if (input.depthChart?.source !== "Footballguys Depth Charts" || input.depthChart?.teamCount !== 32 || !Array.isArray(input.depthChart?.entries) || input.depthChart.entries.length < 400) {
     throw new Error("The Footballguys depth-chart response failed coverage validation.");
   }
   if (input.cbsNews?.source !== "CBS Sports NFL Player News" || input.cbsNews?.archiveWindowDays !== 45 || !Number.isSafeInteger(input.cbsNews?.currentItemCount) || input.cbsNews.currentItemCount < 1 || !Number.isSafeInteger(input.cbsNews?.archiveItemCount) || input.cbsNews.archiveItemCount !== input.cbsNews?.items?.length || !Array.isArray(input.cbsNews?.items)) throw new Error("The CBS player-news response failed coverage validation.");
+  if (input.fbgNews?.source !== "Footballguys Latest News" || input.fbgNews?.archiveWindowDays !== 45 || !Number.isSafeInteger(input.fbgNews?.currentItemCount) || input.fbgNews.currentItemCount < 10 || !Number.isSafeInteger(input.fbgNews?.archiveItemCount) || input.fbgNews.archiveItemCount !== input.fbgNews?.items?.length || !Array.isArray(input.fbgNews?.items)) throw new Error("The Footballguys player-news response failed coverage validation.");
   for (const entry of input.depthChart.entries) {
     if (!entry.playerName || !entry.nflTeam || !["QB", "RB", "WR", "TE", "K"].includes(entry.position) || !Number.isSafeInteger(entry.depthOrder) || entry.depthOrder < 1 || new URL(entry.url).hostname.replace(/^www\./, "") !== "footballguys.com") {
       throw new Error("The Footballguys depth-chart response contains an invalid player entry.");
@@ -1141,8 +1149,11 @@ function validateResearchSnapshot(input) {
   for (const item of input.cbsNews.items) {
     if (!item.id || !item.playerName || !item.title || !item.description || !item.ageText || !Number.isFinite(Date.parse(item.firstSeenAt)) || !Number.isFinite(Date.parse(item.lastSeenAt)) || new URL(item.url).hostname.replace(/^www\./, "") !== "cbssports.com") throw new Error("The CBS player-news response contains an invalid item.");
   }
+  for (const item of input.fbgNews.items) {
+    if (!item.id || !Array.isArray(item.playerNames) || !item.title || !item.description || typeof item.footballguysView !== "string" || !item.publishedText || !Number.isFinite(Date.parse(item.firstSeenAt)) || !Number.isFinite(Date.parse(item.lastSeenAt)) || new URL(item.url).hostname.replace(/^www\./, "") !== "footballguys.com") throw new Error("The Footballguys player-news response contains an invalid item.");
+  }
   for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
-    if (forbidden in input || input.depthChart.entries.some((entry) => forbidden in entry) || input.cbsNews.items.some((item) => forbidden in item)) throw new Error(`The internal research response attempted to supply forbidden value field ${forbidden}.`);
+    if (forbidden in input || input.depthChart.entries.some((entry) => forbidden in entry) || input.fbgNews.items.some((item) => forbidden in item) || input.cbsNews.items.some((item) => forbidden in item)) throw new Error(`The internal research response attempted to supply forbidden value field ${forbidden}.`);
   }
   return input;
 }
@@ -1201,6 +1212,50 @@ function renderIntelCbsNews(player) {
   }
 }
 
+function renderIntelFbgNews(player) {
+  const list = byId("intel-fbg-news-list");
+  const freshness = byId("intel-fbg-news-freshness");
+  list.replaceChildren();
+  const items = playerFbgNewsItems(player);
+  freshness.textContent = liveResearchSnapshot
+    ? `FBG archive checked ${dateTime(liveResearchSnapshot.capturedAt)} · ${liveResearchSnapshot.fbgNews.archiveItemCount} saved item${liveResearchSnapshot.fbgNews.archiveItemCount === 1 ? "" : "s"}${liveResearchSnapshot.staleFallback ? " · saved fallback" : ""}`
+    : liveResearchError ? "FBG refresh unavailable · saved evidence remains" : "FBG snapshot not downloaded";
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.className = "intel-news-empty";
+    empty.textContent = liveResearchSnapshot
+      ? `The saved Footballguys archive has no item naming ${player.name}. Refresh FBG news & depth to check again inside Thunder Bowl.`
+      : `No saved Footballguys item is available for ${player.name}.`;
+    list.append(empty);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = item.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    const title = document.createElement("strong");
+    title.textContent = item.title;
+    const published = document.createElement("time");
+    published.textContent = item.publishedText;
+    link.append(title, published);
+    const description = document.createElement("p");
+    description.textContent = item.description;
+    row.append(link, description);
+    if (item.footballguysView) {
+      const view = document.createElement("p");
+      view.className = "intel-fbg-view";
+      view.textContent = `Footballguys view: ${item.footballguysView}`;
+      row.append(view);
+    }
+    const source = document.createElement("small");
+    source.textContent = "Footballguys Latest News · saved for offline use · no value effect";
+    row.append(source);
+    list.append(row);
+  }
+}
+
 function renderIntelFbgDepth(player) {
   const container = byId("intel-fbg-depth");
   const freshness = byId("intel-fbg-depth-freshness");
@@ -1212,7 +1267,7 @@ function renderIntelFbgDepth(player) {
   if (!selected) {
     container.textContent = liveResearchSnapshot
       ? `${player.name} is not matched on Footballguys' current ${canonicalResearchTeam(player.nflTeam)} ${player.position} depth chart.`
-      : "Select Refresh FBG depth chart to download the current chart inside Thunder Bowl.";
+      : "Select Refresh FBG news & depth to download the current chart inside Thunder Bowl.";
     return;
   }
   const summary = document.createElement("strong");
@@ -1287,6 +1342,7 @@ function renderPlayerIntel() {
   renderIntelProjectionSources(player);
   renderIntelNews(player);
   renderIntelCbsNews(player);
+  renderIntelFbgNews(player);
   renderIntelFbgDepth(player);
   playerIntelForm.querySelector(`input[name="playerTag"][value="${annotation.tag}"]`).checked = true;
   byId("intel-steal-price").value = annotation.stealPrice ?? "";
@@ -1346,26 +1402,26 @@ async function refreshResearchInApp(kind) {
   const player = draftPack?.players.find((row) => row.id === intelPlayerId);
   const isCbs = kind === "cbs";
   const button = byId(isCbs ? "intel-cbs-link" : "intel-fbg-link");
-  const idleLabel = isCbs ? "Refresh CBS news" : "Refresh FBG depth chart";
+  const idleLabel = isCbs ? "Refresh CBS news" : "Refresh FBG news & depth";
   if (!player) return;
   if (REPLAY_2025) {
     renderPlayerIntel();
-    setStatus(byId("player-intel-status"), `Historical replay keeps current-season ${isCbs ? "CBS news" : "Footballguys depth charts"} disabled to avoid hindsight. No page was opened.`);
+    setStatus(byId("player-intel-status"), `Historical replay keeps current-season ${isCbs ? "CBS news" : "Footballguys news and depth charts"} disabled to avoid hindsight. No page was opened.`);
     return;
   }
   if (!navigator.onLine) {
     renderPlayerIntel();
-    setStatus(byId("player-intel-status"), `Offline: showing the saved in-app ${isCbs ? "CBS news" : "Footballguys depth chart"}. No page was opened.`);
+    setStatus(byId("player-intel-status"), `Offline: showing the saved in-app ${isCbs ? "CBS news" : "Footballguys news and depth chart"}. No page was opened.`);
     return;
   }
   button.disabled = true;
   button.textContent = isCbs ? "Checking CBS…" : "Checking FBG…";
-  setStatus(byId("player-intel-status"), `Downloading current ${isCbs ? "CBS player news" : "Footballguys depth-chart evidence"} inside Thunder Bowl…`);
+  setStatus(byId("player-intel-status"), `Downloading current ${isCbs ? "CBS player news" : "Footballguys news and depth-chart evidence"} inside Thunder Bowl…`);
   try {
     await refreshLiveResearch();
     renderPlayerIntel();
     if (liveResearchError) {
-      setStatus(byId("player-intel-status"), `${isCbs ? "CBS news" : "FBG depth-chart"} refresh failed safely: ${liveResearchError}. Saved in-app evidence remains visible.`, true);
+      setStatus(byId("player-intel-status"), `${isCbs ? "CBS news" : "FBG news/depth"} refresh failed safely: ${liveResearchError}. Saved in-app evidence remains visible.`, true);
       return;
     }
     if (isCbs) {
@@ -1375,9 +1431,11 @@ async function refreshResearchInApp(kind) {
         : `CBS was refreshed, but its current ${player.position} pages have no item naming ${player.name}. You stayed inside Thunder Bowl.`);
     } else {
       const { selected } = playerFbgDepth(player);
-      setStatus(byId("player-intel-status"), selected
-        ? `Footballguys now lists ${player.name} as ${selected.position}${selected.depthOrder}${selected.starter ? " and a starter" : ""}. You stayed inside Thunder Bowl.`
-        : `Footballguys was refreshed, but ${player.name} is not matched on the current team depth chart. You stayed inside Thunder Bowl.`);
+      const count = playerFbgNewsItems(player).length;
+      const depthText = selected
+        ? `lists him as ${selected.position}${selected.depthOrder}${selected.starter ? " and a starter" : ""}`
+        : "has no matched depth-chart row";
+      setStatus(byId("player-intel-status"), `Footballguys ${depthText}; ${count} saved news item${count === 1 ? "" : "s"} shown. You stayed inside Thunder Bowl.`);
     }
   } finally {
     button.disabled = false;
@@ -1737,6 +1795,52 @@ function renderOpponentPressure(player, liveMarketValue, available = true, suppl
   }
 }
 
+function playerFbgNewsItems(player, snapshot = liveResearchSnapshot) {
+  if (!player || !snapshot) return [];
+  const name = normalizedNewsText(player.name);
+  return snapshot.fbgNews.items
+    .filter((item) => item.playerNames.some((playerName) => normalizedNewsText(playerName) === name)
+      || normalizedNewsText(`${item.title} ${item.description} ${item.footballguysView}`).includes(name))
+    .slice(0, 3);
+}
+
+function rebuildPlayerNewsSignals() {
+  const next = new Map();
+  if (!draftPack) {
+    playerNewsSignals = next;
+    return;
+  }
+  for (const player of draftPack.players) {
+    const sources = [];
+    if (playerNewsItems(player).length) sources.push("RotoWire");
+    if (playerCbsNewsItems(player).length) sources.push("CBS");
+    if (playerFbgNewsItems(player).length) sources.push("Footballguys");
+    if (sources.length) next.set(player.id, { sources });
+  }
+  playerNewsSignals = next;
+}
+
+function playerNewsSignal(player) {
+  return player ? playerNewsSignals.get(player.id) || null : null;
+}
+
+function makePlayerNewsAlert(player) {
+  const signal = playerNewsSignal(player);
+  if (!signal) return null;
+  const badge = document.createElement("span");
+  badge.className = "player-news-alert";
+  badge.textContent = "!";
+  badge.title = `Saved player news available from ${signal.sources.join(" and ")} — right-click for the full player record.`;
+  badge.setAttribute("aria-hidden", "true");
+  return badge;
+}
+
+function renderPlayerNewsSignalSurfaces() {
+  if (!draftPack || appView.hidden) return;
+  renderPlayerPool();
+  renderSelectedPlayer();
+}
+
 function positionRunSales() {
   const playerById = new Map(draftPack.players.map((player) => [player.id, player]));
   return activeSaleEvents().flatMap((sale) => {
@@ -1999,7 +2103,15 @@ function renderSelectedPlayer() {
   const available = player && !draftState.draftedPlayers[player.id];
   byId("selected-availability").textContent = available ? "Available" : "Unavailable";
   byId("selected-position").textContent = player ? `${player.position} · Tier ${player.tier}` : "—";
-  byId("selected-player-name").textContent = player?.name || "Select a player";
+  const selectedName = byId("selected-player-name");
+  selectedName.textContent = player?.name || "Select a player";
+  const selectedNewsAlert = makePlayerNewsAlert(player);
+  if (selectedNewsAlert) {
+    selectedName.append(selectedNewsAlert);
+    selectedName.setAttribute("aria-label", `${player.name}; saved news available, right-click for the full player record`);
+  } else {
+    selectedName.removeAttribute("aria-label");
+  }
   byId("selected-team-line").textContent = player ? `${player.nflTeam} · Source rank ${player.sourceRank} · ${shortIntelAge()}` : "Search or use the arrow keys.";
   const dogsMaximum = draftState.teams["dogs-of-war"]?.legalMaxBid ?? 0;
   const live = player ? livePlayerValues(player) : null;
@@ -4200,6 +4312,8 @@ function validateLiveNewsSnapshot(input) {
 function applyLiveNewsSnapshot(snapshot) {
   liveNewsError = null;
   liveNewsSnapshot = snapshot;
+  rebuildPlayerNewsSignals();
+  renderPlayerNewsSignalSurfaces();
   if (playerIntelDialog.open && intelPlayerId) renderPlayerIntel();
 }
 
@@ -4256,6 +4370,8 @@ async function refreshLiveNews({ force = false } = {}) {
 function applyLiveResearchSnapshot(snapshot) {
   liveResearchError = null;
   liveResearchSnapshot = snapshot;
+  rebuildPlayerNewsSignals();
+  renderPlayerNewsSignalSurfaces();
   if (playerIntelDialog.open && intelPlayerId) renderPlayerIntel();
 }
 
@@ -4372,6 +4488,7 @@ function morningPlayerCoverage(statusSnapshot, newsSnapshot, researchSnapshot) {
     const fbgDepth = depthEligible && Boolean(playerFbgDepth(player, researchSnapshot).selected);
     const cbsItems = cbsByName.get(normalizedName) || 0;
     const rotowireItems = newsSnapshot.items.filter((item) => normalizedNewsText(`${item.title} ${item.description}`).includes(normalizedName)).length;
+    const fbgItems = playerFbgNewsItems(player, researchSnapshot).length;
     return {
       playerId: player.id,
       playerName: player.name,
@@ -4382,6 +4499,7 @@ function morningPlayerCoverage(statusSnapshot, newsSnapshot, researchSnapshot) {
       fbgDepth,
       cbsItems,
       rotowireItems,
+      fbgItems,
     };
   });
   return {
@@ -4393,9 +4511,11 @@ function morningPlayerCoverage(statusSnapshot, newsSnapshot, researchSnapshot) {
       fbgDepthMatchedPlayers: rows.filter((row) => row.fbgDepth).length,
       cbsPlayersWithNews: rows.filter((row) => row.cbsItems > 0).length,
       rotowirePlayersWithNews: rows.filter((row) => row.rotowireItems > 0).length,
-      playersWithAnyNews: rows.filter((row) => row.cbsItems > 0 || row.rotowireItems > 0).length,
+      fbgPlayersWithNews: rows.filter((row) => row.fbgItems > 0).length,
+      playersWithAnyNews: rows.filter((row) => row.cbsItems > 0 || row.rotowireItems > 0 || row.fbgItems > 0).length,
       cbsArchiveItems: researchSnapshot.cbsNews.archiveItemCount,
       rotowireArchiveItems: newsSnapshot.archiveItemCount,
+      fbgArchiveItems: researchSnapshot.fbgNews.archiveItemCount,
     },
   };
 }
@@ -4413,7 +4533,7 @@ function validateMorningIntelligenceSnapshot(input) {
   const knownIds = new Set(draftPack.players.map((player) => player.id));
   const coverageIds = new Set();
   for (const row of input.playerCoverage) {
-    if (!row || !knownIds.has(row.playerId) || coverageIds.has(row.playerId) || !Number.isSafeInteger(row.cbsItems) || row.cbsItems < 0 || !Number.isSafeInteger(row.rotowireItems) || row.rotowireItems < 0) throw new Error("The draft-morning intelligence lockbox contains invalid player coverage.");
+    if (!row || !knownIds.has(row.playerId) || coverageIds.has(row.playerId) || !Number.isSafeInteger(row.cbsItems) || row.cbsItems < 0 || !Number.isSafeInteger(row.rotowireItems) || row.rotowireItems < 0 || !Number.isSafeInteger(row.fbgItems) || row.fbgItems < 0) throw new Error("The draft-morning intelligence lockbox contains invalid player coverage.");
     coverageIds.add(row.playerId);
   }
   for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
@@ -4453,7 +4573,7 @@ function renderMorningIntelligenceStatus() {
   byId("morning-intelligence-players").textContent = snapshot ? `${snapshot.coverage.playersScanned} / ${draftPack.players.length}` : `0 / ${draftPack?.players?.length || 0}`;
   byId("morning-intelligence-status-coverage").textContent = snapshot ? `${snapshot.coverage.statusMatchedPlayers} matched` : "—";
   byId("morning-intelligence-depth").textContent = snapshot ? `${snapshot.coverage.fbgDepthMatchedPlayers} / ${snapshot.coverage.depthEligiblePlayers} eligible` : "—";
-  byId("morning-intelligence-news").textContent = snapshot ? `${snapshot.coverage.playersWithAnyNews} players · ${snapshot.coverage.cbsArchiveItems + snapshot.coverage.rotowireArchiveItems} saved items` : "—";
+  byId("morning-intelligence-news").textContent = snapshot ? `${snapshot.coverage.playersWithAnyNews} players · ${snapshot.coverage.cbsArchiveItems + snapshot.coverage.rotowireArchiveItems + snapshot.coverage.fbgArchiveItems} saved items` : "—";
   byId("export-morning-intelligence").disabled = !snapshot;
 }
 
@@ -4480,7 +4600,7 @@ async function captureMorningIntelligence() {
   morningIntelligenceInFlight = true;
   button.disabled = true;
   button.textContent = "Scanning every player…";
-  setStatus(status, `Refreshing injury status, Footballguys depth charts, CBS news, and RotoWire news before scanning all ${draftPack.players.length} players…`);
+  setStatus(status, `Refreshing injury status, Footballguys news/depth charts, CBS news, and RotoWire news before scanning all ${draftPack.players.length} players…`);
   try {
     await waitForIntelligenceRefreshes();
     await Promise.all([
@@ -4496,7 +4616,7 @@ async function captureMorningIntelligence() {
     const stale = morningIntelligenceSnapshot.staleSources.length
       ? ` Saved fallbacks were required for ${morningIntelligenceSnapshot.staleSources.join(", ")}; retry while online before leaving.`
       : " All source captures are current and available offline.";
-    setStatus(status, `Scanned ${coverage.playersScanned} players. Stored ${coverage.cbsArchiveItems} CBS and ${coverage.rotowireArchiveItems} RotoWire items; ${coverage.fbgDepthMatchedPlayers} of ${coverage.depthEligiblePlayers} eligible players matched Footballguys.${stale}`, morningIntelligenceSnapshot.staleSources.length > 0);
+    setStatus(status, `Scanned ${coverage.playersScanned} players. Stored ${coverage.fbgArchiveItems} FBG, ${coverage.cbsArchiveItems} CBS, and ${coverage.rotowireArchiveItems} RotoWire items; ${coverage.fbgDepthMatchedPlayers} of ${coverage.depthEligiblePlayers} eligible players matched Footballguys depth charts.${stale}`, morningIntelligenceSnapshot.staleSources.length > 0);
   } catch (error) {
     setStatus(status, `Morning intelligence capture failed safely: ${errorMessage(error)} The previous lockbox remains intact.`, true);
   } finally {
@@ -4895,6 +5015,7 @@ async function applyDraftPack(nextPack, status) {
       await commitLocalEvents(replacements, "League configuration replaced by the validated draft pack.");
     }
     draftPack = nextPack;
+    rebuildPlayerNewsSignals();
     loadPlayerAnnotations();
     await setMeta("draftPack", draftPack);
     await ensureReplayFirstRoundKeepers();

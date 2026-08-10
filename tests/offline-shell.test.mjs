@@ -329,7 +329,7 @@ test("private personal decisions have a validated same-season Mac transfer path 
 
 test("player intelligence embeds source-linked news with a separate offline-safe value firewall", () => {
   assert.match(indexHtml, /id="intel-news-list"/);
-  assert.match(indexHtml, /RotoWire RSS headlines and summaries/);
+  assert.match(indexHtml, /RotoWire, CBS, and Footballguys headlines and summaries/);
   assert.match(indexHtml, /<button id="intel-news-link"[^>]*type="button"[^>]*>Refresh latest news<\/button>/);
   assert.doesNotMatch(indexHtml, /<a id="intel-news-link"/);
   assert.match(appSource, /NEWS_REFRESH_INTERVAL_MS = 10 \* 60 \* 1000/);
@@ -342,12 +342,12 @@ test("player intelligence embeds source-linked news with a separate offline-safe
   assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshLiveNews/);
 });
 
-test("Footballguys depth charts and CBS news refresh and render internally without Google search", () => {
-  for (const id of ["intel-cbs-news-list", "intel-cbs-news-freshness", "intel-fbg-depth", "intel-fbg-depth-freshness"]) {
+test("Footballguys news/depth charts and CBS news refresh and render internally without Google search", () => {
+  for (const id of ["intel-cbs-news-list", "intel-cbs-news-freshness", "intel-fbg-news-list", "intel-fbg-news-freshness", "intel-fbg-depth", "intel-fbg-depth-freshness"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   }
   assert.match(indexHtml, /<button id="intel-cbs-link"[^>]*>Refresh CBS news<\/button>/);
-  assert.match(indexHtml, /<button id="intel-fbg-link"[^>]*>Refresh FBG depth chart<\/button>/);
+  assert.match(indexHtml, /<button id="intel-fbg-link"[^>]*>Refresh FBG news &amp; depth<\/button>/);
   assert.doesNotMatch(indexHtml, /<a id="intel-(?:cbs|fbg)-link"/);
   assert.match(appSource, /\/api\/thunder-bowl\/research/);
   assert.match(appSource, /validateResearchSnapshot/);
@@ -409,6 +409,19 @@ test("automatic rehearsal is pack-pinned while the physical checklist remains op
   assert.match(readinessSource, /AUTOMATED_REHEARSAL_EVIDENCE/);
   assert.match(serviceWorker, /human-rehearsal\.mjs\?v=/);
   assert.match(serviceWorker, /automated-rehearsal-evidence\.mjs\?v=/);
+});
+
+test("validated Footballguys, CBS, or RotoWire news adds a dynamic evidence-only player warning badge", () => {
+  assert.match(indexHtml, /id="selected-player-name" class="selected-player-name-line"/);
+  assert.match(appCss, /\.player-news-alert \{[\s\S]*background: #c52d27;[\s\S]*color: #fff;/);
+  assert.match(appSource, /function rebuildPlayerNewsSignals\(\)/);
+  assert.match(appSource, /if \(playerNewsItems\(player\)\.length\) sources\.push\("RotoWire"\)/);
+  assert.match(appSource, /if \(playerCbsNewsItems\(player\)\.length\) sources\.push\("CBS"\)/);
+  assert.match(appSource, /if \(playerFbgNewsItems\(player\)\.length\) sources\.push\("Footballguys"\)/);
+  assert.match(appSource, /saved news available, right-click for the full player record/);
+  assert.match(appSource, /function applyLiveNewsSnapshot[\s\S]*rebuildPlayerNewsSignals\(\);[\s\S]*renderPlayerNewsSignalSurfaces\(\);/);
+  assert.match(appSource, /function applyLiveResearchSnapshot[\s\S]*rebuildPlayerNewsSignals\(\);[\s\S]*renderPlayerNewsSignalSurfaces\(\);/);
+  assert.doesNotMatch(appSource, /playerNewsSignals\.(?:set|get)[^\n]*(?:vbd|marketValue|maxBid|projectedPoints)/i);
 });
 
 test("practice reset requires an exact phrase and sends the current ledger generation", () => {

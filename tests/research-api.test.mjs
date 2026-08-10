@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CBS_NEWS_URLS,
+  FBG_NEWS_URL,
   buildResearchSnapshot,
   mergeCbsNewsArchive,
+  mergeFootballguysNewsArchive,
+  parseFootballguysNews,
   parseCbsPlayerNews,
   parseFootballguysDepthChart,
   researchCacheKeys,
@@ -28,6 +31,11 @@ function cbsFixture(position, playerName = "Chase Brown") {
   return `<!doctype html><title>NFL Player News</title><h1>NFL Player News</h1><ul id="playerNewsContent"><li><div class="row"><div class="players-annotated"><p><a href="/nfl/players/1/${playerName.toLowerCase().replaceAll(" ", "-")}/fantasy/">${playerName}</a> <span> ${position} | CIN</span></p></div><div class="player-news-desc"><time class="eyebrow">12H ago</time><h4><a href="/fantasy/football/news/${position.toLowerCase()}-update/">Bengals' ${playerName}: Working with starters</a></h4><span class="byline">By RotoWire Staff</span><div class="latest-updates"><p>${playerName} worked with the first unit Tuesday.</p></div></div></div></li></ul>`;
 }
 
+function fbgNewsFixture(playerName = "Chase Brown") {
+  const stories = Array.from({ length: 12 }, (_, index) => `<a name="${1372500 + index}"></a><a href="news.php?team=cin"><img src="team.svg" /></a><span style="color:#4A8432; font-size:18px">Bengals | ${playerName} update ${index + 1}</span>&nbsp;&nbsp;Mon Aug 10, 0${index % 9}:30 PM<p>Cincinnati Bengals RB ${playerName} worked with the first unit.</p><p><table class="data"><tr><td class="la"><b>Footballguys view</b>: ${playerName} remains a useful fantasy option.</td></tr></table></p><a href="https://example.com/story">Link to story</a><br /><a href="https://www.footballguys.com/player/${playerName.replaceAll(" ", "+")}/TestId" target="_blank">${playerName} player page</a><br /><hr /><p />`).join("");
+  return `<!doctype html><title>Latest News - Footballguys</title><b>Footballguys view</b>${stories}`;
+}
+
 test("Footballguys parser captures all teams, fantasy depth order, starter, and status", () => {
   const parsed = parseFootballguysDepthChart(fbgFixture());
   assert.equal(parsed.teams, 32);
@@ -35,6 +43,15 @@ test("Footballguys parser captures all teams, fantasy depth order, starter, and 
   assert.equal(parsed.updatedText, "last updated August 4 2026");
   const arizonaStarter = parsed.entries.find((entry) => entry.playerName === "ARI RB Player 1");
   assert.deepEqual({ order: arizonaStarter.depthOrder, starter: arizonaStarter.starter, status: arizonaStarter.status }, { order: 1, starter: true, status: "Q" });
+});
+
+test("Footballguys news parser preserves player identity, summary, and Footballguys View", () => {
+  const parsed = parseFootballguysNews(fbgNewsFixture());
+  assert.equal(parsed.length, 12);
+  assert.deepEqual(parsed[0].playerNames, ["Chase Brown"]);
+  assert.match(parsed[0].description, /first unit/);
+  assert.match(parsed[0].footballguysView, /useful fantasy option/);
+  assert.equal(new URL(parsed[0].url).origin + new URL(parsed[0].url).pathname + new URL(parsed[0].url).search, FBG_NEWS_URL);
 });
 
 test("CBS parser preserves internal summaries and optional source links", () => {
@@ -46,11 +63,12 @@ test("CBS parser preserves internal summaries and optional source links", () => 
 });
 
 test("combined research snapshot is cached, provenance-complete, and value neutral", () => {
-  const snapshot = buildResearchSnapshot({ fbgHtml: fbgFixture(), cbsPages: ["QB", "RB", "WR", "TE", "K"].map((position) => cbsFixture(position, `${position} Example`)) }, "2026-08-04T20:00:00Z");
+  const snapshot = buildResearchSnapshot({ fbgHtml: fbgFixture(), fbgNewsHtml: fbgNewsFixture(), cbsPages: ["QB", "RB", "WR", "TE", "K"].map((position) => cbsFixture(position, `${position} Example`)) }, "2026-08-04T20:00:00Z");
   assert.equal(validateResearchSnapshot(snapshot), snapshot);
   assert.equal(snapshot.modelEffect, "none");
   assert.equal(snapshot.depthChart.teamCount, 32);
-  assert.equal(snapshot.schemaVersion, 2);
+  assert.equal(snapshot.schemaVersion, 3);
+  assert.equal(snapshot.fbgNews.currentItemCount, 12);
   assert.equal(snapshot.cbsNews.archiveItemCount, 5);
   assert.equal(snapshot.cbsNews.sourceUrls.length, CBS_NEWS_URLS.length);
   assert.deepEqual(researchCacheKeys("2026-08-04T20:01:00Z"), researchCacheKeys("2026-08-04T20:29:59Z"));
@@ -65,6 +83,17 @@ test("CBS news accumulates into a bounded rolling archive instead of forgetting 
   const firstCapture = mergeCbsNewsArchive([first], [], "2026-08-04T20:00:00Z");
   const secondCapture = mergeCbsNewsArchive([second], firstCapture, "2026-08-05T20:00:00Z");
   assert.deepEqual(secondCapture.map((item) => item.playerName), ["James Cook", "Chase Brown"]);
+  assert.equal(secondCapture[1].firstSeenAt, "2026-08-04T20:00:00Z");
+  assert.equal(secondCapture[1].lastSeenAt, "2026-08-04T20:00:00Z");
+});
+
+test("Footballguys news uses the same bounded rolling archive contract", () => {
+  const [first] = parseFootballguysNews(fbgNewsFixture("Chase Brown"));
+  const [second] = parseFootballguysNews(fbgNewsFixture("James Cook"));
+  second.id = "fbg-james-cook-news";
+  const firstCapture = mergeFootballguysNewsArchive([first], [], "2026-08-04T20:00:00Z");
+  const secondCapture = mergeFootballguysNewsArchive([second], firstCapture, "2026-08-05T20:00:00Z");
+  assert.deepEqual(secondCapture.map((item) => item.playerNames[0]), ["James Cook", "Chase Brown"]);
   assert.equal(secondCapture[1].firstSeenAt, "2026-08-04T20:00:00Z");
   assert.equal(secondCapture[1].lastSeenAt, "2026-08-04T20:00:00Z");
 });

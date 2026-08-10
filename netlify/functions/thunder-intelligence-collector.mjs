@@ -12,7 +12,7 @@ export default async function handler() {
     currentNewsSnapshot({ force: true }),
     currentResearchSnapshot({ force: true }),
   ]);
-  const sourceNames = ["Sleeper status", "RotoWire news", "Footballguys/CBS research"];
+  const sourceNames = ["Sleeper status", "RotoWire news", "Footballguys news/depth plus CBS research"];
   const failures = results.flatMap((result, index) => result.status === "rejected"
     ? [{ source: sourceNames[index], diagnostic: result.reason instanceof Error ? result.reason.message : String(result.reason) }]
     : []);
