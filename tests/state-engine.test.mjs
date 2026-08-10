@@ -487,7 +487,7 @@ test("public snapshot contains only public board fields", () => {
   assert.equal(publicState.teams.length, 12);
   assert.equal(publicState.teams.find((team) => team.id === "dogs-of-war").players[0].price, 22);
   const serialized = JSON.stringify(publicState);
-  for (const forbidden of ["projectedPoints", "projectionSources", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "managerProfile", "targetTag"]) {
+  for (const forbidden of ["projectedPoints", "projectionSources", "weeklyProjection", "assetProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "managerProfile", "targetTag"]) {
     assert.equal(serialized.includes(forbidden), false, `public payload leaked ${forbidden}`);
   }
 });

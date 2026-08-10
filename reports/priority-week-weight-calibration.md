@@ -1,6 +1,6 @@
 # Priority-week weight calibration
 
-Generated 2026-08-10T12:05:21.285368+00:00 from 48 archived Thunder Bowl team-seasons and 150,000 common-random-number Monte Carlo trials.
+Generated 2026-08-10T18:41:54.846373+00:00 from 48 archived Thunder Bowl team-seasons and 150,000 common-random-number Monte Carlo trials.
 
 ## Forecast coverage and timing reliability
 

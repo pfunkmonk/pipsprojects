@@ -30,7 +30,7 @@ No individual bug fix is complete until the underlying class of failure is teste
 | Team WTP | Market × shrunk position/affinity × roster need × budget pressure × substitutes × live bounded evidence | Advisory challenger |
 | Sale mechanism | Highest bidder wins near the second-highest WTP + $1 | Advisory challenger |
 | Comparable anchoring | Recent same-position/tier prices and measurable room residuals | Advisory challenger |
-| Position runs | Simple last-two/last-three same-position heuristic; no overfit Hawkes process | Advisory challenger |
+| Position runs | Six-sale decaying frequency + overpay detector; four-sale/two-position minimum; historical continuation precision remains weak, so the HUD shows WATCH while WTP/VBD/Max effect stays zero | Display-only challenger |
 | Remaining-auction simulation | 96 deterministic-seed rollouts that spend cash and fill historical position depth before the target nomination | Advisory challenger |
 | Nomination timing | Read from rollout windows with an explicit wait/availability warning | Advisory challenger |
 | Rational baseline | Roster/legal-cap constrained market baseline; reference only | Advisory reference |
@@ -121,7 +121,8 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - A production intelligence-popout stress test exposed legacy UTF-8 mojibake in command-center labels. Every known artifact was corrected, and the build now recursively rejects common decoding artifacts across public and function sources.
 - The in-app operation guide covers the private command center, keeper sandbox versus official ledger, auctioneer, Draft Board, draft-morning gate, and the real internet-out failover path.
 - The deterministic catastrophe rehearsal is the accepted technical rehearsal evidence. Physical speaking/projector practice is optional and is never falsely certified by automation.
-- The active weekly-asset pack is `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1`. The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage. Final automated counts and rehearsal evidence are refreshed after every authority-bearing release.
+- The active weekly-asset pack is `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1`. The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage. Final automated counts and rehearsal evidence are refreshed after every authority-bearing release.
+- The draft-speed review is implemented: collapsed Live Bid HUD, adjacent Win chance, budget runway, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
 - Draft-day release remains intentionally blocked until the two access codes found in public Git history are rotated in Netlify, the final governed projection pack is promoted, all-player intelligence is freshly captured, and a recovery bundle is downloaded on the MacBook.
 
 ## Near-term sequence

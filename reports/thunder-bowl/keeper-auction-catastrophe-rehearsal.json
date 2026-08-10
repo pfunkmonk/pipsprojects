@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-10T16:28:21.884Z",
+  "generatedAt": "2026-08-10T18:50:11.277Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "d808b236ba49eaead0366bd5fc1eac1a846fd8a2281f2f11fceb0afda54d6e7b",
-    "engineSha256": "bb605e6921a7d0286970d62232f8ed89e35cf8775a5528d9c783754802786557",
-    "scriptSha256": "920dcf44fac92be50d86bc6a159860e405e2b60de7abff090156cfb5b5f0c4e6"
+    "packSha256": "f9a000a34a4c638f7189353f781bc8f20d759775eb54e8e34f916988cac306ee",
+    "engineSha256": "101643814d2054ed0d40b179d79b8979c77175fdd9d2e667a39b4667cf8281b7",
+    "scriptSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667"
   },
   "pack": {
-    "id": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1",
+    "id": "tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.207,
+    "reconnectMs": 1.218,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 22.5181,
+    "durationMs": 29.0523,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2263,
-      "p95Ms": 0.4195,
-      "maximumMs": 0.5604
+      "medianMs": 0.2407,
+      "p95Ms": 0.5154,
+      "maximumMs": 1.5027
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1392,
-      "p95Ms": 0.2773,
-      "maximumMs": 0.2773
+      "medianMs": 0.1596,
+      "p95Ms": 0.2812,
+      "maximumMs": 0.2812
     }
   },
   "finalState": {

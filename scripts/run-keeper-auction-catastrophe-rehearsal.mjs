@@ -34,7 +34,7 @@ const playerById = new Map(pack.players.map((player) => [player.id, player]));
 const teamById = new Map(pack.leagueConfig.teams.map((team) => [team.id, team]));
 const deviceId = "device-catastrophe-rehearsal";
 const eventTime = (index) => new Date(Date.UTC(2026, 7, 29, 17, 30, index)).toISOString();
-const forbiddenPublicFields = ["projectedPoints", "projectionSources", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "injury", "sos", "evidenceStatus", "surplus"];
+const forbiddenPublicFields = ["projectedPoints", "projectionSources", "weeklyProjection", "assetProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "injury", "sos", "evidenceStatus", "surplus"];
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");

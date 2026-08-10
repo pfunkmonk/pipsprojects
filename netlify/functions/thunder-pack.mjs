@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { configurationError, json, verifySession } from "./_lib/auth.mjs";
+import { readDraftPackRelease, releasedPackText } from "./_lib/pack-release-store.mjs";
 
 const PACK_PATH = new URL("./_data/draft-pack-2026-provisional.json", import.meta.url);
 let cachedPack = null;
@@ -22,15 +23,17 @@ export default async function handler(request) {
     if (request.method !== "GET") return json({ error: "Method not allowed." }, 405, { Allow: "GET" });
     if (!verifySession(request)) return json({ error: "Authentication required." }, 401);
     const pack = await readPack();
-    if (request.headers.get("if-none-match") === pack.etag) {
-      return new Response(null, { status: 304, headers: { "Cache-Control": "no-store", ETag: pack.etag } });
+    const responseText = releasedPackText(pack.text, await readDraftPackRelease());
+    const responseEtag = `"${createHash("sha256").update(responseText).digest("hex")}"`;
+    if (request.headers.get("if-none-match") === responseEtag) {
+      return new Response(null, { status: 304, headers: { "Cache-Control": "no-store", ETag: responseEtag } });
     }
-    return new Response(pack.text, {
+    return new Response(responseText, {
       status: 200,
       headers: {
         "Cache-Control": "no-store",
         "Content-Type": "application/json; charset=utf-8",
-        ETag: pack.etag,
+        ETag: responseEtag,
       },
     });
   } catch (error) {

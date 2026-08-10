@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-08-10T05:40:28.730Z",
+  "auditedAt": "2026-08-10T18:35:38.296Z",
   "approved": true,
   "candidate": {
-    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1",
+    "packId": "tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1",
     "asOf": "2026-08-10T03:30:19.000Z",
-    "sha256": "88258f480497977193168024294adaa127a6ab42e910b76b27ec59f676d2d680",
+    "sha256": "133d7071fbc4cc6458a4d6695a5faf16de00979b250da0b5ebcb94afb9bfca25",
     "players": 716,
     "keeperCandidates": 177,
     "keeperTeams": 12,
@@ -22,9 +22,9 @@
     "allocatedMarketDollars": 1212
   },
   "current": {
-    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019",
+    "packId": "tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1-asset",
     "asOf": "2026-08-10T03:30:19.000Z",
-    "sha256": "ab4d2627952edd2dd6e20d3d28ffc36fe099ab8c25ac5af8df2d185f55f3904e",
+    "sha256": "a008b1429d0b0112c00cb842e581d6c4d9ca925a768fee04b7d6bc89314d7e22",
     "players": 716
   },
   "contentChanged": true,

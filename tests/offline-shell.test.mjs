@@ -96,10 +96,14 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
   for (const id of [
     "decision-coach",
     "decision-coach-verdict",
+    "decision-win-chance",
+    "decision-forecast-sale",
     "decision-current-bid",
     "decision-comparables",
     "decision-cash-leverage",
+    "decision-budget-runway",
     "decision-best-alternative",
+    "decision-position-run",
     "selected-bye-warning",
     "open-tier-dialog",
     "tier-dialog",
@@ -110,9 +114,13 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
   assert.match(indexHtml, /id="decision-coach-verdict">WAIT<\/span>/);
   assert.match(indexHtml, /<th>NFL team<\/th><th>Player<\/th><th class="number">Bye<\/th><th class="number">Projected<\/th><th>Status<\/th>/);
   assert.match(appSource, /buildBidRecommendation\(\{/);
+  assert.match(indexHtml, /Win at next bid/);
+  assert.match(appSource, /const legalNextBid = Number\.isSafeInteger\(recommendation\.nextBid\)/);
+  assert.match(appSource, /recommendation\.nextBid <= personalMaximum/);
+  assert.match(appSource, /dogsBidLimit: recommendation\.nextBid/);
   assert.match(appSource, /byeWeekConflicts\(\{/);
   assert.match(appSource, /buildTierSnapshot\(\{/);
-  assert.match(appSource, /buildNominationRecommendations\(\{/);
+  assert.match(appSource, /buildNominationAssistant\(\{/);
   assert.match(appSource, /draftState\.currentNominatorTeamId === USER_TEAM_ID/);
   assert.match(appSource, /legalMaximumBid\(team, draftState\.config, position\)/);
   assert.doesNotMatch(publicBoardSource, /decision-coach|nomination-recommendations|personalMaximum/i);
@@ -130,7 +138,7 @@ test("the Thunder projection exposes its live consensus and rejected corrections
     "projection-lab-evidence",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   assert.match(indexHtml, /id="projection-lab-authority"/);
-  assert.match(indexHtml, /Accuracy blend/);
+  assert.match(indexHtml, /Consensus blend/);
   assert.match(appSource, /buildProjectionLabPreview\(player/);
   assert.match(appSource, /QA-approved automatic correction/);
   assert.match(appSource, /Failed mean-reversion, durability, weather, analog, and schedule total-point corrections remain value-neutral/);
@@ -154,7 +162,7 @@ test("auction intelligence stays private, optional, fast to capture, and offline
   assert.match(appSource, /forecastAuctionPrice\(\{/);
   assert.match(appSource, /bidAuthority: "none"|advisory only/);
   assert.match(appSource, /private runner-up learning log/i);
-  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260809a/);
+  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260810b/);
   assert.match(serviceWorker, /auction-telemetry\.mjs\?v=20260809a/);
   assert.doesNotMatch(publicBoardSource, /runnerUp|runner-up/i);
 });
@@ -251,7 +259,7 @@ test("live injury status refresh is hourly, offline-persistent, and value-isolat
   assert.match(appSource, /\/api\/thunder-bowl\/status/);
   assert.match(appSource, /setMeta\("liveStatusSnapshot", snapshot\)/);
   assert.match(appSource, /14 \* 86_400_000/);
-  assert.match(appSource, /forbidden of \["projectedPoints", "projectionSources", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue"\]/);
+  assert.match(appSource, /forbidden of \["projectedPoints", "projectionSources", "weeklyProjection", "assetProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue"\]/);
   assert.match(appSource, /response\.status === 304 && !liveStatusSnapshot/);
   assert.match(appSource, /setMeta\("liveStatusEtag", null\)/);
   assert.match(appSource, /Unavailable — \$\{liveStatusError\}/);
@@ -309,7 +317,7 @@ test("player intelligence embeds source-linked news with a separate offline-safe
   assert.match(appSource, /playerNewsItems\(player\)/);
   assert.match(appSource, /refreshPlayerNewsInApp/);
   assert.match(appSource, /You stayed inside Thunder Bowl/);
-  assert.match(appSource, /forbidden of \["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"\]/);
+  assert.match(appSource, /forbidden of \["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"\]/);
   assert.doesNotMatch(appSource, /recordSale[\s\S]{0,500}refreshLiveNews/);
 });
 

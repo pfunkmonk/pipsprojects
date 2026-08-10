@@ -1,5 +1,6 @@
-import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810d";
+import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810e";
 import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260809a";
+import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 
 export const AUCTION_INTELLIGENCE_VERSION = "auction-intelligence-v1";
 export const DEFAULT_SIMULATION_SAMPLES = 384;
@@ -7,7 +8,6 @@ export const USER_TEAM_ID = "dogs-of-war";
 
 const MINIMUM_PROFILE_PRIOR = 40;
 const MAX_PROFILE_WEIGHT = 0.65;
-const POSITION_RUN_LOOKBACK = 3;
 
 function fail(code, message) {
   const error = new Error(message);
@@ -115,10 +115,11 @@ function baselineForPlayer(player, baselineValuesByPlayerId) {
   return Math.max(1, finite(baselineValuesByPlayerId?.[player.id] ?? player.marketValue ?? 1, `${player.name} baseline market value`));
 }
 
-function saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer, telemetryStore = null }) {
+function saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer, state = null, telemetryStore = null }) {
   const sales = activeSales(events);
   const comparable = [];
   const global = [];
+  const runSales = [];
   for (let index = 0; index < sales.length; index += 1) {
     const sale = sales[index];
     const player = playersById.get(sale.payload.playerId);
@@ -126,6 +127,7 @@ function saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, s
     const recordedForecast = telemetryStore?.records?.[sale.id]?.forecast;
     const baseline = Math.max(1, recordedForecast?.naturalPoint ?? baselineForPlayer(player, baselineValuesByPlayerId));
     const residual = sale.payload.amount - baseline;
+    runSales.push({ position: player.position, amount: sale.payload.amount, expectedPrice: baseline });
     const recency = 1 / (1 + (sales.length - 1 - index) * 0.2);
     global.push({ residual, ratio: sale.payload.amount / baseline, recency, position: player.position });
     if (player.position !== selectedPlayer.position) continue;
@@ -151,19 +153,31 @@ function saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, s
   const base = baselineForPlayer(selectedPlayer, baselineValuesByPlayerId);
   const anchorDollars = clamp(comparableResidual * 0.35, -Math.max(2, base * 0.18), Math.max(2, base * 0.18));
   const regimeDollars = clamp(base * (globalRatio - 1) * 0.2, -Math.max(1, base * 0.08), Math.max(1, base * 0.08));
-  const lastPositions = sales.slice(-POSITION_RUN_LOOKBACK).map((sale) => sale.payload.position);
-  let runDollars = 0;
-  if (lastPositions.length >= 2 && lastPositions.slice(-2).every((position) => position === selectedPlayer.position)) {
-    runDollars = base * (lastPositions.length === 3 && lastPositions.every((position) => position === selectedPlayer.position) ? 0.05 : 0.03);
-  }
+  const tierSupply = [...playersById.values()].filter((player) => (
+    player.position === selectedPlayer.position
+    && player.tier === selectedPlayer.tier
+    && !state?.draftedPlayers?.[player.id]
+  )).length;
+  const positionRun = detectPositionRun({
+    sales: runSales,
+    position: selectedPlayer.position,
+    state,
+    referencePrice: base,
+    tierSupply,
+  });
   return {
     saleCount: sales.length,
     comparableCount: comparable.length,
     comparables: comparable.sort((left, right) => right.weight - left.weight).slice(0, 3),
     anchorDollars: round1(anchorDollars),
     roomRegimeDollars: round1(regimeDollars),
-    positionRunDollars: round1(runDollars),
-    lastPositions,
+    // Historical continuation precision is not yet sufficient to grant this
+    // detector pricing authority. Preserve the proposed signal for the HUD,
+    // but keep rival WTP and authoritative values unchanged.
+    positionRunDollars: 0,
+    positionRunProposedDollars: positionRun.dollarImpact,
+    positionRun,
+    lastPositions: runSales.slice(-6).map((sale) => sale.position),
   };
 }
 
@@ -236,7 +250,7 @@ export function estimateTeamWillingnessToPay({
   const substitutes = substituteEvidence(player, packPlayers, state.draftedPlayers, baselineValuesByPlayerId);
   const playersById = new Map(packPlayers.map((candidate) => [candidate.id, candidate]));
   const telemetry = telemetryTeamSignal({ telemetryStore, teamId: team.id, position: player.position, baselineValuesByPlayerId, playersById });
-  const room = marketEvidence || saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer: player, telemetryStore });
+  const room = marketEvidence || saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer: player, state, telemetryStore });
   const roomDollars = room.anchorDollars + room.roomRegimeDollars + room.positionRunDollars;
   const behaviorMultiplier = clamp(positionMultiplier * affinityMultiplier * budget.multiplier * need.multiplier * substitutes.multiplier * telemetry.multiplier, 0.72, 1.38);
   const uncappedMean = Math.max(1, market * behaviorMultiplier + roomDollars);
@@ -546,12 +560,13 @@ export function forecastAuctionPrice({
   userTeamId = USER_TEAM_ID,
   samples = DEFAULT_SIMULATION_SAMPLES,
   seed = null,
+  includeRemainingAuction = true,
 }) {
   if (!state?.teams || !player || !Array.isArray(profiles) || !Array.isArray(packPlayers)) {
     fail("INVALID_AUCTION_FORECAST_INPUT", "Auction forecast requires profiles, live state, a player, and the player pool.");
   }
   const playersById = new Map(packPlayers.map((candidate) => [candidate.id, candidate]));
-  const marketEvidence = saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer: player, telemetryStore });
+  const marketEvidence = saleResidualEvidence({ events, playersById, baselineValuesByPlayerId, selectedPlayer: player, state, telemetryStore });
   const bidders = profiles
     .filter((profile) => profile.teamId !== userTeamId)
     .map((profile) => estimateTeamWillingnessToPay({
@@ -577,7 +592,7 @@ export function forecastAuctionPrice({
   const secondOpponent = bidders[1] || null;
   const rationalBaseline = rationalShadowBaseline({ state, player, liveMarketValue, userTeamId });
   const timing = nominationTiming({ currentForecast: natural, liveMarketValue, state, player });
-  const fullAuctionSimulation = simulateRemainingAuctionForTarget({
+  const fullAuctionSimulation = includeRemainingAuction ? simulateRemainingAuctionForTarget({
     profiles,
     state,
     targetPlayer: player,
@@ -587,8 +602,8 @@ export function forecastAuctionPrice({
     userTeamId,
     samples: 96,
     seed: `${simulationSeed}|remaining-auction`,
-  });
-  if (fullAuctionSimulation.windows[fullAuctionSimulation.bestWindow]) {
+  }) : null;
+  if (fullAuctionSimulation?.windows[fullAuctionSimulation.bestWindow]) {
     const best = fullAuctionSimulation.windows[fullAuctionSimulation.bestWindow];
     timing.now = fullAuctionSimulation.windows.early?.median ?? timing.now;
     timing.middle = fullAuctionSimulation.windows.middle?.median ?? timing.middle;

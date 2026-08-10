@@ -7,12 +7,13 @@ Updated August 10, 2026. This is the takeover starting point for another develop
 - Production: `https://pipsprojects.com/thunder-bowl/`
 - Branch: `main`
 - Hosting: Netlify; source remote is `origin`
-- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1`
+- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1`
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 277/277 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and both known legacy identity-curve anomalies repaired without changing room dollars.
-- The command center now has a single live bidding decision strip (BID/HOLD/PASS, next bid, hard maximum, comparable supply, cash leverage, and best alternative), clickable same-tier detail, roster-aware bye warnings, and a Dogs-turn nomination drain coach. All four read from the same authoritative live market, roster, annotation, and legal-max state; none creates a second ledger.
+- Release-candidate verification: 286/286 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and both known legacy identity-curve anomalies repaired without changing room dollars.
+- The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default.
+- The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
 - Active practice auctions now remain unambiguous while Pip browses alternatives: a prominent BROWSING ONLY warning names the actual nominee, bid, and leader; the decision strip suppresses BID/HOLD/PASS until Return to live player is pressed.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
@@ -39,6 +40,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Keeper calculations: `keeper-board.mjs`, `keeper-scenario.mjs`
 - VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`
 - Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`
+- Glance-decision and draft-pressure presentation: `decision-context.mjs`, `nomination-assistant.mjs`, `position-run.mjs`
 - Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
 - Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; raw component files remain outside the web tree
 - Annual divisions/schedule: `league-setup.mjs`; bounded live schedule weighting: `priority-weights.mjs`
@@ -46,6 +48,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Public board and login gate: `public/thunder-bowl/board/`, `board.html`, `draft-board/`
 - Shared public-only services: `public/thunder-bowl/shared/`
 - Cloud functions and ledger service: `netlify/functions/`
+- Exact-byte final-pack promotion overlay: `netlify/functions/_lib/pack-release-store.mjs`, `thunder-pack-promote.mjs`
 - Automated QA/rehearsals: `tests/`, `scripts/run-full-auction-rehearsal.mjs`, `scripts/run-keeper-auction-catastrophe-rehearsal.mjs`
 - User operations guide: `public/thunder-bowl/guides/index.html`
 - Draft-pressure decision helpers: `decision-context.mjs`; rendering and interaction wiring are in `app.mjs`
@@ -78,7 +81,11 @@ npm.cmd run import:thunder-weekly-assets -- "C:\Users\mailp\Dropbox\Personal\FAM
 npm.cmd run stage:thunder-pack -- "tmp\draft-pack-2026-weekly-assets.json" --promote
 ```
 
-The raw CSVs must never enter `public/`. Promotion remains a separate explicit `--promote` action.
+The raw CSVs must never enter `public/`. Staging the governed candidate remains a separate explicit `--promote` action. After the final candidate is active, Pip uses the one-click **Promote & lock this final pack** control; the server reruns the release gate, pins the exact active bytes in strong-consistency storage, and only then serves that exact pack with production status.
+
+## Position-run authority
+
+The detector now follows the review spec's minimum evidence rule: a six-sale decaying window, at least four confirmed sales, at least two same-position observations, separate frequency and overpay signals, and hard +$3/+3 VBD proposal caps. A repeatable 563-sale chronological backtest across 2012, 2014, 2015, 2017, 2018, and 2023 found only 17.4% precision and 13.2% recall for short-horizon continuation. The supplied 2025 files do not contain a complete ordered auction, so the 2025 replay can verify UI/ledger/privacy behavior but cannot honestly tune a time-series detector. Consequently the HUD may show HOT/WARM/WATCH, but the signal has zero direct VBD, Max, or rival-WTP authority. See `reports/thunder-bowl/position-run-backtest.{json,md}`.
 
 ## Required verification
 
@@ -86,6 +93,7 @@ The raw CSVs must never enter `public/`. Promotion remains a separate explicit `
 npm.cmd test
 npm.cmd run build
 npm.cmd run audit:thunder-values
+npm.cmd run backtest:thunder-runs
 npm.cmd run rehearsal
 npm.cmd run rehearsal:catastrophe
 npm.cmd audit

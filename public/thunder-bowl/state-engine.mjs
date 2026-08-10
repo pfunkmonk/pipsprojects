@@ -964,9 +964,14 @@ const PLAYER_REQUIRED_KEYS = [
   "sos",
   "notes",
 ];
-const PLAYER_OPTIONAL_KEYS = ["projectionSources", "weeklyProjection"];
+const PLAYER_OPTIONAL_KEYS = ["projectionSources", "weeklyProjection", "assetProjection"];
 const PROJECTION_SOURCE_KEYS = ["source", "points", "asOf", "role", "modelEffect", "note"];
 const WEEKLY_PROJECTION_KEYS = ["source", "asOf", "modelEffect", "games", "byeWeek", "points", "sourceSeasonTotal"];
+const ASSET_PROJECTION_KEYS = [
+  "source", "asOf", "modelEffect", "seasonSource", "shapeSource",
+  "passYds", "passTd", "passInt", "rushYds", "rushTd", "receptions", "recYds", "recTd", "fumblesLost",
+  "fgMade", "xpMade", "dstSacks", "dstInt", "dstFumRec", "dstTd", "dstSafety", "dstPtsAllowed",
+];
 const MANAGER_PROFILE_KEYS = [
   "teamId", "teamName", "sampleSeasons", "samplePurchases", "observedSpend", "reliability", "confidence",
   "positionMultipliers", "topNflAffinity", "topNflAffinityMultiplier", "modelEffect", "note",
@@ -1026,6 +1031,30 @@ function validateWeeklyProjection(input, projectedPoints, label) {
     points,
     sourceSeasonTotal,
   };
+}
+
+function validateAssetProjection(input, label) {
+  if (input == null) return null;
+  assertExactKeys(input, ASSET_PROJECTION_KEYS, [], label);
+  const source = assertString(input.source, `${label} source`, 3, 80);
+  const modelEffect = assertString(input.modelEffect, `${label} model effect`, 3, 20);
+  if (source !== WEEKLY_ASSET_CONTEXT_SOURCE || modelEffect !== "none") {
+    fail("ASSET_PROJECTION_AUTHORITY", `${label} must remain value-neutral Thunder Bowl asset evidence.`);
+  }
+  const result = {
+    source,
+    asOf: assertTimestamp(input.asOf, `${label} asOf`),
+    modelEffect,
+    seasonSource: assertString(input.seasonSource, `${label} season source`, 2, 10),
+    shapeSource: assertString(input.shapeSource, `${label} shape source`, 2, 10),
+  };
+  for (const key of ASSET_PROJECTION_KEYS.slice(5)) {
+    if (!Number.isFinite(input[key]) || input[key] < 0 || input[key] > 100000) {
+      fail("INVALID_ASSET_PROJECTION_NUMBER", `${label} ${key} must be a non-negative number.`);
+    }
+    result[key] = input[key];
+  }
+  return result;
 }
 
 function validateWeeklyContext(input) {
@@ -1310,6 +1339,7 @@ export function validateDraftPack(input) {
       numeric.projectedPoints,
       `player ${index + 1} weekly projection`,
     );
+    const assetProjection = validateAssetProjection(player.assetProjection, `player ${index + 1} asset projection`);
     return {
       id,
       name,
@@ -1321,6 +1351,7 @@ export function validateDraftPack(input) {
       notes: assertString(player.notes, `player ${index + 1} notes`, 2, 300),
       projectionSources,
       ...(weeklyProjection ? { weeklyProjection } : {}),
+      ...(assetProjection ? { assetProjection } : {}),
     };
   });
   if (weeklyContext) {

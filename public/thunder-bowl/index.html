@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260810i" />
+  <link rel="stylesheet" href="./app.css?v=20260810j" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -55,12 +55,13 @@
         <span id="network-status" class="status-chip status-good">Online</span>
         <span id="sync-status" class="status-chip">Local state ready</span>
         <span id="pack-status" class="status-chip status-warning">Illustrative pack</span>
+        <span id="intel-age-status" class="status-chip status-warning">Intel not sealed</span>
       </div>
       <div class="top-actions">
         <a id="practice-mode-top" class="button button-primary" href="?mode=practice-auction">Practice draft</a>
         <button id="open-board" class="button button-secondary" type="button">Open public board</button>
         <a class="button button-secondary" href="./auctioneer/" target="_blank" rel="noopener">Auctioneer console</a>
-        <button id="export-recovery-top" class="button button-secondary" type="button">Save backup</button>
+        <button id="export-recovery-top" class="button button-secondary" type="button">Backup now</button>
       </div>
     </header>
 
@@ -158,6 +159,7 @@
               <div class="decision-coach-verdict">
                 <span id="decision-coach-verdict">WAIT</span>
                 <small id="decision-coach-reason">Select the nominated player.</small>
+                <div class="decision-win-chance"><span>Win at next bid</span><strong id="decision-win-chance">—</strong><small id="decision-forecast-sale">Forecast —</small></div>
               </div>
               <div class="decision-coach-fact decision-next-bid">
                 <span>Next bid</span>
@@ -171,10 +173,19 @@
               </div>
               <div class="decision-coach-fact"><span>Your maximum</span><strong id="selected-max-bid">—</strong></div>
               <div class="decision-coach-fact"><span>Comparable players</span><strong id="decision-comparables">—</strong></div>
-              <div class="decision-coach-fact"><span>Cash leverage</span><strong id="decision-cash-leverage">—</strong><small id="decision-cash-detail">Room maximum unavailable</small></div>
-              <div class="decision-coach-fact decision-best-alternative"><span>Best alternative</span><strong id="decision-best-alternative">—</strong></div>
+              <div class="decision-coach-fact"><span>Cash leverage</span><strong id="decision-cash-leverage">—</strong><small id="decision-cash-detail">Top rival maximum unavailable</small></div>
+              <div class="decision-coach-fact"><span>Budget runway after win</span><strong id="decision-budget-runway">—</strong><small id="decision-budget-detail">Cash and slots update live</small></div>
+              <div class="decision-coach-fact decision-best-alternative"><span>Best alternative</span><strong id="decision-best-alternative">—</strong><small id="decision-comparable-detail">Live alternatives update after every sale</small></div>
+              <div class="decision-market-strip">
+                <span><b>Market inflation</b><strong id="decision-top-inflation">—</strong></span>
+                <span><b>Position run</b><strong id="decision-position-run">—</strong></span>
+                <span><b>Run signal</b><strong id="decision-run-effect">—</strong></span>
+              </div>
             </section>
             <div id="selected-bye-warning" class="bye-warning" role="alert" hidden></div>
+            <details id="selected-full-card" class="selected-full-card">
+              <summary><span>Full player evidence</span><small>Press ? to open or close</small></summary>
+              <div class="selected-full-card-body">
             <div class="value-trio">
               <div><span>Intrinsic</span><strong id="selected-intrinsic">—</strong></div>
               <div><span>Market</span><strong id="selected-market">—</strong></div>
@@ -200,13 +211,14 @@
               </div>
               <small id="selected-priority-detail">Live schedule weighting uses your division and playoff weeks, then applies a small bounded VBD correction.</small>
             </section>
-            <section class="projection-evidence" aria-labelledby="projection-evidence-title">
-              <div class="projection-evidence-heading">
+            <details id="dated-projection-evidence" class="projection-evidence" aria-labelledby="projection-evidence-title">
+              <summary class="projection-evidence-heading">
                 <h3 id="projection-evidence-title">Dated projection evidence</h3>
                 <span id="projection-evidence-rule">Consensus drives the base · bounded schedule timing adjusts VBD</span>
-              </div>
+              </summary>
               <ul id="selected-projection-sources" class="projection-source-list"></ul>
-            </section>
+              <p id="projection-asset-line" class="projection-asset-line">Season asset lines will appear after the weekly-asset pack is loaded.</p>
+            </details>
             <details id="selected-projection-lab" class="projection-lab-disclosure" hidden>
               <summary>
                 <span>Thunder projection</span>
@@ -216,7 +228,7 @@
                 <div id="projection-lab-authority" class="projection-lab-authority">CONSENSUS PREVIEW</div>
                 <dl class="projection-lab-grid">
                   <div><dt>Live projection</dt><dd id="projection-lab-primary">—</dd></div>
-                  <div><dt>Accuracy blend</dt><dd id="projection-lab-consensus">—</dd></div>
+                  <div><dt>Consensus blend</dt><dd id="projection-lab-consensus">—</dd></div>
                   <div><dt>QA correction</dt><dd id="projection-lab-modified">—</dd></div>
                   <div><dt>Source range</dt><dd id="projection-lab-range">—</dd></div>
                 </dl>
@@ -231,6 +243,8 @@
               <div><dt>Schedule</dt><dd id="selected-sos">—</dd></div>
             </dl>
             <p id="selected-notes" class="player-notes">Player evidence and decision notes appear here.</p>
+              </div>
+            </details>
           </section>
 
           <aside class="product-panel pressure-panel" aria-label="Roster needs and draft pressure">
@@ -255,8 +269,8 @@
               <p class="large-line" id="next-nomination-line">Goon Skwad</p>
               <p class="muted" id="nomination-warning">Only the first two order positions are verified; the next position is provisional.</p>
               <div id="nomination-coach" class="nomination-coach" hidden>
-                <p class="eyebrow">Drain recommendations</p>
-                <p class="nomination-coach-copy">High-price players your board says you are unlikely to buy. Click one to load it.</p>
+                <p class="eyebrow">Nomination assistant</p>
+                <p class="nomination-coach-copy">Three private plays ranked over the existing forecast: drain a rival, float chalk, or secure a target. Click one to load it; nothing is nominated automatically.</p>
                 <div id="nomination-recommendations" class="nomination-recommendations"></div>
               </div>
             </section>
@@ -568,11 +582,16 @@
             </dl>
             <div class="button-stack">
               <button id="load-bundled-pack" class="button button-primary" type="button">Check for latest private 2026 pack</button>
+              <button id="promote-final-pack" class="button button-primary" type="button">Promote &amp; lock this final pack</button>
               <a id="practice-mode-link" class="button button-primary" href="?mode=practice-auction">Open auto-auction practice</a>
               <a id="replay-mode-link" class="button button-secondary" href="?mode=2025-replay">Open 2025 replay sandbox</a>
               <label class="file-button" for="draft-pack-file">Import another validated draft pack</label>
             </div>
             <input id="draft-pack-file" class="sr-only" type="file" accept="application/json,.json" />
+            <label class="priority-mode-toggle" for="pro-mode">
+              <input id="pro-mode" type="checkbox" />
+              <span>Pro mode: shorten repeated safety copy after training</span>
+            </label>
             <p id="pack-import-status" class="form-status" role="status" aria-live="polite"></p>
           </section>
 
@@ -915,6 +934,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260810i"></script>
+  <script type="module" src="./app.mjs?v=20260810j"></script>
 </body>
 </html>

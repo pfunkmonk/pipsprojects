@@ -55,7 +55,8 @@ test("operations guide matches the released keeper, failover, and readiness work
   assert.match(guide, /Official ledger/);
   assert.match(guide, /Auctioneer feed/);
   assert.match(guide, /Manual backup/);
-  assert.match(guide, /practice pack intentionally blocks departure readiness/i);
+  assert.match(guide, /Promote &amp; lock this final pack/i);
+  assert.match(guide, /practice pack remains unchanged/i);
   assert.match(guide, /only writable offline authority/i);
   assert.doesNotMatch(guide, /Run the real app server on its LAN interface/);
 });

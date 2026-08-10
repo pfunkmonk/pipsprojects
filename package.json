@@ -12,6 +12,7 @@
     "audit:thunder-pack": "node scripts/audit-thunder-pack-candidate.mjs",
     "audit:thunder-values": "node scripts/audit-thunder-valuations.mjs",
     "backtest:thunder-market": "node scripts/backtest-auction-market-calibration.mjs",
+    "backtest:thunder-runs": "node scripts/backtest-position-runs.mjs",
     "backtest:thunder-projections": "python scripts/backtest-projection-ensemble.py",
     "backtest:thunder-priority": "python scripts/backtest-priority-week-weights.py",
     "build:thunder-consensus": "node scripts/build-thunder-consensus-handoff.mjs",

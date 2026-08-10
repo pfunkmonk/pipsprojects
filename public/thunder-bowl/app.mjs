@@ -16,7 +16,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260810d";
+} from "./state-engine.mjs?v=20260810e";
 import {
   appendEvents,
   getMeta,
@@ -62,7 +62,7 @@ import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
-import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260809a";
+import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260810b";
 import {
   AUCTION_TELEMETRY_META_KEY,
   RUNNER_UP_PROMPT_MS,
@@ -79,11 +79,14 @@ import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20
 import {
   buildBidRecommendation,
   buildDecisionContext,
-  buildNominationRecommendations,
   buildTierSnapshot,
+  budgetRunway,
   byeWeekConflicts,
   cashLeverage,
-} from "./decision-context.mjs?v=20260810h";
+  playerSurplusHeat,
+} from "./decision-context.mjs?v=20260810i";
+import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
+import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
 import {
   HUMAN_REHEARSAL_ITEMS,
@@ -136,6 +139,7 @@ const LATEST_PACK_URL = REPLAY_2025 ? "/api/thunder-bowl/replay-2025/pack" : "/a
 const LIVE_STATUS_URL = "/api/thunder-bowl/status";
 const LIVE_NEWS_URL = "/api/thunder-bowl/news";
 const LIVE_RESEARCH_URL = "/api/thunder-bowl/research";
+const PACK_PROMOTION_URL = "/api/thunder-bowl/pack/promote";
 const SAMPLE_PACK_URL = "./sample-draft-pack.json";
 
 const loginView = byId("login-view");
@@ -249,6 +253,7 @@ let salesEntryModeChanging = false;
 let auctionTelemetry = createAuctionTelemetryStore();
 let runnerUpPromptSaleId = null;
 let runnerUpPromptTimer = null;
+let proMode = false;
 const auctionForecastCache = new Map();
 const draftChannelName = REPLAY_2025 ? "thunder-bowl-2025-replay" : PRACTICE_AUCTION ? "thunder-bowl-2026-practice" : "thunder-bowl-2026";
 const draftChannel = "BroadcastChannel" in window ? new BroadcastChannel(draftChannelName) : null;
@@ -505,6 +510,21 @@ function playerDecisionLabel(annotation) {
 
 function priorityForPlayer(player) {
   return priorityProjection(player, priorityScenario, currentWeeklyContext());
+}
+
+function surplusHeatForPlayer(player) {
+  const live = livePlayerValues(player);
+  const annotation = annotationFor(player.id);
+  const currentBid = player.id === selectedPlayerId
+    ? currentDecisionBid(player)
+    : Math.max(0, live.marketValue - 1);
+  return playerSurplusHeat({
+    currentBid,
+    liveMarketValue: live.marketValue,
+    personalMaximum: effectivePlayerBidLimit(player),
+    stealPrice: annotation?.stealPrice,
+    avoid: annotation?.tag === "avoid",
+  });
 }
 
 function scheduleEvidenceForPlayer(player) {
@@ -817,6 +837,23 @@ function filteredPlayers() {
     .map(({ player }) => player);
 }
 
+function latestIntelCapturedAt() {
+  return morningIntelligenceSnapshot?.capturedAt
+    || [liveStatusSnapshot?.capturedAt, liveNewsSnapshot?.capturedAt, liveResearchSnapshot?.capturedAt]
+      .filter(Boolean)
+      .sort()
+      .at(-1)
+    || null;
+}
+
+function shortIntelAge() {
+  const capturedAt = latestIntelCapturedAt();
+  if (!capturedAt) return "Intel not saved";
+  const ageMinutes = Math.max(0, Math.floor((Date.now() - Date.parse(capturedAt)) / 60_000));
+  if (ageMinutes < 60) return `Intel ${Math.max(1, ageMinutes)}m`;
+  return `Intel ${Math.floor(ageMinutes / 60)}h`;
+}
+
 function makePlayerCell(player) {
   const cell = document.createElement("td");
   const button = document.createElement("button");
@@ -829,10 +866,11 @@ function makePlayerCell(player) {
   name.textContent = player.name;
   const meta = document.createElement("span");
   meta.className = "player-meta";
-  meta.textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier}`;
+  meta.textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier} · ${shortIntelAge()}`;
   const personal = document.createElement("span");
   personal.className = "player-personal-line";
   const annotation = annotationFor(player.id);
+  const heat = surplusHeatForPlayer(player);
   if (annotation?.tag && annotation.tag !== "neutral") {
     const chip = document.createElement("span");
     chip.className = `mini-personal-chip tag-${annotation.tag}`;
@@ -866,6 +904,11 @@ function makePlayerCell(player) {
     }
     personal.append(chip);
   }
+  const heatChip = document.createElement("span");
+  heatChip.className = `mini-personal-chip heat-${heat.level}`;
+  heatChip.textContent = heat.label;
+  heatChip.title = "Private surplus heat compares the next bid with your effective hard stop.";
+  personal.append(heatChip);
   button.append(name, meta, personal);
   cell.append(button);
   return cell;
@@ -894,7 +937,9 @@ function renderPlayerPool() {
     const live = livePlayerValues(player);
     const row = document.createElement("tr");
     const annotation = annotationFor(player.id);
-    row.className = `player-row${player.id === selectedPlayerId ? " is-selected" : ""}${annotation?.tag === "target" ? " is-target" : annotation?.tag === "avoid" ? " is-avoid" : ""}`;
+    const heat = surplusHeatForPlayer(player);
+    row.className = `player-row heat-${heat.level}${player.id === selectedPlayerId ? " is-selected" : ""}${annotation?.tag === "target" ? " is-target" : annotation?.tag === "avoid" ? " is-avoid" : ""}`;
+    row.title = `Surplus heat: ${heat.label}. Private display only.`;
     row.dataset.playerId = player.id;
     row.append(
       makePlayerCell(player),
@@ -933,7 +978,7 @@ function renderProjectionSources(player) {
   byId("projection-evidence-rule").textContent = liveConsensus
     ? priorityScenario.mode === "live"
       ? "Consensus drives the base · bounded schedule timing adjusts VBD"
-      : "Accuracy-weighted consensus drives value"
+      : "Near-equal three-source consensus drives value"
     : priorityScenario.mode === "live" ? "Primary drives the base · bounded schedule timing adjusts VBD" : "Only “primary” drives value";
   for (const source of sources) {
     const delta = primary && source !== primary ? source.points - primary.points : null;
@@ -952,7 +997,10 @@ function renderProjectionSources(player) {
     const points = document.createElement("b");
     points.textContent = source.points.toFixed(1);
     const detail = document.createElement("small");
-    detail.textContent = `${shortDate(source.asOf)}${delta === null ? "" : ` · Δ ${signed(delta)}`} · ${source.note}`;
+    const sourceNote = source.source === "Thunder Bowl Consensus"
+      ? "Near-equal three-source consensus (33–34% each); limited historical accuracy tilt; failed corrections remain value-neutral"
+      : source.note;
+    detail.textContent = `${shortDate(source.asOf)}${delta === null ? "" : ` · Δ ${signed(delta)}`} · ${sourceNote}`;
     item.append(heading, points, detail);
     container.append(item);
   }
@@ -1093,7 +1141,7 @@ function validateResearchSnapshot(input) {
   for (const item of input.cbsNews.items) {
     if (!item.id || !item.playerName || !item.title || !item.description || !item.ageText || !Number.isFinite(Date.parse(item.firstSeenAt)) || !Number.isFinite(Date.parse(item.lastSeenAt)) || new URL(item.url).hostname.replace(/^www\./, "") !== "cbssports.com") throw new Error("The CBS player-news response contains an invalid item.");
   }
-  for (const forbidden of ["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
+  for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
     if (forbidden in input || input.depthChart.entries.some((entry) => forbidden in entry) || input.cbsNews.items.some((item) => forbidden in item)) throw new Error(`The internal research response attempted to supply forbidden value field ${forbidden}.`);
   }
   return input;
@@ -1376,20 +1424,23 @@ function activeSaleEvents() {
   return events.filter((event) => event.type === EVENT_TYPES.PLAYER_SOLD && !voided.has(event.id));
 }
 
-function auctionForecastForState(player, state, market, forecastEvents, telemetryStore = auctionTelemetry) {
+function auctionForecastForState(player, state, market, forecastEvents, telemetryStore = auctionTelemetry, { fast = false, dogsBidLimit: suppliedDogsBidLimit = null } = {}) {
   const modelMax = market.bidCeilingsByPlayerId[player.id] ?? player.maxBid;
-  const dogsBidLimit = personalBidLimit({
+  const personalMaximum = personalBidLimit({
     modelMax,
     legalMax: state.teams[USER_TEAM_ID]?.legalMaxBid || 0,
     annotation: annotationFor(player.id),
   });
+  const dogsBidLimit = suppliedDogsBidLimit === null
+    ? personalMaximum
+    : Math.max(0, Math.min(personalMaximum, Math.floor(Number(suppliedDogsBidLimit) || 0)));
   const cacheable = state === draftState && market === liveMarket && forecastEvents === events && telemetryStore === auctionTelemetry;
   const latestTelemetryUpdate = Object.values(auctionTelemetry.records).reduce(
     (latest, record) => record.updatedAt > latest ? record.updatedAt : latest,
     "",
   );
   const cacheKey = cacheable
-    ? `${draftPack.packId}|${events.length}|${events.at(-1)?.id || "empty"}|${latestTelemetryUpdate}|${player.id}|${market.valuesByPlayerId[player.id]}|${dogsBidLimit}`
+    ? `${draftPack.packId}|${events.length}|${events.at(-1)?.id || "empty"}|${latestTelemetryUpdate}|${player.id}|${market.valuesByPlayerId[player.id]}|${dogsBidLimit}|${fast ? "fast" : "full"}`
     : null;
   if (cacheKey && auctionForecastCache.has(cacheKey)) return auctionForecastCache.get(cacheKey);
   const forecast = forecastAuctionPrice({
@@ -1403,6 +1454,8 @@ function auctionForecastForState(player, state, market, forecastEvents, telemetr
     events: forecastEvents,
     telemetryStore,
     dogsBidLimit,
+    samples: fast ? 128 : undefined,
+    includeRemainingAuction: !fast,
   });
   if (cacheKey) {
     auctionForecastCache.set(cacheKey, forecast);
@@ -1618,7 +1671,7 @@ function exportAuctionTelemetry() {
   }
 }
 
-function renderOpponentPressure(player, liveMarketValue, available = true) {
+function renderOpponentPressure(player, liveMarketValue, available = true, suppliedForecast = null) {
   const container = byId("selected-opponent-pressure");
   const summary = byId("opponent-pressure-summary");
   const forecastPanel = byId("auction-forecast");
@@ -1638,7 +1691,7 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
     summary.textContent = "Historical manager profiles are unavailable in this pack.";
     return;
   }
-  const forecast = auctionForecastForState(player, draftState, liveMarket, events);
+  const forecast = suppliedForecast || auctionForecastForState(player, draftState, liveMarket, events);
   const ranked = forecast.opponents.slice(0, 3);
   summary.textContent = ranked.length
     ? "Private advisory · second-highest bidder model"
@@ -1653,9 +1706,13 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
   const timing = forecast.nominationTiming;
   const timingLabel = timing.bestWindow === "now" ? "nominate now" : timing.bestWindow === "middle" ? "middle models cheaper (wait risk)" : "late models cheaper (wait risk)";
   const anchor = forecast.marketEvidence.anchorDollars + forecast.marketEvidence.roomRegimeDollars;
-  const run = forecast.marketEvidence.positionRunDollars;
+  const run = forecast.marketEvidence.positionRunProposedDollars || 0;
   const signedMoney = (value) => `${value >= 0 ? "+" : "−"}${currency(Math.abs(value))}`;
-  forecastNote.textContent = `${timingLabel} · comparable/room ${signedMoney(anchor)} · ${player.position} run ${signedMoney(run)} · historical baseline covered 79.4%; WTP calibration starts live`;
+  const runStatus = forecast.marketEvidence.positionRun?.status || "COOLING";
+  const runCopy = forecast.marketEvidence.positionRun?.active
+    ? `${player.position} run ${runStatus} proposes ${signedMoney(run)} but remains watch-only after weak historical continuation precision`
+    : `${player.position} run ${runStatus}`;
+  forecastNote.textContent = `${timingLabel} · comparable/room ${signedMoney(anchor)} · ${runCopy} · historical baseline covered 79.4%; WTP calibration starts live`;
   for (const opponent of ranked) {
     const item = document.createElement("li");
     item.className = "opponent-pressure-row";
@@ -1678,6 +1735,32 @@ function renderOpponentPressure(player, liveMarketValue, available = true) {
     item.append(heading, detail, sample);
     container.append(item);
   }
+}
+
+function positionRunSales() {
+  const playerById = new Map(draftPack.players.map((player) => [player.id, player]));
+  return activeSaleEvents().flatMap((sale) => {
+    const player = playerById.get(sale.payload.playerId);
+    if (!player) return [];
+    const telemetryForecast = auctionTelemetry.records?.[sale.id]?.forecast;
+    return [{
+      position: player.position,
+      amount: sale.payload.amount,
+      expectedPrice: telemetryForecast?.naturalPoint ?? player.marketValue ?? 1,
+    }];
+  });
+}
+
+function selectedPositionRun(player, context, liveMarketValue) {
+  if (!player) return null;
+  return detectPositionRun({
+    sales: positionRunSales(),
+    position: player.position,
+    state: draftState,
+    referencePrice: liveMarketValue,
+    tierSupply: context?.sameTierRemaining || 0,
+    tierCliff: context?.maxBidCliff || 0,
+  });
 }
 
 function currentDecisionBid(player) {
@@ -1709,7 +1792,7 @@ function renderPracticeBrowseWarning(player) {
   return context;
 }
 
-function renderDecisionCoach(player, { available, live, context, annotation, personalMaximum, browsingDifferentPlayer = false }) {
+function renderDecisionCoach(player, { available, live, context, annotation, personalMaximum, forecast = null, positionRun = null, browsingDifferentPlayer = false }) {
   const activePracticePlayer = PRACTICE_AUCTION && practiceSession?.playerId === player?.id;
   const currentBid = currentDecisionBid(player);
   const dogsLeading = Boolean(activePracticePlayer && practiceSession.leaderTeamId === USER_TEAM_ID);
@@ -1733,6 +1816,21 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   coach.className = `decision-coach coach-${recommendation.tone}`;
   byId("decision-coach-verdict").textContent = recommendation.verdict;
   byId("decision-coach-reason").textContent = recommendation.reason;
+  const legalNextBid = Number.isSafeInteger(recommendation.nextBid)
+    && recommendation.nextBid <= personalMaximum
+    && !dogsLeading;
+  const nextBidForecast = player && available && legalNextBid && !browsingDifferentPlayer && draftPack.managerProfiles?.length
+    ? auctionForecastForState(player, draftState, liveMarket, events, auctionTelemetry, {
+        fast: true,
+        dogsBidLimit: recommendation.nextBid,
+      })
+    : null;
+  byId("decision-win-chance").textContent = nextBidForecast
+    ? `${nextBidForecast.dogsParticipation.winProbability.toFixed(0)}%`
+    : "—";
+  byId("decision-forecast-sale").textContent = forecast && !browsingDifferentPlayer
+    ? `Forecast ${currency(forecast.naturalSale.point)}`
+    : "Forecast —";
   byId("decision-next-bid").textContent = recommendation.nextBid === null ? "--" : currency(recommendation.nextBid);
   byId("decision-current-bid").value = String(currentBid);
   byId("decision-current-bid").disabled = activePracticePlayer || browsingDifferentPlayer;
@@ -1742,6 +1840,9 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   byId("decision-best-alternative").textContent = context?.nextAlternative
     ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
     : player ? "No lower-tier option" : "—";
+  byId("decision-comparable-detail").textContent = context
+    ? `${context.sameTierRemaining} same-tier option${context.sameTierRemaining === 1 ? "" : "s"} remain`
+    : "Live alternatives update after every sale";
 
   const leverage = player ? cashLeverage({
     state: draftState,
@@ -1752,7 +1853,31 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   byId("decision-cash-leverage").textContent = leverage?.label || "—";
   byId("decision-cash-detail").textContent = leverage?.available
     ? `You ${currency(leverage.userMaximum)} · top opponent ${currency(leverage.topOpponentMaximum)}`
-    : "Room maximum unavailable";
+    : "Top rival maximum unavailable";
+
+  const runway = player ? budgetRunway({
+    state: draftState,
+    players: availablePlayers(),
+    purchasePrice: Math.max(1, recommendation.nextBid ?? currentBid),
+    userTeamId: USER_TEAM_ID,
+    valueFor: (candidate) => livePlayerValues(candidate).marketValue,
+  }) : null;
+  byId("decision-budget-runway").textContent = runway?.available
+    ? `${currency(runway.cashAfter)} · ${runway.openSlotsAfter} slots`
+    : "—";
+  byId("decision-budget-detail").textContent = runway?.available
+    ? `${currency(runway.dollarsPerSlot)}/slot · ${runway.premiumOptions} premium options affordable`
+    : "Cash and slots update live";
+  byId("decision-top-inflation").textContent = player ? `${liveMarket.displayPercent >= 0 ? "+" : ""}${liveMarket.displayPercent.toFixed(1)}%` : "—";
+  const runStatus = positionRun?.status || "COOLING";
+  byId("decision-position-run").textContent = player ? `${player.position} ${runStatus}` : "—";
+  byId("decision-run-effect").textContent = positionRun?.active ? "WATCH" : "$0";
+  byId("decision-run-effect").title = positionRun?.active
+    ? `Proposed ${currency(positionRun.dollarImpact)} pressure remains display-only until historical continuation precision improves.`
+    : "No qualified position run; no value effect.";
+  for (const element of [byId("decision-position-run"), byId("decision-run-effect")]) {
+    element.className = positionRun ? `run-${runStatus.toLowerCase()}` : "";
+  }
 
   const bye = player ? byeWeekConflicts({ selectedPlayer: player, players: draftPack.players, state: draftState, userTeamId: USER_TEAM_ID }) : { byeWeek: null, conflicts: [] };
   const warning = byId("selected-bye-warning");
@@ -1819,13 +1944,15 @@ function renderNominationCoach() {
   coach.hidden = !dogsTurn;
   container.replaceChildren();
   if (!dogsTurn) return;
-  const recommendations = buildNominationRecommendations({
+  const recommendations = buildNominationAssistant({
     players: draftPack.players,
     state: draftState,
     userTeamId: USER_TEAM_ID,
     annotationFor,
     marketValueFor: (candidate) => livePlayerValues(candidate).marketValue,
     bidLimitFor: effectivePlayerBidLimit,
+    forecastFor: (candidate) => auctionForecastForState(candidate, draftState, liveMarket, events, auctionTelemetry, { fast: true }),
+    candidateLimit: 12,
     limit: 3,
   });
   if (!recommendations.length) {
@@ -1839,16 +1966,31 @@ function renderNominationCoach() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "nomination-recommendation";
-    button.dataset.nominationPlayerId = recommendation.player.id;
+    if (recommendation.player) button.dataset.nominationPlayerId = recommendation.player.id;
+    else button.disabled = true;
+    const play = document.createElement("span");
+    play.className = "nomination-play";
+    play.textContent = recommendation.play;
     const name = document.createElement("strong");
-    name.textContent = `${recommendation.player.name} · ${recommendation.player.position}`;
+    name.textContent = recommendation.player ? `${recommendation.player.name} · ${recommendation.player.position}` : "No safe play";
     const price = document.createElement("b");
-    price.textContent = currency(recommendation.marketValue);
+    price.textContent = recommendation.player ? currency(recommendation.naturalSale) : "—";
     const reason = document.createElement("small");
     reason.textContent = recommendation.reason;
-    button.append(name, price, reason);
+    button.append(play, name, price, reason);
     container.append(button);
   }
+}
+
+function assetProjectionText(player) {
+  const assets = player?.assetProjection;
+  if (!assets) return "Season asset lines are not attached to this pack. The displayed points remain authoritative.";
+  const parts = [];
+  if (player.position === "QB") parts.push(`${Math.round(assets.passYds).toLocaleString()} pass yd`, `${assets.passTd.toFixed(1)} pass TD`, `${Math.round(assets.rushYds)} rush yd`, `${assets.rushTd.toFixed(1)} rush TD`, `${assets.passInt.toFixed(1)} INT`);
+  else if (["RB", "WR", "TE"].includes(player.position)) parts.push(`${Math.round(assets.rushYds)} rush yd`, `${assets.rushTd.toFixed(1)} rush TD`, `${assets.receptions.toFixed(1)} rec`, `${Math.round(assets.recYds)} rec yd`, `${assets.recTd.toFixed(1)} rec TD`);
+  else if (player.position === "K") parts.push(`${assets.fgMade.toFixed(1)} FG`, `${assets.xpMade.toFixed(1)} XP`);
+  else if (player.position === "DST") parts.push(`${assets.dstSacks.toFixed(1)} sacks`, `${assets.dstInt.toFixed(1)} INT`, `${assets.dstFumRec.toFixed(1)} FR`, `${assets.dstTd.toFixed(1)} TD`);
+  return `${parts.join(" · ")} · season ${assets.seasonSource}, weekly shape ${assets.shapeSource} · evidence only; league scoring creates points.`;
 }
 
 function renderSelectedPlayer() {
@@ -1858,7 +2000,7 @@ function renderSelectedPlayer() {
   byId("selected-availability").textContent = available ? "Available" : "Unavailable";
   byId("selected-position").textContent = player ? `${player.position} · Tier ${player.tier}` : "—";
   byId("selected-player-name").textContent = player?.name || "Select a player";
-  byId("selected-team-line").textContent = player ? `${player.nflTeam} · Source rank ${player.sourceRank}` : "Search or use the arrow keys.";
+  byId("selected-team-line").textContent = player ? `${player.nflTeam} · Source rank ${player.sourceRank} · ${shortIntelAge()}` : "Search or use the arrow keys.";
   const dogsMaximum = draftState.teams["dogs-of-war"]?.legalMaxBid ?? 0;
   const live = player ? livePlayerValues(player) : null;
   const personalMaximum = player ? effectivePlayerBidLimit(player) : null;
@@ -1875,7 +2017,20 @@ function renderSelectedPlayer() {
     valueFor: (candidate) => effectivePlayerBidLimit(candidate),
   }) : null;
   const practiceBrowse = renderPracticeBrowseWarning(player);
-  renderDecisionCoach(player, { available, live, context, annotation, personalMaximum, browsingDifferentPlayer: practiceBrowse.browsingDifferentPlayer });
+  const selectedForecast = player && available && draftPack.managerProfiles?.length
+    ? auctionForecastForState(player, draftState, liveMarket, events)
+    : null;
+  const positionRun = selectedPositionRun(player, context, live?.marketValue || 1);
+  renderDecisionCoach(player, {
+    available,
+    live,
+    context,
+    annotation,
+    personalMaximum,
+    forecast: selectedForecast,
+    positionRun,
+    browsingDifferentPlayer: practiceBrowse.browsingDifferentPlayer,
+  });
   byId("selected-tier-supply").textContent = context ? `${context.sameTierRemaining} left` : "—";
   byId("selected-next-alternative").textContent = context?.nextAlternative
     ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
@@ -1916,8 +2071,9 @@ function renderSelectedPlayer() {
     ? `Your note: ${annotation.note} · Pack: ${player?.notes || "No additional pack note."}`
     : player?.notes || "Player evidence and decision notes appear here.";
   renderProjectionSources(player);
+  byId("projection-asset-line").textContent = assetProjectionText(player);
   renderProjectionLab(player);
-  renderOpponentPressure(player, live?.marketValue || 1, available);
+  renderOpponentPressure(player, live?.marketValue || 1, available, selectedForecast);
   if (byId("tier-dialog").open) renderTierDialog();
   byId("sale-player").value = player?.name || "";
   byId("sale-player-id").value = player?.id || "";
@@ -1980,13 +2136,17 @@ function renderPackStatus() {
     byId("pack-warning-title").textContent = illustrative ? "Illustrative values only." : "Current practice pack.";
     byId("pack-warning-copy").textContent = illustrative
       ? "The interface is live; the displayed player projections and prices are placeholders until the approved 2026 draft pack is imported."
-      : "The accuracy-weighted Footballguys, CBS, and FantasyPros consensus drives VBD. Validated 1.20× division and 1.50× playoff timing is live at 35% authority with a hard ±3 VBD cap. This release candidate is ready for practice; the only planned model-data replacement is next week's final projection refresh.";
+      : "The near-equal Footballguys, CBS, and FantasyPros consensus (33–34% each) drives VBD with a limited historical accuracy tilt. Validated 1.20× division and 1.50× playoff timing is live at 35% authority with a hard ±3 VBD cap. This release candidate is ready for practice; the only planned model-data replacement is next week's final projection refresh.";
     }
   }
   const packChip = byId("pack-status");
   packChip.textContent = production ? "Production pack" : `${draftPack.status[0].toUpperCase()}${draftPack.status.slice(1)} pack`;
   packChip.classList.toggle("status-warning", !production);
   packChip.classList.toggle("status-good", production);
+  const promoteButton = byId("promote-final-pack");
+  promoteButton.hidden = LOCAL_ONLY;
+  promoteButton.disabled = production;
+  promoteButton.textContent = production ? "Final pack locked" : "Promote & lock this final pack";
   byId("pack-name").textContent = draftPack.packId;
   byId("pack-detail-status").textContent = draftPack.status;
   byId("pack-as-of").textContent = dateTime(draftPack.asOf);
@@ -1999,6 +2159,7 @@ function renderPackStatus() {
     : liveStatusError
       ? `Unavailable — ${liveStatusError}`
       : "Saved pack";
+  renderIntelAgeStatus();
 
   const schedule = effectiveScheduleContext();
   byId("schedule-status").textContent = schedule ? `Configured · ${schedule.season}` : REPLAY_2025 ? "Not used in replay" : "Not loaded";
@@ -2251,6 +2412,26 @@ function keeperScenarioPack() {
     };
   });
   return { ...draftPack, keeperCandidates: candidates };
+}
+
+function renderIntelAgeStatus() {
+  const chip = byId("intel-age-status");
+  const capturedAt = latestIntelCapturedAt();
+  if (!capturedAt) {
+    chip.textContent = "Intel not sealed";
+    chip.className = "status-chip status-warning";
+    return;
+  }
+  const ageHours = Math.max(0, (Date.now() - Date.parse(capturedAt)) / 3_600_000);
+  chip.textContent = morningIntelligenceSnapshot
+    ? `Intel ${ageHours < 1 ? "<1" : Math.floor(ageHours)}h old`
+    : `Partial intel ${ageHours < 1 ? "<1" : Math.floor(ageHours)}h old`;
+  chip.className = `status-chip ${morningIntelligenceSnapshot && ageHours <= 6 ? "status-good" : "status-warning"}`;
+}
+
+function renderProMode() {
+  document.body.classList.toggle("pro-mode", proMode);
+  byId("pro-mode").checked = proMode;
 }
 
 function activeDeclaredKeeperIds() {
@@ -3738,6 +3919,34 @@ async function rememberDisplayUrl(url) {
   return true;
 }
 
+function selectNextVisiblePlayer() {
+  if (!visiblePlayerIds.length) return;
+  const currentIndex = visiblePlayerIds.indexOf(selectedPlayerId);
+  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % visiblePlayerIds.length;
+  selectPlayer(visiblePlayerIds[nextIndex], false);
+}
+
+function openPersonalMaximum() {
+  if (!selectedPlayerId) return;
+  openPlayerIntel(selectedPlayerId);
+  requestAnimationFrame(() => {
+    const input = byId("intel-personal-max");
+    input.focus();
+    input.select();
+  });
+}
+
+function loadTopNominationPlay() {
+  const button = byId("nomination-recommendations").querySelector("button[data-nomination-player-id]");
+  if (!button) {
+    showToast(draftState.currentNominatorTeamId === USER_TEAM_ID
+      ? "No safe nomination play clears the current floor."
+      : `It is ${draftState.teams[draftState.currentNominatorTeamId]?.name || "another team's"} nomination.`, true);
+    return;
+  }
+  button.click();
+}
+
 function showApp() {
   sessionStorage.setItem(UNLOCK_SESSION_KEY, "true");
   loginView.hidden = true;
@@ -3944,7 +4153,7 @@ function validateLiveStatusSnapshot(input) {
     if (update.depthChartOrder !== null && (!Number.isInteger(update.depthChartOrder) || update.depthChartOrder < 1 || update.depthChartOrder > 20)) {
       throw new Error("Live status contains an invalid depth-chart order.");
     }
-    for (const forbidden of ["projectedPoints", "projectionSources", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue"]) {
+    for (const forbidden of ["projectedPoints", "projectionSources", "weeklyProjection", "assetProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue"]) {
       if (forbidden in update) throw new Error(`Live status attempted to supply forbidden value field ${forbidden}.`);
     }
     return update;
@@ -3979,7 +4188,7 @@ function validateLiveNewsSnapshot(input) {
     if (url.protocol !== "https:" || !["rotowire.com", "www.rotowire.com"].includes(url.hostname) || !Number.isFinite(Date.parse(item.publishedAt))) {
       throw new Error("Live news contains an invalid source link or timestamp.");
     }
-    for (const forbidden of ["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
+    for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
       if (forbidden in item) throw new Error(`Live news attempted to supply forbidden value field ${forbidden}.`);
     }
     return { ...item, url: url.toString() };
@@ -4206,7 +4415,7 @@ function validateMorningIntelligenceSnapshot(input) {
     if (!row || !knownIds.has(row.playerId) || coverageIds.has(row.playerId) || !Number.isSafeInteger(row.cbsItems) || row.cbsItems < 0 || !Number.isSafeInteger(row.rotowireItems) || row.rotowireItems < 0) throw new Error("The draft-morning intelligence lockbox contains invalid player coverage.");
     coverageIds.add(row.playerId);
   }
-  for (const forbidden of ["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
+  for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "keeperValue", "recommendedBid"]) {
     if (forbidden in input || input.playerCoverage.some((row) => forbidden in row)) throw new Error(`The draft-morning intelligence lockbox attempted to supply forbidden value field ${forbidden}.`);
   }
   return { ...input, sourceSnapshots: { status: statusSnapshot, rotowire: newsSnapshot, research: researchSnapshot } };
@@ -4712,6 +4921,38 @@ async function loadBundledDraftPack() {
   }
 }
 
+async function promoteFinalPack() {
+  const status = byId("pack-import-status");
+  const button = byId("promote-final-pack");
+  if (LOCAL_ONLY) return;
+  if (draftPack.status === "production") {
+    setStatus(status, "This exact private pack is already locked as production.");
+    return;
+  }
+  if (!window.confirm(`Lock ${draftPack.packId} as the final production pack? This does not change projections or the append-only ledger.`)) return;
+  button.disabled = true;
+  try {
+    setStatus(status, "Running the server-side final-pack gate…");
+    const response = await fetch(PACK_PROMOTION_URL, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "promote-final", packId: draftPack.packId }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "The final-pack gate did not approve this release.");
+    await setMeta("draftPackEtag", null);
+    await applyDraftPack(await fetchProtectedDraftPack(false), status);
+    setStatus(status, `FINAL PACK LOCKED · ${result.packId} · ${dateTime(result.promotedAt)}. Offline copy refreshed on this laptop.`);
+    showToast("Final private draft pack promoted and locked.");
+  } catch (error) {
+    setStatus(status, errorMessage(error), true);
+  } finally {
+    button.disabled = draftPack.status === "production";
+  }
+}
+
 async function importRecovery(file) {
   const status = byId("recovery-status");
   try {
@@ -4887,6 +5128,12 @@ function bindInteractions() {
   byId("export-recovery").addEventListener("click", exportRecovery);
   byId("export-recovery-top").addEventListener("click", exportRecovery);
   byId("load-bundled-pack").addEventListener("click", () => void loadBundledDraftPack());
+  byId("promote-final-pack").addEventListener("click", () => void promoteFinalPack());
+  byId("pro-mode").addEventListener("change", (event) => {
+    proMode = event.currentTarget.checked;
+    renderProMode();
+    void setMeta("proMode", proMode);
+  });
   byId("capture-cbs-rosters").addEventListener("click", () => void captureCbsRosters());
   byId("export-cbs-rosters").addEventListener("click", exportCbsRosterSnapshot);
   byId("league-setup-form").addEventListener("submit", (event) => void saveLeagueSetupFromControls(event));
@@ -4989,9 +5236,28 @@ function bindInteractions() {
       renderPlayerPool();
       renderSelectedPlayer();
       playerSearch.focus();
-    } else if (PRACTICE_AUCTION && currentView === "draft" && !typing && (event.code === "Space" || event.key.toLowerCase() === "b")) {
+    } else if (currentView === "draft" && !typing && event.key === "Enter") {
+      event.preventDefault();
+      if (PRACTICE_AUCTION) void recordPracticeUserBid();
+      else if (currentSalesEntryPolicy().manualControlsEnabled) saleForm.requestSubmit();
+      else showToast("Auctioneer feed is active; switch to Manual backup before recording a sale here.", true);
+    } else if (PRACTICE_AUCTION && currentView === "draft" && !typing && event.key.toLowerCase() === "b") {
       event.preventDefault();
       void recordPracticeUserBid();
+    } else if (!PRACTICE_AUCTION && currentView === "draft" && !typing && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      openPersonalMaximum();
+    } else if (currentView === "draft" && !typing && event.key.toLowerCase() === "n") {
+      event.preventDefault();
+      loadTopNominationPlay();
+    } else if (currentView === "draft" && !typing && event.code === "Space") {
+      event.preventDefault();
+      selectNextVisiblePlayer();
+    } else if (currentView === "draft" && !typing && event.key === "?") {
+      event.preventDefault();
+      const details = byId("selected-full-card");
+      details.open = !details.open;
+      if (details.open) details.scrollIntoView({ block: "nearest", behavior: "smooth" });
     } else if (currentView === "draft" && !typing && event.key.toLowerCase() === "i" && selectedPlayerId) {
       event.preventDefault();
       openPlayerIntel(selectedPlayerId);
@@ -5066,6 +5332,8 @@ async function bootstrap() {
     if (!LOCAL_ONLY) humanRehearsalEvidence = await getMeta("humanRehearsalEvidence");
     byId("keeper-evidence-details").open = await getMeta("keeperEvidenceExpanded", false) === true;
     renderKeeperEvidenceDisclosure();
+    proMode = await getMeta("proMode", false) === true;
+    renderProMode();
     try {
       const policyVersion = await getMeta("priorityPolicyVersion", 0);
       priorityScenario = policyVersion === PRIORITY_POLICY_VERSION
@@ -5177,6 +5445,7 @@ async function bootstrap() {
     displayBoardUrl = await getMeta("displayBoardUrl");
     lastRecoveryExportAt = await getMeta("lastRecoveryExportAt");
     renderAll();
+    window.setInterval(renderIntelAgeStatus, 60_000);
 
     if (session?.authenticated) {
       await rememberDisplayUrl(session.displayBoardUrl);

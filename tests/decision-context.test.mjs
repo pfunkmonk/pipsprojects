@@ -5,8 +5,10 @@ import {
   buildDecisionContext,
   buildNominationRecommendations,
   buildTierSnapshot,
+  budgetRunway,
   byeWeekConflicts,
   cashLeverage,
+  playerSurplusHeat,
   projectionDisagreement,
 } from "../public/thunder-bowl/decision-context.mjs";
 
@@ -113,6 +115,25 @@ test("cash leverage compares candidate-position legal maximums against the stron
   const result = cashLeverage({ state, position: "RB" });
   assert.equal(result.delta, 3);
   assert.equal(result.label, "You +$3");
+});
+
+test("budget runway preserves the one-dollar completion reserve and counts affordable premium alternatives", () => {
+  const state = {
+    draftedPlayers: {},
+    teams: { "dogs-of-war": { id: "dogs-of-war", cash: 40, openSlots: 5 } },
+  };
+  const result = budgetRunway({ state, players, purchasePrice: 12, valueFor: (player) => player.marketValue });
+  assert.equal(result.cashAfter, 28);
+  assert.equal(result.openSlotsAfter, 4);
+  assert.equal(result.completionReserve, 4);
+  assert.equal(result.futureLegalMax, 25);
+  assert.equal(result.premiumOptions, 1);
+});
+
+test("surplus heat never promotes a bid above a personal maximum or an Avoid tag", () => {
+  assert.equal(playerSurplusHeat({ currentBid: 10, liveMarketValue: 20, personalMaximum: 25 }).level, "value");
+  assert.equal(playerSurplusHeat({ currentBid: 25, liveMarketValue: 20, personalMaximum: 25 }).level, "stop");
+  assert.equal(playerSurplusHeat({ currentBid: 1, liveMarketValue: 20, personalMaximum: 25, avoid: true }).level, "stop");
 });
 
 test("nomination recommendations exclude targets and prefer high-price avoids or over-market players", () => {

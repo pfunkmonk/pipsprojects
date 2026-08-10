@@ -199,7 +199,7 @@ export function validateProjectionHandoffRows(rows, packInput) {
     const consensus = finite(row.raw_consensus_points, `${player.name} consensus points`);
     const expectedConsensus = weightedProjectionConsensus(sourcePoints);
     if (supplied.length && Math.abs(consensus - expectedConsensus) > 0.11) {
-      fail("PROJECTION_CONSENSUS_MISMATCH", `${player.name}'s raw consensus does not match the registered accuracy-weighted source model.`);
+      fail("PROJECTION_CONSENSUS_MISMATCH", `${player.name}'s raw consensus does not match the registered consensus source model.`);
     }
     const adjustments = {
       meanReversion: finite(row.mean_reversion_delta, `${player.name} mean-reversion delta`, { minimum: -300, maximum: 300 }),
@@ -338,7 +338,7 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
       asOf: first.sourceAsOf,
       role: "primary",
       modelEffect: "primary_projection",
-      note: `Immutable ${first.modelId}; accuracy-weighted premium consensus plus production-gated adjustments`,
+      note: `Immutable ${first.modelId}; near-equal consensus; limited historical tilt; production-gated adjustments`,
     });
     const sourceSummary = premiumRows
       .map((source) => `${source.source} ${Number(source.points).toFixed(1)}`)

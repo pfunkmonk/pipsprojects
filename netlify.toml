@@ -26,6 +26,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/thunder-bowl/pack/promote"
+  to = "/.netlify/functions/thunder-pack-promote"
+  status = 200
+
+[[redirects]]
   from = "/api/thunder-bowl/replay-2025/pack"
   to = "/.netlify/functions/thunder-replay-2025-pack"
   status = 200

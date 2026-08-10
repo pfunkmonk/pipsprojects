@@ -1,0 +1,250 @@
+{
+  "kind": "thunder-bowl-position-run-backtest-v1",
+  "generatedAt": "2026-08-10T18:50:11.300Z",
+  "detectorVersion": "position-run-v1",
+  "authority": "advisory_only",
+  "sourceSeasons": [
+    {
+      "year": 2012,
+      "sales": 147,
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2012\\2012 - DRAFT SUMMARY.csv"
+    },
+    {
+      "year": 2015,
+      "sales": 99,
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2015\\2015 - DRAFT SUMMARY.csv"
+    },
+    {
+      "year": 2017,
+      "sales": 108,
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2017\\DraftDominator\\2017 - DRAFT SUMMARY.csv"
+    },
+    {
+      "year": 2018,
+      "sales": 112,
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2018\\DraftDominator\\2018 - DRAFT SUMMARY.csv"
+    },
+    {
+      "year": 2023,
+      "sales": 97,
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2023\\DraftDominator\\2023 - DRAFT SUMMARY.csv"
+    }
+  ],
+  "totalSales": 563,
+  "historicalExpectedShare": {
+    "QB": 0.149,
+    "RB": 0.375,
+    "WR": 0.339,
+    "TE": 0.137,
+    "K": 0,
+    "DST": 0
+  },
+  "target": "Predict whether the next three chronological sales continue a position frequency surge or +$2 overpay pressure.",
+  "selected": {
+    "config": {
+      "decay": 0.75,
+      "intensityThreshold": 1.55,
+      "priceThreshold": 1
+    },
+    "predictions": 3258,
+    "truePositive": 33,
+    "falsePositive": 157,
+    "trueNegative": 2851,
+    "falseNegative": 217,
+    "precision": 0.174,
+    "recall": 0.132,
+    "f1": 0.15,
+    "activeRate": 0.058
+  },
+  "defaultConfiguration": {
+    "config": {
+      "decay": 0.75,
+      "intensityThreshold": 1.35,
+      "priceThreshold": 2
+    },
+    "predictions": 3258,
+    "truePositive": 27,
+    "falsePositive": 145,
+    "trueNegative": 2863,
+    "falseNegative": 223,
+    "precision": 0.157,
+    "recall": 0.108,
+    "f1": 0.128,
+    "activeRate": 0.053
+  },
+  "topConfigurations": [
+    {
+      "config": {
+        "decay": 0.75,
+        "intensityThreshold": 1.55,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 33,
+      "falsePositive": 157,
+      "trueNegative": 2851,
+      "falseNegative": 217,
+      "precision": 0.174,
+      "recall": 0.132,
+      "f1": 0.15,
+      "activeRate": 0.058
+    },
+    {
+      "config": {
+        "decay": 0.75,
+        "intensityThreshold": 1.35,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 34,
+      "falsePositive": 169,
+      "trueNegative": 2839,
+      "falseNegative": 216,
+      "precision": 0.167,
+      "recall": 0.136,
+      "f1": 0.15,
+      "activeRate": 0.062
+    },
+    {
+      "config": {
+        "decay": 0.65,
+        "intensityThreshold": 1.55,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 31,
+      "falsePositive": 142,
+      "trueNegative": 2866,
+      "falseNegative": 219,
+      "precision": 0.179,
+      "recall": 0.124,
+      "f1": 0.147,
+      "activeRate": 0.053
+    },
+    {
+      "config": {
+        "decay": 0.65,
+        "intensityThreshold": 1.35,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 32,
+      "falsePositive": 162,
+      "trueNegative": 2846,
+      "falseNegative": 218,
+      "precision": 0.165,
+      "recall": 0.128,
+      "f1": 0.144,
+      "activeRate": 0.06
+    },
+    {
+      "config": {
+        "decay": 0.85,
+        "intensityThreshold": 1.55,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 33,
+      "falsePositive": 181,
+      "trueNegative": 2827,
+      "falseNegative": 217,
+      "precision": 0.154,
+      "recall": 0.132,
+      "f1": 0.142,
+      "activeRate": 0.066
+    },
+    {
+      "config": {
+        "decay": 0.75,
+        "intensityThreshold": 1.15,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 36,
+      "falsePositive": 221,
+      "trueNegative": 2787,
+      "falseNegative": 214,
+      "precision": 0.14,
+      "recall": 0.144,
+      "f1": 0.142,
+      "activeRate": 0.079
+    },
+    {
+      "config": {
+        "decay": 0.65,
+        "intensityThreshold": 1.55,
+        "priceThreshold": 2
+      },
+      "predictions": 3258,
+      "truePositive": 27,
+      "falsePositive": 110,
+      "trueNegative": 2898,
+      "falseNegative": 223,
+      "precision": 0.197,
+      "recall": 0.108,
+      "f1": 0.14,
+      "activeRate": 0.042
+    },
+    {
+      "config": {
+        "decay": 0.65,
+        "intensityThreshold": 1.15,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 33,
+      "falsePositive": 190,
+      "trueNegative": 2818,
+      "falseNegative": 217,
+      "precision": 0.148,
+      "recall": 0.132,
+      "f1": 0.14,
+      "activeRate": 0.068
+    },
+    {
+      "config": {
+        "decay": 0.85,
+        "intensityThreshold": 1.35,
+        "priceThreshold": 1
+      },
+      "predictions": 3258,
+      "truePositive": 35,
+      "falsePositive": 224,
+      "trueNegative": 2784,
+      "falseNegative": 215,
+      "precision": 0.135,
+      "recall": 0.14,
+      "f1": 0.138,
+      "activeRate": 0.079
+    },
+    {
+      "config": {
+        "decay": 0.65,
+        "intensityThreshold": 1.35,
+        "priceThreshold": 2
+      },
+      "predictions": 3258,
+      "truePositive": 28,
+      "falsePositive": 130,
+      "trueNegative": 2878,
+      "falseNegative": 222,
+      "precision": 0.177,
+      "recall": 0.112,
+      "f1": 0.137,
+      "activeRate": 0.048
+    }
+  ],
+  "replay2025": {
+    "packValidated": true,
+    "teams": 12,
+    "players": 755,
+    "orderedAuctionSalesAvailable": false,
+    "note": "The 2025 replay pack and supplied 2025 DraftDominator summary contain keeper setup but no complete chronological auction-sale sequence. It can verify UI, privacy, ledger, and cap behavior, but it cannot honestly tune a time-series run detector. Complete 2012, 2014, 2015, 2017, 2018, and 2023 chronological exports were used instead."
+  },
+  "gate": {
+    "minimumObservedSales": 4,
+    "maximumDollarImpact": 3,
+    "maximumVbdImpact": 3,
+    "liveAuthority": "Dollar/WTP advisory only; no direct authoritative VBD mutation."
+  }
+}

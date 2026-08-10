@@ -96,7 +96,11 @@ function bundle() {
 
 test("weekly-asset intake covers every player while preserving every season projection and value", () => {
   const { candidate, audit } = createWeeklyAssetsCandidatePack(pack, bundle());
+  assert.match(candidate.packId, /-weekly-assets-\d{14}-priority-v1-assets-v1$/);
+  assert.ok(candidate.packId.length <= 100);
   assert.equal(candidate.players.every((player) => player.weeklyProjection?.source === "Thunder Bowl weekly assets v1"), true);
+  assert.equal(candidate.players.every((player) => player.assetProjection?.source === "Thunder Bowl weekly assets v1"), true);
+  assert.equal(candidate.players.every((player) => player.assetProjection?.modelEffect === "none"), true);
   assert.equal(candidate.weeklyContext.coveredPlayers, pack.players.length);
   assert.equal(candidate.weeklyContext.top168Coverage, 1);
   assert.equal(candidate.weeklyContext.status, "loaded_validated_schedule_weighting");
@@ -110,6 +114,8 @@ test("weekly-asset intake covers every player while preserving every season proj
     assert.equal(after.intrinsicValue, before.intrinsicValue);
     assert.equal(after.marketValue, before.marketValue);
     assert.equal(after.maxBid, before.maxBid);
+    assert.equal(after.assetProjection.rushYds, 170);
+    assert.equal(after.assetProjection.seasonSource, "FBG");
     assert.ok(Math.abs(after.weeklyProjection.points.reduce((sum, value) => sum + (value ?? 0), 0) - before.projectedPoints) <= 0.11);
   }
   assert.equal(audit.seasonProjectionChanges, 0);

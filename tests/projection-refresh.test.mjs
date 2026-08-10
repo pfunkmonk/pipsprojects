@@ -66,7 +66,7 @@ test("missing rows, a forged consensus, or an unreconciled adjustment fail close
   assert.throws(() => createProjectionCandidatePack(current, completedRows().slice(1)), /not all 716/);
   const consensus = completedRows();
   consensus[0].raw_consensus_points = Number(consensus[0].raw_consensus_points) + 10;
-  assert.throws(() => createProjectionCandidatePack(current, consensus), /does not match the registered accuracy-weighted source model/);
+  assert.throws(() => createProjectionCandidatePack(current, consensus), /does not match the registered consensus source model/);
   const adjusted = completedRows();
   adjusted[0].mean_reversion_delta = -10;
   assert.throws(() => createProjectionCandidatePack(current, adjusted), /do not reconcile/);

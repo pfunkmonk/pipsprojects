@@ -157,8 +157,47 @@ export function cashLeverage({ state, position, userTeamId = "dogs-of-war", lega
     userMaximum,
     topOpponentMaximum,
     delta,
-    label: delta > 0 ? `You +$${delta}` : delta < 0 ? `Room +$${Math.abs(delta)}` : "Even",
+    label: delta > 0 ? `You +$${delta}` : delta < 0 ? `Top rival +$${Math.abs(delta)}` : "Even",
   };
+}
+
+export function budgetRunway({ state, players = [], purchasePrice = 0, userTeamId = "dogs-of-war", valueFor = (player) => player?.marketValue } = {}) {
+  const team = state?.teams?.[userTeamId];
+  if (!team) return { available: false, cashAfter: 0, openSlotsAfter: 0, dollarsPerSlot: 0, futureLegalMax: 0, premiumOptions: 0 };
+  const price = Math.max(0, Math.floor(finiteNumber(purchasePrice)));
+  const cashAfter = Math.max(0, finiteNumber(team.cash) - price);
+  const openSlotsAfter = Math.max(0, finiteNumber(team.openSlots) - (price > 0 ? 1 : 0));
+  const completionReserve = Math.max(0, openSlotsAfter);
+  const discretionaryAfter = Math.max(0, cashAfter - completionReserve);
+  const dollarsPerSlot = openSlotsAfter ? cashAfter / openSlotsAfter : 0;
+  const futureLegalMax = openSlotsAfter ? Math.max(0, cashAfter - Math.max(0, openSlotsAfter - 1)) : 0;
+  const premiumOptions = (Array.isArray(players) ? players : []).filter((player) => (
+    !state.draftedPlayers?.[player.id]
+    && Math.max(0, finiteNumber(valueFor(player))) >= 10
+    && Math.max(0, finiteNumber(valueFor(player))) <= futureLegalMax
+  )).length;
+  return {
+    available: true,
+    cashAfter,
+    openSlotsAfter,
+    completionReserve,
+    discretionaryAfter,
+    dollarsPerSlot,
+    futureLegalMax,
+    premiumOptions,
+  };
+}
+
+export function playerSurplusHeat({ currentBid = 0, liveMarketValue = 0, personalMaximum = 0, stealPrice = null, avoid = false } = {}) {
+  const nextBid = Math.max(1, Math.floor(finiteNumber(currentBid)) + 1);
+  const market = Math.max(1, Math.floor(finiteNumber(liveMarketValue, 1)));
+  const maximum = Math.max(0, Math.floor(finiteNumber(personalMaximum)));
+  const edge = maximum - nextBid;
+  if (avoid || nextBid > maximum) return { level: "stop", edge, label: avoid ? "Avoid" : `Stop $${maximum}` };
+  if (Number.isSafeInteger(stealPrice) && nextBid <= stealPrice) return { level: "steal", edge, label: `Steal +$${edge}` };
+  if (edge >= Math.max(5, Math.ceil(market * 0.18))) return { level: "value", edge, label: `Edge +$${edge}` };
+  if (nextBid <= market || edge >= 2) return { level: "fair", edge, label: edge >= 0 ? `Edge +$${edge}` : "Fair" };
+  return { level: "stretch", edge, label: `Stretch $${nextBid}` };
 }
 
 export function buildBidRecommendation({

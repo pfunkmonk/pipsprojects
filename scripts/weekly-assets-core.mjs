@@ -6,7 +6,7 @@ export const WEEKLY_ASSET_SCHEMA_VERSION = 1;
 export const WEEKLY_ASSET_SOURCE = "Thunder Bowl weekly assets v1";
 export const WEEKLY_ASSET_AUTHORITY = "candidate_only";
 export const WEEKLY_ASSET_SCORING_FINGERPRINT = "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1";
-export const PRIORITY_POLICY_RELEASE = "priority-v1";
+export const PRIORITY_POLICY_RELEASE = "priority-v1-assets-v1";
 
 const METADATA_COLUMNS = [
   "schema_version", "season", "source_name", "model_id", "source_as_of", "exported_at",
@@ -227,6 +227,7 @@ export function validateWeeklyAssetBundle({ manifest, manifestText = "", weeklyT
   let zeroAssetFallbackPlayers = 0;
   let maximumReconciliationDelta = 0;
   const projections = new Map();
+  const assetProjections = new Map();
   for (const player of pack.players) {
     const season = seasonById.get(player.id);
     const weeks = (weeklyById.get(player.id) || []).sort((left, right) => left.week - right.week);
@@ -256,6 +257,30 @@ export function validateWeeklyAssetBundle({ manifest, manifestText = "", weeklyT
       points,
       sourceSeasonTotal: player.projectedPoints,
     });
+    assetProjections.set(player.id, {
+      source: WEEKLY_ASSET_SOURCE,
+      asOf: metadata.sourceAsOf,
+      modelEffect: "none",
+      seasonSource: season.season_asset_source,
+      shapeSource: season.weekly_shape_source,
+      passYds: season.pass_yds,
+      passTd: season.pass_td,
+      passInt: season.pass_int,
+      rushYds: season.rush_yds,
+      rushTd: season.rush_td,
+      receptions: season.rec,
+      recYds: season.rec_yds,
+      recTd: season.rec_td,
+      fumblesLost: season.fumbles_lost,
+      fgMade: season.fg_made,
+      xpMade: season.xp_made,
+      dstSacks: season.dst_sacks,
+      dstInt: season.dst_int,
+      dstFumRec: season.dst_fum_rec,
+      dstTd: season.dst_td,
+      dstSafety: season.dst_safety,
+      dstPtsAllowed: season.dst_pts_allowed,
+    });
   }
   if (JSON.stringify(coverage) !== JSON.stringify(manifest.coverage)) fail("WEEKLY_ASSET_COVERAGE", "Observed source coverage does not match the manifest.");
   return {
@@ -263,6 +288,7 @@ export function validateWeeklyAssetBundle({ manifest, manifestText = "", weeklyT
     manifestHash: sha256(manifestText || `${JSON.stringify(manifest, null, 2)}\n`),
     coverage,
     projections,
+    assetProjections,
     audit: {
       players: pack.players.length,
       weeklyRows: weeklyRows.length,
@@ -284,8 +310,9 @@ export function createWeeklyAssetsCandidatePack(currentInput, bundle) {
   const validated = validateWeeklyAssetBundle(bundle, current);
   const candidate = structuredClone(current);
   const releaseStamp = validated.metadata.exportedAt.replace(/\D/g, "").slice(0, 14);
-  const packBase = current.packId.replace(/-weekly-assets-\d+(?:-priority-v\d+)?$/, "");
-  candidate.packId = `${packBase}-weekly-assets-${releaseStamp}-${PRIORITY_POLICY_RELEASE}`.slice(0, 100);
+  const packBase = current.packId.replace(/-weekly-assets-\d+.*$/, "");
+  const releaseSuffix = `-weekly-assets-${releaseStamp}-${PRIORITY_POLICY_RELEASE}`;
+  candidate.packId = `${packBase.slice(0, Math.max(1, 100 - releaseSuffix.length))}${releaseSuffix}`;
   candidate.asOf = validated.metadata.exportedAt;
   const source = {
     name: "Thunder Bowl weekly assets",
@@ -296,7 +323,10 @@ export function createWeeklyAssetsCandidatePack(currentInput, bundle) {
   const sourceIndex = candidate.sources.findIndex((row) => ["Thunder Bowl weekly context v3", "Thunder Bowl weekly assets"].includes(row.name));
   if (sourceIndex >= 0) candidate.sources[sourceIndex] = source;
   else candidate.sources.push(source);
-  for (const player of candidate.players) player.weeklyProjection = validated.projections.get(player.id);
+  for (const player of candidate.players) {
+    player.weeklyProjection = validated.projections.get(player.id);
+    player.assetProjection = validated.assetProjections.get(player.id);
+  }
   candidate.weeklyContext = {
     status: "loaded_validated_schedule_weighting",
     asOf: validated.metadata.sourceAsOf,

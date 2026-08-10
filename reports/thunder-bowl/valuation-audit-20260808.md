@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 valuation and VBD discrepancy audit
 
-- Pack: `tb26-tb-accuracy-consensus-20260809-v1-20260809224311-weekly-assets-20260810033019-priority-v1` (716 players; as of 2026-08-10T03:30:19.000Z)
+- Pack: `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1` (716 players; as of 2026-08-10T03:30:19.000Z)
 - FBG August 8 weekly coverage: 604/716 ({"QB":78,"RB":115,"WR":209,"TE":127,"K":43,"DST":32})
 - FBG auction-value coverage: 400/716 (supplied ranks 1-400)
 - Candidate projection coverage: 416/716

@@ -72,7 +72,7 @@ const pack = validateDraftPack(JSON.parse(await readFile(resolve(root, "public/t
 const currentPack = validateDraftPack(JSON.parse(await readFile(resolve(root, "netlify/functions/_data/draft-pack-2026-provisional.json"), "utf8")));
 const state = replayDraft([]);
 const publicPayload = JSON.stringify(toPublicSnapshot(state));
-for (const forbidden of ["projectedPoints", "weeklyProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "managerProfile", "pressureIndex", "opponentPressure", "targetTag"]) {
+for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes", "managerProfile", "pressureIndex", "opponentPressure", "targetTag"]) {
   if (publicPayload.includes(forbidden)) throw new Error(`Public snapshot includes forbidden field ${forbidden}.`);
 }
 if (pack.players.length < 10) throw new Error("Practice pack is too small for rapid-search QA.");

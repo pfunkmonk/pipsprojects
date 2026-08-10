@@ -199,7 +199,7 @@ const publicSnapshotMs = performance.now() - publicStarted;
 assert.equal(publicSnapshot.totalPlayers, 168);
 assert.equal(publicSnapshot.status, "complete");
 const publicText = JSON.stringify(publicSnapshot);
-for (const forbidden of ["projectedPoints", "weeklyProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes"]) {
+for (const forbidden of ["projectedPoints", "weeklyProjection", "assetProjection", "weeklyContext", "managerProfiles", "pressureIndex", "opponentPressure", "vbd", "intrinsicValue", "marketValue", "maxBid", "notes"]) {
   assert.ok(!publicText.includes(forbidden), `Public snapshot leaked ${forbidden}.`);
 }
 
