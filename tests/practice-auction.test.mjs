@@ -98,3 +98,13 @@ test("practice storage, cloud sync, projector, and controls are isolated from th
   assert.match(appSource, /Download & reset local practice/);
   assert.match(appSource, /event\.code === "Space"/);
 });
+
+test("browsing another player cannot masquerade as the active practice auction", () => {
+  for (const id of ["practice-browse-warning", "practice-browse-detail", "return-practice-player"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(appSource, /browsingDifferentPlayer: Boolean\(active && player && activePlayer\.id !== player\.id\)/);
+  assert.match(appSource, /verdict: "BROWSE"/);
+  assert.match(appSource, /Return to the live player before making a bid decision/);
+  assert.match(appSource, /selectPlayer\(practiceSession\.playerId, false\)/);
+});

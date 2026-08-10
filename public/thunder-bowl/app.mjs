@@ -1685,11 +1685,40 @@ function currentDecisionBid(player) {
   return activePracticePlayer ? practiceSession.currentBid : decisionCurrentBid;
 }
 
-function renderDecisionCoach(player, { available, live, context, annotation, personalMaximum }) {
+function practiceBrowseContext(player) {
+  const activePlayer = PRACTICE_AUCTION && practiceSession
+    ? draftPack.players.find((candidate) => candidate.id === practiceSession.playerId)
+    : null;
+  const active = Boolean(activePlayer && !draftState.draftedPlayers[activePlayer.id]);
+  return {
+    activePlayer: active ? activePlayer : null,
+    browsingDifferentPlayer: Boolean(active && player && activePlayer.id !== player.id),
+  };
+}
+
+function renderPracticeBrowseWarning(player) {
+  const context = practiceBrowseContext(player);
+  const warning = byId("practice-browse-warning");
+  warning.hidden = !context.browsingDifferentPlayer;
+  if (context.browsingDifferentPlayer) {
+    const leader = practiceTeamName(practiceSession.leaderTeamId);
+    byId("practice-browse-detail").textContent = `Live auction: ${context.activePlayer.name} at ${currency(practiceSession.currentBid)}, led by ${leader}. ${player.name} detail below is comparison only.`;
+  } else {
+    byId("practice-browse-detail").textContent = "The live practice auction is on another player.";
+  }
+  return context;
+}
+
+function renderDecisionCoach(player, { available, live, context, annotation, personalMaximum, browsingDifferentPlayer = false }) {
   const activePracticePlayer = PRACTICE_AUCTION && practiceSession?.playerId === player?.id;
   const currentBid = currentDecisionBid(player);
   const dogsLeading = Boolean(activePracticePlayer && practiceSession.leaderTeamId === USER_TEAM_ID);
-  const recommendation = buildBidRecommendation({
+  const recommendation = browsingDifferentPlayer ? {
+    verdict: "BROWSE",
+    tone: "neutral",
+    nextBid: null,
+    reason: "This is comparison detail. Return to the live player before making a bid decision.",
+  } : buildBidRecommendation({
     selectedPlayer: player,
     available,
     currentBid,
@@ -1704,11 +1733,11 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   coach.className = `decision-coach coach-${recommendation.tone}`;
   byId("decision-coach-verdict").textContent = recommendation.verdict;
   byId("decision-coach-reason").textContent = recommendation.reason;
-  byId("decision-next-bid").textContent = currency(recommendation.nextBid);
+  byId("decision-next-bid").textContent = recommendation.nextBid === null ? "--" : currency(recommendation.nextBid);
   byId("decision-current-bid").value = String(currentBid);
-  byId("decision-current-bid").disabled = activePracticePlayer;
-  byId("decision-bid-down").disabled = activePracticePlayer || currentBid <= 0;
-  byId("decision-bid-up").disabled = activePracticePlayer || currentBid >= 299;
+  byId("decision-current-bid").disabled = activePracticePlayer || browsingDifferentPlayer;
+  byId("decision-bid-down").disabled = activePracticePlayer || browsingDifferentPlayer || currentBid <= 0;
+  byId("decision-bid-up").disabled = activePracticePlayer || browsingDifferentPlayer || currentBid >= 299;
   byId("decision-comparables").textContent = context ? `${context.sameTierRemaining} in Tier ${player.tier}` : "—";
   byId("decision-best-alternative").textContent = context?.nextAlternative
     ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
@@ -1845,7 +1874,8 @@ function renderSelectedPlayer() {
     availablePlayers: availablePlayers(),
     valueFor: (candidate) => effectivePlayerBidLimit(candidate),
   }) : null;
-  renderDecisionCoach(player, { available, live, context, annotation, personalMaximum });
+  const practiceBrowse = renderPracticeBrowseWarning(player);
+  renderDecisionCoach(player, { available, live, context, annotation, personalMaximum, browsingDifferentPlayer: practiceBrowse.browsingDifferentPlayer });
   byId("selected-tier-supply").textContent = context ? `${context.sameTierRemaining} left` : "—";
   byId("selected-next-alternative").textContent = context?.nextAlternative
     ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
@@ -4803,6 +4833,11 @@ function bindInteractions() {
     openPlayerIntel(target.dataset.playerId);
   });
   byId("open-tier-dialog").addEventListener("click", openTierDialog);
+  byId("return-practice-player").addEventListener("click", () => {
+    if (!practiceSession?.playerId) return;
+    selectPlayer(practiceSession.playerId, false);
+    showToast(`Returned to the live auction: ${selectedPlayer()?.name || practiceSession.playerName}.`);
+  });
   byId("tier-dialog-rows").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-tier-player-id]");
     if (!button) return;

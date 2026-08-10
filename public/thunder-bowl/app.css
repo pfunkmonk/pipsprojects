@@ -266,6 +266,12 @@ input[readonly] { color: var(--muted); }
 .bid-verdict span { font-weight: 850; text-transform: uppercase; }
 .bid-verdict strong { font-size: 2rem; }
 .decision-coach { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 1rem 0 0.75rem; border: 2px solid var(--line-strong); border-radius: 12px; padding: 0.55rem; background: var(--navy-950); }
+.practice-browse-warning { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin: 0 0 0.8rem; border: 2px solid var(--gold); border-left-width: 7px; border-radius: 11px; padding: 0.72rem 0.78rem; background: rgba(137, 99, 16, 0.34); }
+.practice-browse-warning[hidden] { display: none; }
+.practice-browse-warning div { min-width: 0; }
+.practice-browse-warning strong { display: block; color: var(--gold-light); font-size: 0.86rem; font-weight: 950; letter-spacing: 0.08em; }
+.practice-browse-warning span { display: block; margin-top: 0.16rem; color: var(--text); font-size: 0.86rem; font-weight: 750; line-height: 1.35; }
+.practice-browse-warning .button { flex: 0 0 auto; min-height: 46px; }
 .decision-coach-verdict { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.75rem; border-radius: 9px; padding: 0.68rem 0.78rem; background: var(--navy-750); }
 .decision-coach-verdict span { min-width: 92px; color: var(--text); font-size: 1.75rem; font-weight: 950; letter-spacing: 0.04em; }
 .decision-coach-verdict small { color: var(--muted); font-size: 0.78rem; font-weight: 750; line-height: 1.35; }
@@ -1012,6 +1018,8 @@ input[readonly] { color: var(--muted); }
   .decision-coach { grid-template-columns: 1fr; }
   .decision-coach-verdict, .decision-best-alternative { grid-column: 1; }
   .decision-coach-verdict { grid-template-columns: 1fr; gap: 0.2rem; }
+  .practice-browse-warning { align-items: stretch; flex-direction: column; }
+  .practice-browse-warning .button { width: 100%; }
   .sale-bar { grid-template-columns: 1fr; }
   .sale-bar > * { grid-column: 1; }
   .sales-entry-switch { flex-direction: column; }
