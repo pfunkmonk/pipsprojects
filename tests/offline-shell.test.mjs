@@ -121,6 +121,9 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
     "decision-forecast-sale",
     "decision-current-bid",
     "decision-comparables",
+    "decision-tier-warning",
+    "decision-tier-warning-title",
+    "decision-tier-warning-message",
     "decision-cash-leverage",
     "decision-budget-runway",
     "decision-best-alternative",
@@ -135,6 +138,7 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
   assert.match(indexHtml, /id="decision-coach-verdict">WAIT<\/span>/);
   assert.match(indexHtml, /<th>NFL team<\/th><th>Player<\/th><th class="number">Bye<\/th><th class="number">Projected<\/th><th>Status<\/th>/);
   assert.match(appSource, /buildBidRecommendation\(\{/);
+  assert.match(appSource, /buildTierDeadlineWarning\(\{/);
   assert.match(indexHtml, /Win at next bid/);
   assert.match(appSource, /const legalNextBid = Number\.isSafeInteger\(recommendation\.nextBid\)/);
   assert.match(appSource, /recommendation\.nextBid <= personalMaximum/);

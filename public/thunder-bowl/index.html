@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260810s" />
+  <link rel="stylesheet" href="./app.css?v=20260811a" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -161,6 +161,10 @@
                 <small id="decision-coach-reason">Select the nominated player.</small>
                 <div class="decision-win-chance"><span>Win at next bid</span><strong id="decision-win-chance">—</strong><small id="decision-forecast-sale">Forecast —</small></div>
               </div>
+              <button id="decision-tier-warning" class="decision-tier-warning tier-warning-none" type="button" hidden>
+                <span><strong id="decision-tier-warning-title"></strong><small id="decision-tier-warning-message"></small></span>
+                <b>View tier ›</b>
+              </button>
               <div class="decision-coach-fact decision-next-bid">
                 <span>Next bid</span>
                 <strong id="decision-next-bid">$1</strong>
@@ -944,6 +948,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260810s"></script>
+  <script type="module" src="./app.mjs?v=20260811a"></script>
 </body>
 </html>

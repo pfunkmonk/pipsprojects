@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildBidRecommendation,
   buildDecisionContext,
+  buildTierDeadlineWarning,
   buildNominationRecommendations,
   buildTierSnapshot,
   budgetRunway,
@@ -28,6 +29,7 @@ test("dynamic context counts current tier supply and finds the next lower-tier a
   const result = buildDecisionContext({ selectedPlayer: players[0], availablePlayers: players, valueFor: (player) => player.maxBid });
   assert.equal(result.sameTierRemaining, 2);
   assert.equal(result.nextAlternative.id, "rb3");
+  assert.equal(result.nextTierAlternative.id, "rb3");
   assert.equal(result.alternativeValue, 30);
   assert.equal(result.maxBidCliff, 12);
   assert.equal(result.marketCliff, 11);
@@ -40,6 +42,34 @@ test("sold players disappear from tier supply and alternative selection", () => 
   assert.equal(result.sameTierRemaining, 1);
   assert.equal(result.nextAlternative.id, "rb4");
   assert.equal(result.maxBidCliff, 16);
+});
+
+test("tier deadline warning escalates at two and one available players without changing value authority", () => {
+  const context = buildDecisionContext({ selectedPlayer: players[0], availablePlayers: players, valueFor: (player) => player.maxBid });
+  const closing = buildTierDeadlineWarning({ selectedPlayer: players[0], available: true, ...context });
+  assert.equal(closing.active, true);
+  assert.equal(closing.urgency, "closing");
+  assert.match(closing.title, /2 RB OPTIONS LEFT/);
+  assert.match(closing.message, /Gamma/);
+  assert.match(closing.message, /\$12 max-bid drop/);
+
+  const lastContext = buildDecisionContext({ selectedPlayer: players[0], availablePlayers: players.filter((player) => player.id !== "rb2"), valueFor: (player) => player.maxBid });
+  const last = buildTierDeadlineWarning({ selectedPlayer: players[0], available: true, ...lastContext });
+  assert.equal(last.urgency, "last");
+  assert.match(last.title, /LAST RB IN TIER 1/);
+  assert.match(last.message, /final available player/);
+
+  assert.equal(buildTierDeadlineWarning({ selectedPlayer: players[0], ...context, available: false }).active, false);
+  assert.equal(buildTierDeadlineWarning({ selectedPlayer: players[2], available: true, sameTierRemaining: 3 }).active, false);
+
+  const bottomTier = { id: "te-last", name: "Final TE", position: "TE", tier: 13, sourceRank: 500, maxBid: 1 };
+  const betterTier = { id: "te-best", name: "Elite TE", position: "TE", tier: 1, sourceRank: 1, maxBid: 30 };
+  const bottomContext = buildDecisionContext({ selectedPlayer: bottomTier, availablePlayers: [bottomTier, betterTier], valueFor: (player) => player.maxBid });
+  assert.equal(bottomContext.nextAlternative.id, "te-best");
+  assert.equal(bottomContext.nextTierAlternative, null);
+  const bottomWarning = buildTierDeadlineWarning({ selectedPlayer: bottomTier, available: true, ...bottomContext });
+  assert.match(bottomWarning.message, /No lower-tier alternative/);
+  assert.doesNotMatch(bottomWarning.message, /Elite TE/);
 });
 
 test("projection disagreement reports exact range without changing values", () => {

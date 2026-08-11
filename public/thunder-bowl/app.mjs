@@ -79,12 +79,13 @@ import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20
 import {
   buildBidRecommendation,
   buildDecisionContext,
+  buildTierDeadlineWarning,
   buildTierSnapshot,
   budgetRunway,
   byeWeekConflicts,
   cashLeverage,
   playerSurplusHeat,
-} from "./decision-context.mjs?v=20260810i";
+} from "./decision-context.mjs?v=20260811a";
 import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
@@ -1917,7 +1918,7 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
     personalMaximum,
     liveMarketValue: live?.marketValue || 0,
     sameTierRemaining: context?.sameTierRemaining || 0,
-    nextAlternative: context?.nextAlternative || null,
+    nextTierAlternative: context?.nextTierAlternative || null,
     annotation,
     dogsLeading,
   });
@@ -1925,6 +1926,18 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   coach.className = `decision-coach coach-${recommendation.tone}`;
   byId("decision-coach-verdict").textContent = recommendation.verdict;
   byId("decision-coach-reason").textContent = recommendation.reason;
+  const tierWarning = buildTierDeadlineWarning({
+    selectedPlayer: player,
+    available: available && !browsingDifferentPlayer,
+    sameTierRemaining: context?.sameTierRemaining || 0,
+    nextAlternative: context?.nextAlternative || null,
+    maxBidCliff: context?.maxBidCliff || 0,
+  });
+  const tierWarningElement = byId("decision-tier-warning");
+  tierWarningElement.hidden = !tierWarning.active;
+  tierWarningElement.className = `decision-tier-warning tier-warning-${tierWarning.urgency}`;
+  byId("decision-tier-warning-title").textContent = tierWarning.title;
+  byId("decision-tier-warning-message").textContent = tierWarning.message;
   const legalNextBid = Number.isSafeInteger(recommendation.nextBid)
     && recommendation.nextBid <= personalMaximum
     && !dogsLeading;
@@ -2149,10 +2162,10 @@ function renderSelectedPlayer() {
     browsingDifferentPlayer: practiceBrowse.browsingDifferentPlayer,
   });
   byId("selected-tier-supply").textContent = context ? `${context.sameTierRemaining} left` : "—";
-  byId("selected-next-alternative").textContent = context?.nextAlternative
-    ? `${context.nextAlternative.name} · ${currency(context.alternativeValue)}`
+  byId("selected-next-alternative").textContent = context?.nextTierAlternative
+    ? `${context.nextTierAlternative.name} · ${currency(effectivePlayerBidLimit(context.nextTierAlternative))}`
     : player ? "No lower tier" : "—";
-  byId("selected-tier-cliff").textContent = context?.nextAlternative ? currency(context.maxBidCliff) : "—";
+  byId("selected-tier-cliff").textContent = context?.nextTierAlternative ? currency(context.maxBidCliff) : "—";
   const disagreement = context?.disagreement;
   byId("selected-source-spread").textContent = disagreement?.available
     ? `${disagreement.spread.toFixed(1)} pts · ${disagreement.level.toUpperCase()}`
@@ -5201,6 +5214,7 @@ function bindInteractions() {
     openPlayerIntel(target.dataset.playerId);
   });
   byId("open-tier-dialog").addEventListener("click", openTierDialog);
+  byId("decision-tier-warning").addEventListener("click", openTierDialog);
   byId("return-practice-player").addEventListener("click", () => {
     if (!practiceSession?.playerId) return;
     selectPlayer(practiceSession.playerId, false);

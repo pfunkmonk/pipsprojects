@@ -48,6 +48,7 @@ export function buildDecisionContext({ selectedPlayer, availablePlayers, valueFo
       available: false,
       sameTierRemaining: 0,
       nextAlternative: null,
+      nextTierAlternative: null,
       maxBidCliff: 0,
       marketCliff: 0,
       disagreement: projectionDisagreement(null),
@@ -67,9 +68,11 @@ export function buildDecisionContext({ selectedPlayer, availablePlayers, valueFo
 
   const lowerTier = samePosition.filter((player) => tierNumber(player) > selectedTier);
   const lowerRank = samePosition.filter((player) => rankNumber(player) > rankNumber(selectedPlayer));
-  const nextAlternative = lowerTier[0] || lowerRank[0] || samePosition[0] || null;
+  const nextTierAlternative = lowerTier[0] || null;
+  const nextAlternative = nextTierAlternative || lowerRank[0] || samePosition[0] || null;
   const selectedValue = Math.max(0, finiteNumber(valueFor(selectedPlayer)));
   const alternativeValue = nextAlternative ? Math.max(0, finiteNumber(valueFor(nextAlternative))) : 0;
+  const nextTierValue = nextTierAlternative ? Math.max(0, finiteNumber(valueFor(nextTierAlternative))) : 0;
   const selectedMarket = Math.max(0, finiteNumber(selectedPlayer.marketValue));
   const alternativeMarket = nextAlternative ? Math.max(0, finiteNumber(nextAlternative.marketValue)) : 0;
 
@@ -77,12 +80,49 @@ export function buildDecisionContext({ selectedPlayer, availablePlayers, valueFo
     available: true,
     sameTierRemaining,
     nextAlternative,
+    nextTierAlternative,
     selectedValue,
     alternativeValue,
-    maxBidCliff: Math.max(0, selectedValue - alternativeValue),
+    maxBidCliff: Math.max(0, selectedValue - nextTierValue),
     marketCliff: Math.max(0, selectedMarket - alternativeMarket),
     disagreement: projectionDisagreement(selectedPlayer),
     modelEffect: "none",
+  };
+}
+
+export function buildTierDeadlineWarning({
+  selectedPlayer,
+  available = true,
+  sameTierRemaining = 0,
+  nextTierAlternative = null,
+  maxBidCliff = 0,
+} = {}) {
+  const remaining = Math.max(0, Math.floor(finiteNumber(sameTierRemaining)));
+  if (!selectedPlayer || !available || remaining < 1 || remaining > 2) {
+    return { active: false, urgency: "none", title: "", message: "" };
+  }
+
+  const position = String(selectedPlayer.position || "player").toUpperCase();
+  const tier = Number.isFinite(tierNumber(selectedPlayer)) ? tierNumber(selectedPlayer) : "?";
+  const cliff = Math.max(0, Math.floor(finiteNumber(maxBidCliff)));
+  const alternative = nextTierAlternative
+    ? ` Next tier: ${nextTierAlternative.name}${cliff > 0 ? ` (a $${cliff} max-bid drop)` : ""}.`
+    : " No lower-tier alternative is currently available.";
+
+  if (remaining === 1) {
+    return {
+      active: true,
+      urgency: "last",
+      title: `LAST ${position} IN TIER ${tier}`,
+      message: `${selectedPlayer.name} is the final available player in this tier. If this player goes, you miss Tier ${tier}.${alternative}`,
+    };
+  }
+
+  return {
+    active: true,
+    urgency: "closing",
+    title: `TIER ${tier} CLOSING · 2 ${position} OPTIONS LEFT`,
+    message: `You need one of the final two available players to avoid dropping to the next tier.${alternative}`,
   };
 }
 
