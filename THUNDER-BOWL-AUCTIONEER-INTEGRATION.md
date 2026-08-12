@@ -54,7 +54,7 @@ Then verify:
 
 1. Sign in to `/thunder-bowl/auctioneer/` with the separate auctioneer code.
 2. Open the board from the console rather than typing or sharing a bare URL; this preserves the display token.
-3. Enter a deliberately impossible bid and confirm that it is rejected with the player-specific maximum legal bid.
+3. Enter a deliberately impossible bid and confirm the preview is marked illegal, the final action changes to `Blocked · max $X` and is disabled, and a stale/direct command is still rejected with the player-specific maximum legal bid.
 4. Record a legal $1 test sale in an isolated rehearsal ledger and verify the player, price, cash, nominator, and clock on the second screen.
 5. Exercise edit, two-step undo, restore, finish, and reopen before draft day.
 
@@ -69,7 +69,9 @@ Then verify:
 
 ## Release status
 
-The integration is deployed at `https://pipsprojects.com`. On August 9, 2026, production Chrome QA passed the separate private, auctioneer, and Draft Board sign-ins; 12-team/716-player restricted snapshots; token/session projector access; private-field firewall; cloud synchronization; typo-tolerant player lookup; illegal-bid rejection; keeper declaration/undo; atomic multi-player trade/undo; and clean browser diagnostics without adding a live sale.
+The integration is deployed at `https://pipsprojects.com`. On August 11, 2026, signed-in production Chrome QA passed the separate private, auctioneer, and Draft Board sign-ins; 12-team/716-player restricted snapshots; token/session projector access; private-field firewall; cloud synchronization; keeper declaration/undo; atomic multi-player trade/undo; manual/auctioneer switching; internal player intelligence; and public-board rendering without adding a production sale.
+
+That audit found two release-candidate defects in the then-live client: two-error names did not honor the UI's typo promise, and the auctioneer could preview an illegal amount while leaving the final action enabled (the server still rejected it). The source release candidate now uses one shared fuzzy ranker across all three lookup surfaces and one shared pending-sale legality calculation across preview and button state, with the server as a final backstop. These source fixes are not represented as live until separately pushed and deployed. See `reports/thunder-bowl/release-audit-20260811.md`.
 
 The pack-pinned automatic catastrophe rehearsal satisfies the technical rehearsal gate with 24 keepers, 144 auction sales, auctioneer/manual failover, outage merge, recovery, latency, and public/private isolation. A physical two-computer speaking-speed rehearsal remains useful but optional and is never represented as automated evidence. The actual departure blockers are rotating the private-room and Draft Board codes exposed in public Git history, the final promoted projection pack, and a fresh all-player intelligence capture and recovery download on the draft laptop.
 

@@ -346,27 +346,42 @@ function updateSelectedPlayer() {
 }
 
 function updateRecordAvailability() {
-  const price = Number(salePrice.value);
-  const ready = Boolean(snapshot && cloudReady && !commandInFlight && selectedPlayer() && saleTeam.value && Number.isInteger(price) && price >= 1);
+  const pending = pendingSaleState();
+  const ready = Boolean(snapshot && cloudReady && !commandInFlight && pending.inputReady && pending.legality?.legal);
   recordSaleButton.disabled = !ready;
-  recordSaleButton.textContent = ready ? `Record $${price} sale` : "Record sale";
+  recordSaleButton.textContent = ready
+    ? `Record $${pending.price} sale`
+    : pending.inputReady && pending.legality && !pending.legality.legal
+      ? `Blocked · max $${pending.legality.legalMaxBid}`
+      : "Record sale";
   document.getElementById("clear-sale").disabled = commandInFlight;
   document.getElementById("offline-warning").hidden = cloudReady;
-  renderPendingSale();
+  renderPendingSale(pending);
 }
 
-function renderPendingSale() {
-  const preview = document.getElementById("pending-sale-preview");
+function pendingSaleState() {
   const player = selectedPlayer();
   const team = snapshot?.teams.find((candidate) => candidate.id === saleTeam.value);
   const price = Number(salePrice.value);
-  if (!player || !team || !Number.isInteger(price) || price < 1) {
+  const inputReady = Boolean(player && team && Number.isInteger(price) && price >= 1);
+  return {
+    player,
+    team,
+    price,
+    inputReady,
+    legality: inputReady ? evaluatePurchase(snapshot, { playerId: player.id, teamId: team.id, price }) : null,
+  };
+}
+
+function renderPendingSale(pending = pendingSaleState()) {
+  const preview = document.getElementById("pending-sale-preview");
+  const { player, team, price, inputReady, legality } = pending;
+  if (!inputReady) {
     preview.hidden = true;
     preview.classList.remove("is-illegal");
     return;
   }
   const summary = teamSummary(snapshot, team.id);
-  const legality = evaluatePurchase(snapshot, { playerId: player.id, teamId: team.id, price });
   preview.hidden = false;
   preview.classList.toggle("is-illegal", !legality.legal);
   document.getElementById("pending-sale-sentence").textContent = `${player.name} → ${team.name} for $${price}${legality.legal ? "" : " · ILLEGAL"}`;

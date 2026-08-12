@@ -58,7 +58,7 @@ import {
   validatePersonalBoardBundle,
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260810a";
-import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260805g";
+import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260811h";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
@@ -3234,8 +3234,7 @@ function selectedTradePlayers(playerIds) {
 }
 
 function playerNameMatches(candidate, query) {
-  const normalized = normalizePlayerSearch(query);
-  return !normalized || normalizePlayerSearch(candidate.playerName).includes(normalized);
+  return playerSearchScore({ name: candidate.playerName }, query) !== null;
 }
 
 function updateKeeperSelectionSummary() {

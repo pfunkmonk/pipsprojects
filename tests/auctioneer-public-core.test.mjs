@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertPublicSnapshot, currentAuditCsv, currentBoardCsv, evaluateDraftCompletion, evaluatePurchase, orderedTeamAssignments, teamSummary } from "../public/thunder-bowl/shared/public-core.mjs";
+import { assertPublicSnapshot, currentAuditCsv, currentBoardCsv, evaluateDraftCompletion, evaluatePurchase, orderedTeamAssignments, publicPlayerSearch, teamSummary } from "../public/thunder-bowl/shared/public-core.mjs";
 
 function fixture() {
   return {
@@ -113,4 +113,13 @@ test("draft completion accepts legal rosters below the 14-player maximum", () =>
   const completion = evaluateDraftCompletion(snapshot);
   assert.equal(completion.teams.find((team) => team.teamId === "first").complete, true);
   assert.equal(completion.teams.find((team) => team.teamId === "second").complete, false);
+});
+
+test("auctioneer player search shares the typo-tolerant ranked matcher", () => {
+  const players = [
+    { id: "gibbs", name: "Jahmyr Gibbs", position: "RB", nflTeam: "DET" },
+    { id: "other", name: "Jimmy Garoppolo", position: "QB", nflTeam: "LAR" },
+  ];
+  assert.equal(publicPlayerSearch(players, "Jamy Gbbs")[0]?.id, "gibbs");
+  assert.deepEqual(publicPlayerSearch(players, "DET").map((player) => player.id), ["gibbs"]);
 });

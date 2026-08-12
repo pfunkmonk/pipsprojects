@@ -65,6 +65,13 @@ test("an unchanged successful auctioneer refresh clears stale offline or rejecti
   assert.match(auctioneerSource, /else\s*\{\s*renderCloudStatus\(\);\s*updateRecordAvailability\(\);\s*\}/);
 });
 
+test("auctioneer disables an illegal pending sale before the server backstop", () => {
+  assert.match(auctioneerSource, /function pendingSaleState\(\)/);
+  assert.match(auctioneerSource, /pending\.inputReady && pending\.legality\?\.legal/);
+  assert.match(auctioneerSource, /`Blocked · max \$\$\{pending\.legality\.legalMaxBid\}`/);
+  assert.match(auctioneerSource, /if \(!legality\.legal\) \{[\s\S]*flashIllegal\(legality\.message\);[\s\S]*return;/);
+});
+
 test("an unchanged successful projector refresh clears stale connection state", () => {
   assert.match(boardSource, /else if \(snapshot\) \{\s*renderLiveStatus\(\);\s*\}/);
 });
@@ -88,7 +95,7 @@ test("the project card offers separate private, auctioneer, and Draft Board entr
 
 test("offline shell caches both auctioneer and projector experiences", () => {
   assert.match(serviceWorker, /"\/thunder-bowl\/auctioneer\/"/);
-  assert.match(serviceWorker, /"\/thunder-bowl\/auctioneer\/auctioneer\.mjs"/);
+  assert.match(serviceWorker, /"\/thunder-bowl\/auctioneer\/auctioneer\.mjs(?:\?v=[^"]+)?"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/draft-board\/"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/draft-board\/draft-board\.mjs"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/guides\/index\.html"/);

@@ -1,3 +1,5 @@
+import { playerSearchScore } from "../player-search.mjs?v=20260811h";
+
 const ALLOWED_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 const ALLOWED_ACQUISITION_TYPES = new Set(["keeper", "auction"]);
 const ALLOWED_STATUSES = new Set(["active", "voided"]);
@@ -254,7 +256,10 @@ export function downloadAuditCsv(snapshot, filename = `thunder-bowl-${snapshot.s
 }
 
 export function publicPlayerSearch(players, query) {
-  const needle = String(query || "").trim().toLocaleLowerCase();
-  if (!needle) return [...players];
-  return players.filter((player) => `${player.name} ${player.position} ${player.nflTeam}`.toLocaleLowerCase().includes(needle));
+  const needle = String(query || "").trim();
+  return players
+    .map((player) => ({ player, score: playerSearchScore(player, needle) }))
+    .filter(({ score }) => score !== null)
+    .sort((left, right) => (needle ? right.score - left.score : 0) || left.player.name.localeCompare(right.player.name))
+    .map(({ player }) => player);
 }

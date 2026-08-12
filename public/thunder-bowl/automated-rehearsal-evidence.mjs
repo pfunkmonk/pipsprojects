@@ -1,7 +1,7 @@
 export const AUTOMATED_REHEARSAL_EVIDENCE = Object.freeze({
   "schemaVersion": 1,
   "kind": "thunder-bowl-automated-rehearsal-certificate",
-  "completedAt": "2026-08-12T00:50:27.740Z",
+  "completedAt": "2026-08-12T03:25:36.768Z",
   "packId": "tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1",
   "packSha256": "f9a000a34a4c638f7189353f781bc8f20d759775eb54e8e34f916988cac306ee",
   "engineSha256": "101643814d2054ed0d40b179d79b8979c77175fdd9d2e667a39b4667cf8281b7",

@@ -26,7 +26,7 @@ test("exact player, team, and position searches retain strong deterministic matc
 });
 
 test("common missing-letter, substitution, and transposition typos find the intended player first", () => {
-  for (const typo of ["jamyr gibs", "jahmir gibbs", "jahmyr gibbs", "jamhyr gibbs"]) {
+  for (const typo of ["jamyr gibs", "jamy gbbs", "jahmir gibbs", "jahmyr gibbs", "jamhyr gibbs"]) {
     assert.equal(ranked(typo)[0]?.player.name, "Jahmyr Gibbs", typo);
   }
   assert.equal(ranked("amom ra st brown")[0]?.player.name, "Amon-Ra St. Brown");

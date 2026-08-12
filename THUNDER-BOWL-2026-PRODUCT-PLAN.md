@@ -127,6 +127,14 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - The draft-speed review is implemented: collapsed Live Bid HUD, adjacent chance-at-cap, whole-roster Monte Carlo safety, historical position budget lanes, roster-after-likely-win analysis, explicit hard-stop language, exact last-sale correction preview, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, evidence-only news warning badges, equal-height viewport columns with internal secondary scrolling, static Safety rails moved to Admin & data, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
 - The command center is rehearsal-ready. The only authority-bearing data change still planned is promotion of next week's final governed projection pack; draft morning then requires a fresh all-player intelligence seal and recovery download on the MacBook.
 
+## Release-candidate wrap — August 11, 2026
+
+- Signed-in production Chrome QA covered the private draft room, keeper sandbox, manual backup, restricted auctioneer, and read-only Draft Board at a 1536×960 effective viewport. No production sale was recorded and no private strategy field appeared on a public surface.
+- The review found a shared-search consistency failure and an auctioneer client-legality consistency failure. Both were fixed at their common system boundaries and received cross-surface regression tests; details and exact release-gate evidence live in `reports/thunder-bowl/release-audit-20260811.md`.
+- Runner-up evidence remains a single private production-only choice after a confirmed sale. Replay and automated practice suppress it, the winning team is excluded, `Not sure` is explicit, the prompt expires after 30 seconds, and Admin & data retains correction/export authority.
+- `app.mjs` remains large. A pre-draft broad refactor was rejected by the mission gate because it would add release risk without making an auction decision faster. Post-2026 modularization should follow measured ownership boundaries and preserve the append-only ledger, public allowlist, offline recovery, and sub-100-ms selected-player response.
+- The source release candidate passed the full automated gate and is ready for local commit. It must not be described as deployed until an explicit push/deploy action completes. Operator-only departure gates remain code rotation, next week's governed projection promotion, a fresh all-player intelligence seal, and a recovery download on the MacBook.
+
 ## Near-term sequence
 
 1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.

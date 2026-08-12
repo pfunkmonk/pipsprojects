@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 10, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 11, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
@@ -11,11 +11,14 @@ Updated August 10, 2026. This is the takeover starting point for another develop
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 291/291 automated tests, 716-player build validation, 168-sale full-auction rehearsal, 24-keeper/144-sale catastrophe rehearsal, 0 VBD formula mismatches, and both known legacy identity-curve anomalies repaired without changing room dollars.
+- Release-candidate verification: 301/301 automated tests, 138-file syntax sweep, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
 - The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default. On the three-column draft desk, player pool, HUD/evidence, and roster/forecast columns share the remaining viewport height; secondary lists scroll inside their own panel, Next nomination stays above the rival forecast list, and the static Safety rails reference lives in Admin & data instead of consuming draft-room height.
 - The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
 - A red-and-white `!` appears beside a player in the pool and selected-player heading whenever the validated saved Footballguys, RotoWire, or CBS archive contains news for that player. It updates with any feed, points to the full player record, and has no projection, VBD, price, or ledger authority. Footballguys Latest News and its Footballguys View analysis share the protected 30-minute research refresh with FBG depth charts and CBS news, accumulate into the offline 45-day lockbox, and fail closed on page-contract drift.
 - Active practice auctions now remain unambiguous while Pip browses alternatives: a prominent BROWSING ONLY warning names the actual nominee, bid, and leader; the decision strip suppresses BID/HOLD/PASS until Return to live player is pressed.
+- Player lookup now uses one shared typo-tolerant ranker in the private pool, keeper picker, and restricted auctioneer console. The release gate includes transposed and two-error names so those surfaces cannot silently drift apart again.
+- The auctioneer's legality preview, final button, and server command now fail closed from the same pending-sale calculation. An illegal amount visibly changes the action to `Blocked · max $X`, disables it, and remains rejected server-side if a stale client attempts the command.
+- Runner-up capture is private and production-only: after a real confirmed sale, Pip gets one 30-second team choice (or `Not sure`), with the winner excluded and later correction available in Admin & data. Replay and auto-auction practice intentionally suppress the prompt so simulated evidence cannot train the live WTP model.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
 Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.
@@ -52,6 +55,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Exact-byte final-pack promotion overlay: `netlify/functions/_lib/pack-release-store.mjs`, `thunder-pack-promote.mjs`
 - Automated QA/rehearsals: `tests/`, `scripts/run-full-auction-rehearsal.mjs`, `scripts/run-keeper-auction-catastrophe-rehearsal.mjs`
 - User operations guide: `public/thunder-bowl/guides/index.html`
+- Dated release audit: `reports/thunder-bowl/release-audit-20260811.md`
 - Draft-pressure decision helpers: `decision-context.mjs`; rendering and interaction wiring are in `app.mjs`
 
 ## Projection and VBD state
@@ -87,6 +91,10 @@ The raw CSVs must never enter `public/`. Staging the governed candidate remains 
 ## Position-run authority
 
 The detector now follows the review spec's minimum evidence rule: a six-sale decaying window, at least four confirmed sales, at least two same-position observations, separate frequency and overpay signals, and hard +$3/+3 VBD proposal caps. A repeatable 563-sale chronological backtest across 2012, 2014, 2015, 2017, 2018, and 2023 found only 17.4% precision and 13.2% recall for short-horizon continuation. The supplied 2025 files do not contain a complete ordered auction, so the 2025 replay can verify UI/ledger/privacy behavior but cannot honestly tune a time-series detector. Consequently the HUD may show HOT/WARM/WATCH, but the signal has zero direct VBD, Max, or rival-WTP authority. See `reports/thunder-bowl/position-run-backtest.{json,md}`.
+
+## Historical manager-data follow-up (not a release blocker)
+
+The year folders contain more than the four seasons currently admitted to manager-history authority, but older identity aliases are not safe to merge without owner confirmation. The unresolved mappings are `Big Pimpin → Fumble Brewskis → The Bungles` and `Whoopass → Three Amigos`; 2012 and 2014 also need completeness reconciliation. Keep the current four-season empirically shrunk model until those mappings and season totals are confirmed. Never increase history coverage by guessing an owner identity.
 
 ## Required verification
 

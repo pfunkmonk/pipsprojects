@@ -40,8 +40,9 @@ function boundedDamerauLevenshtein(left, right, limit) {
   return previous[right.length];
 }
 
-function tokenTolerance(token) {
-  if (token.length >= 8) return 2;
+function tokenTolerance(token, candidate) {
+  const longest = Math.max(token.length, candidate.length);
+  if (token.length >= 4 && longest >= 6) return 2;
   if (token.length >= 4) return 1;
   return 0;
 }
@@ -53,7 +54,7 @@ function bestTokenScore(queryToken, candidateTokens) {
     else if (candidate.startsWith(queryToken)) best = Math.max(best, 115 - Math.min(20, candidate.length - queryToken.length));
     else if (queryToken.length >= 4 && queryToken.startsWith(candidate) && candidate.length >= 3) best = Math.max(best, 85 - Math.min(20, queryToken.length - candidate.length));
     else {
-      const tolerance = tokenTolerance(queryToken);
+      const tolerance = tokenTolerance(queryToken, candidate);
       if (!tolerance) continue;
       const distance = boundedDamerauLevenshtein(queryToken, candidate, tolerance);
       if (distance <= tolerance) best = Math.max(best, 90 - distance * 22 - Math.abs(queryToken.length - candidate.length));
