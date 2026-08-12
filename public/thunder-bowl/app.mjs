@@ -125,6 +125,7 @@ const REPLAY_2025 = APP_MODE === "2025-replay";
 const PRACTICE_AUCTION = APP_MODE === "practice-auction";
 const LOCAL_ONLY = REPLAY_2025 || PRACTICE_AUCTION;
 const ROOM_SEASON = REPLAY_2025 ? 2025 : 2026;
+const PLACEMENT_RESET_CONFIRMATION = "CLEAR ALL PLACEMENTS";
 const UNLOCK_SESSION_KEY = REPLAY_2025 ? "tb25ReplayUnlocked" : PRACTICE_AUCTION ? "tb26PracticeUnlocked" : "tb26Unlocked";
 const currency = (value) => `$${Math.round(Number(value) || 0).toLocaleString("en-US")}`;
 const signed = (value) => `${Number(value) >= 0 ? "+" : ""}${Number(value).toFixed(1)}`;
@@ -3751,6 +3752,7 @@ function renderAll() {
   const rosterSafety = renderNeeds();
   teamOptions();
   renderPackStatus();
+  renderPlacementResetSummary();
   renderKeeperWorkspace();
   keeperRows();
   renderKeeperScenarios(keeperCandidatesForTeam("dogs-of-war"));
@@ -3849,6 +3851,16 @@ function selectPlayer(playerId, focusPrice = false) {
     if (decisionPanel) decisionPanel.scrollTop = 0;
   }
   if (focusPrice) salePrice.focus();
+}
+
+function renderPlacementResetSummary() {
+  const summary = byId("placement-reset-summary");
+  const rosteredPlayers = Object.values(draftState?.teams || {}).flatMap((team) => team.roster || []);
+  const keepers = rosteredPlayers.filter((player) => player.acquisitionType === "keeper").length;
+  const drafted = rosteredPlayers.filter((player) => player.acquisitionType === "auction").length;
+  summary.textContent = keepers || drafted
+    ? `Current official board: ${keepers} keeper${keepers === 1 ? "" : "s"} and ${drafted} drafted player${drafted === 1 ? "" : "s"}. The reset clears every team at once.`
+    : "The official board has no keeper or drafted-player placements. This control can still clear test trades, passes, and nominations.";
 }
 
 async function commitLocalEvents(newEvents, message, statusElement = saleStatus) {
@@ -5047,7 +5059,7 @@ async function archiveAndStartNew(event) {
   const confirmation = byId("archive-confirmation").value;
   const confirmButton = byId("confirm-archive");
   try {
-    if (confirmation !== "ARCHIVE AND START NEW") {
+    if (confirmation !== PLACEMENT_RESET_CONFIRMATION) {
       throw new RuleViolation("ARCHIVE_CONFIRMATION_REQUIRED", "Type the exact confirmation phrase first.");
     }
     if (LOCAL_ONLY) {
@@ -5134,7 +5146,7 @@ async function archiveAndStartNew(event) {
     setStatus(status, errorMessage(error), true);
   } finally {
     ledgerResetInFlight = false;
-    confirmButton.disabled = byId("archive-confirmation").value !== "ARCHIVE AND START NEW";
+    confirmButton.disabled = byId("archive-confirmation").value !== PLACEMENT_RESET_CONFIRMATION;
   }
 }
 
@@ -5443,7 +5455,7 @@ function bindInteractions() {
   byId("load-current-ledger").addEventListener("click", () => void loadCurrentCloudLedger());
   byId("cancel-archive").addEventListener("click", () => byId("archive-dialog").close());
   byId("archive-confirmation").addEventListener("input", (event) => {
-    byId("confirm-archive").disabled = event.target.value !== "ARCHIVE AND START NEW" || ledgerResetInFlight;
+    byId("confirm-archive").disabled = event.target.value !== PLACEMENT_RESET_CONFIRMATION || ledgerResetInFlight;
   });
   byId("archive-form").addEventListener("submit", (event) => void archiveAndStartNew(event));
   practiceStartButton.addEventListener("click", () => void startNextPracticeNomination());

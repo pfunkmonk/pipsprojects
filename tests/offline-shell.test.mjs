@@ -17,6 +17,7 @@ const readinessSource = await readFile(new URL("../public/thunder-bowl/draft-rea
 const publicBoardSource = await readFile(new URL("../public/thunder-bowl/public-board.mjs", import.meta.url), "utf8");
 const fbgConfigurationSource = await readFile(new URL("../public/thunder-bowl/fbg-configuration.mjs", import.meta.url), "utf8");
 const intelligenceCollectorSource = await readFile(new URL("../netlify/functions/thunder-intelligence-collector.mjs", import.meta.url), "utf8");
+const thunderAdminSource = await readFile(new URL("../netlify/functions/thunder-admin.mjs", import.meta.url), "utf8");
 
 test("release assets are versioned across private, public, and offline shells", () => {
   assert.match(indexHtml, /app\.mjs\?v=\d{8}[a-z]/);
@@ -445,13 +446,19 @@ test("validated Footballguys, CBS, or RotoWire news adds a dynamic evidence-only
   assert.doesNotMatch(appSource, /playerNewsSignals\.(?:set|get)[^\n]*(?:vbd|marketValue|maxBid|projectedPoints)/i);
 });
 
-test("practice reset requires an exact phrase and sends the current ledger generation", () => {
-  assert.match(indexHtml, /ARCHIVE AND START NEW/);
+test("Admin placement reset is explicit, recoverable, generation-safe, and backward compatible", () => {
+  assert.match(indexHtml, /id="archive-card-title">Clear all player placements/);
+  assert.match(indexHtml, /id="placement-reset-summary"/);
+  assert.match(indexHtml, /CLEAR ALL PLACEMENTS/);
+  assert.match(indexHtml, /Projections, news, targets, avoids, notes, and personal prices remain/);
+  assert.match(appSource, /const PLACEMENT_RESET_CONFIRMATION = "CLEAR ALL PLACEMENTS"/);
+  assert.match(appSource, /function renderPlacementResetSummary\(\)/);
   assert.match(appSource, /generation: ledgerGeneration/);
   assert.match(appSource, /ledgerStale/);
   assert.match(appSource, /exportRecovery\(\)/);
   assert.match(indexHtml, /Load current cloud rehearsal/);
   assert.match(appSource, /loadCurrentCloudLedger/);
+  assert.match(thunderAdminSource, /VALID_CONFIRMATIONS = new Set\(\[PLACEMENT_RESET_CONFIRMATION, LEGACY_ARCHIVE_CONFIRMATION\]\)/);
 });
 
 test("keeper declarations and cap trades use the offline-first audited ledger", () => {

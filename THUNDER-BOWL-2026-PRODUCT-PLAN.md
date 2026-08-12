@@ -135,6 +135,12 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - `app.mjs` remains large. A pre-draft broad refactor was rejected by the mission gate because it would add release risk without making an auction decision faster. Post-2026 modularization should follow measured ownership boundaries and preserve the append-only ledger, public allowlist, offline recovery, and sub-100-ms selected-player response.
 - The source release candidate passed the full automated gate and is ready for local commit. It must not be described as deployed until an explicit push/deploy action completes. Operator-only departure gates remain code rotation, next week's governed projection promotion, a fresh all-player intelligence seal, and a recovery download on the MacBook.
 
+## Practice-reset usability — August 12, 2026
+
+- The existing archive-and-generation reset is now presented in Admin & data as **Clear all player placements**, with a live count of keepers and drafted players and explicit disclosure that cap trades, passes, and nominations also reset.
+- The action remains protected: exact phrase, mandatory pre-reset recovery download, immutable cloud archive, compare-and-set generation change, stale-tab rejection, and server validation. It clears the shared ledger without deleting the projection pack, intelligence archive, targets, avoids, notes, or personal prices.
+- This is one system control for practice cleanup and the final pre-draft reset; no second reset mechanism or shadow ledger was introduced.
+
 ## Near-term sequence
 
 1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.

@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260811b" />
+  <link rel="stylesheet" href="./app.css?v=20260812a" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -779,11 +779,12 @@
           </section>
 
           <section class="product-panel settings-card archive-card">
-            <p class="eyebrow">Practice control</p>
-            <h3 id="archive-card-title">Archive this rehearsal</h3>
-            <p id="archive-card-copy">Download the private recovery file, preserve the cloud audit ledger, and open a clean ledger for the next full practice.</p>
+            <p class="eyebrow">Protected reset</p>
+            <h3 id="archive-card-title">Clear all player placements</h3>
+            <p id="archive-card-copy">Reset every keeper, drafted player, cap trade, keeper pass, and nomination after downloading a recovery copy. Projections and your private player notes stay intact.</p>
+            <p id="placement-reset-summary" class="placement-reset-summary">Checking the current official board…</p>
             <div class="button-stack">
-              <button id="open-archive-dialog" class="button button-danger" type="button">Archive &amp; start new rehearsal</button>
+              <button id="open-archive-dialog" class="button button-danger" type="button">Clear all keepers &amp; drafted players</button>
               <button id="load-current-ledger" class="button button-secondary" type="button">Load current cloud rehearsal</button>
             </div>
             <p id="archive-status" class="form-status" role="status" aria-live="polite"></p>
@@ -806,20 +807,21 @@
     <dialog id="archive-dialog" class="confirm-dialog" aria-labelledby="archive-dialog-title">
       <form id="archive-form" method="dialog">
         <p class="eyebrow">Protected operation</p>
-        <h2 id="archive-dialog-title">Archive and start clean?</h2>
-        <p id="archive-dialog-copy">This first downloads a complete private recovery file. The server then preserves the current audit ledger and starts a new generation so stale tabs cannot restore old sales.</p>
+        <h2 id="archive-dialog-title">Clear all player placements?</h2>
+        <p id="archive-dialog-copy">This downloads a complete private recovery file, archives the full audit ledger, then clears all keepers, drafted players, cap trades, passes, and nominations. Projections, news, targets, avoids, notes, and personal prices remain. A new ledger generation prevents stale tabs from restoring the cleared board.</p>
         <label for="archive-reason">Reason</label>
         <select id="archive-reason" required>
-          <option value="New practice rehearsal">New practice rehearsal</option>
-          <option value="Draft-day final ledger">Draft-day final ledger</option>
+          <option value="Reset after testing">Reset after testing</option>
+          <option value="Start actual draft">Start actual draft</option>
+          <option value="New practice rehearsal">Start another practice</option>
           <option value="Data-pack replacement">Data-pack replacement</option>
         </select>
-        <label for="archive-confirmation">Type <strong>ARCHIVE AND START NEW</strong></label>
+        <label for="archive-confirmation">Type <strong>CLEAR ALL PLACEMENTS</strong></label>
         <input id="archive-confirmation" autocomplete="off" spellcheck="false" required />
         <p id="archive-dialog-status" class="form-status" role="status" aria-live="polite"></p>
         <div class="dialog-actions">
           <button id="cancel-archive" class="button button-secondary" type="button">Cancel</button>
-          <button id="confirm-archive" class="button button-danger" type="submit" disabled>Download, archive &amp; reset</button>
+          <button id="confirm-archive" class="button button-danger" type="submit" disabled>Download backup &amp; clear placements</button>
         </div>
       </form>
     </dialog>
@@ -957,6 +959,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260811c"></script>
+  <script type="module" src="./app.mjs?v=20260812a"></script>
 </body>
 </html>

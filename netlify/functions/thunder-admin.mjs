@@ -1,7 +1,9 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
 import { archiveAndResetLedger } from "./_lib/ledger-store.mjs";
 
-const ARCHIVE_CONFIRMATION = "ARCHIVE AND START NEW";
+const PLACEMENT_RESET_CONFIRMATION = "CLEAR ALL PLACEMENTS";
+const LEGACY_ARCHIVE_CONFIRMATION = "ARCHIVE AND START NEW";
+const VALID_CONFIRMATIONS = new Set([PLACEMENT_RESET_CONFIRMATION, LEGACY_ARCHIVE_CONFIRMATION]);
 
 export default async function handler(request) {
   try {
@@ -15,9 +17,9 @@ export default async function handler(request) {
     if (
       JSON.stringify(keys) !== JSON.stringify(["action", "confirmation", "generation", "reason"])
       || body.action !== "archive-reset"
-      || body.confirmation !== ARCHIVE_CONFIRMATION
+      || !VALID_CONFIRMATIONS.has(body.confirmation)
     ) {
-      return json({ error: `Type ${ARCHIVE_CONFIRMATION} to confirm a new rehearsal.` }, 400);
+      return json({ error: `Type ${PLACEMENT_RESET_CONFIRMATION} to clear the current placements.` }, 400);
     }
     const result = await archiveAndResetLedger(body.reason, body.generation);
     return json({

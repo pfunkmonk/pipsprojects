@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 11, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 12, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
@@ -19,6 +19,7 @@ Updated August 11, 2026. This is the takeover starting point for another develop
 - Player lookup now uses one shared typo-tolerant ranker in the private pool, keeper picker, and restricted auctioneer console. The release gate includes transposed and two-error names so those surfaces cannot silently drift apart again.
 - The auctioneer's legality preview, final button, and server command now fail closed from the same pending-sale calculation. An illegal amount visibly changes the action to `Blocked · max $X`, disables it, and remains rejected server-side if a stale client attempts the command.
 - Runner-up capture is private and production-only: after a real confirmed sale, Pip gets one 30-second team choice (or `Not sure`), with the winner excluded and later correction available in Admin & data. Replay and auto-auction practice intentionally suppress the prompt so simulated evidence cannot train the live WTP model.
+- Admin & data now exposes the protected operation by its actual purpose: **Clear all player placements**. It shows the current keeper/drafted-player count, requires `CLEAR ALL PLACEMENTS`, downloads a private recovery bundle, archives the full ledger, clears keepers/drafted players/cap trades/passes/nominations, and advances the generation so stale tabs cannot restore the prior board. Projection packs, news, and private player decisions remain intact. The server temporarily accepts the former confirmation phrase so an already-cached client can still complete a safe archive after deployment.
 - Release is intentionally not final until the exposed private-room and Draft Board access codes are rotated, the final projection export is audited/promoted, fresh all-player intelligence is captured, and a recovery bundle is downloaded on the MacBook.
 
 Never commit live access codes, display tokens, session secrets, cookies, or signed board URLs. `.env.example` contains placeholders only.
