@@ -201,16 +201,39 @@ export function cashLeverage({ state, position, userTeamId = "dogs-of-war", lega
   };
 }
 
-export function budgetRunway({ state, players = [], purchasePrice = 0, userTeamId = "dogs-of-war", valueFor = (player) => player?.marketValue } = {}) {
+export function budgetRunway({ state, players = [], purchasePrice = 0, candidatePosition = null, userTeamId = "dogs-of-war", valueFor = (player) => player?.marketValue } = {}) {
   const team = state?.teams?.[userTeamId];
   if (!team) return { available: false, cashAfter: 0, openSlotsAfter: 0, dollarsPerSlot: 0, futureLegalMax: 0, premiumOptions: 0 };
   const price = Math.max(0, Math.floor(finiteNumber(purchasePrice)));
   const cashAfter = Math.max(0, finiteNumber(team.cash) - price);
   const openSlotsAfter = Math.max(0, finiteNumber(team.openSlots) - (price > 0 ? 1 : 0));
-  const completionReserve = Math.max(0, openSlotsAfter);
+  const minimumBid = Math.max(1, finiteNumber(state?.config?.minimumBid, 1));
+  const rosterCount = Array.isArray(team.roster)
+    ? team.roster.length
+    : Math.max(0, finiteNumber(state?.config?.rosterSize, finiteNumber(team.openSlots)) - finiteNumber(team.openSlots));
+  const rosterCountAfter = rosterCount + (price > 0 ? 1 : 0);
+  const countsAfter = { ...(team.positionCounts || {}) };
+  if (price > 0 && candidatePosition) countsAfter[candidatePosition] = (countsAfter[candidatePosition] || 0) + 1;
+  const starterRequirements = state?.config?.starterRequirements;
+  const missingStartersAfter = starterRequirements
+    ? Object.entries(starterRequirements).reduce(
+        (sum, [position, requirement]) => sum + Math.max(0, finiteNumber(requirement) - finiteNumber(countsAfter[position])),
+        0,
+      )
+    : null;
+  const minimumRosterSize = Math.max(0, finiteNumber(team.minimumRosterSize, 8));
+  const minimumPlayersAfter = Math.max(0, minimumRosterSize - rosterCountAfter);
+  const requiredAdditionsAfter = missingStartersAfter === null
+    ? team.requiredAdditions === undefined
+      ? openSlotsAfter
+      : Math.max(0, finiteNumber(team.requiredAdditions) - (price > 0 ? 1 : 0))
+    : Math.max(minimumPlayersAfter, missingStartersAfter);
+  const completionReserve = requiredAdditionsAfter * minimumBid;
   const discretionaryAfter = Math.max(0, cashAfter - completionReserve);
   const dollarsPerSlot = openSlotsAfter ? cashAfter / openSlotsAfter : 0;
-  const futureLegalMax = openSlotsAfter ? Math.max(0, cashAfter - Math.max(0, openSlotsAfter - 1)) : 0;
+  const futureLegalMax = openSlotsAfter
+    ? Math.max(0, cashAfter - Math.max(0, requiredAdditionsAfter - 1) * minimumBid)
+    : 0;
   const premiumOptions = (Array.isArray(players) ? players : []).filter((player) => (
     !state.draftedPlayers?.[player.id]
     && Math.max(0, finiteNumber(valueFor(player))) >= 10
@@ -221,6 +244,7 @@ export function budgetRunway({ state, players = [], purchasePrice = 0, userTeamI
     cashAfter,
     openSlotsAfter,
     completionReserve,
+    requiredAdditionsAfter,
     discretionaryAfter,
     dollarsPerSlot,
     futureLegalMax,
@@ -260,7 +284,7 @@ export function buildBidRecommendation({
   if (!available) return { verdict: "PASS", tone: "danger", nextBid, reason: "This player is already assigned." };
   if (annotation?.tag === "avoid") return { verdict: "PASS", tone: "danger", nextBid, reason: "You marked this player Avoid." };
   if (dogsLeading) return { verdict: "HOLD", tone: "warning", nextBid, reason: "You already have the high bid. Do not bid against yourself." };
-  if (nextBid > maximum) return { verdict: "PASS", tone: "danger", nextBid, reason: `The next bid is above your $${maximum} hard stop.` };
+  if (nextBid > maximum) return { verdict: "PASS", tone: "danger", nextBid, reason: `STOP. Do not bid $${nextBid}. Your hard stop is $${maximum}.` };
   if (Number.isSafeInteger(annotation?.stealPrice) && nextBid <= annotation.stealPrice) {
     return { verdict: "BID", tone: "good", nextBid, reason: `The next bid is inside your $${annotation.stealPrice} steal price.` };
   }

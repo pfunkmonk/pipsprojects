@@ -124,6 +124,8 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
     "decision-tier-warning",
     "decision-tier-warning-title",
     "decision-tier-warning-message",
+    "decision-roster-safety",
+    "decision-roster-safety-label",
     "decision-cash-leverage",
     "decision-budget-runway",
     "decision-best-alternative",
@@ -134,15 +136,17 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
     "tier-dialog-rows",
     "nomination-coach",
     "nomination-recommendations",
+    "roster-safety-summary",
+    "roster-budget-lanes",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   assert.match(indexHtml, /id="decision-coach-verdict">WAIT<\/span>/);
   assert.match(indexHtml, /<th>NFL team<\/th><th>Player<\/th><th class="number">Bye<\/th><th class="number">Projected<\/th><th>Status<\/th>/);
   assert.match(appSource, /buildBidRecommendation\(\{/);
   assert.match(appSource, /buildTierDeadlineWarning\(\{/);
-  assert.match(indexHtml, /Win at next bid/);
-  assert.match(appSource, /const legalNextBid = Number\.isSafeInteger\(recommendation\.nextBid\)/);
-  assert.match(appSource, /recommendation\.nextBid <= personalMaximum/);
-  assert.match(appSource, /dogsBidLimit: recommendation\.nextBid/);
+  assert.match(indexHtml, /Chance at your max/);
+  assert.match(appSource, /forecast\.dogsParticipation\.winProbability/);
+  assert.match(appSource, /rosterSafetyForState\(\{ hypotheticalPurchase:/);
+  assert.match(appSource, /analyzeRosterSafety\(\{/);
   assert.match(appSource, /byeWeekConflicts\(\{/);
   assert.match(appSource, /buildTierSnapshot\(\{/);
   assert.match(appSource, /buildNominationAssistant\(\{/);
@@ -187,7 +191,8 @@ test("auction intelligence stays private, optional, fast to capture, and offline
   assert.match(appSource, /forecastAuctionPrice\(\{/);
   assert.match(appSource, /bidAuthority: "none"|advisory only/);
   assert.match(appSource, /private runner-up learning log/i);
-  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260810b/);
+  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260811b/);
+  assert.match(serviceWorker, /roster-safety\.mjs\?v=20260811b/);
   assert.match(serviceWorker, /auction-telemetry\.mjs\?v=20260809a/);
   assert.doesNotMatch(publicBoardSource, /runnerUp|runner-up/i);
 });

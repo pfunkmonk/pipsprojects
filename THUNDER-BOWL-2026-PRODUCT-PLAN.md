@@ -27,7 +27,9 @@ No individual bug fix is complete until the underlying class of failure is teste
 | Dynamic auction values | Historical roster-depth demand, position spend, live cash, live keeper/sale scarcity | Authoritative Market display |
 | Team budget pressure | Cash less legal-completion reserve, compared with active-room average | Advisory feature |
 | Manager tendencies | Four seasons of winning purchases, empirically shrunk toward league average | Advisory feature |
-| Team WTP | Market × shrunk position/affinity × roster need × budget pressure × substitutes × live bounded evidence | Advisory challenger |
+| Team WTP | Market × shrunk position/affinity × roster need × budget pressure × substitutes × live bounded evidence; correlated market/team shocks prevent false max-of-11 certainty | Advisory challenger |
+| Whole-roster safety | 192 correlated market/position rollouts plus an exact cash-constrained required-starter portfolio under current personal caps | Advisory only; recomputed after every sale/correction |
+| Position budget lanes | Historical Thunder Bowl position spend and final-roster depth, rescaled to current cash and remaining additions | Private planning aid; no value authority |
 | Sale mechanism | Highest bidder wins near the second-highest WTP + $1 | Advisory challenger |
 | Comparable anchoring | Recent same-position/tier prices and measurable room residuals | Advisory challenger |
 | Position runs | Six-sale decaying frequency + overpay detector; four-sale/two-position minimum; historical continuation precision remains weak, so the HUD shows WATCH while WTP/VBD/Max effect stays zero | Display-only challenger |
@@ -122,8 +124,8 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - The in-app operation guide covers the private command center, keeper sandbox versus official ledger, auctioneer, Draft Board, draft-morning gate, and the real internet-out failover path.
 - The deterministic catastrophe rehearsal is the accepted technical rehearsal evidence. Physical speaking/projector practice is optional and is never falsely certified by automation.
 - The active weekly-asset pack is `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1`. The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage. Final automated counts and rehearsal evidence are refreshed after every authority-bearing release.
-- The draft-speed review is implemented: collapsed Live Bid HUD, adjacent Win chance, budget runway, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, evidence-only news warning badges, equal-height viewport columns with internal secondary scrolling, static Safety rails moved to Admin & data, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
-- Draft-day release remains intentionally blocked until the two access codes found in public Git history are rotated in Netlify, the final governed projection pack is promoted, all-player intelligence is freshly captured, and a recovery bundle is downloaded on the MacBook.
+- The draft-speed review is implemented: collapsed Live Bid HUD, adjacent chance-at-cap, whole-roster Monte Carlo safety, historical position budget lanes, roster-after-likely-win analysis, explicit hard-stop language, exact last-sale correction preview, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, evidence-only news warning badges, equal-height viewport columns with internal secondary scrolling, static Safety rails moved to Admin & data, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
+- The command center is rehearsal-ready. The only authority-bearing data change still planned is promotion of next week's final governed projection pack; draft morning then requires a fresh all-player intelligence seal and recovery download on the MacBook.
 
 ## Near-term sequence
 

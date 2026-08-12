@@ -131,7 +131,9 @@ test("bid strip distinguishes bid, hold, and pass without overriding hard stops"
   const base = { selectedPlayer: players[0], currentBid: 20, personalMaximum: 30, liveMarketValue: 25, sameTierRemaining: 2, nextAlternative: players[1] };
   assert.equal(buildBidRecommendation(base).verdict, "BID");
   assert.equal(buildBidRecommendation({ ...base, currentBid: 27, liveMarketValue: 25 }).verdict, "HOLD");
-  assert.equal(buildBidRecommendation({ ...base, currentBid: 30 }).verdict, "PASS");
+  const hardStop = buildBidRecommendation({ ...base, currentBid: 30 });
+  assert.equal(hardStop.verdict, "PASS");
+  assert.equal(hardStop.reason, "STOP. Do not bid $31. Your hard stop is $30.");
   assert.equal(buildBidRecommendation({ ...base, annotation: { tag: "avoid" } }).verdict, "PASS");
   assert.equal(buildBidRecommendation({ ...base, dogsLeading: true }).verdict, "HOLD");
 });

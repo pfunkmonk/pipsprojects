@@ -88,6 +88,8 @@ test("auction forecast remains advisory and separates natural price from Dogs pa
   assert.equal(forecast.fullAuctionSimulation.samples, 96);
   assert.ok(forecast.fullAuctionSimulation.simulatedPlayers > 100);
   assert.equal(forecast.fullAuctionSimulation.modelEffect, "advisory_only_experimental");
+  assert.equal(forecast.dogsParticipation.winProbability, forecast.fullAuctionSimulation.withDogs.winProbability);
+  assert.equal(forecast.dogsParticipation.probabilityModel, "remaining-auction cash-and-roster rollouts");
 });
 
 test("remaining-auction rollouts are deterministic, cash-aware, and stay inside the draft-day speed gate", () => {
@@ -112,5 +114,26 @@ test("remaining-auction rollouts are deterministic, cash-aware, and stay inside 
   assert.deepEqual(first, second);
   assert.ok(first.natural.low >= 1);
   assert.ok(first.natural.high <= 106);
+  assert.ok(first.withDogs.winProbability >= 0 && first.withDogs.winProbability <= 100);
+  assert.ok(Object.values(first.windows).filter(Boolean).every((window) => window.dogsWinProbability >= 0 && window.dogsWinProbability <= 100));
   assert.ok(elapsed < 100, `selected-player remaining-auction simulation took ${elapsed.toFixed(1)} ms`);
+});
+
+test("correlated bidder shocks do not make an above-market elite cap look unwinnable", () => {
+  const state = replayDraft([]);
+  const market = calculateAuctionDemandMarket(pack, state);
+  const player = pack.players.find((candidate) => candidate.name === "Jahmyr Gibbs");
+  const forecast = forecastAuctionPrice({
+    profiles: pack.managerProfiles,
+    state,
+    player,
+    liveMarketValue: market.valuesByPlayerId[player.id],
+    packPlayers: pack.players,
+    baselineValuesByPlayerId: market.valuesByPlayerId,
+    marketValuesByPlayerId: market.valuesByPlayerId,
+    dogsBidLimit: player.maxBid,
+    seed: "elite-cap-system-check",
+  });
+  assert.ok(player.maxBid > forecast.naturalSale.point);
+  assert.ok(forecast.dogsParticipation.winProbability >= 25);
 });

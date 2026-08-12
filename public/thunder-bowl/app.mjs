@@ -62,7 +62,7 @@ import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
-import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260810b";
+import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260811b";
 import {
   AUCTION_TELEMETRY_META_KEY,
   RUNNER_UP_PROMPT_MS,
@@ -85,7 +85,7 @@ import {
   byeWeekConflicts,
   cashLeverage,
   playerSurplusHeat,
-} from "./decision-context.mjs?v=20260811a";
+} from "./decision-context.mjs?v=20260811b";
 import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
@@ -116,6 +116,7 @@ import {
   validateCbsRosterSnapshot,
 } from "./cbs-roster-snapshot.mjs?v=20260805g";
 import { SALES_ENTRY_MODES, normalizeSalesEntryMode, salesEntryPolicy } from "./sales-entry-mode.mjs?v=20260808a";
+import { analyzeRosterSafety } from "./roster-safety.mjs?v=20260811b";
 
 const byId = (id) => document.getElementById(id);
 const URL_PARAMETERS = new URLSearchParams(window.location.search);
@@ -257,6 +258,9 @@ let runnerUpPromptSaleId = null;
 let runnerUpPromptTimer = null;
 let proMode = false;
 const auctionForecastCache = new Map();
+const rosterSafetyCache = new Map();
+let rosterSafetyRevision = 0;
+let lastGuardrailState = { tierKey: null, safetyLevel: null, nominationTeamId: null, hardStopKey: null };
 const draftChannelName = REPLAY_2025 ? "thunder-bowl-2025-replay" : PRACTICE_AUCTION ? "thunder-bowl-2026-practice" : "thunder-bowl-2026";
 const draftChannel = "BroadcastChannel" in window ? new BroadcastChannel(draftChannelName) : null;
 
@@ -272,6 +276,38 @@ function showToast(message, error = false) {
   toast.classList.add("is-visible");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 3600);
+}
+
+function announceDecisionGuardrails({ player, recommendation, tierWarning }) {
+  if (tierWarning?.active && player) {
+    const tierKey = `${player.id}|${tierWarning.urgency}|${tierWarning.title}`;
+    if (lastGuardrailState.tierKey !== tierKey) {
+      lastGuardrailState.tierKey = tierKey;
+      showToast(`${tierWarning.title}: ${tierWarning.message}`, tierWarning.urgency === "last");
+    }
+  }
+  const hardStop = recommendation?.verdict === "PASS" && recommendation?.reason?.startsWith("STOP.");
+  if (hardStop && player) {
+    const hardStopKey = `${player.id}|${recommendation.nextBid}|${recommendation.reason}`;
+    if (lastGuardrailState.hardStopKey !== hardStopKey) {
+      lastGuardrailState.hardStopKey = hardStopKey;
+      showToast(recommendation.reason, true);
+    }
+  }
+}
+
+function announceRosterGuardrails(safety) {
+  const order = { complete: 0, good: 1, warning: 2, danger: 3 };
+  const previous = lastGuardrailState.safetyLevel;
+  if (previous && order[safety.status.level] > order[previous]) {
+    showToast(`${safety.status.label}: ${safety.completionProbability.toFixed(0)}% legal completion path; ${safety.weakestPosition || "roster depth"} needs attention.`, safety.status.level === "danger");
+  }
+  lastGuardrailState.safetyLevel = safety.status.level;
+  const nominator = draftState.currentNominatorTeamId;
+  if (lastGuardrailState.nominationTeamId && nominator === USER_TEAM_ID && nominator !== lastGuardrailState.nominationTeamId) {
+    showToast("YOUR NOMINATION: use the three-play nomination assistant before naming a player.");
+  }
+  lastGuardrailState.nominationTeamId = nominator;
 }
 
 function errorMessage(error) {
@@ -477,6 +513,8 @@ function loadPlayerAnnotations() {
 
 function persistPlayerAnnotations({ checkReadiness = true } = {}) {
   localStorage.setItem(PLAYER_ANNOTATIONS_KEY, JSON.stringify(playerAnnotations));
+  rosterSafetyRevision += 1;
+  rosterSafetyCache.clear();
   personalBoardBackupEvidence = null;
   void setMeta("personalBoardBackupEvidence", null);
   setStatus(byId("personal-board-status"), "Personal board changed. Download a new private JSON before moving it to the MacBook.");
@@ -580,6 +618,8 @@ function renderPrioritySettings() {
 async function savePriorityScenario(nextScenario, message) {
   priorityScenario = validatePriorityScenario(nextScenario);
   priorityControlsDirty = false;
+  rosterSafetyRevision += 1;
+  rosterSafetyCache.clear();
   await setMeta("priorityWeightScenario", priorityScenario);
   renderAll();
   setStatus(byId("priority-settings-status"), message);
@@ -684,6 +724,8 @@ async function saveLeagueSetupFromControls(event) {
   event.preventDefault();
   try {
     leagueSetup = leagueSetupFromControls();
+    rosterSafetyRevision += 1;
+    rosterSafetyCache.clear();
     await setMeta("leagueSetup", leagueSetup);
     renderAll();
     const context = effectiveScheduleContext();
@@ -708,6 +750,8 @@ async function importLeagueSetup(file) {
   try {
     const imported = validateLeagueSetup(JSON.parse(await file.text()), leagueSetupOptions());
     leagueSetup = imported;
+    rosterSafetyRevision += 1;
+    rosterSafetyCache.clear();
     await setMeta("leagueSetup", leagueSetup);
     renderAll();
     setStatus(byId("league-setup-status"), `Imported the ${leagueSetup.season} league setup and recalculated the held schedule-VBD candidate.`);
@@ -721,6 +765,8 @@ async function importLeagueSetup(file) {
 async function restoreDefaultLeagueSetup() {
   try {
     leagueSetup = validateLeagueSetup(cloneDefaultLeagueSetup2026(), leagueSetupOptions());
+    rosterSafetyRevision += 1;
+    rosterSafetyCache.clear();
     await setMeta("leagueSetup", leagueSetup);
     renderAll();
     setStatus(byId("league-setup-status"), "Restored the verified 2026 CBS divisions, Dogs schedule, and Week 14 all-play format.");
@@ -1528,6 +1574,38 @@ function auctionForecastForState(player, state, market, forecastEvents, telemetr
   return forecast;
 }
 
+function rosterSafetyForState({ hypotheticalPurchase = null, samples = 192 } = {}) {
+  const purchasePlayer = hypotheticalPurchase?.player || null;
+  const purchasePrice = Math.max(0, Math.round(Number(hypotheticalPurchase?.price) || 0));
+  const cacheKey = [
+    draftPack.packId,
+    events.length,
+    events.at(-1)?.id || "empty",
+    liveMarket.displayPercent.toFixed(2),
+    rosterSafetyRevision,
+    purchasePlayer?.id || "base",
+    purchasePrice,
+    samples,
+  ].join("|");
+  if (rosterSafetyCache.has(cacheKey)) return rosterSafetyCache.get(cacheKey);
+  const result = analyzeRosterSafety({
+    state: draftState,
+    players: draftPack.players,
+    userTeamId: USER_TEAM_ID,
+    marketValueFor: (candidate) => livePlayerValues(candidate).marketValue,
+    bidLimitFor: effectivePlayerBidLimit,
+    utilityFor: (candidate) => priorityForPlayer(candidate)?.projectedPoints ?? candidate.projectedPoints,
+    hypotheticalPurchase: purchasePlayer && purchasePrice >= 1
+      ? { player: purchasePlayer, price: purchasePrice }
+      : null,
+    samples,
+    seed: `${draftPack.packId}|${events.at(-1)?.id || "opening"}|${purchasePlayer?.id || "base"}|${purchasePrice}`,
+  });
+  rosterSafetyCache.set(cacheKey, result);
+  while (rosterSafetyCache.size > 48) rosterSafetyCache.delete(rosterSafetyCache.keys().next().value);
+  return result;
+}
+
 function attachForecastsForSales(saleEventIds) {
   for (const saleEventId of saleEventIds) {
     const saleIndex = events.findIndex((event) => event.id === saleEventId && event.type === EVENT_TYPES.PLAYER_SOLD);
@@ -1767,6 +1845,7 @@ function renderOpponentPressure(player, liveMarketValue, available = true, suppl
   byId("auction-rational-price").textContent = currency(forecast.rationalBaseline);
   byId("auction-dogs-price").textContent = currency(forecast.dogsParticipation.point);
   byId("auction-dogs-win").textContent = `${forecast.dogsParticipation.winProbability.toFixed(0)}%`;
+  byId("auction-dogs-win").title = `Chance Dogs of War wins at the ${currency(forecast.dogsParticipation.bidLimit)} hard stop using ${forecast.dogsParticipation.probabilityModel}. Advisory only.`;
   const timing = forecast.nominationTiming;
   const timingLabel = timing.bestWindow === "now" ? "nominate now" : timing.bestWindow === "middle" ? "middle models cheaper (wait risk)" : "late models cheaper (wait risk)";
   const anchor = forecast.marketEvidence.anchorDollars + forecast.marketEvidence.roomRegimeDollars;
@@ -1776,7 +1855,7 @@ function renderOpponentPressure(player, liveMarketValue, available = true, suppl
   const runCopy = forecast.marketEvidence.positionRun?.active
     ? `${player.position} run ${runStatus} proposes ${signedMoney(run)} but remains watch-only after weak historical continuation precision`
     : `${player.position} run ${runStatus}`;
-  forecastNote.textContent = `${timingLabel} · comparable/room ${signedMoney(anchor)} · ${runCopy} · historical baseline covered 79.4%; WTP calibration starts live`;
+  forecastNote.textContent = `${timingLabel} · chance is measured at your ${currency(forecast.dogsParticipation.bidLimit)} cap with correlated cash-and-roster rollouts · comparable/room ${signedMoney(anchor)} · ${runCopy} · historical baseline covered 79.4%; WTP calibration starts live`;
   for (const opponent of ranked) {
     const item = document.createElement("li");
     item.className = "opponent-pressure-row";
@@ -1938,20 +2017,11 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   tierWarningElement.className = `decision-tier-warning tier-warning-${tierWarning.urgency}`;
   byId("decision-tier-warning-title").textContent = tierWarning.title;
   byId("decision-tier-warning-message").textContent = tierWarning.message;
-  const legalNextBid = Number.isSafeInteger(recommendation.nextBid)
-    && recommendation.nextBid <= personalMaximum
-    && !dogsLeading;
-  const nextBidForecast = player && available && legalNextBid && !browsingDifferentPlayer && draftPack.managerProfiles?.length
-    ? auctionForecastForState(player, draftState, liveMarket, events, auctionTelemetry, {
-        fast: true,
-        dogsBidLimit: recommendation.nextBid,
-      })
-    : null;
-  byId("decision-win-chance").textContent = nextBidForecast
-    ? `${nextBidForecast.dogsParticipation.winProbability.toFixed(0)}%`
+  byId("decision-win-chance").textContent = forecast && !browsingDifferentPlayer
+    ? `${forecast.dogsParticipation.winProbability.toFixed(0)}%`
     : "—";
   byId("decision-forecast-sale").textContent = forecast && !browsingDifferentPlayer
-    ? `Forecast ${currency(forecast.naturalSale.point)}`
+    ? `Cap ${currency(personalMaximum)} · close ${currency(forecast.naturalSale.point)}`
     : "Forecast —";
   byId("decision-next-bid").textContent = recommendation.nextBid === null ? "--" : currency(recommendation.nextBid);
   byId("decision-current-bid").value = String(currentBid);
@@ -1977,10 +2047,27 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
     ? `You ${currency(leverage.userMaximum)} · top opponent ${currency(leverage.topOpponentMaximum)}`
     : "Top rival maximum unavailable";
 
+  const likelyWinPrice = player && available && !browsingDifferentPlayer
+    ? Math.max(1, Math.min(personalMaximum, Math.max(recommendation.nextBid || 1, forecast?.naturalSale.point || 1)))
+    : 0;
+  const whatIfSafety = likelyWinPrice >= 1
+    ? rosterSafetyForState({ hypotheticalPurchase: { player, price: likelyWinPrice }, samples: 128 })
+    : null;
+  const safetyStrip = byId("decision-roster-safety");
+  safetyStrip.className = `decision-roster-safety roster-safety-${whatIfSafety?.status.level || "neutral"}`;
+  const compactSafetyLabel = whatIfSafety?.status.label.replace("ROSTER ", "").replace("LINEUP ", "");
+  byId("decision-roster-safety-label").textContent = whatIfSafety
+    ? `${currency(likelyWinPrice)} · ${compactSafetyLabel} · ${whatIfSafety.completionProbability.toFixed(0)}% legal · ${whatIfSafety.strongPathProbability.toFixed(0)}% strong`
+    : "Select an available player";
+  byId("decision-roster-safety-detail").textContent = whatIfSafety
+    ? `${whatIfSafety.weakestPosition ? `${whatIfSafety.weakestPosition} is thinnest` : "Required starters complete"} · ${whatIfSafety.medianCashAfter === null ? "no legal completion found" : `${currency(whatIfSafety.medianCashAfter)} median legal cushion`} · simulation never overrides your hard stop.`
+    : "Legal completion and strong-lineup paths will be simulated here.";
+
   const runway = player ? budgetRunway({
     state: draftState,
     players: availablePlayers(),
-    purchasePrice: Math.max(1, recommendation.nextBid ?? currentBid),
+    purchasePrice: likelyWinPrice || Math.max(1, recommendation.nextBid ?? currentBid),
+    candidatePosition: player.position,
     userTeamId: USER_TEAM_ID,
     valueFor: (candidate) => livePlayerValues(candidate).marketValue,
   }) : null;
@@ -1988,7 +2075,7 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
     ? `${currency(runway.cashAfter)} · ${runway.openSlotsAfter} slots`
     : "—";
   byId("decision-budget-detail").textContent = runway?.available
-    ? `${currency(runway.dollarsPerSlot)}/slot · ${runway.premiumOptions} premium options affordable`
+    ? `${currency(runway.completionReserve)} legal reserve · ${runway.premiumOptions} premium options affordable`
     : "Cash and slots update live";
   byId("decision-top-inflation").textContent = player ? `${liveMarket.displayPercent >= 0 ? "+" : ""}${liveMarket.displayPercent.toFixed(1)}%` : "—";
   const runStatus = positionRun?.status || "COOLING";
@@ -2007,6 +2094,7 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   warning.textContent = bye.conflicts.length
     ? `BYE WEEK ${bye.byeWeek} CONFLICT: ${player.name} overlaps ${bye.conflicts.map((row) => `${row.playerName} (${row.position})`).join(", ")}. This is a warning, not an automatic value penalty.`
     : "";
+  announceDecisionGuardrails({ player, recommendation, tierWarning });
 }
 
 function renderTierDialog() {
@@ -2220,6 +2308,31 @@ function renderNeeds() {
     chip.textContent = `${position} ${team.positionCounts[position]}/${draftState.config.starterRequirements[position]}`;
     container.append(chip);
   }
+  const safety = rosterSafetyForState({ samples: 192 });
+  const summary = byId("roster-safety-summary");
+  summary.className = `roster-safety-summary roster-safety-${safety.status.level}`;
+  byId("roster-safety-status").textContent = `${safety.status.label} · ${safety.completionProbability.toFixed(0)}% legal · ${safety.strongPathProbability.toFixed(0)}% strong`;
+  byId("roster-safety-detail").textContent = safety.missingStarters
+    ? `${safety.missingStarters} starter slot${safety.missingStarters === 1 ? "" : "s"} left · ${safety.weakestPosition} is thinnest · ${safety.medianCashAfter === null ? "no legal completion found" : `${currency(safety.medianCashAfter)} median legal cushion`}.`
+    : `${team.openSlots} optional roster slot${team.openSlots === 1 ? "" : "s"} left; the Week 1 starting lineup is legal.`;
+  const lanes = byId("roster-budget-lanes");
+  lanes.replaceChildren();
+  for (const lane of safety.lanes) {
+    const row = document.createElement("div");
+    row.className = `roster-budget-lane lane-${lane.risk}`;
+    const position = document.createElement("strong");
+    position.textContent = lane.position;
+    const detail = document.createElement("span");
+    detail.textContent = lane.needed
+      ? `${lane.needed} starter · ${lane.viable} viable`
+      : `${lane.targetAdds} depth target · ${lane.viable} viable`;
+    const budget = document.createElement("b");
+    budget.textContent = currency(lane.plannedDollars);
+    budget.title = `Historical position-spend lane. ${lane.targetAdds} total addition${lane.targetAdds === 1 ? "" : "s"} modeled from Thunder Bowl roster history; advisory only.`;
+    row.append(position, detail, budget);
+    lanes.append(row);
+  }
+  return safety;
 }
 
 function renderMetrics() {
@@ -3636,7 +3749,7 @@ function renderAll() {
   renderPlayerPool();
   renderSelectedPlayer();
   renderNominationCoach();
-  renderNeeds();
+  const rosterSafety = renderNeeds();
   teamOptions();
   renderPackStatus();
   renderKeeperWorkspace();
@@ -3651,6 +3764,13 @@ function renderAll() {
   const undoable = lastUndoableSale(events);
   renderSalesEntryMode();
   undoSaleButton.disabled = salesEntryMode !== SALES_ENTRY_MODES.MANUAL || !undoable;
+  undoSaleButton.textContent = undoable
+    ? `Correct: ${undoable.payload.playerName} · ${currency(undoable.payload.amount)}`
+    : "No sale to correct";
+  undoSaleButton.title = undoable
+    ? `${draftState.teams[undoable.payload.teamId]?.name || undoable.payload.teamId} received ${undoable.payload.playerName} for ${currency(undoable.payload.amount)}. Correction appends a void event; history is preserved.`
+    : "Every correction remains in the append-only ledger.";
+  announceRosterGuardrails(rosterSafety);
   const snapshot = toPublicSnapshot(draftState, { updatedAt: new Date().toISOString() });
   draftChannel?.postMessage({ type: "PUBLIC_SNAPSHOT", snapshot });
 }
@@ -3719,11 +3839,16 @@ async function changeSalesEntryMode(nextMode) {
 
 function selectPlayer(playerId, focusPrice = false) {
   if (!draftPack.players.some((player) => player.id === playerId)) return;
-  if (selectedPlayerId !== playerId) decisionCurrentBid = 0;
+  const changedPlayer = selectedPlayerId !== playerId;
+  if (changedPlayer) decisionCurrentBid = 0;
   selectedPlayerId = playerId;
   salePrice.value = "";
   renderPlayerPool();
   renderSelectedPlayer();
+  if (changedPlayer) {
+    const decisionPanel = document.querySelector(".decision-panel");
+    if (decisionPanel) decisionPanel.scrollTop = 0;
+  }
   if (focusPrice) salePrice.focus();
 }
 
@@ -3847,6 +3972,9 @@ async function undoLastSale() {
   const target = lastUndoableSale(events);
   if (!target) return;
   try {
+    const teamName = draftState.teams[target.payload.teamId]?.name || target.payload.teamId;
+    const confirmed = window.confirm(`Correct the last sale?\n\n${target.payload.playerName} · ${teamName} · ${currency(target.payload.amount)}\n\nThe original sale remains in correction history.`);
+    if (!confirmed) return;
     const undo = createEvent(
       EVENT_TYPES.EVENT_VOIDED,
       { targetEventId: target.id, reason: "Immediate user undo" },

@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260811a" />
+  <link rel="stylesheet" href="./app.css?v=20260811b" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -92,7 +92,7 @@
       <section id="view-draft" class="page-view" role="tabpanel" aria-labelledby="tab-draft">
         <div class="kpi-grid" aria-label="Live draft state">
           <article class="metric"><span>Dogs cash</span><strong id="dogs-cash">$104</strong><small id="dogs-slots">14 open slots</small></article>
-          <article class="metric"><span>Legal max</span><strong id="dogs-legal-max">$91</strong><small>$1 reserved per later slot</small></article>
+          <article class="metric"><span>Legal max</span><strong id="dogs-legal-max">$91</strong><small>$1 reserved per required legal addition</small></article>
           <article class="metric"><span>Room cash</span><strong id="room-cash">$1,212</strong><small id="room-slots">168 open slots</small></article>
           <article class="metric"><span>Market signal</span><strong id="market-signal">Waiting</strong><small id="market-detail">Needs full 2026 pool</small></article>
           <article class="metric"><span>Nomination</span><strong id="current-nominator">Goon Skwad</strong><small id="nomination-detail">Order prefix verified only</small></article>
@@ -159,12 +159,16 @@
               <div class="decision-coach-verdict">
                 <span id="decision-coach-verdict">WAIT</span>
                 <small id="decision-coach-reason">Select the nominated player.</small>
-                <div class="decision-win-chance"><span>Win at next bid</span><strong id="decision-win-chance">—</strong><small id="decision-forecast-sale">Forecast —</small></div>
+                <div class="decision-win-chance"><span>Chance at your max</span><strong id="decision-win-chance">—</strong><small id="decision-forecast-sale">Forecast —</small></div>
               </div>
               <button id="decision-tier-warning" class="decision-tier-warning tier-warning-none" type="button" hidden>
                 <span><strong id="decision-tier-warning-title"></strong><small id="decision-tier-warning-message"></small></span>
                 <b>View tier ›</b>
               </button>
+              <section id="decision-roster-safety" class="decision-roster-safety roster-safety-neutral" aria-live="polite">
+                <div><span>Roster after likely win</span><strong id="decision-roster-safety-label">Select a player</strong></div>
+                <small id="decision-roster-safety-detail">Legal completion and strong-lineup paths will be simulated here.</small>
+              </section>
               <div class="decision-coach-fact decision-next-bid">
                 <span>Next bid</span>
                 <strong id="decision-next-bid">$1</strong>
@@ -253,17 +257,22 @@
 
           <aside class="product-panel pressure-panel" aria-label="Roster needs and draft pressure">
             <section>
-              <p class="eyebrow">Dogs of War needs</p>
+              <p class="eyebrow">Dogs of War roster plan</p>
               <div id="dogs-needs" class="need-grid"></div>
+              <div id="roster-safety-summary" class="roster-safety-summary roster-safety-neutral">
+                <strong id="roster-safety-status">Calculating roster safety</strong>
+                <small id="roster-safety-detail">The plan refreshes after every confirmed sale or correction.</small>
+              </div>
+              <div id="roster-budget-lanes" class="roster-budget-lanes" aria-label="Position budget lanes"></div>
             </section>
             <section class="opponent-pressure-section" aria-labelledby="opponent-pressure-title">
               <p class="eyebrow" id="opponent-pressure-title">Auction forecast</p>
               <p id="opponent-pressure-summary" class="muted opponent-pressure-summary">Select a player to rank likely competition.</p>
               <dl id="auction-forecast" class="auction-forecast" hidden>
-                <div class="auction-forecast-primary"><dt>Natural sale</dt><dd id="auction-natural-price">—</dd><small id="auction-price-range">—</small></div>
-                <div><dt>Rational room</dt><dd id="auction-rational-price">—</dd></div>
-                <div><dt>If Dogs bids</dt><dd id="auction-dogs-price">—</dd></div>
-                <div><dt>Win chance</dt><dd id="auction-dogs-win">—</dd></div>
+                <div class="auction-forecast-primary"><dt>Close without you</dt><dd id="auction-natural-price">—</dd><small id="auction-price-range">—</small></div>
+                <div><dt>Live market</dt><dd id="auction-rational-price">—</dd></div>
+                <div><dt>Close with you</dt><dd id="auction-dogs-price">—</dd></div>
+                <div><dt>Chance at your cap</dt><dd id="auction-dogs-win">—</dd></div>
               </dl>
               <p id="auction-forecast-note" class="auction-forecast-note" hidden></p>
               <ol id="selected-opponent-pressure" class="opponent-pressure-list"></ol>
@@ -527,7 +536,7 @@
             <h3 id="safety-rails-title">Safety rails</h3>
             <ul class="check-list">
               <li>Duplicate players blocked</li>
-              <li>$1 per open slot reserved</li>
+              <li>$1 per required legal addition reserved</li>
               <li>Starting-lineup path protected</li>
               <li>Every correction remains in history</li>
             </ul>
@@ -948,6 +957,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260811a"></script>
+  <script type="module" src="./app.mjs?v=20260811b"></script>
 </body>
 </html>

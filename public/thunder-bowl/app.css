@@ -314,6 +314,18 @@ input[readonly] { color: var(--muted); }
 .decision-tier-warning:hover, .decision-tier-warning:focus-visible { background: rgba(176, 128, 20, 0.43); }
 .decision-tier-warning.tier-warning-last { border-color: var(--danger); background: rgba(143, 46, 42, 0.42); }
 .decision-tier-warning.tier-warning-last strong, .decision-tier-warning.tier-warning-last > b { color: #ffc0ba; }
+.decision-roster-safety { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.2rem 0.8rem; border: 1px solid var(--line-strong); border-left: 6px solid var(--line-strong); border-radius: 9px; padding: 0.5rem 0.65rem; background: rgba(30, 62, 92, 0.56); }
+.decision-roster-safety > div { display: flex; align-items: baseline; gap: 0.55rem; white-space: nowrap; }
+.decision-roster-safety span { color: var(--quiet); font-size: 0.64rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.decision-roster-safety strong { color: var(--text); font-size: 0.92rem; }
+.decision-roster-safety small { overflow: hidden; color: var(--muted); font-size: 0.7rem; font-weight: 700; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.roster-safety-good { border-left-color: var(--good); background: rgba(39, 125, 87, 0.2); }
+.roster-safety-good strong { color: #9dffd0; }
+.roster-safety-warning { border-left-color: var(--gold); background: rgba(137, 99, 16, 0.22); }
+.roster-safety-warning strong { color: var(--gold-light); }
+.roster-safety-danger { border-left-color: var(--danger); background: rgba(143, 46, 42, 0.28); }
+.roster-safety-danger strong { color: #ffc0ba; }
+.roster-safety-complete { border-left-color: var(--blue-light); background: rgba(62, 149, 218, 0.14); }
 .decision-coach-fact { min-width: 0; border: 1px solid var(--line); border-radius: 9px; padding: 0.55rem 0.62rem; background: var(--navy-800); }
 .decision-coach-fact > span { display: block; color: var(--quiet); font-size: 0.64rem; font-weight: 850; letter-spacing: 0.04em; text-transform: uppercase; }
 .decision-coach-fact > strong { display: block; margin-top: 0.16rem; overflow: hidden; color: var(--text); font-size: 1.08rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -494,6 +506,16 @@ input[readonly] { color: var(--muted); }
 }
 .need-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; }
 .need-chip { border: 1px solid var(--line-strong); border-radius: 8px; padding: 0.45rem 0.5rem; background: var(--navy-750); text-align: center; font-size: 0.8rem; font-weight: 800; }
+.roster-safety-summary { display: grid; gap: 0.08rem; margin-top: 0.5rem; border-left: 5px solid var(--line-strong); border-radius: 7px; padding: 0.42rem 0.5rem; background: rgba(30, 62, 92, 0.56); }
+.roster-safety-summary strong { font-size: 0.76rem; font-weight: 950; letter-spacing: 0.025em; }
+.roster-safety-summary small { color: var(--muted); font-size: 0.65rem; line-height: 1.25; }
+.roster-budget-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.28rem; margin-top: 0.45rem; }
+.roster-budget-lane { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 0.28rem; min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 0.32rem 0.4rem; background: var(--navy-950); }
+.roster-budget-lane strong { color: var(--text); font-size: 0.7rem; }
+.roster-budget-lane span { overflow: hidden; color: var(--muted); font-size: 0.61rem; text-overflow: ellipsis; white-space: nowrap; }
+.roster-budget-lane b { color: var(--gold-light); font-size: 0.7rem; white-space: nowrap; }
+.roster-budget-lane.lane-watch { border-color: var(--gold); }
+.roster-budget-lane.lane-critical, .roster-budget-lane.lane-blocked { border-color: var(--danger); background: rgba(143, 46, 42, 0.2); }
 .large-line { margin: 0; color: var(--gold-light); font-size: 1.35rem; font-weight: 850; }
 .nomination-coach { margin-top: 0.8rem; border-top: 1px solid var(--line); padding-top: 0.75rem; }
 .nomination-coach .eyebrow { color: var(--gold-light); }

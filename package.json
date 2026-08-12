@@ -9,6 +9,7 @@
     "qa:thunder": "node scripts/run-thunder-bowl-local-qa.mjs",
     "rehearsal": "node scripts/run-full-auction-rehearsal.mjs",
     "rehearsal:catastrophe": "node scripts/run-keeper-auction-catastrophe-rehearsal.mjs",
+    "rehearsal:foolproof": "node scripts/run-foolproof-auction-rehearsal.mjs",
     "audit:thunder-pack": "node scripts/audit-thunder-pack-candidate.mjs",
     "audit:thunder-values": "node scripts/audit-thunder-valuations.mjs",
     "backtest:thunder-market": "node scripts/backtest-auction-market-calibration.mjs",

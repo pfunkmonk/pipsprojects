@@ -287,9 +287,15 @@ export function estimateTeamWillingnessToPay({
 }
 
 function sampledAuctionOutcome(bidders, random, { dogsBidLimit = null, userTeamId = USER_TEAM_ID } = {}) {
+  const averageWtp = bidders.reduce((sum, bidder) => sum + bidder.meanWtp, 0) / Math.max(1, bidders.length);
+  const sharedMarketShock = normalRandom(random) * Math.max(0.5, averageWtp * 0.05);
   const sampled = bidders.map((bidder) => ({
     ...bidder,
-    sampledWtp: Math.max(0, Math.min(bidder.legalMaxBid, Math.round(bidder.meanWtp + normalRandom(random) * bidder.uncertaintyDollars))),
+    sampledWtp: Math.max(0, Math.min(bidder.legalMaxBid, Math.round(
+      bidder.meanWtp
+      + sharedMarketShock
+      + normalRandom(random) * Math.max(0.5, bidder.uncertaintyDollars * 0.38)
+    ))),
   })).filter((bidder) => bidder.sampledWtp >= 1);
   if (dogsBidLimit !== null && dogsBidLimit >= 1) {
     sampled.push({ teamId: userTeamId, teamName: "Dogs of War", sampledWtp: Math.round(dogsBidLimit), legalMaxBid: Math.round(dogsBidLimit) });
@@ -463,6 +469,9 @@ export function simulateRemainingAuctionForTarget({
   const naturalRows = [];
   const participationRows = [];
   const windowRows = { early: [], middle: [], late: [] };
+  let dogsWins = 0;
+  const windowDogsWins = { early: 0, middle: 0, late: 0 };
+  const windowTotals = { early: 0, middle: 0, late: 0 };
   for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
     const random = randomGenerator(`${seed}|${sampleIndex}`);
     const teams = Object.fromEntries(Object.values(state.teams).map((team) => [team.id, {
@@ -486,6 +495,7 @@ export function simulateRemainingAuctionForTarget({
         0,
       ) / Math.max(1, activeTeams.length);
       const bids = [];
+      const sharedMarketShock = normalRandom(random) * Math.max(0.5, base * 0.05);
       for (const team of activeTeams) {
         if (!simulatedCanDraft(team, state.config, player.position)) continue;
         const starterNeeded = (team.positionCounts[player.position] || 0) < state.config.starterRequirements[player.position];
@@ -502,21 +512,31 @@ export function simulateRemainingAuctionForTarget({
           : 1;
         const needFactor = starterNeeded ? 1.1 : 1;
         const mean = base * (positionFactors.get(team.id)?.[player.position] ?? 1) * affinity * budgetFactor * needFactor;
-        const commonNoise = normalRandom(random) * Math.max(1, mean * 0.06);
-        const amount = Math.max(1, Math.min(legalMax, Math.round(mean + commonNoise)));
+        const teamNoise = normalRandom(random) * Math.max(0.5, mean * 0.035);
+        const amount = Math.max(1, Math.min(legalMax, Math.round(mean + sharedMarketShock + teamNoise)));
         bids.push({ teamId: team.id, amount });
       }
       if (player.id === targetPlayer.id) {
         const natural = outcomeFromSampledBids(bids);
+        const dogsTeam = teams[userTeamId];
+        const dogsLegalMax = dogsTeam && simulatedCanDraft(dogsTeam, state.config, player.position)
+          ? simulatedLegalMaximum(dogsTeam, state.config, player.position)
+          : 0;
+        const simulatedDogsLimit = Math.min(Math.round(dogsBidLimit), dogsLegalMax);
         const withDogs = outcomeFromSampledBids([
           ...bids,
-          ...(dogsBidLimit >= 1 ? [{ teamId: userTeamId, amount: Math.round(dogsBidLimit) }] : []),
+          ...(simulatedDogsLimit >= 1 ? [{ teamId: userTeamId, amount: simulatedDogsLimit }] : []),
         ]);
         const percentile = nominationOrder.length > 1 ? nominationIndex / (nominationOrder.length - 1) : 0;
         const window = percentile < 1 / 3 ? "early" : percentile < 2 / 3 ? "middle" : "late";
         naturalRows.push(natural.price);
         participationRows.push(withDogs.price);
         windowRows[window].push(natural.price);
+        windowTotals[window] += 1;
+        if (withDogs.winnerTeamId === userTeamId) {
+          dogsWins += 1;
+          windowDogsWins[window] += 1;
+        }
         break;
       }
       const outcome = outcomeFromSampledBids(bids);
@@ -531,14 +551,23 @@ export function simulateRemainingAuctionForTarget({
     const sorted = [...rows].sort((left, right) => left - right);
     return sorted.length ? { n: sorted.length, median: quantile(sorted, 0.5), low: quantile(sorted, 0.1), high: quantile(sorted, 0.9) } : null;
   };
-  const windows = Object.fromEntries(Object.entries(windowRows).map(([window, rows]) => [window, summarize(rows)]));
+  const windows = Object.fromEntries(Object.entries(windowRows).map(([window, rows]) => {
+    const summary = summarize(rows);
+    return [window, summary ? {
+      ...summary,
+      dogsWinProbability: round1(windowDogsWins[window] / Math.max(1, windowTotals[window]) * 100),
+    } : null];
+  }));
   const comparableWindows = Object.entries(windows).filter(([, row]) => row?.n >= 5);
   const bestWindow = comparableWindows.sort((left, right) => left[1].median - right[1].median || ["early", "middle", "late"].indexOf(left[0]) - ["early", "middle", "late"].indexOf(right[0]))[0]?.[0] || "early";
   return {
     samples: sampleCount,
     simulatedPlayers: available.length,
     natural: summarize(naturalRows),
-    withDogs: summarize(participationRows),
+    withDogs: {
+      ...summarize(participationRows),
+      winProbability: round1(dogsWins / sampleCount * 100),
+    },
     windows,
     bestWindow,
     modelEffect: "advisory_only_experimental",
@@ -641,7 +670,9 @@ export function forecastAuctionPrice({
       point: withDogsPoint,
       range80: participationSafetyRange,
       simulationRange80: participation.range80,
-      winProbability: participation.wins[userTeamId] || 0,
+      winProbability: fullAuctionSimulation?.withDogs?.winProbability ?? participation.wins[userTeamId] ?? 0,
+      snapshotWinProbability: participation.wins[userTeamId] || 0,
+      probabilityModel: fullAuctionSimulation ? "remaining-auction cash-and-roster rollouts" : "correlated current-bidder simulation",
       expectedExtraRoomPrice: round1(participation.expectedPrice - natural.expectedPrice),
       warning: dogsLimit > 0 && withDogsPoint > naturalPoint ? `Your participation may add about $${withDogsPoint - naturalPoint} to this sale.` : "No modeled price lift from participating at the current limit.",
     },
