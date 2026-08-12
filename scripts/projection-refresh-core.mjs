@@ -241,11 +241,12 @@ export function validateProjectionHandoffRows(rows, packInput) {
 function scaleWeeklyProjection(existing, newTotal) {
   if (!existing) return null;
   const oldTotal = existing.points.reduce((sum, value) => sum + (value ?? 0), 0);
-  if (oldTotal <= 0) return null;
   const targetTenths = Math.round(newTotal * 10);
   const allocations = existing.points.map((value, index) => {
     if (value === null) return null;
-    const exactTenths = value / oldTotal * targetTenths;
+    const exactTenths = oldTotal > 0
+      ? value / oldTotal * targetTenths
+      : targetTenths / Math.max(1, existing.points.filter((point) => point !== null).length);
     return { index, tenths: Math.floor(exactTenths), fraction: exactTenths - Math.floor(exactTenths) };
   });
   let remaining = targetTenths - allocations.reduce((sum, row) => sum + (row?.tenths ?? 0), 0);
@@ -307,7 +308,7 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
   const rowsById = new Map(rows.map((row) => [row.playerId, row]));
   const releaseStamp = first.exportedAt.replace(/\D/g, "").slice(0, 14);
   candidate.packId = `tb26-${first.modelId.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "")}-${releaseStamp}`.slice(0, 100);
-  candidate.asOf = first.exportedAt;
+  candidate.asOf = Date.parse(first.exportedAt) > Date.parse(current.asOf) ? first.exportedAt : current.asOf;
   const primarySource = {
     name: PROJECTION_PRIMARY_SOURCE,
     asOf: first.sourceAsOf,
@@ -320,10 +321,21 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
   for (const player of candidate.players) {
     const row = rowsById.get(player.id);
     player.projectedPoints = row.modifiedPoints;
-    const premiumRows = (player.projectionSources || []).filter((source) => PREMIUM_PROJECTION_SOURCES.includes(source.source));
+    const priorSourcesByName = new Map((player.projectionSources || []).map((source) => [source.source, source]));
+    const premiumRows = PREMIUM_PROJECTION_SOURCES
+      .filter((source) => row.sourcePoints[source] !== null)
+      .map((source) => ({
+        ...(priorSourcesByName.get(source) || {}),
+        source,
+        points: row.sourcePoints[source],
+        asOf: first.sourceAsOf,
+        role: priorSourcesByName.get(source)?.role || (source === "FantasyPros" ? "supplemental" : "cross-check"),
+        modelEffect: "none",
+      }));
     const premiumWeights = projectionSourceWeights(premiumRows.map((source) => source.source));
     player.projectionSources = (player.projectionSources || [])
-      .filter((source) => source.source !== PROJECTION_PRIMARY_SOURCE)
+      .filter((source) => source.source !== PROJECTION_PRIMARY_SOURCE && !PREMIUM_PROJECTION_SOURCES.includes(source.source))
+      .concat(premiumRows)
       .map((source) => ({
       ...source,
       role: source.role === "primary" ? "cross-check" : source.role,
@@ -343,8 +355,10 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
     const sourceSummary = premiumRows
       .map((source) => `${source.source} ${Number(source.points).toFixed(1)}`)
       .join("; ");
+    const correction = round1(Object.values(row.adjustments).reduce((sum, value) => sum + value, 0));
+    const signedCorrection = `${correction >= 0 ? "+" : ""}${correction.toFixed(1)}`;
     const priorSupplementalNote = String(player.notes || "").match(/Sleeper status is a supplemental fresh flag only; no projection or dollar adjustment applied\.?/i)?.[0] || "";
-    player.notes = `${sourceSummary}. Thunder Bowl consensus ${row.modifiedPoints.toFixed(1)} drives VBD; QA-approved automatic correction +0.0.${priorSupplementalNote ? ` ${priorSupplementalNote}` : ""}`;
+    player.notes = `${sourceSummary}. Thunder Bowl consensus ${row.modifiedPoints.toFixed(1)} drives VBD; QA-approved automatic correction ${signedCorrection}.${priorSupplementalNote ? ` ${priorSupplementalNote}` : ""}`;
     if (row.weeklyPoints) {
       const byeWeek = row.weeklyPoints.findIndex((value) => value === null) + 1;
       player.weeklyProjection = {

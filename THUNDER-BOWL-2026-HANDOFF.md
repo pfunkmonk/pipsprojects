@@ -7,11 +7,12 @@ Updated August 12, 2026. This is the takeover starting point for another develop
 - Production: `https://pipsprojects.com/thunder-bowl/`
 - Branch: `main`
 - Hosting: Netlify; source remote is `origin`
-- Active pack: `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1`
+- Active pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551`
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 301/301 automated tests, 138-file syntax sweep, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
+- Release-candidate verification: 303/303 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
+- The August 12 projection refresh is active for practice: fresh FBG/CBS/FantasyPros rows were blended through the registered consensus, all 716 weekly profiles were rebased to the new season totals, VBD/intrinsic/Market/Max/keeper surplus were recomputed by Thunder Bowl, and the $1,212 allocation reconciles exactly. The promotion audit found no identity additions/removals, 571 exact strategy changes, and only 10 material movements. The pack remains `practice` until Pip deliberately uses the Admin final-lock control.
 - The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default. On the three-column draft desk, player pool, HUD/evidence, and roster/forecast columns share the remaining viewport height; secondary lists scroll inside their own panel, Next nomination stays above the rival forecast list, and the static Safety rails reference lives in Admin & data instead of consuming draft-room height.
 - The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
 - A red-and-white `!` appears beside a player in the pool and selected-player heading whenever the validated saved Footballguys, RotoWire, or CBS archive contains news for that player. It updates with any feed, points to the full player record, and has no projection, VBD, price, or ledger authority. Footballguys Latest News and its Footballguys View analysis share the protected 30-minute research refresh with FBG depth charts and CBS news, accumulate into the offline 45-day lockbox, and fail closed on page-contract drift.
@@ -66,11 +67,11 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - The value chain is consensus projection → league scoring → replacement-level VBD → intrinsic dollars → historical roster-depth/position market → live room scarcity and cash → Max bid.
 - Unvalidated season-total weather, travel, venue, rest, durability, mean-reversion, and schedule corrections remain at zero. The failed 31,486 player-week raw-context challengers remain rejected.
 - The live weekly-importance policy is 1.20 division / 1.50 playoffs / zero Week 18. It was calibrated from 48 archived team-seasons and 150,000 Thunder Bowl simulations, then shrunk to 35% timing authority and capped at ±3 replacement-relative VBD because archived weekly forecast timing remains noisy. One adjusted runtime pack drives displayed VBD, Market, Max, keeper surplus, and bid guidance.
-- The August 9 weekly-asset bundle passes a private fail-closed intake: 716 players, 12,888 week rows, complete bye coverage, maximum component reconciliation delta 0.0008, and zero changes to signed season projections. It expands weekly timing coverage from 447 to 716. Honest nonzero component coverage is 623/716; all 93 component-empty players are $1 players and retain their approved consensus total plus a source/team weekly shape.
+- The August 12 weekly-asset bundle passes a private fail-closed intake: 716 players, 12,888 week rows, complete bye coverage, maximum component reconciliation delta 0.0008, and zero direct changes to signed season projections. Its profiles were then automatically rebased to the promoted August 12 consensus so every weekly row still sums to its authoritative season total. Honest nonzero component coverage is 624/716; all 92 component-empty players retain a validated source/team weekly shape.
 
 ## Final projection refresh
 
-The separate projection application must fill the exact 716-row template in `artifacts/thunder-bowl/projection-handoff-2026/`. Then run:
+The separate projection application must fill the exact 716-row template in `artifacts/thunder-bowl/projection-handoff-2026/`. Raw projection files are not an Admin-page import: the browser accepts only a fully validated pack. Run:
 
 ```powershell
 npm.cmd run refresh:thunder-projections -- completed-handoff.csv candidate-pack.json

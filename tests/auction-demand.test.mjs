@@ -109,5 +109,5 @@ test("position spending prevents DST inflation and repairs legacy player-identit
   assert.equal(market.bidCeilingsByPlayerId[ameer.id], 1);
   assert.ok(market.valuesByPlayerId[gibbs.id] >= 30);
   assert.ok(market.valuesByPlayerId[gibbs.id] <= market.bidCeilingsByPlayerId[gibbs.id]);
-  assert.equal(market.bidCeilingsByPlayerId[gibbs.id], 40);
+  assert.equal(market.bidCeilingsByPlayerId[gibbs.id], gibbs.maxBid);
 });

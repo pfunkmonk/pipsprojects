@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-12T13:35:54.151Z",
+  "generatedAt": "2026-08-12T23:34:04.460Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "f9a000a34a4c638f7189353f781bc8f20d759775eb54e8e34f916988cac306ee",
-    "engineSha256": "101643814d2054ed0d40b179d79b8979c77175fdd9d2e667a39b4667cf8281b7",
+    "packSha256": "8291b659ba0e98100b014db68cd6de6f6b22047f615414a7c970ba2208fc2135",
+    "engineSha256": "861931cece846e63646b0f04edfb2ca19da993363d85161804a46cefa915663c",
     "scriptSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667"
   },
   "pack": {
-    "id": "tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1",
+    "id": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -37,34 +37,34 @@
       "teamId": "el-guapo",
       "rejectedAmount": 61
     },
-    "sha256": "fab85222bed1ff351a921a81a7fa04df489aa4517cf99c5044700145ba6f5b20"
+    "sha256": "2d98a6dfcd65baa0a77b15b55e140984d193e1216a6ae5732b8a7455f6fabc19"
   },
   "outage": {
     "disconnectAtActiveSales": 72,
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.1533,
+    "reconnectMs": 1.1038,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 32.4765,
+    "durationMs": 27.6462,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2538,
-      "p95Ms": 0.5377,
-      "maximumMs": 1.6955
+      "medianMs": 0.2275,
+      "p95Ms": 0.4138,
+      "maximumMs": 0.7314
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.183,
-      "p95Ms": 0.2827,
-      "maximumMs": 0.2827
+      "medianMs": 0.1427,
+      "p95Ms": 1.9667,
+      "maximumMs": 1.9667
     }
   },
   "finalState": {

@@ -1019,7 +1019,7 @@ function validateWeeklyProjection(input, projectedPoints, label) {
     fail("WEEKLY_PROJECTION_TOTAL", `${label} must preserve the authoritative season projection.`);
   }
   const sourceSeasonTotal = Number(input.sourceSeasonTotal);
-  if (!Number.isFinite(sourceSeasonTotal) || sourceSeasonTotal <= 0 || sourceSeasonTotal > 1000) {
+  if (!Number.isFinite(sourceSeasonTotal) || sourceSeasonTotal < 0 || sourceSeasonTotal > 1000) {
     fail("WEEKLY_PROJECTION_SOURCE_TOTAL", `${label} has an invalid source season total.`);
   }
   return {

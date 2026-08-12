@@ -141,6 +141,14 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - The action remains protected: exact phrase, mandatory pre-reset recovery download, immutable cloud archive, compare-and-set generation change, stale-tab rejection, and server validation. It clears the shared ledger without deleting the projection pack, intelligence archive, targets, avoids, notes, or personal prices.
 - This is one system control for practice cleanup and the final pre-draft reset; no second reset mechanism or shadow ledger was introduced.
 
+## Projection refresh checkpoint — August 12, 2026
+
+- The governed `tb-cbs-fbg-refresh-20260812` handoff replaced the dated premium-source rows and promoted `tb26-tb-cbs-fbg-refresh-20260812-20260812225551` as the active practice pack.
+- Thunder Bowl—not the projection producer—recomputed projected points, starter-baseline VBD, intrinsic dollars, historical-demand Market, Max, and keeper surplus. The full room allocation remains exactly $1,212.
+- Existing August 12 weekly asset profiles were proportionally rebased to every new season total, including an explicit zero-projection path. All 716 weekly profiles retain one bye and reconcile to the authoritative projection.
+- The importer now prevents two refresh-wide failure classes: stale FBG/CBS/FantasyPros evidence cannot survive behind a fresh consensus, and a newer weekly evidence timestamp cannot falsely block a slightly earlier same-day season snapshot as a rollback.
+- Release QA passed 303/303 tests, the 168-sale full-auction rehearsal, the 24-keeper/144-sale catastrophe and recovery rehearsal, and the 192-rollout foolproof roster simulation. The pack remains practice-only pending the deliberate Admin final lock.
+
 ## Near-term sequence
 
 1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
+import { weightedProjectionConsensus } from "../public/thunder-bowl/projection-lab.mjs";
 
 const SEALED_HOLDOUT_PATTERN = /(?:2025.{0,24}(?:actual|outcome|final)|(?:actual|outcome|final).{0,24}2025)/i;
 
@@ -132,6 +133,22 @@ function primaryProjectionChanged(candidate, current, sourceName) {
     const priorPrimary = (prior.projectionSources || []).find((source) => source.modelEffect === "primary_projection");
     return stableText(nextPrimary) !== stableText(priorPrimary);
   });
+}
+
+function projectionRefreshNoteIsGoverned(prior, player) {
+  const sourcePoints = Object.fromEntries((player.projectionSources || [])
+    .filter((source) => ["Footballguys", "CBS", "FantasyPros"].includes(source.source))
+    .map((source) => [source.source, source.points]));
+  const sourceSummary = ["Footballguys", "CBS", "FantasyPros"]
+    .filter((source) => Number.isFinite(Number(sourcePoints[source])))
+    .map((source) => `${source} ${Number(sourcePoints[source]).toFixed(1)}`)
+    .join("; ");
+  const consensus = weightedProjectionConsensus(sourcePoints);
+  const correction = Number((player.projectedPoints - consensus).toFixed(1));
+  const signedCorrection = `${correction >= 0 ? "+" : ""}${correction.toFixed(1)}`;
+  const supplemental = String(prior.notes || "").match(/Sleeper status is a supplemental fresh flag only; no projection or dollar adjustment applied\.?/i)?.[0] || "";
+  const expected = `${sourceSummary}. Thunder Bowl consensus ${player.projectedPoints.toFixed(1)} drives VBD; QA-approved automatic correction ${signedCorrection}.${supplemental ? ` ${supplemental}` : ""}`;
+  return player.notes === expected;
 }
 
 function classicChampionIssues(candidate, current) {
@@ -343,11 +360,13 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       if (retainedSourceCount !== expectedRetainedSources || candidate.sources.length !== expectedCandidateSources) {
         blockingIssues.push("A primary projection update changed prior source evidence outside the registered append-or-replace path.");
       }
-      const evidenceFields = ["id", "name", "position", "nflTeam", "injury", "sos", "notes"];
+      const evidenceFields = ["id", "name", "position", "nflTeam", "injury", "sos"];
       const currentPlayers = playerMap(current);
       if (candidate.players.some((player) => {
         const prior = currentPlayers.get(player.id);
-        return !prior || evidenceFields.some((field) => player[field] !== prior[field]);
+        return !prior
+          || evidenceFields.some((field) => player[field] !== prior[field])
+          || !projectionRefreshNoteIsGoverned(prior, player);
       })) {
         blockingIssues.push("A primary projection update changed player identity, injury, SOS, or notes evidence.");
       }
