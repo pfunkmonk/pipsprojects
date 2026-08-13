@@ -1,5 +1,5 @@
 import { humanRehearsalStatus, rehearsalConfigSignature } from "./human-rehearsal.mjs?v=20260805g";
-import { AUTOMATED_REHEARSAL_EVIDENCE } from "./automated-rehearsal-evidence.mjs?v=20260810a";
+import { AUTOMATED_REHEARSAL_EVIDENCE } from "./automated-rehearsal-evidence.mjs?v=20260813a";
 import { personalBoardEvidenceStatus } from "./personal-board-exchange.mjs?v=20260805g";
 
 const EXPECTED_SEASON = 2026;

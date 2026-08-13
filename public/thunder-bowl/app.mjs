@@ -57,12 +57,12 @@ import {
   validatePersonalBoardEvidence,
   validatePersonalBoardBundle,
 } from "./personal-board-exchange.mjs?v=20260805g";
-import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260810a";
+import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260813a";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260811h";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
-import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260811b";
+import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260813a";
 import {
   AUCTION_TELEMETRY_META_KEY,
   RUNNER_UP_PROMPT_MS,

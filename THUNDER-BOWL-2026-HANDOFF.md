@@ -1,17 +1,17 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 12, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 13, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
 - Production: `https://pipsprojects.com/thunder-bowl/`
 - Branch: `main`
 - Hosting: Netlify; source remote is `origin`
-- Active pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551`
+- Active pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001`
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 303/303 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
+- Release-candidate verification: 307/307 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
 - The August 12 projection refresh is active for practice: fresh FBG/CBS/FantasyPros rows were blended through the registered consensus, all 716 weekly profiles were rebased to the new season totals, VBD/intrinsic/Market/Max/keeper surplus were recomputed by Thunder Bowl, and the $1,212 allocation reconciles exactly. The promotion audit found no identity additions/removals, 571 exact strategy changes, and only 10 material movements. The pack remains `practice` until Pip deliberately uses the Admin final-lock control.
 - The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default. On the three-column draft desk, player pool, HUD/evidence, and roster/forecast columns share the remaining viewport height; secondary lists scroll inside their own panel, Next nomination stays above the rival forecast list, and the static Safety rails reference lives in Admin & data instead of consuming draft-room height.
 - The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
@@ -46,6 +46,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Keeper calculations: `keeper-board.mjs`, `keeper-scenario.mjs`
 - VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`
 - Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`
+- Historical manager-profile rebuild: `scripts/build-manager-history.py`; governed normalized rows and audit live in `reports/thunder-bowl/manager-auction-history-normalized.csv` and `manager-history-audit.{json,md}`
 - Glance-decision and draft-pressure presentation: `decision-context.mjs`, `nomination-assistant.mjs`, `position-run.mjs`
 - Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
 - Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; raw component files remain outside the web tree
@@ -94,9 +95,11 @@ The raw CSVs must never enter `public/`. Staging the governed candidate remains 
 
 The detector now follows the review spec's minimum evidence rule: a six-sale decaying window, at least four confirmed sales, at least two same-position observations, separate frequency and overpay signals, and hard +$3/+3 VBD proposal caps. A repeatable 563-sale chronological backtest across 2012, 2014, 2015, 2017, 2018, and 2023 found only 17.4% precision and 13.2% recall for short-horizon continuation. The supplied 2025 files do not contain a complete ordered auction, so the 2025 replay can verify UI/ledger/privacy behavior but cannot honestly tune a time-series detector. Consequently the HUD may show HOT/WARM/WATCH, but the signal has zero direct VBD, Max, or rival-WTP authority. See `reports/thunder-bowl/position-run-backtest.{json,md}`.
 
-## Historical manager-data follow-up (not a release blocker)
+## Historical manager profiles
 
-The year folders contain more than the four seasons currently admitted to manager-history authority, but older identity aliases are not safe to merge without owner confirmation. The unresolved mappings are `Big Pimpin → Fumble Brewskis → The Bungles` and `Whoopass → Three Amigos`; 2012 and 2014 also need completeness reconciliation. Keep the current four-season empirically shrunk model until those mappings and season totals are confirmed. Never increase history coverage by guessing an owner identity.
+The live 2026 rival profiles now use 1,252 validated winning auction purchases across ten seasons: 2012, 2015, 2017, 2018, 2019, and 2021-2025. `Big Pimpin → Fumble Brewskis/Fumble-Brewskis → The Bungles` and `Whoopass/The Whoopass → Three Amigos` are explicit, audited identity-continuity rules. Keeper rows, post-draft moves, incomplete seasons, the unrelated eight-team 2014 export, and one impossible 2018 `$0` row are excluded. The leakage-safe 2025 replay uses the same pipeline only through 2024 (nine seasons).
+
+Rolling-origin tests across the usable seasons selected effectively equal historical weighting and a 0.15 profile reliability. The former 0.50 signal worsened next-season position-share error; 0.15 slightly beat the league-only baseline. Runtime empirical-Bayes shrinkage and the 0.65 ceiling remain intact, and profiles remain advisory only: they affect rival WTP/practice behavior, never intrinsic VBD, Market, Max, or the ledger. Rebuild with `npm.cmd run refresh:thunder-managers`; then pass the generated 2026 candidate through the normal `stage:thunder-pack` audit/promotion path. See `reports/thunder-bowl/manager-history-audit.md`.
 
 ## Required verification
 

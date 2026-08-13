@@ -29,6 +29,10 @@ function round1(value) {
   return Math.round(value * 10) / 10;
 }
 
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
 function quantile(sortedValues, probability) {
   if (!sortedValues.length) return 0;
   const index = Math.max(0, Math.min(sortedValues.length - 1, Math.ceil(probability * sortedValues.length) - 1));
@@ -269,7 +273,7 @@ export function estimateTeamWillingnessToPay({
     confidence: profileWeight >= 0.45 || telemetry.sample >= 3 ? "medium" : "low",
     samplePurchases: profile.samplePurchases,
     sampleSeasons: profile.sampleSeasons,
-    empiricalBayesWeight: round1(profileWeight),
+    empiricalBayesWeight: round2(profileWeight),
     factors: {
       position: round1(positionMultiplier),
       affinity: round1(affinityMultiplier),

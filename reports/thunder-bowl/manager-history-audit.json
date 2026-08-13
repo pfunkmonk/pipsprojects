@@ -1,0 +1,1148 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "manager-history-v2-recency-shrunk",
+  "generatedAt": "2026-08-13T18:00:01.000Z",
+  "includedSeasons": [
+    2012,
+    2015,
+    2017,
+    2018,
+    2019,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "purchaseRows": 1252,
+  "seasonCoverage": {
+    "2012": {
+      "total": 147,
+      "keepers": 24,
+      "purchases": 123,
+      "invalid": 0,
+      "source": "2012 Final.ddf (rounds 1-2 excluded as keepers)"
+    },
+    "2015": {
+      "total": 149,
+      "keepers": 24,
+      "invalid": 0,
+      "purchases": 125,
+      "source": "2015 - DRAFT SUMMARY.csv"
+    },
+    "2017": {
+      "total": 156,
+      "keepers": 24,
+      "invalid": 0,
+      "purchases": 132,
+      "source": "2017 - DRAFT SUMMARY.csv"
+    },
+    "2018": {
+      "total": 162,
+      "keepers": 24,
+      "invalid": 1,
+      "purchases": 137,
+      "source": "2018 - DRAFT SUMMARY.csv"
+    },
+    "2019": {
+      "total": 135,
+      "keepers": 0,
+      "invalid": 0,
+      "purchases": 135,
+      "source": "2019 Thunder Bowl Draft Results.csv"
+    },
+    "2021": {
+      "total": 139,
+      "keepers": 24,
+      "invalid": 0,
+      "purchases": 115,
+      "source": "backtest_player_auction_2021_2025.csv"
+    },
+    "2022": {
+      "total": 150,
+      "keepers": 24,
+      "invalid": 0,
+      "purchases": 126,
+      "source": "backtest_player_auction_2021_2025.csv"
+    },
+    "2023": {
+      "total": 144,
+      "keepers": 23,
+      "invalid": 0,
+      "purchases": 121,
+      "source": "backtest_player_auction_2021_2025.csv"
+    },
+    "2024": {
+      "total": 120,
+      "keepers": 0,
+      "invalid": 0,
+      "purchases": 120,
+      "source": "backtest_player_auction_2021_2025.csv"
+    },
+    "2025": {
+      "total": 142,
+      "keepers": 24,
+      "invalid": 0,
+      "purchases": 118,
+      "source": "backtest_player_auction_2021_2025.csv"
+    }
+  },
+  "excludedSeasons": {
+    "2010": "No machine-readable completed auction result found.",
+    "2011": "The only DraftDominator file contains 24 keeper-stage rows, not a completed auction.",
+    "2013": "The only DraftDominator file contains 13 partial/keeper-stage rows.",
+    "2014": "The 96-row export is an unrelated eight-team league with zero-dollar rows; the Thunder Bowl file is keeper-only.",
+    "2016": "No completed auction summary or DraftDominator result found.",
+    "2020": "The available DraftDominator file contains only seven draft rows and four keeper rows."
+  },
+  "aliasUsage": {
+    "Big Pimpin -> The Bungles": 21,
+    "Fumble Brewskis -> The Bungles": 24,
+    "Fumble-Brewskis -> The Bungles": 12,
+    "Hobbits -> The Hobbits": 43,
+    "The Whoopass -> Three Amigos": 6,
+    "Whoopass -> Three Amigos": 48
+  },
+  "sourceFiles": [
+    {
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2012\\2012 Final.ddf",
+      "sha256": "3a4f74aaad6602dfc58991dc4453781424894e1e1f0fc3a4a59964b2f389f1ce"
+    },
+    {
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2015\\2015 - DRAFT SUMMARY.csv",
+      "sha256": "999e01fea5d4f32d19e44dc75c9eaa655237f7894d9d5c49260ddda6762e71db"
+    },
+    {
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2017\\DraftDominator\\2017 - DRAFT SUMMARY.csv",
+      "sha256": "cbbcbfce9b7e5df993d50c225c91894f43e11cf115c4b267a56207ceaa44d8e6"
+    },
+    {
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2018\\DraftDominator\\2018 - DRAFT SUMMARY.csv",
+      "sha256": "52ff80fe48d0807942c554c5f8ee0a1e729b0ee500e221f88b909341c613c6bf"
+    },
+    {
+      "path": "C:\\Users\\mailp\\Dropbox\\Personal\\FAMILY STUFF\\Mike Stuff\\Fantasy Football\\2019\\2019 Thunder Bowl Draft Results.csv",
+      "sha256": "01b536fae98ff897707fce0949803ad33ebf80d0f7209f98d1f5ac073343f268"
+    },
+    {
+      "path": "C:\\Users\\mailp\\OneDrive\\Desktop\\CODEX_D_Drive_Backup_2026-07-30_160939\\thunder-bowl-2026\\data\\normalized\\backtest_player_auction_2021_2025.csv",
+      "sha256": "4a7f72a03cbcb6f9bb67bd24a7f67801b129ef2ac40599270a71dfe949238a25"
+    }
+  ],
+  "recencyBacktest": [
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714418087769136,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07141578878653461,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07143518654900442,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07150189299378501,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07158916361143029,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07171468830979137,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07208871970677751,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 2.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07258366052479541,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07143559371663143,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07139950090496996,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07140785530349686,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07145468469578774,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0715296285683106,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07164090932603774,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07193473410693707,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 3.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07232955566725995,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07142906168370348,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07138505679971245,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07138466286585866,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07141956155695416,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07148462726828678,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07158514119320071,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07185507170048529,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 4.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07220254423674584,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07142411432438704,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07137393526687344,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07136730369542825,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07139611665598201,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07145368847121367,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.071549165790849,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07180288105127201,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 5.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0721231721408771,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714204368818301,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07136599479443463,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0713543154270547,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0713793137977598,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07143217155216258,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07152283987627268,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07176447357291753,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 6.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07207070033889063,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07141547395910827,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0713566630843265,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07133664511277855,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07135718867576511,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714069896737977,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07148997337895714,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0717130648619302,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 8.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07200918488001984,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07141018122346704,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07134670983074916,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07131759131200667,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07133294115822328,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07137965464068331,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07146058965651317,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0716607030879282,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 12.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07194533177165592,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.0,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.0714791498368818,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.05,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07139912687396353,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.1,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07132591185556912,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.15,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07127900427211913,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.2,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07128017715767355,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.25,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07132541340712734,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.3,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07139985907458135,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.4,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07157325208986848,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    },
+    {
+      "halfLifeSeasons": 1000.0,
+      "profileReliability": 0.5,
+      "comparisons": 504,
+      "meanAbsoluteShareError": 0.07183163208835192,
+      "leagueBaselineMeanAbsoluteShareError": 0.0714791498368818
+    }
+  ],
+  "selectedHalfLifeSeasons": 1000.0,
+  "selectedProfileReliability": 0.15,
+  "profiles2026": [
+    {
+      "teamId": "angry-face",
+      "teamName": "Angry Face",
+      "sampleSeasons": 10,
+      "samplePurchases": 107,
+      "observedSpend": 847,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0311060426447645,
+        "RB": 0.9795849858285415,
+        "WR": 1.0217505298781377,
+        "TE": 1.0158057938272866,
+        "K": 0.942427450691234,
+        "DST": 0.9974206401598688
+      },
+      "topNflAffinity": "DET",
+      "topNflAffinityMultiplier": 1.4909203803115996,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "big-head",
+      "teamName": "Big Head",
+      "sampleSeasons": 10,
+      "samplePurchases": 103,
+      "observedSpend": 901,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0536038190698205,
+        "RB": 1.015223099713561,
+        "WR": 0.972229747909722,
+        "TE": 0.9489478465139121,
+        "K": 1.0374557925342167,
+        "DST": 1.0424475700132185
+      },
+      "topNflAffinity": "ARI",
+      "topNflAffinityMultiplier": 1.2965454594608476,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "crime-and-punishment",
+      "teamName": "Crime and Punishment",
+      "sampleSeasons": 10,
+      "samplePurchases": 74,
+      "observedSpend": 786,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9588635488414469,
+        "RB": 1.003511600444429,
+        "WR": 1.0121416479654783,
+        "TE": 0.9660708576478633,
+        "K": 1.0030897257746891,
+        "DST": 1.0031159931720672
+      },
+      "topNflAffinity": "NYG",
+      "topNflAffinityMultiplier": 1.3314147131465424,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "dogs-of-war",
+      "teamName": "Dogs of War",
+      "sampleSeasons": 10,
+      "samplePurchases": 96,
+      "observedSpend": 892,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9948824236434183,
+        "RB": 1.0035922986373809,
+        "WR": 1.009391220840094,
+        "TE": 0.9735054983420142,
+        "K": 1.0545209498968153,
+        "DST": 1.0205091069235155
+      },
+      "topNflAffinity": "TEN",
+      "topNflAffinityMultiplier": 1.3875808646309384,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "el-guapo",
+      "teamName": "El Guapo",
+      "sampleSeasons": 10,
+      "samplePurchases": 103,
+      "observedSpend": 860,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0063413139681727,
+        "RB": 0.9957302499354479,
+        "WR": 1.003335426431966,
+        "TE": 0.9836459356611006,
+        "K": 1.0086101085972585,
+        "DST": 0.9970018004705777
+      },
+      "topNflAffinity": "NE",
+      "topNflAffinityMultiplier": 1.602774673219848,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "goon-skwad",
+      "teamName": "Goon Skwad",
+      "sampleSeasons": 10,
+      "samplePurchases": 92,
+      "observedSpend": 801,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0723272616953692,
+        "RB": 1.0014893904678261,
+        "WR": 0.9755869291117594,
+        "TE": 1.0279631425190563,
+        "K": 1.00191506996146,
+        "DST": 0.9716853838237955
+      },
+      "topNflAffinity": "KC",
+      "topNflAffinityMultiplier": 1.3228143685897735,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "orange-crush",
+      "teamName": "Orange Crush",
+      "sampleSeasons": 10,
+      "samplePurchases": 108,
+      "observedSpend": 850,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0351183528912424,
+        "RB": 0.9945733753622621,
+        "WR": 0.9755380636594403,
+        "TE": 1.0975856144972074,
+        "K": 0.9559677610288432,
+        "DST": 0.9318475313837986
+      },
+      "topNflAffinity": "DEN",
+      "topNflAffinityMultiplier": 1.8107313038007464,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "super-suckers",
+      "teamName": "Super Suckers",
+      "sampleSeasons": 10,
+      "samplePurchases": 119,
+      "observedSpend": 865,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9993379025115324,
+        "RB": 0.9709655209077703,
+        "WR": 1.024379310228072,
+        "TE": 1.015970915508725,
+        "K": 1.0129447672926717,
+        "DST": 1.0223236214172577
+      },
+      "topNflAffinity": "KC",
+      "topNflAffinityMultiplier": 1.376425267486249,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "t-dogs",
+      "teamName": "T-Dogs",
+      "sampleSeasons": 10,
+      "samplePurchases": 123,
+      "observedSpend": 899,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.961039641003696,
+        "RB": 1.00362628068763,
+        "WR": 1.0151911352472265,
+        "TE": 0.9634795763038915,
+        "K": 0.9717035199691016,
+        "DST": 1.029890290371394
+      },
+      "topNflAffinity": "MIA",
+      "topNflAffinityMultiplier": 1.5211235625383388,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "the-bungles",
+      "teamName": "The Bungles",
+      "sampleSeasons": 10,
+      "samplePurchases": 115,
+      "observedSpend": 833,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.019267512652089,
+        "RB": 0.9977882687412988,
+        "WR": 0.9970422296782286,
+        "TE": 1.0355891493954958,
+        "K": 1.0213513159718062,
+        "DST": 0.9881022028793299
+      },
+      "topNflAffinity": "NYG",
+      "topNflAffinityMultiplier": 1.714841591835168,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "the-hobbits",
+      "teamName": "The Hobbits",
+      "sampleSeasons": 10,
+      "samplePurchases": 104,
+      "observedSpend": 874,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9789359679714267,
+        "RB": 1.0229058488370415,
+        "WR": 0.9649682897664223,
+        "TE": 1.0117088412772115,
+        "K": 1.0255707246463108,
+        "DST": 1.0226552484775489
+      },
+      "topNflAffinity": "DEN",
+      "topNflAffinityMultiplier": 1.3680374644857807,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "three-amigos",
+      "teamName": "Three Amigos",
+      "sampleSeasons": 10,
+      "samplePurchases": 108,
+      "observedSpend": 872,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.891217781673269,
+        "RB": 1.0112074107875295,
+        "WR": 1.024309891014971,
+        "TE": 0.9767314401686908,
+        "K": 0.9739849168912925,
+        "DST": 0.9721984976934747
+      },
+      "topNflAffinity": "DAL",
+      "topNflAffinityMultiplier": 1.5062200060847646,
+      "modelEffect": "advisory_only",
+      "note": "10 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    }
+  ],
+  "profiles2025Replay": [
+    {
+      "teamId": "angry-face",
+      "teamName": "Angry Face",
+      "sampleSeasons": 9,
+      "samplePurchases": 99,
+      "observedSpend": 771,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0324935872489267,
+        "RB": 0.9846517367584495,
+        "WR": 1.0149978650592164,
+        "TE": 1.0033800282191303,
+        "K": 0.9425148997824927,
+        "DST": 1.0075021459847715
+      },
+      "topNflAffinity": "DET",
+      "topNflAffinityMultiplier": 1.470450211911148,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "big-head",
+      "teamName": "Big Head",
+      "sampleSeasons": 9,
+      "samplePurchases": 91,
+      "observedSpend": 805,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0679331355006192,
+        "RB": 1.0072411522755584,
+        "WR": 0.9789645123957565,
+        "TE": 0.9473975519867845,
+        "K": 1.0423650647281184,
+        "DST": 1.055249338499258
+      },
+      "topNflAffinity": "ARI",
+      "topNflAffinityMultiplier": 1.2897656512689433,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "crime-and-punishment",
+      "teamName": "Crime and Punishment",
+      "sampleSeasons": 9,
+      "samplePurchases": 66,
+      "observedSpend": 693,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9384989952495312,
+        "RB": 1.0142030524365628,
+        "WR": 1.0036344911874961,
+        "TE": 0.9632309710028234,
+        "K": 1.0219159709502077,
+        "DST": 0.9907897077720785
+      },
+      "topNflAffinity": "ATL",
+      "topNflAffinityMultiplier": 1.3647512314630643,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "dogs-of-war",
+      "teamName": "Dogs of War",
+      "sampleSeasons": 9,
+      "samplePurchases": 84,
+      "observedSpend": 800,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9908560013422035,
+        "RB": 1.0186205741713152,
+        "WR": 0.9895576731144462,
+        "TE": 0.9715555901349926,
+        "K": 1.0519681820810525,
+        "DST": 1.0204833659116403
+      },
+      "topNflAffinity": "TEN",
+      "topNflAffinityMultiplier": 1.366917149004659,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "el-guapo",
+      "teamName": "El Guapo",
+      "sampleSeasons": 9,
+      "samplePurchases": 94,
+      "observedSpend": 766,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.018312877785131,
+        "RB": 0.9912723598713973,
+        "WR": 1.0098183102326135,
+        "TE": 0.9670177154989045,
+        "K": 1.0098416086064677,
+        "DST": 0.9897417285440815
+      },
+      "topNflAffinity": "NE",
+      "topNflAffinityMultiplier": 1.7007007754848076,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "goon-skwad",
+      "teamName": "Goon Skwad",
+      "sampleSeasons": 9,
+      "samplePurchases": 86,
+      "observedSpend": 722,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0970320537936553,
+        "RB": 0.9999894512099506,
+        "WR": 0.9657669942766248,
+        "TE": 1.0477382362415484,
+        "K": 1.0090040806270073,
+        "DST": 0.9575894832879377
+      },
+      "topNflAffinity": "KC",
+      "topNflAffinityMultiplier": 1.3841898267262467,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "orange-crush",
+      "teamName": "Orange Crush",
+      "sampleSeasons": 9,
+      "samplePurchases": 96,
+      "observedSpend": 759,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0191386805983538,
+        "RB": 0.9934805283308026,
+        "WR": 0.9855522193231468,
+        "TE": 1.0822774200877732,
+        "K": 0.9593937922024066,
+        "DST": 0.9363460722356572
+      },
+      "topNflAffinity": "DEN",
+      "topNflAffinityMultiplier": 1.6509528126126733,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "super-suckers",
+      "teamName": "Super Suckers",
+      "sampleSeasons": 9,
+      "samplePurchases": 110,
+      "observedSpend": 768,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.9826469458666627,
+        "RB": 0.9733701428409224,
+        "WR": 1.019990966530342,
+        "TE": 1.0357410864001284,
+        "K": 1.0067083129016363,
+        "DST": 1.0332058076197432
+      },
+      "topNflAffinity": "KC",
+      "topNflAffinityMultiplier": 1.446456102291934,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "t-dogs",
+      "teamName": "T-Dogs",
+      "sampleSeasons": 9,
+      "samplePurchases": 111,
+      "observedSpend": 827,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.965009352401369,
+        "RB": 0.9910686204878796,
+        "WR": 1.0294184468020713,
+        "TE": 0.9717401346504417,
+        "K": 0.9741779011241398,
+        "DST": 1.042287923403828
+      },
+      "topNflAffinity": "MIA",
+      "topNflAffinityMultiplier": 1.5358365593185703,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "the-bungles",
+      "teamName": "The Bungles",
+      "sampleSeasons": 9,
+      "samplePurchases": 103,
+      "observedSpend": 748,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 1.0350009908259832,
+        "RB": 0.9984602860626298,
+        "WR": 0.9884636585363512,
+        "TE": 1.0479575953783906,
+        "K": 1.012950686637317,
+        "DST": 0.9880462601110926
+      },
+      "topNflAffinity": "NYG",
+      "topNflAffinityMultiplier": 1.8277384840366855,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "the-hobbits",
+      "teamName": "The Hobbits",
+      "sampleSeasons": 9,
+      "samplePurchases": 94,
+      "observedSpend": 787,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.98022645078046,
+        "RB": 1.0204701601064219,
+        "WR": 0.9699073790705742,
+        "TE": 1.0159148400189948,
+        "K": 1.018385224130901,
+        "DST": 1.0066848596581537
+      },
+      "topNflAffinity": "DEN",
+      "topNflAffinityMultiplier": 1.2634315893873371,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    },
+    {
+      "teamId": "three-amigos",
+      "teamName": "Three Amigos",
+      "sampleSeasons": 9,
+      "samplePurchases": 100,
+      "observedSpend": 813,
+      "reliability": 0.15,
+      "confidence": "low_advisory_only",
+      "positionMultipliers": {
+        "QB": 0.8793245795651028,
+        "RB": 1.0058208560318984,
+        "WR": 1.0400351019167984,
+        "TE": 0.9650767856793638,
+        "K": 0.963881522430483,
+        "DST": 0.9712135816949957
+      },
+      "topNflAffinity": "DAL",
+      "topNflAffinityMultiplier": 1.5881490108360476,
+      "modelEffect": "advisory_only",
+      "note": "9 validated seasons; recency-weighted winning auction purchases; keepers/post-draft moves excluded; no losing-bid sequence; advisory only."
+    }
+  ]
+}

@@ -192,7 +192,7 @@ test("auction intelligence stays private, optional, fast to capture, and offline
   assert.match(appSource, /forecastAuctionPrice\(\{/);
   assert.match(appSource, /bidAuthority: "none"|advisory only/);
   assert.match(appSource, /private runner-up learning log/i);
-  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=20260811b/);
+  assert.match(serviceWorker, /auction-intelligence\.mjs\?v=\d{8}[a-z]/);
   assert.match(serviceWorker, /roster-safety\.mjs\?v=20260811b/);
   assert.match(serviceWorker, /auction-telemetry\.mjs\?v=20260809a/);
   assert.doesNotMatch(publicBoardSource, /runnerUp|runner-up/i);

@@ -20,7 +20,7 @@ const active2026 = JSON.parse(await readFile(activePath, "utf8"));
 
 test("the isolated replay is a complete 12-team, 14-roster 2025 practice pack", () => {
   assert.equal(replay.season, 2025);
-  assert.equal(replay.packId, "tb25-replay-20250825-v2");
+  assert.match(replay.packId, /^tb25-replay-20250825-v2-manager-history-\d{8}T\d{6}$/);
   assert.equal(replay.players.length, 755);
   assert.equal(replay.keeperCandidates.length, 24);
   assert.equal(replay.managerProfiles.length, 12);

@@ -26,7 +26,7 @@ No individual bug fix is complete until the underlying class of failure is teste
 | Legal room arithmetic | $1,212 confirmed starting pool; reserve only enough $1 bids to finish a legal 8-player lineup; 8–14 final players allowed | Authoritative |
 | Dynamic auction values | Historical roster-depth demand, position spend, live cash, live keeper/sale scarcity | Authoritative Market display |
 | Team budget pressure | Cash less legal-completion reserve, compared with active-room average | Advisory feature |
-| Manager tendencies | Four seasons of winning purchases, empirically shrunk toward league average | Advisory feature |
+| Manager tendencies | 1,252 validated winning purchases across ten usable seasons (2012-2025 with documented gaps), identity-normalized, keepers/post-draft moves excluded, and rolling-origin calibrated to 0.15 reliability plus runtime empirical-Bayes shrinkage | Advisory feature |
 | Team WTP | Market × shrunk position/affinity × roster need × budget pressure × substitutes × live bounded evidence; correlated market/team shocks prevent false max-of-11 certainty | Advisory challenger |
 | Whole-roster safety | 192 correlated market/position rollouts plus an exact cash-constrained required-starter portfolio under current personal caps | Advisory only; recomputed after every sale/correction |
 | Position budget lanes | Historical Thunder Bowl position spend and final-roster depth, rescaled to current cash and remaining additions | Private planning aid; no value authority |
