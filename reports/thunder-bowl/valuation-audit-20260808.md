@@ -66,10 +66,9 @@ Point totals have systematic level differences, but VBD subtracts a same-positio
 |---|---:|
 | FBG_NEGATIVE_WEEK | 148 |
 | PROJECTION_SOURCE_RANGE_50 | 83 |
-| MARKET_RANK_VS_MFL_12 | 42 |
+| MARKET_RANK_VS_MFL_12 | 44 |
 | CANDIDATE_MODEL_OUTLIER | 35 |
 | TEAM_CONFLICT_FBG | 15 |
-| BENCH_DEMAND_VALUE | 4 |
 | FBG_LATEST_ZERO | 4 |
 | PRIMARY_OUTSIDE_CONSENSUS | 2 |
 | STARTER_VBD_SOURCE_DISAGREEMENT | 1 |
@@ -145,25 +144,25 @@ These are the source differences most capable of changing VBD rather than merely
 | Jordyn Tyson | WR | -41.5 | $1 | $1 | $1 | 44/43 | $31.59 | 44/2 | MARKET_RANK_VS_MFL_12 |
 | Eli Raridon | TE | -131.0 | $1 | $1 | $1 | 58/59 | $4.97 | 58/18 | MARKET_RANK_VS_MFL_12 |
 | Eli Stowers | TE | -116.8 | $1 | $1 | $1 | 44/43 | $12.37 | 44/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Carnell Tate | WR | -33.4 | $2 | $1 | $2 | 39/31 | $38.62 | 39/1 | MARKET_RANK_VS_MFL_12 |
+| Carnell Tate | WR | -33.4 | $1 | $1 | $2 | 39/31 | $38.62 | 39/1 | MARKET_RANK_VS_MFL_12 |
 | Drew Allar | QB | -336.2 | $1 | $1 | - | 70/- | $3.82 | 70/34 | MARKET_RANK_VS_MFL_12 |
+| Luther Burden III | WR | 1.1 | $5 | $6 | $5 | 22/20 | $5.46 | 22/52 | MARKET_RANK_VS_MFL_12 |
 | Denzel Boston | WR | -71.3 | $1 | $1 | $1 | 61/60 | $10.79 | 61/31 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
 | Fernando Mendoza | QB | -165.9 | $1 | $1 | - | 31/- | $35.27 | 31/1 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
 | Nate Boerkircher | TE | -137.3 | $1 | $1 | $1 | 64/68 | $2.01 | 64/35 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Luther Burden III | WR | 1.1 | $7 | $6 | $5 | 24/20 | $5.46 | 24/52 | MARKET_RANK_VS_MFL_12 |
 | Ty Simpson | QB | -317.2 | $1 | $1 | - | 36/- | $12.98 | 36/8 | MARKET_RANK_VS_MFL_12 |
-| Jadarian Price | RB | -13.1 | $7 | $5 | $6 | 29/27 | $36.55 | 29/2 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Ladd McConkey | WR | 14.6 | $10 | $9 | $6 | 17/17 | $8.13 | 17/39 | MARKET_RANK_VS_MFL_12 |
-| Bucky Irving | RB | 22.9 | $12 | $8 | $10 | 20/22 | $6.21 | 20/41 | MARKET_RANK_VS_MFL_12 |
+| Jadarian Price | RB | -13.1 | $5 | $5 | $6 | 29/27 | $36.55 | 29/2 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Ladd McConkey | WR | 14.6 | $8 | $9 | $6 | 17/17 | $8.13 | 17/39 | MARKET_RANK_VS_MFL_12 |
+| Bucky Irving | RB | 22.9 | $8 | $8 | $10 | 20/22 | $6.21 | 20/41 | MARKET_RANK_VS_MFL_12 |
 | Kenyon Sadiq | TE | -45.9 | $1 | $1 | $1 | 23/17 | $17.17 | 23/2 | MARKET_RANK_VS_MFL_12 |
-| Emeka Egbuka | WR | 12.2 | $9 | $7 | $6 | 19/18 | $8.24 | 19/38 | MARKET_RANK_VS_MFL_12 |
+| Emeka Egbuka | WR | 12.2 | $6 | $7 | $6 | 19/18 | $8.24 | 19/38 | MARKET_RANK_VS_MFL_12 |
 | Dalton Schultz | TE | -27.4 | $1 | $1 | $1 | 19/23 | $1.85 | 19/38 | MARKET_RANK_VS_MFL_12 |
-| Tetairoa McMillan | WR | 10.0 | $8 | $6 | $5 | 20/19 | $8.29 | 20/37 | MARKET_RANK_VS_MFL_12 |
-| De'Von Achane | RB | 94.5 | $24 | $34 | $25 | 5/10 | $12.14 | 5/21 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
+| Tetairoa McMillan | WR | 10.0 | $6 | $6 | $5 | 20/19 | $8.29 | 20/37 | MARKET_RANK_VS_MFL_12 |
+| De'Von Achane | RB | 94.5 | $27 | $34 | $25 | 5/10 | $12.14 | 5/21 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
 | Rashee Rice | WR | 50.0 | $17 | $18 | $10 | 8/11 | $12.07 | 8/24 | PROJECTION_SOURCE_RANGE_50|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
 | Evan Engram | TE | -63.1 | $1 | $1 | $1 | 28/31 | $1.08 | 28/44 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Jameson Williams | WR | 5.3 | $8 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
-| Jeremiyah Love | RB | 42.9 | $15 | $13 | $14 | 15/17 | $51.56 | 15/1 | MARKET_RANK_VS_MFL_12 |
+| Jameson Williams | WR | 5.3 | $5 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
+| Jeremiyah Love | RB | 42.9 | $12 | $13 | $14 | 15/17 | $51.56 | 15/1 | MARKET_RANK_VS_MFL_12 |
 
 ## Runtime invariants checked
 

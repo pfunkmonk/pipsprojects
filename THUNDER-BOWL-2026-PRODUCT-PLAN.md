@@ -24,7 +24,8 @@ No individual bug fix is complete until the underlying class of failure is teste
 | Layer | Current implementation | Authority |
 | --- | --- | --- |
 | Legal room arithmetic | $1,212 confirmed starting pool; reserve only enough $1 bids to finish a legal 8-player lineup; 8–14 final players allowed | Authoritative |
-| Dynamic auction values | Historical roster-depth demand, position spend, live cash, live keeper/sale scarcity | Authoritative Market display |
+| Dynamic auction values | Historical roster-depth demand, position spend, live cash, live keeper/sale scarcity, plus the promoted ten-season position/rank price curve | Authoritative Market display |
+| Glance value verdict | Intrinsic versus Market, tier deadline, hard stop, and whole-roster simulation produce BARGAIN / FAIR / WAIT / TIER SAVE | Private advisory; cannot change VBD, Market, or Max |
 | Team budget pressure | Cash less legal-completion reserve, compared with active-room average | Advisory feature |
 | Manager tendencies | 1,252 validated winning purchases across ten usable seasons (2012-2025 with documented gaps), identity-normalized, keepers/post-draft moves excluded, and rolling-origin calibrated to 0.15 reliability plus runtime empirical-Bayes shrinkage | Advisory feature |
 | Team WTP | Market × shrunk position/affinity × roster need × budget pressure × substitutes × live bounded evidence; correlated market/team shocks prevent false max-of-11 certainty | Advisory challenger |
@@ -125,6 +126,7 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - The deterministic catastrophe rehearsal is the accepted technical rehearsal evidence. Physical speaking/projector practice is optional and is never falsely certified by automation.
 - The active weekly-asset pack is `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260810033019-priority-v1-assets-v1`. The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage. Final automated counts and rehearsal evidence are refreshed after every authority-bearing release.
 - The draft-speed review is implemented: collapsed Live Bid HUD, adjacent chance-at-cap, whole-roster Monte Carlo safety, historical position budget lanes, roster-after-likely-win analysis, explicit hard-stop language, exact last-sale correction preview, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, evidence-only news warning badges, equal-height viewport columns with internal secondary scrolling, static Safety rails moved to Admin & data, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
+- The August 16 league-price promotion uses all 1,252 validated purchases across ten seasons with an eight-season half-life. Five-season time-forward player matching selected a conservative 60% historical price-curve blend and improved overall sale-price MAE from `$3.690` to `$2.822` and premium-player MAE from `$5.114` to `$3.941`. The compact BARGAIN / FAIR / WAIT / TIER SAVE verdict is an advisory translation of intrinsic value, live Market, tier deadline, hard stop, and roster Monte Carlo safety; it cannot alter VBD, Market, Max, or ledger state.
 - The command center is rehearsal-ready. The only authority-bearing data change still planned is promotion of next week's final governed projection pack; draft morning then requires a fresh all-player intelligence seal and recovery download on the MacBook.
 
 ## Release-candidate wrap — August 11, 2026
@@ -147,7 +149,7 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - Thunder Bowl—not the projection producer—recomputed projected points, starter-baseline VBD, intrinsic dollars, historical-demand Market, Max, and keeper surplus. The full room allocation remains exactly $1,212.
 - Existing August 12 weekly asset profiles were proportionally rebased to every new season total, including an explicit zero-projection path. All 716 weekly profiles retain one bye and reconcile to the authoritative projection.
 - The importer now prevents two refresh-wide failure classes: stale FBG/CBS/FantasyPros evidence cannot survive behind a fresh consensus, and a newer weekly evidence timestamp cannot falsely block a slightly earlier same-day season snapshot as a rollback.
-- Release QA passed 303/303 tests, the 168-sale full-auction rehearsal, the 24-keeper/144-sale catastrophe and recovery rehearsal, and the 192-rollout foolproof roster simulation. The pack remains practice-only pending the deliberate Admin final lock.
+- Release QA passed 310/310 tests, the 168-sale full-auction rehearsal, the 24-keeper/144-sale catastrophe and recovery rehearsal, the 36-player/608-rollout-per-player advice Monte Carlo, and the 192-rollout foolproof roster simulation. At the 1536×960 effective MacBook viewport, a live practice nomination kept BID/HOLD/PASS plus the value verdict above the fold, all three draft columns remained equal height with internal scrolling, horizontal overflow was zero, and console diagnostics were clean. The pack remains practice-only pending the deliberate Admin final lock.
 
 ## Near-term sequence
 

@@ -5,8 +5,11 @@ import { fileURLToPath } from "node:url";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
 const dataRoot = "C:\\Users\\mailp\\OneDrive\\Desktop\\CODEX_D_Drive_Backup_2026-07-30_160939\\thunder-bowl-2026\\data\\normalized";
+const marketHistoryPath = resolve(repoRoot, "reports/thunder-bowl/manager-auction-history-normalized.csv");
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const STARTERS = { QB: 12, RB: 24, WR: 24, TE: 12, K: 12, DST: 12 };
+const HISTORY_BLEND_WEIGHTS = Array.from({ length: 11 }, (_, index) => index / 10);
+const HISTORY_HALF_LIFE = 8;
 
 function parseCsvLine(line) {
   const cells = [];
@@ -167,14 +170,58 @@ function pinball(actual, predicted, quantile) {
   return error >= 0 ? quantile * error : (quantile - 1) * error;
 }
 
-const [projectionText, rosterText, auctionText] = await Promise.all([
+function historicalRankCurves(rows, referenceSeason) {
+  const curves = {};
+  for (const position of POSITIONS) {
+    const seasons = [...new Set(rows.filter((row) => row.season < referenceSeason && row.position === position).map((row) => row.season))];
+    const bySeason = new Map(seasons.map((season) => [season, rows.filter((row) => row.season === season && row.position === position)
+      .map((row) => row.salary).sort((left, right) => right - left)]));
+    const maximumRank = Math.max(0, ...[...bySeason.values()].map((prices) => prices.length));
+    curves[position] = Array.from({ length: maximumRank }, (_, index) => {
+      const evidence = seasons.flatMap((season) => {
+        const price = bySeason.get(season)?.[index];
+        return price === undefined ? [] : [{ price, weight: 0.5 ** ((referenceSeason - season) / HISTORY_HALF_LIFE) }];
+      });
+      const totalWeight = evidence.reduce((sum, row) => sum + row.weight, 0);
+      return totalWeight ? evidence.reduce((sum, row) => sum + row.price * row.weight, 0) / totalWeight : 1;
+    });
+    for (let index = 1; index < curves[position].length; index += 1) {
+      curves[position][index] = Math.min(curves[position][index - 1], curves[position][index]);
+    }
+  }
+  return curves;
+}
+
+function historicalRankValues(pool, keeperIds, curves) {
+  const values = new Map(pool.map((row) => [row.id, 1]));
+  for (const position of POSITIONS) {
+    pool.filter((row) => row.position === position && !keeperIds.has(row.id))
+      .sort((left, right) => right.points - left.points || left.id.localeCompare(right.id))
+      .forEach((row, index) => values.set(row.id, Math.max(1, Math.round(curves[position]?.[index] ?? 1))));
+  }
+  return values;
+}
+
+function blendMaps(pool, established, history, historyWeight) {
+  return new Map(pool.map((row) => [row.id, Math.max(1, Math.round(
+    (established.get(row.id) ?? 1) * (1 - historyWeight) + (history.get(row.id) ?? 1) * historyWeight,
+  ))]));
+}
+
+const [projectionText, rosterText, auctionText, marketHistoryText] = await Promise.all([
   readFile(resolve(dataRoot, "cbs_projection_actual_joins_2021_2025.csv"), "utf8"),
   readFile(resolve(dataRoot, "auction_rosters_2021_2025.csv"), "utf8"),
   readFile(resolve(dataRoot, "backtest_player_auction_2021_2025.csv"), "utf8"),
+  readFile(marketHistoryPath, "utf8"),
 ]);
 const projections = parseCsv(projectionText);
 const rosters = parseCsv(rosterText);
 const auctions = parseCsv(auctionText);
+const marketHistory = parseCsv(marketHistoryText).map((row) => ({
+  season: Number(row.season),
+  position: row.position,
+  salary: finite(row.salary),
+}));
 const folds = [];
 const foldResidualRows = [];
 
@@ -183,7 +230,9 @@ for (const testSeason of [2023, 2024, 2025]) {
   const profile = trainingProfile(rosters, trainingSeasons);
   const pool = projections.filter((row) => Number(row.season) === testSeason && row.eligible_for_model_fitting === "true_provisional_source")
     .map((row) => ({ id: row.canonical_player_id, position: row.position, points: finite(row.projected_points_for_evaluation) }));
-  const purchaseRows = auctions.filter((row) => Number(row.season) === testSeason && row.acquisition_type !== "keeper");
+  const seasonAuctionRows = auctions.filter((row) => Number(row.season) === testSeason);
+  const purchaseRows = seasonAuctionRows.filter((row) => row.acquisition_type !== "keeper");
+  const keeperIds = new Set(seasonAuctionRows.filter((row) => row.acquisition_type === "keeper").map((row) => row.player_id));
   const teamCaps = new Map(purchaseRows.map((row) => [
     row.fantasy_team,
     String(row.starting_cap || "").trim() === ""
@@ -195,6 +244,11 @@ for (const testSeason of [2023, 2024, 2025]) {
   const globalDemand = calculateValues(pool, profile.ranks, totalBudget, profile.spendShares, "global-demand");
   const positionBudget = calculateValues(pool, profile.ranks, totalBudget, profile.spendShares, "position-budget");
   const blended = new Map(pool.map((row) => [row.id, Math.max(1, Math.round(0.25 * (classic.get(row.id) ?? 1) + 0.75 * (positionBudget.get(row.id) ?? 1)))]));
+  const historical = historicalRankValues(pool, keeperIds, historicalRankCurves(marketHistory, testSeason));
+  const historyBlends = Object.fromEntries(HISTORY_BLEND_WEIGHTS.map((weight) => [
+    `historyBlend${Math.round(weight * 10)}`,
+    blendMaps(pool, blended, historical, weight),
+  ]));
   const matchedPurchaseRows = purchaseRows.filter((row) => classic.has(row.player_id));
   foldResidualRows.push(...matchedPurchaseRows.map((row) => ({
     testSeason,
@@ -208,6 +262,8 @@ for (const testSeason of [2023, 2024, 2025]) {
     globalDemand: Number(mae(rows, globalDemand).toFixed(3)),
     positionBudget: Number(mae(rows, positionBudget).toFixed(3)),
     blendedPositionBudget: Number(mae(rows, blended).toFixed(3)),
+    historicalPriceCurve: Number(mae(rows, historical).toFixed(3)),
+    ...Object.fromEntries(Object.entries(historyBlends).map(([name, values]) => [name, Number(mae(rows, values).toFixed(3))])),
   } : null;
   folds.push({
     testSeason,
@@ -234,6 +290,10 @@ for (const testSeason of [2023, 2024, 2025]) {
 const development = folds.filter((fold) => fold.evidenceRole === "development_fold");
 const weighted = (field) => Number((development.reduce((sum, fold) => sum + fold.mae[field] * fold.purchases, 0) / development.reduce((sum, fold) => sum + fold.purchases, 0)).toFixed(3));
 const weightedMatched = (field) => Number((development.reduce((sum, fold) => sum + fold.matchedMae[field] * fold.matchedPurchases, 0) / development.reduce((sum, fold) => sum + fold.matchedPurchases, 0)).toFixed(3));
+const historyBlendSelection = HISTORY_BLEND_WEIGHTS.map((weight) => ({
+  weight,
+  matchedMae: weightedMatched(`historyBlend${Math.round(weight * 10)}`),
+})).sort((left, right) => left.matchedMae - right.matchedMae || left.weight - right.weight);
 const developmentResidualRows = foldResidualRows.filter((row) => [2023, 2024].includes(row.testSeason));
 const globalRadius80 = conformalRadius(developmentResidualRows.map((row) => row.residual), 0.8);
 const positionRadius80 = Object.fromEntries(POSITIONS.map((position) => {
@@ -283,6 +343,15 @@ const result = {
     globalDemand: weightedMatched("globalDemand"),
     positionBudget: weightedMatched("positionBudget"),
     blendedPositionBudget: weightedMatched("blendedPositionBudget"),
+    historicalPriceCurve: weightedMatched("historicalPriceCurve"),
+  },
+  historicalPriceCurve: {
+    sourceSeasons: [...new Set(marketHistory.map((row) => row.season))].sort((left, right) => left - right),
+    sourcePurchases: marketHistory.length,
+    recencyHalfLifeSeasons: HISTORY_HALF_LIFE,
+    blendSelection: historyBlendSelection,
+    selectedWeight: historyBlendSelection[0].weight,
+    selectedMatchedMae: historyBlendSelection[0].matchedMae,
   },
   conformalCalibration: {
     role: "coarse baseline-price safety band; not calibration for the new per-team WTP challenger",

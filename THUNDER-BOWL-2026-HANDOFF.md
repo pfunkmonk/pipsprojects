@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 13, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 16, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
@@ -11,7 +11,7 @@ Updated August 13, 2026. This is the takeover starting point for another develop
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 307/307 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`.
+- Release-candidate verification: 310/310 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, 36-player/608-rollout-per-player advice Monte Carlo, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit and dependency review are recorded in `reports/thunder-bowl/release-audit-20260811.md`; the August 16 price/advice evidence is recorded in `reports/thunder-bowl/auction-price-curve-backtest.json` and `auction-advice-monte-carlo.json`.
 - The August 12 projection refresh is active for practice: fresh FBG/CBS/FantasyPros rows were blended through the registered consensus, all 716 weekly profiles were rebased to the new season totals, VBD/intrinsic/Market/Max/keeper surplus were recomputed by Thunder Bowl, and the $1,212 allocation reconciles exactly. The promotion audit found no identity additions/removals, 571 exact strategy changes, and only 10 material movements. The pack remains `practice` until Pip deliberately uses the Admin final-lock control.
 - The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default. On the three-column draft desk, player pool, HUD/evidence, and roster/forecast columns share the remaining viewport height; secondary lists scroll inside their own panel, Next nomination stays above the rival forecast list, and the static Safety rails reference lives in Admin & data instead of consuming draft-room height.
 - The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
@@ -44,9 +44,10 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Private UI and orchestration: `public/thunder-bowl/index.html`, `app.mjs`, `app.css`
 - Rules, replay, public sanitization: `public/thunder-bowl/state-engine.mjs`
 - Keeper calculations: `keeper-board.mjs`, `keeper-scenario.mjs`
-- VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`
-- Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`
+- VBD and live market: `thunder-value.mjs`, `auction-demand.mjs`, generated `auction-price-profile.mjs`
+- Auction advisory and simulation: `auction-intelligence.mjs`, `auction-telemetry.mjs`, `roster-safety.mjs`
 - Historical manager-profile rebuild: `scripts/build-manager-history.py`; governed normalized rows and audit live in `reports/thunder-bowl/manager-auction-history-normalized.csv` and `manager-history-audit.{json,md}`
+- Historical league price-curve rebuild/backtest: `scripts/build-auction-price-curve.mjs`; governed report is `reports/thunder-bowl/auction-price-curve-backtest.json`
 - Glance-decision and draft-pressure presentation: `decision-context.mjs`, `nomination-assistant.mjs`, `position-run.mjs`
 - Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
 - Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; raw component files remain outside the web tree
@@ -69,6 +70,12 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Unvalidated season-total weather, travel, venue, rest, durability, mean-reversion, and schedule corrections remain at zero. The failed 31,486 player-week raw-context challengers remain rejected.
 - The live weekly-importance policy is 1.20 division / 1.50 playoffs / zero Week 18. It was calibrated from 48 archived team-seasons and 150,000 Thunder Bowl simulations, then shrunk to 35% timing authority and capped at ±3 replacement-relative VBD because archived weekly forecast timing remains noisy. One adjusted runtime pack drives displayed VBD, Market, Max, keeper surplus, and bid guidance.
 - The August 12 weekly-asset bundle passes a private fail-closed intake: 716 players, 12,888 week rows, complete bye coverage, maximum component reconciliation delta 0.0008, and zero direct changes to signed season projections. Its profiles were then automatically rebased to the promoted August 12 consensus so every weekly row still sums to its authoritative season total. Honest nonzero component coverage is 624/716; all 92 component-empty players retain a validated source/team weekly shape.
+
+## Historical league auction-price curve and glance advice
+
+The live Market now adds a Thunder Bowl league price-rank curve built from the same 1,252 validated purchases across ten usable seasons. Rolling time-forward stability selected an eight-season recency half-life. A separate five-season preseason-price-to-actual-sale audit matched 106 players and selected a conservative 60% historical-curve share: overall MAE fell from `$3.690` to `$2.822`, while premium-player MAE fell from `$5.114` to `$3.941`. A paired modern holdout independently favored still more history, so 60% is the safer promoted authority. The curve dynamically reranks only the remaining players in each position and scales with live position dollars and VORP. It changes Market—not projections, VBD, legal maximum, personal maximum, or the append-only ledger.
+
+The Live Bid HUD places one compact value verdict beside BID/HOLD/PASS: `BARGAIN`, `FAIR`, `WAIT`, or `TIER SAVE`. `TIER SAVE` requires the last remaining player in a tier, a hard stop that still covers Market, at least 95% simulated legal-roster completion, and at least 60% simulated strong-roster completion. `AVOID`, `OWNED`, and `BROWSE` are fail-closed guardrails. The classifier never changes the primary action or hard stop. Rebuild with `npm.cmd run backtest:thunder-price-curve`; run the 36-player, 608-rollout-per-player contract check with `npm.cmd run rehearsal:thunder-advice`.
 
 ## Final projection refresh
 
@@ -107,9 +114,12 @@ Rolling-origin tests across the usable seasons selected effectively equal histor
 npm.cmd test
 npm.cmd run build
 npm.cmd run audit:thunder-values
+npm.cmd run backtest:thunder-price-curve
 npm.cmd run backtest:thunder-runs
+npm.cmd run rehearsal:thunder-advice
 npm.cmd run rehearsal
 npm.cmd run rehearsal:catastrophe
+npm.cmd run rehearsal:foolproof
 npm.cmd audit
 git diff --check
 ```
@@ -128,4 +138,4 @@ Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×19
 
 ## Known dependency advisory
 
-`npm audit` currently reports three high-severity package entries from two `image-size@2.0.2` denial-of-service advisories inherited through `@netlify/blobs` → `@netlify/dev-utils`. The vulnerable ICNS/JXL/HEIF parser is not reachable through Thunder Bowl routes. The offered forced fix is a breaking Netlify Blobs downgrade; do not apply it. Recheck before each deployment and upgrade when Netlify publishes a patched dependency path.
+`npm audit --omit=dev` reports zero known production vulnerabilities as of August 16, 2026. Recheck before every deployment; do not force a breaking dependency downgrade solely to silence a future transitive development-only advisory.

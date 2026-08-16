@@ -1,5 +1,5 @@
 import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810e";
-import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260809a";
+import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260816a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 
 export const AUCTION_INTELLIGENCE_VERSION = "auction-intelligence-v1";

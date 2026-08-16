@@ -1,0 +1,1391 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "thunder-auction-price-curve-v1",
+  "generatedAt": "2026-08-16T23:33:47.116Z",
+  "authority": "historical league market estimate only; intrinsic VBD remains unchanged",
+  "includedSeasons": [
+    2012,
+    2015,
+    2017,
+    2018,
+    2019,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "purchaseRows": 1252,
+  "curveStability": [
+    {
+      "halfLife": 8,
+      "rows": 1004,
+      "mae": 1.6531501406934512
+    },
+    {
+      "halfLife": 6,
+      "rows": 1004,
+      "mae": 1.653407013186482
+    },
+    {
+      "halfLife": 12,
+      "rows": 1004,
+      "mae": 1.6535813683119147
+    },
+    {
+      "halfLife": 5,
+      "rows": 1004,
+      "mae": 1.6546069121672533
+    },
+    {
+      "halfLife": 4,
+      "rows": 1004,
+      "mae": 1.6576056726925366
+    },
+    {
+      "halfLife": 1000,
+      "rows": 1004,
+      "mae": 1.6603280045246651
+    },
+    {
+      "halfLife": 3,
+      "rows": 1004,
+      "mae": 1.664924984455627
+    },
+    {
+      "halfLife": 2,
+      "rows": 1004,
+      "mae": 1.6829293655356874
+    }
+  ],
+  "selectedHalfLife": 8,
+  "projectionBacktestSeasons": [
+    2015,
+    2017,
+    2018,
+    2023,
+    2025
+  ],
+  "projectionMatchedRows": 106,
+  "blendBacktest": [
+    {
+      "historyWeight": 0.6,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.8218522555404975,
+      "premiumBlendedMae": 3.941065249644819
+    },
+    {
+      "historyWeight": 0.7,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.8324640588840686,
+      "premiumBlendedMae": 3.999721916143761
+    },
+    {
+      "historyWeight": 0.5,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.891432698493733,
+      "premiumBlendedMae": 4.010804376904974
+    },
+    {
+      "historyWeight": 0.8,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.880226431549084,
+      "premiumBlendedMae": 4.091566237916286
+    },
+    {
+      "historyWeight": 0.4,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.995830221190684,
+      "premiumBlendedMae": 4.141045314867321
+    },
+    {
+      "historyWeight": 0.9,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 2.976395386140503,
+      "premiumBlendedMae": 4.245682806702288
+    },
+    {
+      "historyWeight": 0.3,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 3.125357678148202,
+      "premiumBlendedMae": 4.313947259647041
+    },
+    {
+      "historyWeight": 1,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 3.140677671628532,
+      "premiumBlendedMae": 4.488394818811569
+    },
+    {
+      "historyWeight": 0.2,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 3.2798576096393606,
+      "premiumBlendedMae": 4.529729277458123
+    },
+    {
+      "historyWeight": 0.1,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 3.476564214784965,
+      "premiumBlendedMae": 4.814493383914643
+    },
+    {
+      "historyWeight": 0,
+      "rows": 106,
+      "premiumRows": 61,
+      "sourceMae": 3.690471698113207,
+      "historyMae": 3.140677671628532,
+      "blendedMae": 3.690471698113207,
+      "premiumBlendedMae": 5.114262295081969
+    }
+  ],
+  "selectedHistoricalCurveWeight": 0.6,
+  "selectedMetrics": {
+    "historyWeight": 0.6,
+    "rows": 106,
+    "premiumRows": 61,
+    "sourceMae": 3.690471698113207,
+    "historyMae": 3.140677671628532,
+    "blendedMae": 2.8218522555404975,
+    "premiumBlendedMae": 3.941065249644819
+  },
+  "topFiveSeasonMeans": {
+    "QB": {
+      "seasons": 10,
+      "mean": 14.66,
+      "median": 13.899999999999999,
+      "low": 8.8,
+      "high": 27.2
+    },
+    "RB": {
+      "seasons": 10,
+      "mean": 33.14,
+      "median": 34.099999999999994,
+      "low": 28.4,
+      "high": 38
+    },
+    "WR": {
+      "seasons": 10,
+      "mean": 31.16,
+      "median": 31.8,
+      "low": 25,
+      "high": 37.8
+    },
+    "TE": {
+      "seasons": 10,
+      "mean": 13.5,
+      "median": 14.2,
+      "low": 8.6,
+      "high": 17.8
+    },
+    "K": {
+      "seasons": 10,
+      "mean": 2.58,
+      "median": 2.6,
+      "low": 1.8,
+      "high": 3.4
+    },
+    "DST": {
+      "seasons": 10,
+      "mean": 4.26,
+      "median": 4.300000000000001,
+      "low": 2.4,
+      "high": 6
+    }
+  },
+  "priceCurves": {
+    "QB": [
+      {
+        "rank": 1,
+        "mean": 20.91299784969458,
+        "median": 21.5,
+        "low": 15.8,
+        "high": 30.599999999999998,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 16.992995433528854,
+        "median": 17,
+        "low": 11.5,
+        "high": 25.999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 13.017466466096625,
+        "median": 14,
+        "low": 6.9,
+        "high": 18.699999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 9.848210185725797,
+        "median": 9,
+        "low": 6.9,
+        "high": 15.399999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 8.261110644939764,
+        "median": 7.5,
+        "low": 6,
+        "high": 12,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 7.0152421590435265,
+        "median": 6.5,
+        "low": 4.9,
+        "high": 10.1,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 6.004012146772794,
+        "median": 5.5,
+        "low": 3.9,
+        "high": 9.1,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 4.432049193543923,
+        "median": 4.5,
+        "low": 3,
+        "high": 6.199999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 3.4893921158163406,
+        "median": 4,
+        "low": 1.9,
+        "high": 5.1,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 2.662495164123585,
+        "median": 2.5,
+        "low": 1.9,
+        "high": 4.1,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 2.261382027477547,
+        "median": 2.5,
+        "low": 1,
+        "high": 3.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 2.164937610267607,
+        "median": 2,
+        "low": 1,
+        "high": 3.0999999999999996,
+        "seasons": 9
+      },
+      {
+        "rank": 13,
+        "mean": 1.716956379625795,
+        "median": 1.5,
+        "low": 1,
+        "high": 3.0999999999999996,
+        "seasons": 8
+      },
+      {
+        "rank": 14,
+        "mean": 1.4489173515405105,
+        "median": 1,
+        "low": 1,
+        "high": 2.3,
+        "seasons": 8
+      },
+      {
+        "rank": 15,
+        "mean": 1.4489173515405105,
+        "median": 1,
+        "low": 1,
+        "high": 2,
+        "seasons": 6
+      },
+      {
+        "rank": 16,
+        "mean": 1.4489173515405105,
+        "median": 1,
+        "low": 1,
+        "high": 1.8,
+        "seasons": 3
+      },
+      {
+        "rank": 17,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      }
+    ],
+    "RB": [
+      {
+        "rank": 1,
+        "mean": 39.113302057825784,
+        "median": 38,
+        "low": 32,
+        "high": 43.3,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 35.494308635641055,
+        "median": 36.5,
+        "low": 29.9,
+        "high": 39,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 33.1333181014149,
+        "median": 32.5,
+        "low": 27,
+        "high": 37.2,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 32.043152931694074,
+        "median": 31.5,
+        "low": 26.9,
+        "high": 36.1,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 29.400378044621803,
+        "median": 29,
+        "low": 22.9,
+        "high": 34.2,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 26.68134682328726,
+        "median": 24.5,
+        "low": 20.9,
+        "high": 32.2,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 23.994015932977398,
+        "median": 22.5,
+        "low": 19.8,
+        "high": 28.2,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 21.660828643893158,
+        "median": 19.5,
+        "low": 16.9,
+        "high": 27.299999999999997,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 19.702481350259458,
+        "median": 18,
+        "low": 15,
+        "high": 24.299999999999997,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 17.417055466866138,
+        "median": 16.5,
+        "low": 14,
+        "high": 20.2,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 14.528447880719035,
+        "median": 13.5,
+        "low": 12,
+        "high": 16.4,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 13.203179332733855,
+        "median": 12.5,
+        "low": 10.9,
+        "high": 16.1,
+        "seasons": 10
+      },
+      {
+        "rank": 13,
+        "mean": 12.386341196009571,
+        "median": 12,
+        "low": 9.9,
+        "high": 15.1,
+        "seasons": 10
+      },
+      {
+        "rank": 14,
+        "mean": 11.533313849133926,
+        "median": 11.5,
+        "low": 9.9,
+        "high": 13.1,
+        "seasons": 10
+      },
+      {
+        "rank": 15,
+        "mean": 10.40174329469778,
+        "median": 10,
+        "low": 8.9,
+        "high": 12,
+        "seasons": 10
+      },
+      {
+        "rank": 16,
+        "mean": 9.397748610851266,
+        "median": 9.5,
+        "low": 7.9,
+        "high": 10.1,
+        "seasons": 10
+      },
+      {
+        "rank": 17,
+        "mean": 8.124348282413276,
+        "median": 8,
+        "low": 5.9,
+        "high": 10.1,
+        "seasons": 10
+      },
+      {
+        "rank": 18,
+        "mean": 6.8412815214008615,
+        "median": 7,
+        "low": 5,
+        "high": 9,
+        "seasons": 10
+      },
+      {
+        "rank": 19,
+        "mean": 6.283418984040733,
+        "median": 6,
+        "low": 4.9,
+        "high": 8.1,
+        "seasons": 10
+      },
+      {
+        "rank": 20,
+        "mean": 5.879709730852473,
+        "median": 6,
+        "low": 4.9,
+        "high": 8,
+        "seasons": 10
+      },
+      {
+        "rank": 21,
+        "mean": 5.3666125516181955,
+        "median": 5.5,
+        "low": 4,
+        "high": 7,
+        "seasons": 10
+      },
+      {
+        "rank": 22,
+        "mean": 4.997476239445975,
+        "median": 5,
+        "low": 4,
+        "high": 6,
+        "seasons": 10
+      },
+      {
+        "rank": 23,
+        "mean": 4.588662254586853,
+        "median": 5,
+        "low": 3,
+        "high": 5.1,
+        "seasons": 10
+      },
+      {
+        "rank": 24,
+        "mean": 4.212025096536734,
+        "median": 4.5,
+        "low": 3,
+        "high": 5,
+        "seasons": 10
+      },
+      {
+        "rank": 25,
+        "mean": 3.9580019454556847,
+        "median": 3.5,
+        "low": 3,
+        "high": 5,
+        "seasons": 10
+      },
+      {
+        "rank": 26,
+        "mean": 3.6610962708351775,
+        "median": 3,
+        "low": 2.9,
+        "high": 5,
+        "seasons": 10
+      },
+      {
+        "rank": 27,
+        "mean": 3.2095047123441374,
+        "median": 3,
+        "low": 2,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 28,
+        "mean": 2.926719901548181,
+        "median": 3,
+        "low": 2,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 29,
+        "mean": 2.531278630792331,
+        "median": 2,
+        "low": 1.9,
+        "high": 3.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 30,
+        "mean": 2.1882438985071286,
+        "median": 2,
+        "low": 1.9,
+        "high": 3,
+        "seasons": 10
+      },
+      {
+        "rank": 31,
+        "mean": 2.0612323229666045,
+        "median": 2,
+        "low": 1.9,
+        "high": 2.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 32,
+        "mean": 1.9227252177016654,
+        "median": 2,
+        "low": 1,
+        "high": 2.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 33,
+        "mean": 1.7227124916934897,
+        "median": 2,
+        "low": 1,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 34,
+        "mean": 1.470046307825726,
+        "median": 1,
+        "low": 1,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 35,
+        "mean": 1.1510430693204972,
+        "median": 1,
+        "low": 1,
+        "high": 1.1510430693204972,
+        "seasons": 10
+      },
+      {
+        "rank": 36,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 37,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 38,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 6
+      },
+      {
+        "rank": 39,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 4
+      },
+      {
+        "rank": 40,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 4
+      },
+      {
+        "rank": 41,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 2
+      },
+      {
+        "rank": 42,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 2
+      },
+      {
+        "rank": 43,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      }
+    ],
+    "WR": [
+      {
+        "rank": 1,
+        "mean": 37.16931900789233,
+        "median": 36,
+        "low": 32.8,
+        "high": 43.3,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 32.76023610873104,
+        "median": 32,
+        "low": 24.9,
+        "high": 39.3,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 31.361726480181687,
+        "median": 32,
+        "low": 24,
+        "high": 37.2,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 29.056627003645563,
+        "median": 30.5,
+        "low": 23,
+        "high": 34,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 25.782824213231734,
+        "median": 25,
+        "low": 22.8,
+        "high": 31.299999999999997,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 23.33988524257876,
+        "median": 22.5,
+        "low": 18,
+        "high": 28.2,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 19.220560098072085,
+        "median": 19,
+        "low": 15.6,
+        "high": 24.5,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 17.0401191347835,
+        "median": 17,
+        "low": 11.8,
+        "high": 22.2,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 15.86235583962134,
+        "median": 16,
+        "low": 10,
+        "high": 20.1,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 13.931473117564645,
+        "median": 14,
+        "low": 10,
+        "high": 18.1,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 11.804804641718496,
+        "median": 11,
+        "low": 9.9,
+        "high": 14.299999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 10.514841753945484,
+        "median": 10.5,
+        "low": 8.9,
+        "high": 12.299999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 13,
+        "mean": 9.612862192911145,
+        "median": 10,
+        "low": 7.9,
+        "high": 11.1,
+        "seasons": 10
+      },
+      {
+        "rank": 14,
+        "mean": 9.042876404683033,
+        "median": 9.5,
+        "low": 7,
+        "high": 11,
+        "seasons": 10
+      },
+      {
+        "rank": 15,
+        "mean": 7.707644374381375,
+        "median": 7.5,
+        "low": 6,
+        "high": 10,
+        "seasons": 10
+      },
+      {
+        "rank": 16,
+        "mean": 7.1368181541573055,
+        "median": 7,
+        "low": 5.9,
+        "high": 9.1,
+        "seasons": 10
+      },
+      {
+        "rank": 17,
+        "mean": 6.4325604117985025,
+        "median": 7,
+        "low": 4.9,
+        "high": 8.1,
+        "seasons": 10
+      },
+      {
+        "rank": 18,
+        "mean": 6.267228130784361,
+        "median": 6.5,
+        "low": 4.9,
+        "high": 7.199999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 19,
+        "mean": 5.230594435817056,
+        "median": 5.5,
+        "low": 3.9,
+        "high": 7,
+        "seasons": 10
+      },
+      {
+        "rank": 20,
+        "mean": 4.386538858111803,
+        "median": 4.5,
+        "low": 2.9,
+        "high": 6.1,
+        "seasons": 10
+      },
+      {
+        "rank": 21,
+        "mean": 4.248031752846863,
+        "median": 4,
+        "low": 2.9,
+        "high": 6.1,
+        "seasons": 10
+      },
+      {
+        "rank": 22,
+        "mean": 3.7076443743813754,
+        "median": 3.5,
+        "low": 2,
+        "high": 6,
+        "seasons": 10
+      },
+      {
+        "rank": 23,
+        "mean": 3.4096923349978416,
+        "median": 3,
+        "low": 2,
+        "high": 5.1,
+        "seasons": 10
+      },
+      {
+        "rank": 24,
+        "mean": 3.042867378114071,
+        "median": 3,
+        "low": 2,
+        "high": 4.199999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 25,
+        "mean": 2.7275703039754102,
+        "median": 3,
+        "low": 2,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 26,
+        "mean": 2.5107479820809937,
+        "median": 2.5,
+        "low": 2,
+        "high": 3.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 27,
+        "mean": 2.0898713332781305,
+        "median": 2,
+        "low": 1,
+        "high": 3.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 28,
+        "mean": 1.7074077691481953,
+        "median": 2,
+        "low": 1,
+        "high": 3,
+        "seasons": 9
+      },
+      {
+        "rank": 29,
+        "mean": 1.4644262147208797,
+        "median": 2,
+        "low": 1,
+        "high": 2,
+        "seasons": 9
+      },
+      {
+        "rank": 30,
+        "mean": 1.2524296933771335,
+        "median": 1,
+        "low": 1,
+        "high": 2,
+        "seasons": 9
+      },
+      {
+        "rank": 31,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 8
+      },
+      {
+        "rank": 32,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 8
+      },
+      {
+        "rank": 33,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 6
+      },
+      {
+        "rank": 34,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 4
+      },
+      {
+        "rank": 35,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 4
+      },
+      {
+        "rank": 36,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 3
+      },
+      {
+        "rank": 37,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 3
+      },
+      {
+        "rank": 38,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 2
+      },
+      {
+        "rank": 39,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      },
+      {
+        "rank": 40,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      },
+      {
+        "rank": 41,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      },
+      {
+        "rank": 42,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      },
+      {
+        "rank": 43,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 1
+      }
+    ],
+    "TE": [
+      {
+        "rank": 1,
+        "mean": 21.363370137650417,
+        "median": 19.5,
+        "low": 14.7,
+        "high": 35,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 14.789367068582006,
+        "median": 15,
+        "low": 9.8,
+        "high": 19.299999999999997,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 13.027643009276638,
+        "median": 15,
+        "low": 8.9,
+        "high": 16,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 9.75626221159848,
+        "median": 8,
+        "low": 6.9,
+        "high": 15,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 7.856827116040834,
+        "median": 7,
+        "low": 6,
+        "high": 10.299999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 6.1650245177341025,
+        "median": 6,
+        "low": 5,
+        "high": 7.1,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 4.590875440823526,
+        "median": 4.5,
+        "low": 2,
+        "high": 7.1,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 3.861583917805257,
+        "median": 3.5,
+        "low": 1.9,
+        "high": 7,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 3.530244717579654,
+        "median": 3,
+        "low": 1.9,
+        "high": 5.1,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 2.249803290667375,
+        "median": 2,
+        "low": 1,
+        "high": 3.299999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 1.6258733144981676,
+        "median": 1,
+        "low": 1,
+        "high": 3.1999999999999993,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 1.1279625394805433,
+        "median": 1,
+        "low": 1,
+        "high": 1.2000000000000002,
+        "seasons": 9
+      },
+      {
+        "rank": 13,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 7
+      },
+      {
+        "rank": 14,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 5
+      },
+      {
+        "rank": 15,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 2
+      }
+    ],
+    "K": [
+      {
+        "rank": 1,
+        "mean": 3.1140603442269343,
+        "median": 3,
+        "low": 2.9,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 2.839711863732481,
+        "median": 3,
+        "low": 2,
+        "high": 3.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 2.6522351017798633,
+        "median": 3,
+        "low": 2,
+        "high": 3,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 2.4354127798854464,
+        "median": 2,
+        "low": 2,
+        "high": 3,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 2.0317035266971857,
+        "median": 2,
+        "low": 1.9,
+        "high": 2.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 1.8931964214322465,
+        "median": 2,
+        "low": 1.8931964214322465,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 1.6788944837304274,
+        "median": 2,
+        "low": 1,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 1.3290244685757255,
+        "median": 1,
+        "low": 1,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 1.2655186808054633,
+        "median": 1,
+        "low": 1,
+        "high": 2,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 8
+      },
+      {
+        "rank": 13,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 3
+      }
+    ],
+    "DST": [
+      {
+        "rank": 1,
+        "mean": 5.305623955138469,
+        "median": 5,
+        "low": 4,
+        "high": 7.199999999999999,
+        "seasons": 10
+      },
+      {
+        "rank": 2,
+        "mean": 4.631570237458052,
+        "median": 5,
+        "low": 3.8,
+        "high": 6,
+        "seasons": 10
+      },
+      {
+        "rank": 3,
+        "mean": 4.164355196499529,
+        "median": 4,
+        "low": 2.9,
+        "high": 5.1,
+        "seasons": 10
+      },
+      {
+        "rank": 4,
+        "mean": 3.97635821738134,
+        "median": 4,
+        "low": 2.9,
+        "high": 5,
+        "seasons": 10
+      },
+      {
+        "rank": 5,
+        "mean": 3.2559570809762994,
+        "median": 3,
+        "low": 2.9,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 6,
+        "mean": 2.7233780547018895,
+        "median": 3,
+        "low": 2,
+        "high": 4,
+        "seasons": 10
+      },
+      {
+        "rank": 7,
+        "mean": 2.23129476991568,
+        "median": 2,
+        "low": 2,
+        "high": 3,
+        "seasons": 10
+      },
+      {
+        "rank": 8,
+        "mean": 1.9569462894212273,
+        "median": 2,
+        "low": 1,
+        "high": 3,
+        "seasons": 10
+      },
+      {
+        "rank": 9,
+        "mean": 1.6911543108391323,
+        "median": 2,
+        "low": 1,
+        "high": 2.0999999999999996,
+        "seasons": 10
+      },
+      {
+        "rank": 10,
+        "mean": 1.1385071052649391,
+        "median": 1,
+        "low": 1,
+        "high": 1.1385071052649391,
+        "seasons": 10
+      },
+      {
+        "rank": 11,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 12,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 10
+      },
+      {
+        "rank": 13,
+        "mean": 1,
+        "median": 1,
+        "low": 1,
+        "high": 1,
+        "seasons": 4
+      }
+    ]
+  }
+}

@@ -61,8 +61,8 @@ import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-read
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260811h";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
-import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260809a";
-import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260813a";
+import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260816a";
+import { forecastAuctionPrice } from "./auction-intelligence.mjs?v=20260816a";
 import {
   AUCTION_TELEMETRY_META_KEY,
   RUNNER_UP_PROMPT_MS,
@@ -78,6 +78,7 @@ import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=2026
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import {
   buildBidRecommendation,
+  buildAuctionValueAdvice,
   buildDecisionContext,
   buildTierDeadlineWarning,
   buildTierSnapshot,
@@ -85,7 +86,7 @@ import {
   byeWeekConflicts,
   cashLeverage,
   playerSurplusHeat,
-} from "./decision-context.mjs?v=20260811b";
+} from "./decision-context.mjs?v=20260816a";
 import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
@@ -116,7 +117,7 @@ import {
   validateCbsRosterSnapshot,
 } from "./cbs-roster-snapshot.mjs?v=20260805g";
 import { SALES_ENTRY_MODES, normalizeSalesEntryMode, salesEntryPolicy } from "./sales-entry-mode.mjs?v=20260808a";
-import { analyzeRosterSafety } from "./roster-safety.mjs?v=20260811b";
+import { analyzeRosterSafety } from "./roster-safety.mjs?v=20260816a";
 
 const byId = (id) => document.getElementById(id);
 const URL_PARAMETERS = new URLSearchParams(window.location.search);
@@ -2054,6 +2055,23 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
   const whatIfSafety = likelyWinPrice >= 1
     ? rosterSafetyForState({ hypotheticalPurchase: { player, price: likelyWinPrice }, samples: 128 })
     : null;
+  const valueAdvice = buildAuctionValueAdvice({
+    selectedPlayer: player,
+    available,
+    intrinsicValue: player?.intrinsicValue,
+    liveMarketValue: live?.marketValue,
+    personalMaximum,
+    sameTierRemaining: context?.sameTierRemaining || 0,
+    nextAlternative: context?.nextAlternative || null,
+    rosterSafety: whatIfSafety,
+    annotation,
+    browsingDifferentPlayer,
+  });
+  const valueAdviceElement = byId("decision-value-advice");
+  valueAdviceElement.textContent = valueAdvice.label;
+  valueAdviceElement.className = `value-advice value-advice-${valueAdvice.tone}`;
+  valueAdviceElement.title = valueAdvice.reason;
+  valueAdviceElement.setAttribute("aria-label", `${valueAdvice.label}: ${valueAdvice.reason}`);
   const safetyStrip = byId("decision-roster-safety");
   safetyStrip.className = `decision-roster-safety roster-safety-${whatIfSafety?.status.level || "neutral"}`;
   const compactSafetyLabel = whatIfSafety?.status.label.replace("ROSTER ", "").replace("LINEUP ", "");

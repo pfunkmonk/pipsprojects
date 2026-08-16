@@ -13,7 +13,72 @@
     "classic": 5.887,
     "globalDemand": 4.837,
     "positionBudget": 4.489,
-    "blendedPositionBudget": 4.191
+    "blendedPositionBudget": 4.191,
+    "historicalPriceCurve": 3.596
+  },
+  "historicalPriceCurve": {
+    "sourceSeasons": [
+      2012,
+      2015,
+      2017,
+      2018,
+      2019,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "sourcePurchases": 1252,
+    "recencyHalfLifeSeasons": 8,
+    "blendSelection": [
+      {
+        "weight": 0.8,
+        "matchedMae": 3.567
+      },
+      {
+        "weight": 1,
+        "matchedMae": 3.596
+      },
+      {
+        "weight": 0.9,
+        "matchedMae": 3.631
+      },
+      {
+        "weight": 0.7,
+        "matchedMae": 3.659
+      },
+      {
+        "weight": 0.5,
+        "matchedMae": 3.674
+      },
+      {
+        "weight": 0.6,
+        "matchedMae": 3.681
+      },
+      {
+        "weight": 0.4,
+        "matchedMae": 3.751
+      },
+      {
+        "weight": 0.3,
+        "matchedMae": 3.83
+      },
+      {
+        "weight": 0.2,
+        "matchedMae": 3.993
+      },
+      {
+        "weight": 0.1,
+        "matchedMae": 4.085
+      },
+      {
+        "weight": 0,
+        "matchedMae": 4.191
+      }
+    ],
+    "selectedWeight": 0.8,
+    "selectedMatchedMae": 3.567
   },
   "conformalCalibration": {
     "role": "coarse baseline-price safety band; not calibration for the new per-team WTP challenger",
@@ -95,13 +160,37 @@
         "classic": 4.05,
         "globalDemand": 3.132,
         "positionBudget": 3.223,
-        "blendedPositionBudget": 2.835
+        "blendedPositionBudget": 2.835,
+        "historicalPriceCurve": 2.306,
+        "historyBlend0": 2.835,
+        "historyBlend1": 2.752,
+        "historyBlend2": 2.669,
+        "historyBlend3": 2.496,
+        "historyBlend4": 2.446,
+        "historyBlend5": 2.43,
+        "historyBlend6": 2.364,
+        "historyBlend7": 2.339,
+        "historyBlend8": 2.289,
+        "historyBlend9": 2.331,
+        "historyBlend10": 2.306
       },
       "matchedMae": {
         "classic": 5.247,
         "globalDemand": 4.151,
         "positionBudget": 4.164,
-        "blendedPositionBudget": 3.753
+        "blendedPositionBudget": 3.753,
+        "historicalPriceCurve": 2.973,
+        "historyBlend0": 3.753,
+        "historyBlend1": 3.616,
+        "historyBlend2": 3.521,
+        "historyBlend3": 3.288,
+        "historyBlend4": 3.205,
+        "historyBlend5": 3.178,
+        "historyBlend6": 3.11,
+        "historyBlend7": 3.068,
+        "historyBlend8": 2.986,
+        "historyBlend9": 3.014,
+        "historyBlend10": 2.973
       },
       "positionMae": {
         "QB": {
@@ -180,13 +269,37 @@
         "classic": 4.625,
         "globalDemand": 4.258,
         "positionBudget": 3.817,
-        "blendedPositionBudget": 3.542
+        "blendedPositionBudget": 3.542,
+        "historicalPriceCurve": 3.2,
+        "historyBlend0": 3.542,
+        "historyBlend1": 3.5,
+        "historyBlend2": 3.35,
+        "historyBlend3": 3.283,
+        "historyBlend4": 3.183,
+        "historyBlend5": 3.108,
+        "historyBlend6": 3.142,
+        "historyBlend7": 3.15,
+        "historyBlend8": 3.075,
+        "historyBlend9": 3.208,
+        "historyBlend10": 3.2
       },
       "matchedMae": {
         "classic": 6.574,
         "globalDemand": 5.574,
         "positionBudget": 4.838,
-        "blendedPositionBudget": 4.662
+        "blendedPositionBudget": 4.662,
+        "historicalPriceCurve": 4.265,
+        "historyBlend0": 4.662,
+        "historyBlend1": 4.588,
+        "historyBlend2": 4.5,
+        "historyBlend3": 4.412,
+        "historyBlend4": 4.338,
+        "historyBlend5": 4.206,
+        "historyBlend6": 4.294,
+        "historyBlend7": 4.294,
+        "historyBlend8": 4.191,
+        "historyBlend9": 4.294,
+        "historyBlend10": 4.265
       },
       "positionMae": {
         "QB": {
@@ -266,7 +379,19 @@
         "classic": 7.653,
         "globalDemand": 7.653,
         "positionBudget": 7.653,
-        "blendedPositionBudget": 7.653
+        "blendedPositionBudget": 7.653,
+        "historicalPriceCurve": 7.653,
+        "historyBlend0": 7.653,
+        "historyBlend1": 7.653,
+        "historyBlend2": 7.653,
+        "historyBlend3": 7.653,
+        "historyBlend4": 7.653,
+        "historyBlend5": 7.653,
+        "historyBlend6": 7.653,
+        "historyBlend7": 7.653,
+        "historyBlend8": 7.653,
+        "historyBlend9": 7.653,
+        "historyBlend10": 7.653
       },
       "matchedMae": null,
       "positionMae": {

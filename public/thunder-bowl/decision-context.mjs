@@ -264,6 +264,70 @@ export function playerSurplusHeat({ currentBid = 0, liveMarketValue = 0, persona
   return { level: "stretch", edge, label: `Stretch $${nextBid}` };
 }
 
+export function buildAuctionValueAdvice({
+  selectedPlayer,
+  available = true,
+  intrinsicValue = 0,
+  liveMarketValue = 0,
+  personalMaximum = 0,
+  sameTierRemaining = 0,
+  nextAlternative = null,
+  rosterSafety = null,
+  annotation = null,
+  browsingDifferentPlayer = false,
+} = {}) {
+  if (browsingDifferentPlayer) return { label: "BROWSE", tone: "neutral", reason: "Comparison only; return to the nominated player." };
+  if (!selectedPlayer) return { label: "WAIT", tone: "neutral", reason: "Select the nominated player." };
+  if (!available) return { label: "OWNED", tone: "neutral", reason: "This player is already assigned." };
+  if (annotation?.tag === "avoid") return { label: "AVOID", tone: "danger", reason: "Your personal Avoid tag controls." };
+  const intrinsic = Math.max(1, Math.round(finiteNumber(intrinsicValue, 1)));
+  const market = Math.max(1, Math.round(finiteNumber(liveMarketValue, 1)));
+  const maximum = Math.max(0, Math.round(finiteNumber(personalMaximum)));
+  // The promoted historical price curve has a $2.82 time-forward MAE. Treat
+  // smaller gaps as noise instead of issuing a falsely precise bargain/wait call.
+  const threshold = Math.max(3, Math.ceil(Math.max(intrinsic, market) * 0.08));
+  const gap = intrinsic - market;
+  const finalTierPlayer = Math.max(0, Math.floor(finiteNumber(sameTierRemaining))) <= 1;
+  const simulationSupportsPremium = rosterSafety
+    && rosterSafety.completionProbability >= 95
+    && rosterSafety.strongPathProbability >= 60
+    && maximum >= market;
+  if (gap >= threshold) {
+    return {
+      label: "BARGAIN",
+      tone: "good",
+      reason: `$${intrinsic} intrinsic versus $${market} market; do not bid against yourself.`,
+      gap,
+      threshold,
+    };
+  }
+  if (-gap >= threshold) {
+    if (finalTierPlayer && simulationSupportsPremium) {
+      return {
+        label: "TIER SAVE",
+        tone: "warning",
+        reason: `Market is $${-gap} above intrinsic, but this is the last tier option and the roster simulation supports the premium.`,
+        gap,
+        threshold,
+      };
+    }
+    return {
+      label: "WAIT",
+      tone: "warning",
+      reason: `$${market} market is $${-gap} above intrinsic${nextAlternative ? `; ${nextAlternative.name} remains` : ""}.`,
+      gap,
+      threshold,
+    };
+  }
+  return {
+    label: "FAIR",
+    tone: "neutral",
+    reason: `$${intrinsic} intrinsic and $${market} market are inside the $${threshold} fair-value band.`,
+    gap,
+    threshold,
+  };
+}
+
 export function buildBidRecommendation({
   selectedPlayer,
   available = true,

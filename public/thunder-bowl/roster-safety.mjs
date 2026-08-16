@@ -1,4 +1,4 @@
-import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260809a";
+import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260816a";
 
 const DEFAULT_POSITIONS = Object.freeze(["QB", "RB", "WR", "TE", "K", "DST"]);
 const DEFAULT_SAMPLES = 192;

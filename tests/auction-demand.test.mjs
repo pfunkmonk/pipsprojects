@@ -18,6 +18,10 @@ test("historical demand encodes 48 usable team-seasons without assuming 14 purch
   assert.equal(expectedAdditionalPlayers(HISTORICAL_AUCTION_DEMAND, "WR", 0), 166 / 48);
   assert.equal(expectedAdditionalPlayers(HISTORICAL_AUCTION_DEMAND, "RB", 2), 83 / 48);
   assert.equal(expectedAdditionalPlayers(HISTORICAL_AUCTION_DEMAND, "WR", 2), 70 / 48);
+  assert.deepEqual(HISTORICAL_AUCTION_DEMAND.priceProfile.seasons, [2012, 2015, 2017, 2018, 2019, 2021, 2022, 2023, 2024, 2025]);
+  assert.equal(HISTORICAL_AUCTION_DEMAND.priceProfile.purchaseRows, 1252);
+  assert.equal(HISTORICAL_AUCTION_DEMAND.priceProfile.recencyHalfLifeSeasons, 8);
+  assert.equal(HISTORICAL_AUCTION_DEMAND.marketBlend.historicalPriceCurveWeight, 0.6);
 });
 
 test("runtime blend evidence matches the canonical matched-purchase backtest", () => {
@@ -91,7 +95,7 @@ test("replacement-level lineup VBD no longer collapses viable backups to arbitra
   const outzs = pack.players.find((player) => player.name === "Robbie Ouzts");
   const mclaurin = pack.players.find((player) => player.name === "Terry McLaurin");
   assert.ok(Math.abs(david.vbd) <= 5);
-  assert.ok(market.valuesByPlayerId[david.id] >= 8);
+  assert.ok(market.valuesByPlayerId[david.id] >= 5);
   assert.ok(market.valuesByPlayerId[david.id] > market.valuesByPlayerId[outzs.id]);
   assert.ok(market.valuesByPlayerId[mclaurin.id] > 1);
 });
@@ -104,7 +108,7 @@ test("position spending prevents DST inflation and repairs legacy player-identit
   const gibbs = pack.players.find((player) => player.name === "Jahmyr Gibbs");
 
   assert.equal(market.valuesByPlayerId[denver.id], 5);
-  assert.equal(market.valuesByPlayerId[houston.id], 4);
+  assert.ok(market.valuesByPlayerId[houston.id] >= 3 && market.valuesByPlayerId[houston.id] <= 6);
   assert.equal(market.valuesByPlayerId[ameer.id], 1);
   assert.equal(market.bidCeilingsByPlayerId[ameer.id], 1);
   assert.ok(market.valuesByPlayerId[gibbs.id] >= 30);

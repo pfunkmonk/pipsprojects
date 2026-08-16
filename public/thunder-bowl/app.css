@@ -289,7 +289,12 @@ input[readonly] { color: var(--muted); }
 .practice-browse-warning span { display: block; margin-top: 0.16rem; color: var(--text); font-size: 0.86rem; font-weight: 750; line-height: 1.35; }
 .practice-browse-warning .button { flex: 0 0 auto; min-height: 46px; }
 .decision-coach-verdict { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; border-radius: 9px; padding: 0.68rem 0.78rem; background: var(--navy-750); }
-.decision-coach-verdict > span { min-width: 92px; color: var(--text); font-size: 1.75rem; font-weight: 950; letter-spacing: 0.04em; }
+.decision-action-labels { min-width: 112px; }
+.decision-action-labels > span { display: block; color: var(--text); font-size: 1.75rem; font-weight: 950; letter-spacing: 0.04em; }
+.value-advice { display: inline-flex; margin-top: 0.14rem; border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.16rem 0.46rem; background: rgba(30, 62, 92, 0.78); color: var(--muted); font-size: 0.62rem; font-weight: 950; letter-spacing: 0.07em; line-height: 1.1; text-transform: uppercase; white-space: nowrap; }
+.value-advice-good { border-color: var(--good); background: rgba(39, 125, 87, 0.38); color: #9dffd0; }
+.value-advice-warning { border-color: var(--gold); background: rgba(137, 99, 16, 0.34); color: var(--gold-light); }
+.value-advice-danger { border-color: var(--danger); background: rgba(143, 46, 42, 0.42); color: #ffc0ba; }
 .decision-coach-verdict > small { color: var(--muted); font-size: 0.78rem; font-weight: 750; line-height: 1.35; }
 .decision-win-chance { min-width: 88px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 0.7rem; text-align: right; }
 .decision-win-chance span, .decision-win-chance small { display: block; color: var(--quiet); font-size: 0.58rem; font-weight: 850; letter-spacing: 0.05em; text-transform: uppercase; }
@@ -297,13 +302,13 @@ input[readonly] { color: var(--muted); }
 .decision-win-chance small { margin-top: 0.08rem; letter-spacing: 0; text-transform: none; }
 .decision-coach.coach-good { border-color: var(--good); }
 .decision-coach.coach-good .decision-coach-verdict { background: rgba(39, 125, 87, 0.42); }
-.decision-coach.coach-good .decision-coach-verdict span { color: #9dffd0; }
+.decision-coach.coach-good .decision-action-labels > span { color: #9dffd0; }
 .decision-coach.coach-warning { border-color: var(--gold); }
 .decision-coach.coach-warning .decision-coach-verdict { background: rgba(137, 99, 16, 0.34); }
-.decision-coach.coach-warning .decision-coach-verdict span { color: var(--gold-light); }
+.decision-coach.coach-warning .decision-action-labels > span { color: var(--gold-light); }
 .decision-coach.coach-danger { border-color: var(--danger); }
 .decision-coach.coach-danger .decision-coach-verdict { background: rgba(143, 46, 42, 0.42); }
-.decision-coach.coach-danger .decision-coach-verdict span { color: #ffc0ba; }
+.decision-coach.coach-danger .decision-action-labels > span { color: #ffc0ba; }
 .decision-tier-warning { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; width: 100%; border: 2px solid var(--gold); border-left-width: 7px; border-radius: 9px; padding: 0.55rem 0.7rem; background: rgba(137, 99, 16, 0.34); color: var(--text); text-align: left; cursor: pointer; }
 .decision-tier-warning[hidden] { display: none; }
 .decision-tier-warning > span { min-width: 0; }

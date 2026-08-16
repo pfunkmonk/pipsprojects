@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildBidRecommendation,
+  buildAuctionValueAdvice,
   buildDecisionContext,
   buildTierDeadlineWarning,
   buildNominationRecommendations,
@@ -136,6 +137,22 @@ test("bid strip distinguishes bid, hold, and pass without overriding hard stops"
   assert.equal(hardStop.reason, "STOP. Do not bid $31. Your hard stop is $30.");
   assert.equal(buildBidRecommendation({ ...base, annotation: { tag: "avoid" } }).verdict, "PASS");
   assert.equal(buildBidRecommendation({ ...base, dogsLeading: true }).verdict, "HOLD");
+});
+
+test("auction value advice keeps intrinsic, market, and tier-rescue logic separate", () => {
+  const base = {
+    selectedPlayer: players[0],
+    available: true,
+    personalMaximum: 50,
+    sameTierRemaining: 3,
+    rosterSafety: { completionProbability: 100, strongPathProbability: 90 },
+  };
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 45, liveMarketValue: 35 }).label, "BARGAIN");
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 28, liveMarketValue: 35 }).label, "WAIT");
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 35, liveMarketValue: 35 }).label, "FAIR");
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 35, liveMarketValue: 40, sameTierRemaining: 1 }).label, "TIER SAVE");
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 35, liveMarketValue: 40, sameTierRemaining: 1, personalMaximum: 39 }).label, "WAIT");
+  assert.equal(buildAuctionValueAdvice({ ...base, intrinsicValue: 45, liveMarketValue: 35, annotation: { tag: "avoid" } }).label, "AVOID");
 });
 
 test("cash leverage compares candidate-position legal maximums against the strongest opponent", () => {

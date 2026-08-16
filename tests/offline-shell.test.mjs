@@ -118,6 +118,7 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
   for (const id of [
     "decision-coach",
     "decision-coach-verdict",
+    "decision-value-advice",
     "decision-win-chance",
     "decision-forecast-sale",
     "decision-current-bid",
@@ -141,8 +142,10 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
     "roster-budget-lanes",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   assert.match(indexHtml, /id="decision-coach-verdict">WAIT<\/span>/);
+  assert.match(indexHtml, /id="decision-value-advice"/);
   assert.match(indexHtml, /<th>NFL team<\/th><th>Player<\/th><th class="number">Bye<\/th><th class="number">Projected<\/th><th>Status<\/th>/);
   assert.match(appSource, /buildBidRecommendation\(\{/);
+  assert.match(appSource, /buildAuctionValueAdvice\(\{/);
   assert.match(appSource, /buildTierDeadlineWarning\(\{/);
   assert.match(indexHtml, /Chance at your max/);
   assert.match(appSource, /forecast\.dogsParticipation\.winProbability/);
@@ -193,7 +196,8 @@ test("auction intelligence stays private, optional, fast to capture, and offline
   assert.match(appSource, /bidAuthority: "none"|advisory only/);
   assert.match(appSource, /private runner-up learning log/i);
   assert.match(serviceWorker, /auction-intelligence\.mjs\?v=\d{8}[a-z]/);
-  assert.match(serviceWorker, /roster-safety\.mjs\?v=20260811b/);
+  assert.match(serviceWorker, /roster-safety\.mjs\?v=20260816a/);
+  assert.match(serviceWorker, /auction-price-profile\.mjs\?v=20260816a/);
   assert.match(serviceWorker, /auction-telemetry\.mjs\?v=20260809a/);
   assert.doesNotMatch(publicBoardSource, /runnerUp|runner-up/i);
 });

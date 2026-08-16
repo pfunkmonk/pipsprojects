@@ -1,4 +1,5 @@
 import { POSITIONS } from "./state-engine.mjs?v=20260810e";
+import { THUNDER_AUCTION_PRICE_PROFILE } from "./auction-price-profile.mjs?v=20260816a";
 
 export const HISTORICAL_AUCTION_DEMAND = Object.freeze({
   schemaVersion: 1,
@@ -6,9 +7,11 @@ export const HISTORICAL_AUCTION_DEMAND = Object.freeze({
   excludedSeasons: Object.freeze({ 2024: "Incomplete auction-roster snapshot" }),
   teamSeasons: 48,
   source: "Thunder Bowl normalized auction rosters",
+  priceProfile: THUNDER_AUCTION_PRICE_PROFILE,
   marketBlend: Object.freeze({
     historicalDemandWeight: 0.75,
     roomCurveWeight: 0.25,
+    historicalPriceCurveWeight: THUNDER_AUCTION_PRICE_PROFILE.historicalCurveWeight,
     developmentFolds: Object.freeze([2023, 2024]),
     sourceAuctionPurchases: 241,
     evaluatedAuctionPurchases: 141,
@@ -333,10 +336,39 @@ function monotoneRoomCurve(pack, field) {
   return result;
 }
 
-function blendedMarketValues(pack, core, multiplier, profile, roomCurve) {
+function historicalPriceCurveValues(pack, state, priceProfile, positionMultipliers = {}) {
+  const result = Object.fromEntries(pack.players.map((player) => [player.id, 1]));
+  for (const position of POSITIONS) {
+    const available = pack.players
+      .filter((player) => player.position === position && !state.draftedPlayers?.[player.id])
+      .sort((left, right) => right.projectedPoints - left.projectedPoints || left.id.localeCompare(right.id));
+    const curve = priceProfile?.priceCurves?.[position] || [];
+    const multiplier = Math.max(0.5, Math.min(2, finite(positionMultipliers[position] ?? 1, `${position} historical curve multiplier`)));
+    available.forEach((player, index) => {
+      const rawPrice = Math.max(1, finite(curve[index]?.mean ?? 1, `${position} historical rank ${index + 1} price`));
+      result[player.id] = Math.max(1, Math.round(1 + (rawPrice - 1) * multiplier));
+    });
+
+    // Keeper/trade screens need the price a drafted player would command if
+    // reinserted into today's remaining pool, without spending room cash twice.
+    for (const player of pack.players.filter((candidate) => candidate.position === position && state.draftedPlayers?.[candidate.id])) {
+      const counterfactualRank = 1 + available.filter((candidate) => candidate.projectedPoints > player.projectedPoints
+        || (candidate.projectedPoints === player.projectedPoints && candidate.id.localeCompare(player.id) < 0)).length;
+      const rawPrice = Math.max(1, finite(curve[counterfactualRank - 1]?.mean ?? 1, `${position} counterfactual historical price`));
+      result[player.id] = Math.max(1, Math.round(1 + (rawPrice - 1) * multiplier));
+    }
+  }
+  return result;
+}
+
+function blendedMarketValues(pack, core, multiplier, profile, roomCurve, historicalCurve) {
   const demandWeight = finite(profile.marketBlend?.historicalDemandWeight ?? 1, "Historical-demand market weight");
   if (demandWeight < 0 || demandWeight > 1) {
     fail("INVALID_AUCTION_DEMAND_WEIGHT", "Historical-demand market weight must be between zero and one.");
+  }
+  const historyWeight = finite(profile.marketBlend?.historicalPriceCurveWeight ?? 0, "Historical price-curve weight");
+  if (historyWeight < 0 || historyWeight > 1) {
+    fail("INVALID_AUCTION_PRICE_CURVE_WEIGHT", "Historical price-curve weight must be between zero and one.");
   }
   const classicWeight = 1 - demandWeight;
   const safeMultiplier = Math.max(0.5, Math.min(2, multiplier));
@@ -344,7 +376,9 @@ function blendedMarketValues(pack, core, multiplier, profile, roomCurve) {
     const classicBase = Math.max(1, nonNegativeInteger(roomCurve[player.id], `${player.name} monotone room-curve value`));
     const classicLive = 1 + (classicBase - 1) * safeMultiplier;
     const demandLive = core.valuesByPlayerId[player.id];
-    return [player.id, Math.max(1, Math.round(classicWeight * classicLive + demandWeight * demandLive))];
+    const established = classicWeight * classicLive + demandWeight * demandLive;
+    const historyLive = Math.max(1, finite(historicalCurve[player.id] ?? 1, `${player.name} historical curve value`));
+    return [player.id, Math.max(1, Math.round((1 - historyWeight) * established + historyWeight * historyLive))];
   }));
 }
 
@@ -352,13 +386,21 @@ export function calculateAuctionDemandMarket(pack, state, { profile = HISTORICAL
   if (!pack?.players?.length || !pack?.leagueConfig?.starterRequirements || !state?.teams || !state?.config) {
     fail("INVALID_AUCTION_DEMAND_INPUT", "Auction-demand pricing requires a draft pack and replayed draft state.");
   }
-  const baseline = calculateCore(pack, pristineState(pack), profile);
+  const baselineState = pristineState(pack);
+  const baseline = calculateCore(pack, baselineState, profile);
   const current = calculateCore(pack, state, profile);
   const globalMultiplier = baseline.dollarPerVorp > 0 ? current.dollarPerVorp / baseline.dollarPerVorp : 1;
   const marketRoomCurve = monotoneRoomCurve(pack, "marketValue");
   const maxBidRoomCurve = monotoneRoomCurve(pack, "maxBid");
-  const baselineValues = blendedMarketValues(pack, baseline, 1, profile, marketRoomCurve);
-  const currentValues = blendedMarketValues(pack, current, globalMultiplier, profile, marketRoomCurve);
+  const baselineHistoricalCurve = historicalPriceCurveValues(pack, baselineState, profile.priceProfile);
+  const positionHistoryMultipliers = Object.fromEntries(POSITIONS.map((position) => [position,
+    baseline.positionDollarPerVorp[position] > 0
+      ? current.positionDollarPerVorp[position] / baseline.positionDollarPerVorp[position]
+      : 1,
+  ]));
+  const currentHistoricalCurve = historicalPriceCurveValues(pack, state, profile.priceProfile, positionHistoryMultipliers);
+  const baselineValues = blendedMarketValues(pack, baseline, 1, profile, marketRoomCurve, baselineHistoricalCurve);
+  const currentValues = blendedMarketValues(pack, current, globalMultiplier, profile, marketRoomCurve, currentHistoricalCurve);
   const safeGlobalMultiplier = Math.max(0.5, Math.min(2, globalMultiplier));
   const bidCeilingsByPlayerId = Object.fromEntries(pack.players.map((player) => [
     player.id,
@@ -396,6 +438,12 @@ export function calculateAuctionDemandMarket(pack, state, { profile = HISTORICAL
       teamSeasons: profile.teamSeasons,
       excludedSeasons: { ...profile.excludedSeasons },
       marketBlend: { ...profile.marketBlend },
+      priceProfile: {
+        modelVersion: profile.priceProfile.modelVersion,
+        seasons: [...profile.priceProfile.seasons],
+        purchaseRows: profile.priceProfile.purchaseRows,
+        recencyHalfLifeSeasons: profile.priceProfile.recencyHalfLifeSeasons,
+      },
     },
     expectedRemainingPurchases: current.reserveSlots,
     remainingRoomDollars: current.availableCash,
@@ -412,6 +460,7 @@ export function calculateAuctionDemandMarket(pack, state, { profile = HISTORICAL
     valuesByPlayerId: currentValues,
     bidCeilingsByPlayerId,
     roomCurveValuesByPlayerId: marketRoomCurve,
+    historicalCurveValuesByPlayerId: currentHistoricalCurve,
     demandOnlyValuesByPlayerId: current.valuesByPlayerId,
     demandAllocatedRoomDollars: current.purchasablePlayerIds.reduce(
       (sum, playerId) => sum + current.valuesByPlayerId[playerId],
