@@ -96,44 +96,6 @@ function renderTeams(teams = null) {
     const pool = document.createElement("td"); pool.append(input("number", team.enteredPool, { min: "1", "data-team-pool": "true", required: "" }));
     row.append(order, name, pool); body.append(row);
   }
-  renderKeeperTeamOptions();
-}
-
-function positionOptions(selected = "") {
-  const fragment = document.createDocumentFragment();
-  for (const row of byId("position-rules").querySelectorAll("tr")) {
-    const value = row.querySelector("[data-position-id]").value.trim().toUpperCase();
-    if (!value) continue;
-    const option = document.createElement("option"); option.value = value; option.textContent = value; option.selected = value === selected;
-    fragment.append(option);
-  }
-  return fragment;
-}
-
-function teamOptions(selected = "") {
-  const fragment = document.createDocumentFragment();
-  for (const team of currentTeams()) {
-    const option = document.createElement("option"); option.value = team.id; option.textContent = team.name; option.selected = team.id === selected;
-    fragment.append(option);
-  }
-  return fragment;
-}
-
-function addKeeperRow(keeper = null) {
-  const row = document.createElement("div"); row.className = "keeper-row"; row.dataset.keeperId = keeper?.id || `keeper-${crypto.randomUUID()}`;
-  const player = document.createElement("label"); player.textContent = "Player"; player.append(input("text", keeper?.player?.name || "", { maxlength: "100", "data-keeper-name": "true", required: "" }));
-  const position = document.createElement("label"); position.textContent = "Position"; const positionSelect = document.createElement("select"); positionSelect.dataset.keeperPosition = "true"; positionSelect.append(positionOptions(keeper?.player?.position)); position.append(positionSelect);
-  const nfl = document.createElement("label"); nfl.textContent = "NFL team"; nfl.append(input("text", keeper?.player?.nflTeam || "FA", { maxlength: "20", "data-keeper-nfl": "true" }));
-  const fantasy = document.createElement("label"); fantasy.textContent = "Fantasy team"; const teamSelect = document.createElement("select"); teamSelect.dataset.keeperTeam = "true"; teamSelect.append(teamOptions(keeper?.teamId)); fantasy.append(teamSelect);
-  const salary = document.createElement("label"); salary.textContent = "Salary"; salary.append(input("number", keeper?.salary ?? 1, { min: "0", "data-keeper-salary": "true", required: "" }));
-  const remove = document.createElement("button"); remove.type = "button"; remove.className = "secondary"; remove.textContent = "Remove"; remove.addEventListener("click", () => row.remove());
-  row.append(player, position, nfl, fantasy, salary, remove); byId("keeper-rows").append(row);
-}
-
-function renderKeeperTeamOptions() {
-  for (const select of byId("keeper-rows").querySelectorAll("[data-keeper-team]")) {
-    const selected = select.value; select.replaceChildren(teamOptions(selected));
-  }
 }
 
 function gatherConfig() {
@@ -144,16 +106,7 @@ function gatherConfig() {
     maximum: row.querySelector("[data-position-max]").value,
   }));
   const teams = currentTeams();
-  const keepers = byId("keepers-enabled").checked ? [...byId("keeper-rows").querySelectorAll(".keeper-row")].map((row) => {
-    const name = row.querySelector("[data-keeper-name]").value.trim();
-    const position = row.querySelector("[data-keeper-position]").value;
-    return {
-      id: row.dataset.keeperId,
-      player: { id: `custom-${name}-${position}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), name, position, nflTeam: row.querySelector("[data-keeper-nfl]").value },
-      teamId: row.querySelector("[data-keeper-team]").value,
-      salary: row.querySelector("[data-keeper-salary]").value,
-    };
-  }) : [];
+  const keepers = editingSnapshot?.config?.keepers || [];
   return normalizeLeagueConfig({
     leagueName: byId("league-name").value,
     season: byId("season").value,
@@ -161,9 +114,10 @@ function gatherConfig() {
     bidIncrement: byId("bid-increment").value,
     rosterMinimum: byId("roster-minimum").value,
     rosterMaximum: byId("roster-maximum").value,
+    keeperMaximum: byId("keeper-maximum").value,
     budgetMode: byId("budget-mode").value,
     nominationMode: byId("nomination-mode").value,
-    positionRules, teams, keepers, keepersEnabled: byId("keepers-enabled").checked,
+    positionRules, teams, keepers, keepersEnabled: true,
     nominationOrder: teams.map((team) => team.id),
   });
 }
@@ -180,9 +134,8 @@ function loadSnapshot(snapshot) {
   byId("setup-subtitle").textContent = `League ${snapshot.leagueCode} · Setup locks after the first auction sale.`;
   byId("league-name").value = config.leagueName; byId("season").value = config.season; byId("team-count").value = config.teams.length;
   byId("minimum-bid").value = config.minimumBid; byId("bid-increment").value = config.bidIncrement; byId("nomination-mode").value = config.nominationMode;
-  byId("roster-minimum").value = config.rosterMinimum; byId("roster-maximum").value = config.rosterMaximum; byId("budget-mode").value = config.budgetMode;
+  byId("roster-minimum").value = config.rosterMinimum; byId("roster-maximum").value = config.rosterMaximum; byId("keeper-maximum").value = config.keeperMaximum ?? ""; byId("budget-mode").value = config.budgetMode;
   renderPositionRules(config.positionRules); renderTeams(config.teams);
-  byId("keepers-enabled").checked = config.keepers.length > 0; byId("keeper-editor").hidden = !config.keepers.length; byId("keeper-rows").replaceChildren(); config.keepers.forEach(addKeeperRow);
   byId("new-access-fields").hidden = true; byId("existing-access-note").hidden = false;
   openSetup();
 }
@@ -225,8 +178,6 @@ byId("allow-any-mix").addEventListener("click", () => {
   byId("position-rules").querySelectorAll("[data-position-max]").forEach((field) => { field.value = ""; });
   setStatus(byId("setup-status"), "Position limits removed. The overall roster maximum still applies.");
 });
-byId("keepers-enabled").addEventListener("change", () => { byId("keeper-editor").hidden = !byId("keepers-enabled").checked; if (byId("keepers-enabled").checked && !byId("keeper-rows").children.length) addKeeperRow(); });
-byId("add-keeper").addEventListener("click", () => addKeeperRow());
 byId("regenerate-codes").addEventListener("click", generateCodes);
 
 byId("manage-form").addEventListener("submit", async (event) => {

@@ -1,4 +1,4 @@
-export const DRAFT_DAY_SCHEMA_VERSION = 1;
+export const DRAFT_DAY_SCHEMA_VERSION = 2;
 export const DEFAULT_POSITION_RULES = Object.freeze([
   { id: "QB", label: "QB", minimum: 1, maximum: 3 },
   { id: "RB", label: "RB", minimum: 2, maximum: 8 },
@@ -13,6 +13,10 @@ const EVENT_TYPES = new Set([
   "SALE_CORRECTED",
   "SALE_VOIDED",
   "SALE_RESTORED",
+  "KEEPER_RECORDED",
+  "KEEPER_CORRECTED",
+  "KEEPER_VOIDED",
+  "KEEPER_RESTORED",
   "CUSTOM_PLAYER_ADDED",
   "DRAFT_STATUS_CHANGED",
 ]);
@@ -37,8 +41,17 @@ function optionalText(value, maximum = 30) {
   return result;
 }
 
+function optionalInteger(value, label, minimum, maximum) {
+  if (value == null || String(value).trim() === "") return null;
+  return integer(value, label, minimum, maximum);
+}
+
 export function positionMaximum(rule, rosterMaximum) {
   return rule?.maximum == null ? rosterMaximum : rule.maximum;
+}
+
+export function keeperMaximum(config) {
+  return config?.keeperMaximum == null ? config?.rosterMaximum : config.keeperMaximum;
 }
 
 export function safeId(value, label = "Id") {
@@ -88,6 +101,7 @@ export function normalizeLeagueConfig(input) {
   const bidIncrement = integer(input.bidIncrement, "Bid increment", 1, 1_000);
   const rosterMinimum = integer(input.rosterMinimum, "Roster minimum", 1, 100);
   const rosterMaximum = integer(input.rosterMaximum, "Roster maximum", rosterMinimum, 100);
+  const maximumKeepers = optionalInteger(input.keeperMaximum, "Maximum keepers per team", 0, rosterMaximum);
   const budgetMode = input.budgetMode === "pre-keeper" ? "pre-keeper" : "current-cash";
   const nominationMode = ["snake", "linear", "manual"].includes(input.nominationMode) ? input.nominationMode : "snake";
 
@@ -132,19 +146,13 @@ export function normalizeLeagueConfig(input) {
       player,
       teamId,
       salary: integer(keeper?.salary, `${player.name} keeper salary`, 0, 1_000_000),
+      contractYear: optionalInteger(keeper?.contractYear, `${player.name} contract year`, 1, 20),
+      keeperRound: optionalInteger(keeper?.keeperRound, `${player.name} keeper round`, 1, 100),
     };
   });
   if (new Set(keepers.map((keeper) => playerIdentity(keeper.player))).size !== keepers.length) throw new Error("A player cannot be kept by more than one team.");
 
-  const keeperSalaryByTeam = Object.fromEntries(teams.map((team) => [team.id, 0]));
-  for (const keeper of keepers) keeperSalaryByTeam[keeper.teamId] += keeper.salary;
-  const normalizedTeams = teams.map((team) => ({
-    ...team,
-    auctionBudget: budgetMode === "pre-keeper" ? team.enteredPool - keeperSalaryByTeam[team.id] : team.enteredPool,
-  }));
-  for (const team of normalizedTeams) {
-    if (team.auctionBudget < 0) throw new Error(`${team.name}'s keeper salaries exceed its starting pool.`);
-  }
+  const normalizedTeams = teams;
 
   const nominationOrder = Array.isArray(input.nominationOrder) && input.nominationOrder.length
     ? input.nominationOrder.map((teamId) => safeId(teamId, "Nomination team"))
@@ -161,6 +169,7 @@ export function normalizeLeagueConfig(input) {
     bidIncrement,
     rosterMinimum,
     rosterMaximum,
+    keeperMaximum: maximumKeepers,
     budgetMode,
     nominationMode,
     positionRules,
@@ -197,6 +206,8 @@ function keeperAssignments(config, createdAt) {
     nflTeam: keeper.player.nflTeam,
     teamId: keeper.teamId,
     price: keeper.salary,
+    contractYear: keeper.contractYear,
+    keeperRound: keeper.keeperRound,
     acquisitionType: "keeper",
     status: "active",
     createdAt,
@@ -209,12 +220,15 @@ function validateInitialAffordability(config) {
   for (const team of config.teams) {
     const roster = assignments.filter((assignment) => assignment.teamId === team.id);
     if (roster.length > config.rosterMaximum) throw new Error(`${team.name} has more keepers than its roster maximum.`);
+    if (roster.length > keeperMaximum(config)) throw new Error(`${team.name} has more keepers than its keeper maximum.`);
     const counts = positionCounts(assignments, team.id);
     for (const rule of config.positionRules) {
       if ((counts[rule.id] || 0) > positionMaximum(rule, config.rosterMaximum)) throw new Error(`${team.name} has too many ${rule.label} keepers.`);
     }
-    const reserve = requiredAdditionalSlots(config, assignments, team.id) * config.minimumBid;
-    if (team.auctionBudget < reserve) throw new Error(`${team.name} needs at least $${reserve} to complete its minimum roster after keepers.`);
+    const state = teamState(config, assignments, team);
+    const reserve = state.requiredSlots * config.minimumBid;
+    if (state.remainingBudget < 0) throw new Error(`${team.name}'s keeper salaries exceed its starting pool.`);
+    if (state.remainingBudget < reserve) throw new Error(`${team.name} needs at least $${reserve} to complete its minimum roster after keepers.`);
   }
 }
 
@@ -240,6 +254,15 @@ export function normalizeDraftDayEvent(value) {
     event.price = integer(value.price, "Winning price", 1, 1_000_000);
   } else if (type === "SALE_VOIDED" || type === "SALE_RESTORED") {
     event.targetId = safeId(value.targetId, "Sale");
+  } else if (type === "KEEPER_RECORDED" || type === "KEEPER_CORRECTED") {
+    if (type === "KEEPER_CORRECTED") event.targetId = safeId(value.targetId, "Corrected keeper");
+    event.player = normalizePlayer(value.player);
+    event.teamId = safeId(value.teamId, "Keeper fantasy team");
+    event.salary = integer(value.salary, "Keeper salary", 0, 1_000_000);
+    event.contractYear = optionalInteger(value.contractYear, "Keeper contract year", 1, 20);
+    event.keeperRound = optionalInteger(value.keeperRound, "Keeper round", 1, 100);
+  } else if (type === "KEEPER_VOIDED" || type === "KEEPER_RESTORED") {
+    event.targetId = safeId(value.targetId, "Keeper");
   } else if (type === "CUSTOM_PLAYER_ADDED") {
     event.player = normalizePlayer(value.player);
   } else if (type === "DRAFT_STATUS_CHANGED") {
@@ -311,6 +334,46 @@ function applyEvents(document) {
       const target = assignments.get(event.targetId);
       if (!target || target.acquisitionType !== "auction") throw new Error("A restore targets an unknown auction sale.");
       assignments.set(event.targetId, { ...target, status: "active", updatedAt: event.createdAt });
+    } else if (event.type === "KEEPER_RECORDED") {
+      assignments.set(event.id, {
+        id: event.id,
+        playerId: event.player.id,
+        playerName: event.player.name,
+        position: event.player.position,
+        nflTeam: event.player.nflTeam,
+        teamId: event.teamId,
+        price: event.salary,
+        contractYear: event.contractYear,
+        keeperRound: event.keeperRound,
+        acquisitionType: "keeper",
+        status: "active",
+        createdAt: event.createdAt,
+        updatedAt: event.createdAt,
+      });
+    } else if (event.type === "KEEPER_CORRECTED") {
+      const target = assignments.get(event.targetId);
+      if (!target || target.acquisitionType !== "keeper") throw new Error("A correction targets an unknown keeper.");
+      assignments.set(event.targetId, {
+        ...target,
+        playerId: event.player.id,
+        playerName: event.player.name,
+        position: event.player.position,
+        nflTeam: event.player.nflTeam,
+        teamId: event.teamId,
+        price: event.salary,
+        contractYear: event.contractYear,
+        keeperRound: event.keeperRound,
+        status: "active",
+        updatedAt: event.createdAt,
+      });
+    } else if (event.type === "KEEPER_VOIDED") {
+      const target = assignments.get(event.targetId);
+      if (!target || target.acquisitionType !== "keeper") throw new Error("An undo targets an unknown keeper.");
+      assignments.set(event.targetId, { ...target, status: "voided", updatedAt: event.createdAt });
+    } else if (event.type === "KEEPER_RESTORED") {
+      const target = assignments.get(event.targetId);
+      if (!target || target.acquisitionType !== "keeper") throw new Error("A restore targets an unknown keeper.");
+      assignments.set(event.targetId, { ...target, status: "active", updatedAt: event.createdAt });
     } else if (event.type === "CUSTOM_PLAYER_ADDED") {
       customPlayers.set(event.player.id, event.player);
     } else if (event.type === "DRAFT_STATUS_CHANGED") {
@@ -333,7 +396,8 @@ function teamState(config, assignments, team) {
   const active = assignments.filter((assignment) => assignment.status === "active" && assignment.teamId === team.id);
   const auctionSpend = active.filter((assignment) => assignment.acquisitionType === "auction").reduce((sum, assignment) => sum + assignment.price, 0);
   const keeperSpend = active.filter((assignment) => assignment.acquisitionType === "keeper").reduce((sum, assignment) => sum + assignment.price, 0);
-  const remainingBudget = team.auctionBudget - auctionSpend;
+  const auctionBudget = config.budgetMode === "pre-keeper" ? team.enteredPool - keeperSpend : team.enteredPool;
+  const remainingBudget = auctionBudget - auctionSpend;
   const counts = positionCounts(active, team.id);
   const requiredSlots = requiredAdditionalSlots(config, active, team.id);
   const legalMaxBid = Math.max(0, remainingBudget - Math.max(0, requiredSlots - 1) * config.minimumBid);
@@ -342,10 +406,12 @@ function teamState(config, assignments, team) {
     id: team.id,
     name: team.name,
     enteredPool: team.enteredPool,
-    auctionBudget: team.auctionBudget,
+    auctionBudget,
     remainingBudget,
     auctionSpend,
     keeperSpend,
+    keeperCount: active.filter((assignment) => assignment.acquisitionType === "keeper").length,
+    keeperMaximum: keeperMaximum(config),
     rosterCount: active.length,
     openSlots: Math.max(0, config.rosterMaximum - active.length),
     requiredSlots,
@@ -375,6 +441,7 @@ function validateActiveState(config, assignments) {
   for (const team of config.teams) {
     const state = teamState(config, assignments, team);
     if (state.rosterCount > config.rosterMaximum) throw new Error(`${team.name} is already at its roster maximum.`);
+    if (state.keeperCount > keeperMaximum(config)) throw new Error(`${team.name} is already at its keeper maximum.`);
     if (state.remainingBudget < 0) throw new Error(`${team.name} does not have enough money.`);
     for (const rule of config.positionRules) {
       if ((state.positionCounts[rule.id] || 0) > positionMaximum(rule, config.rosterMaximum)) throw new Error(`${team.name} is already at its ${rule.label} maximum.`);
@@ -395,6 +462,7 @@ export function snapshotFromDocument(documentValue) {
     revision: document.revision,
     updatedAt: document.updatedAt,
     draftStatus,
+    auctionStarted: document.events.some((event) => event.type === "SALE_RECORDED"),
     nominationStep: document.nominationStep,
     currentNominatorTeamId: nextNominator(document.config, document.nominationStep),
     config: document.config,
@@ -419,6 +487,7 @@ export function publicSnapshot(snapshot) {
       minimumBid: snapshot.config.minimumBid,
       rosterMinimum: snapshot.config.rosterMinimum,
       rosterMaximum: snapshot.config.rosterMaximum,
+      keeperMaximum: snapshot.config.keeperMaximum,
       positionRules: snapshot.config.positionRules,
       teams: snapshot.config.teams.map(({ id, name }) => ({ id, name })),
     },
@@ -432,21 +501,24 @@ export function saleLegality(snapshot, input) {
     const player = normalizePlayer(input?.player);
     const teamId = safeId(input?.teamId, "Buying team");
     const price = integer(input?.price, "Winning price", 1, 1_000_000);
-    const team = snapshot.teams.find((candidate) => candidate.id === teamId);
-    if (!team) throw new Error("Choose a buying team.");
+    const targetId = input?.targetId ? safeId(input.targetId, "Auction sale") : null;
+    const configTeam = snapshot.config.teams.find((candidate) => candidate.id === teamId);
+    if (!configTeam) throw new Error("Choose a buying team.");
     if (snapshot.draftStatus === "complete") throw new Error("Reopen the draft before recording another sale.");
-    if (snapshot.assignments.some((assignment) => assignment.status === "active" && samePlayer({ id: assignment.playerId, name: assignment.playerName, position: assignment.position }, player))) {
+    const active = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.id !== targetId);
+    if (active.some((assignment) => samePlayer({ id: assignment.playerId, name: assignment.playerName, position: assignment.position }, player))) {
       throw new Error(`${player.name} is already assigned.`);
     }
     const rule = snapshot.config.positionRules.find((candidate) => candidate.id === player.position);
     if (!rule) throw new Error(`${player.position} is not a configured roster position.`);
+    const team = teamState(snapshot.config, active, configTeam);
     if (team.rosterCount >= snapshot.config.rosterMaximum) throw new Error(`${team.name} is at its roster maximum.`);
     if ((team.positionCounts[player.position] || 0) >= positionMaximum(rule, snapshot.config.rosterMaximum)) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
     if (price < snapshot.config.minimumBid) throw new Error(`The minimum bid is $${snapshot.config.minimumBid}.`);
     if ((price - snapshot.config.minimumBid) % snapshot.config.bidIncrement !== 0) throw new Error(`Prices must follow the $${snapshot.config.bidIncrement} bid increment.`);
-    const activeForTeam = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.teamId === teamId);
+    const activeForTeam = active.filter((assignment) => assignment.teamId === teamId);
     const candidate = {
-      id: "candidate-sale",
+      id: targetId || "candidate-sale",
       playerId: player.id,
       playerName: player.name,
       position: player.position,
@@ -456,8 +528,7 @@ export function saleLegality(snapshot, input) {
       acquisitionType: "auction",
       status: "active",
     };
-    const candidateAssignments = [...snapshot.assignments.filter((assignment) => assignment.status === "active"), candidate];
-    const configTeam = snapshot.config.teams.find((value) => value.id === teamId);
+    const candidateAssignments = [...active, candidate];
     const after = teamState(snapshot.config, candidateAssignments, configTeam);
     const candidateLegalMax = Math.max(0, team.remainingBudget - after.requiredSlots * snapshot.config.minimumBid);
     if (price > candidateLegalMax || after.remainingBudget < after.requiredSlots * snapshot.config.minimumBid) {
@@ -467,6 +538,51 @@ export function saleLegality(snapshot, input) {
   } catch (error) {
     const team = snapshot?.teams?.find((candidate) => candidate.id === input?.teamId);
     return { legal: false, message: error.message, legalMaxBid: team?.legalMaxBid ?? 0 };
+  }
+}
+
+export function keeperLegality(snapshot, input) {
+  try {
+    const player = normalizePlayer(input?.player);
+    const teamId = safeId(input?.teamId, "Keeper fantasy team");
+    const salary = integer(input?.salary, "Keeper salary", 0, 1_000_000);
+    const contractYear = optionalInteger(input?.contractYear, "Keeper contract year", 1, 20);
+    const keeperRound = optionalInteger(input?.keeperRound, "Keeper round", 1, 100);
+    const targetId = input?.targetId ? safeId(input.targetId, "Keeper") : null;
+    const team = snapshot.teams.find((candidate) => candidate.id === teamId);
+    if (!team) throw new Error("Choose the fantasy team keeping this player.");
+    if (snapshot.draftStatus === "complete") throw new Error("Reopen the draft before changing keepers.");
+    const active = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.id !== targetId);
+    if (active.some((assignment) => samePlayer({ id: assignment.playerId, name: assignment.playerName, position: assignment.position }, player))) {
+      throw new Error(`${player.name} is already assigned.`);
+    }
+    const rule = snapshot.config.positionRules.find((candidate) => candidate.id === player.position);
+    if (!rule) throw new Error(`${player.position} is not a configured roster position.`);
+    const teamAssignments = active.filter((assignment) => assignment.teamId === teamId);
+    if (teamAssignments.length >= snapshot.config.rosterMaximum) throw new Error(`${team.name} is at its roster maximum.`);
+    if (teamAssignments.filter((assignment) => assignment.acquisitionType === "keeper").length >= keeperMaximum(snapshot.config)) throw new Error(`${team.name} is at its keeper maximum.`);
+    if (teamAssignments.filter((assignment) => assignment.position === player.position).length >= positionMaximum(rule, snapshot.config.rosterMaximum)) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
+    const candidate = {
+      id: targetId || "candidate-keeper",
+      playerId: player.id,
+      playerName: player.name,
+      position: player.position,
+      nflTeam: player.nflTeam,
+      teamId,
+      price: salary,
+      contractYear,
+      keeperRound,
+      acquisitionType: "keeper",
+      status: "active",
+    };
+    const candidateAssignments = [...active, candidate];
+    const configTeam = snapshot.config.teams.find((value) => value.id === teamId);
+    const after = teamState(snapshot.config, candidateAssignments, configTeam);
+    const reserve = after.requiredSlots * snapshot.config.minimumBid;
+    if (after.remainingBudget < reserve) throw new Error(`${team.name} needs $${reserve} available to complete a legal roster after this keeper.`);
+    return { legal: true, player, team, salary, contractYear, keeperRound, after };
+  } catch (error) {
+    return { legal: false, message: error.message };
   }
 }
 
@@ -507,7 +623,9 @@ export function applyCommand(documentValue, input, options = {}) {
     const targetId = safeId(input.targetId, "Corrected sale");
     const target = before.assignments.find((assignment) => assignment.id === targetId && assignment.acquisitionType === "auction");
     if (!target || target.status !== "active") throw new Error("Choose an active auction sale to correct.");
-    const event = normalizeDraftDayEvent({ id: input.eventId || `correction-${crypto.randomUUID()}`, type: "SALE_CORRECTED", targetId, player: input.player, teamId: input.teamId, price: input.price, createdAt: now, actor });
+    const legality = saleLegality(before, { ...input, targetId });
+    if (!legality.legal) throw new Error(legality.message);
+    const event = normalizeDraftDayEvent({ id: input.eventId || `correction-${crypto.randomUUID()}`, type: "SALE_CORRECTED", targetId, player: legality.player, teamId: legality.team.id, price: legality.price, createdAt: now, actor });
     events.push(event);
   } else if (type === "void-sale" || type === "restore-sale") {
     const targetId = safeId(input.targetId, "Sale");
@@ -515,7 +633,55 @@ export function applyCommand(documentValue, input, options = {}) {
     if (!target) throw new Error("That auction sale does not exist.");
     if (type === "void-sale" && target.status !== "active") throw new Error("That sale is already undone.");
     if (type === "restore-sale" && target.status === "active") throw new Error("That sale is already active.");
+    if (type === "restore-sale") {
+      const legality = saleLegality(before, { targetId, player: { id: target.playerId, name: target.playerName, position: target.position, nflTeam: target.nflTeam }, teamId: target.teamId, price: target.price });
+      if (!legality.legal) throw new Error(legality.message);
+    }
     events.push(normalizeDraftDayEvent({ id: input.eventId || `${type}-${crypto.randomUUID()}`, type: type === "void-sale" ? "SALE_VOIDED" : "SALE_RESTORED", targetId, createdAt: now, actor }));
+  } else if (type === "record-keeper") {
+    if (before.auctionStarted) throw new Error("Keeper entry locked when the first auction sale was recorded. Use Correct on an existing keeper if the room needs a repair.");
+    const legality = keeperLegality(before, input);
+    if (!legality.legal) throw new Error(legality.message);
+    events.push(normalizeDraftDayEvent({
+      id: input.eventId || `keeper-${crypto.randomUUID()}`,
+      type: "KEEPER_RECORDED",
+      player: legality.player,
+      teamId: legality.team.id,
+      salary: legality.salary,
+      contractYear: legality.contractYear,
+      keeperRound: legality.keeperRound,
+      createdAt: now,
+      actor,
+    }));
+  } else if (type === "correct-keeper") {
+    const targetId = safeId(input.targetId, "Corrected keeper");
+    const target = before.assignments.find((assignment) => assignment.id === targetId && assignment.acquisitionType === "keeper");
+    if (!target || target.status !== "active") throw new Error("Choose an active keeper to correct.");
+    const legality = keeperLegality(before, { ...input, targetId });
+    if (!legality.legal) throw new Error(legality.message);
+    events.push(normalizeDraftDayEvent({
+      id: input.eventId || `keeper-correction-${crypto.randomUUID()}`,
+      type: "KEEPER_CORRECTED",
+      targetId,
+      player: legality.player,
+      teamId: legality.team.id,
+      salary: legality.salary,
+      contractYear: legality.contractYear,
+      keeperRound: legality.keeperRound,
+      createdAt: now,
+      actor,
+    }));
+  } else if (type === "void-keeper" || type === "restore-keeper") {
+    const targetId = safeId(input.targetId, "Keeper");
+    const target = before.assignments.find((assignment) => assignment.id === targetId && assignment.acquisitionType === "keeper");
+    if (!target) throw new Error("That keeper does not exist.");
+    if (type === "void-keeper" && target.status !== "active") throw new Error("That keeper is already undone.");
+    if (type === "restore-keeper" && target.status === "active") throw new Error("That keeper is already active.");
+    if (type === "restore-keeper") {
+      const legality = keeperLegality(before, { targetId, player: { id: target.playerId, name: target.playerName, position: target.position, nflTeam: target.nflTeam }, teamId: target.teamId, salary: target.price, contractYear: target.contractYear, keeperRound: target.keeperRound });
+      if (!legality.legal) throw new Error(legality.message);
+    }
+    events.push(normalizeDraftDayEvent({ id: input.eventId || `${type}-${crypto.randomUUID()}`, type: type === "void-keeper" ? "KEEPER_VOIDED" : "KEEPER_RESTORED", targetId, createdAt: now, actor }));
   } else if (type === "add-player") {
     const player = normalizePlayer(input.player);
     if (before.customPlayers.some((candidate) => candidate.id === player.id)) throw new Error("That custom player already exists.");
@@ -530,7 +696,7 @@ export function applyCommand(documentValue, input, options = {}) {
     if (options.role !== "admin") throw new Error("Only the organizer can change league setup.");
     if (before.assignments.some((assignment) => assignment.acquisitionType === "auction")) throw new Error("League setup is locked after the first auction sale.");
     config = normalizeLeagueConfig(input.config);
-    events = events.filter((event) => ["CUSTOM_PLAYER_ADDED"].includes(event.type));
+    events = events.filter((event) => event.type === "CUSTOM_PLAYER_ADDED" || event.type.startsWith("KEEPER_"));
     nominationStep = 0;
   } else {
     throw new Error("That draft command is not supported.");
@@ -570,10 +736,10 @@ export function optimisticSnapshot(snapshotValue, input) {
 }
 
 export function draftCsv(snapshot) {
-  const rows = [["League", "Season", "Player", "Position", "NFL Team", "Fantasy Team", "Price", "Type", "Status", "Recorded"]];
+  const rows = [["League", "Season", "Player", "Position", "NFL Team", "Fantasy Team", "Price", "Type", "Contract Year", "Keeper Round", "Status", "Recorded", "Updated"]];
   for (const assignment of snapshot.assignments) {
     const team = snapshot.config.teams.find((candidate) => candidate.id === assignment.teamId);
-    rows.push([snapshot.config.leagueName, snapshot.config.season, assignment.playerName, assignment.position, assignment.nflTeam, team?.name || assignment.teamId, assignment.price, assignment.acquisitionType, assignment.status, assignment.createdAt]);
+    rows.push([snapshot.config.leagueName, snapshot.config.season, assignment.playerName, assignment.position, assignment.nflTeam, team?.name || assignment.teamId, assignment.price, assignment.acquisitionType, assignment.contractYear, assignment.keeperRound, assignment.status, assignment.createdAt, assignment.updatedAt]);
   }
   const escape = (value) => {
     let string = String(value ?? "");

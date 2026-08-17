@@ -8,7 +8,7 @@
   <title>Pip's Draft Day Tool</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=20260817a">
+  <link rel="stylesheet" href="./app.css?v=20260817c">
   <link rel="stylesheet" href="./shell-safety.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
         <div>
           <p class="eyebrow">No rankings. No draft advice. Just the room.</p>
           <h1>Run the auction.<br>Share the board.</h1>
-          <p class="hero-copy">Create a league, enter its teams, salary pools, roster rules, and keepers, then give the auctioneer a fast private console and everyone else a clean live board.</p>
+          <p class="hero-copy">Create a league, enter its teams, salary pools, and roster rules, then let the auctioneer record keepers and sales from one fast console while everyone else sees a clean live board.</p>
           <div class="hero-actions">
             <button id="start-create" class="primary" type="button">Create a league</button>
             <a class="button secondary" href="./auctioneer/">Auctioneer sign in</a>
@@ -32,7 +32,7 @@
         </div>
         <aside class="hero-card">
           <p class="eyebrow">Draft-day flow</p>
-          <ol><li>Organizer enters league rules and keepers.</li><li>Auctioneer records each winner and price.</li><li>The read-only board updates for the room.</li><li>Final results export to CSV and JSON.</li></ol>
+          <ol><li>Organizer enters league rules, teams, and pools.</li><li>Auctioneer records keepers, winners, and prices.</li><li>The read-only board updates for the room.</li><li>Final results export to CSV and JSON.</li></ol>
         </aside>
       </section>
 
@@ -51,8 +51,7 @@
         <div class="step-list" aria-label="Setup progress">
           <button class="step-pill is-active" type="button" data-step="0">1 · League rules</button>
           <button class="step-pill" type="button" data-step="1">2 · Teams & pools</button>
-          <button class="step-pill" type="button" data-step="2">3 · Keepers</button>
-          <button class="step-pill" type="button" data-step="3">4 · Access</button>
+          <button class="step-pill" type="button" data-step="2">3 · Access</button>
         </div>
         <form id="setup-form">
           <section class="wizard-step" data-wizard-step="0">
@@ -65,6 +64,7 @@
               <label>Nomination order<select id="nomination-mode"><option value="snake">Snake</option><option value="linear">Repeat 1 through N</option><option value="manual">Do not track</option></select></label>
               <label>Roster minimum<input id="roster-minimum" type="number" min="1" value="8" required></label>
               <label>Roster maximum<input id="roster-maximum" type="number" min="1" value="14" required></label>
+              <label>Maximum keepers per team (optional)<input id="keeper-maximum" type="number" min="0" placeholder="No separate limit"><small>Leave blank to use only the overall roster maximum.</small></label>
             </div>
             <h3>Position limits</h3>
             <p class="privacy-note">Minimums define a legal finished roster. Maximums are optional: leave one blank to allow any number at that position up to the overall roster maximum.</p>
@@ -86,15 +86,6 @@
           </section>
 
           <section class="wizard-step" data-wizard-step="2" hidden>
-            <label class="choice"><input id="keepers-enabled" type="checkbox"> This league has keepers already assigned before the auction</label>
-            <div id="keeper-editor" hidden>
-              <div class="callout">Add each keeper with the salary you want displayed. If you chose “current auction cash,” those salaries are assumed to be reflected in each team's pool already.</div>
-              <div id="keeper-rows"></div>
-              <button id="add-keeper" class="secondary" type="button">Add keeper</button>
-            </div>
-          </section>
-
-          <section class="wizard-step" data-wizard-step="3" hidden>
             <div id="new-access-fields">
               <p class="callout">These roles are deliberately separate. The organizer can edit setup, the auctioneer can record results, and the Draft Board is read-only.</p>
               <div class="access-grid">
@@ -104,7 +95,7 @@
               </div>
               <button id="regenerate-codes" class="secondary" type="button">Generate new codes</button>
             </div>
-            <div id="existing-access-note" class="callout" hidden>Existing access codes stay unchanged. This edit updates only league rules, teams, pools, and keepers.</div>
+            <div id="existing-access-note" class="callout" hidden>Existing access codes stay unchanged. This edit updates league rules, teams, and pools. Keepers are managed from the auctioneer console.</div>
           </section>
 
           <p id="setup-status" class="status" role="status"></p>
@@ -125,6 +116,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./setup.mjs?v=20260817a"></script>
+  <script type="module" src="./setup.mjs?v=20260817c"></script>
 </body>
 </html>

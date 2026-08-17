@@ -68,6 +68,10 @@ function attachChannel() {
   });
 }
 
+function announceBoardPresence() {
+  channel?.postMessage({ type: "board-heartbeat", leagueCode, sentAt: new Date().toISOString() });
+}
+
 async function refresh() {
   if (refreshInFlight || !leagueCode) return;
   refreshInFlight = true;
@@ -85,7 +89,7 @@ async function openBoard(code) {
   leagueCode = normalizeLeagueCode(code); byId("league-code").value = leagueCode; attachChannel();
   try { snapshot = await request(`/api/draft-day/snapshot?role=board&league=${encodeURIComponent(leagueCode)}`); lastSuccess = Date.now(); }
   catch (error) { try { snapshot = JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch { snapshot = null; } if (!snapshot) throw error; }
-  byId("login-panel").hidden = true; byId("board-app").hidden = false; render(); window.setInterval(() => void refresh(), 1_200);
+  byId("login-panel").hidden = true; byId("board-app").hidden = false; render(); announceBoardPresence(); window.setInterval(() => void refresh(), 1_200); window.setInterval(announceBoardPresence, 2_000);
 }
 
 byId("login-form").addEventListener("submit", async (event) => {

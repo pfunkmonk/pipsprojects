@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c223f">
   <title>Pip's Draft Day Tool · Auctioneer</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <link rel="stylesheet" href="../app.css?v=20260817a">
+  <link rel="stylesheet" href="../app.css?v=20260817c">
   <link rel="stylesheet" href="../shell-safety.css">
 </head>
 <body>
@@ -27,8 +27,34 @@
     <section id="console" class="console-shell" hidden>
       <header class="console-header">
         <a class="brand" href="../"><span class="brand-mark">PDD</span><span><strong id="header-league">Draft Day</strong><small id="header-season">AUCTIONEER · PUBLIC RESULTS ONLY</small></span></a>
-        <div class="console-actions"><span id="sync-state" class="sync-chip">SYNCING</span><button id="focus-search" class="secondary" type="button">Find player</button><button id="export-csv" class="secondary" type="button">Export CSV</button><button id="export-json" class="secondary" type="button">Backup JSON</button><a id="board-link" class="button secondary" href="../board/" target="_blank" rel="noopener">Open board</a><button id="finish-draft" class="primary" type="button">Finish draft</button></div>
+        <div class="console-actions"><span id="sync-state" class="sync-chip">SYNCING</span><span id="board-state" class="sync-chip is-error">BOARD NOT OPEN</span><button id="focus-search" class="secondary" type="button">Find player</button><button id="copy-board-link" class="secondary" type="button">Copy board link</button><button id="export-csv" class="secondary" type="button">Export results CSV</button><button id="export-json" class="secondary" type="button">Backup JSON</button><a id="board-link" class="button secondary" href="../board/" target="_blank" rel="noopener">Open board</a><button id="finish-draft" class="primary" type="button">Finish draft</button></div>
       </header>
+
+      <details id="keeper-setup" class="panel keeper-setup" open>
+        <summary class="keeper-summary">
+          <span><span class="eyebrow">Before the first sale</span><strong>Keeper Setup</strong><small id="keeper-summary-line">Loading keeper status…</small></span>
+          <span id="keeper-ready-state" class="sync-chip">CHECKING</span>
+        </summary>
+        <div class="keeper-cockpit">
+          <form id="keeper-form" class="keeper-entry-form">
+            <p class="privacy-note">Search the 2026 player list. Position and NFL team fill automatically; analysis and recommendations are deliberately excluded.</p>
+            <label>Keeper player<input id="keeper-player-search" type="search" autocomplete="off" role="combobox" aria-controls="keeper-player-results" aria-expanded="false" placeholder="Start typing a player name" required></label>
+            <div id="keeper-player-results" class="search-results" role="listbox" hidden></div>
+            <div id="keeper-selected-player" class="selected-player" hidden><span id="keeper-selected-position" class="position-chip"></span><div><strong id="keeper-selected-name"></strong><small id="keeper-selected-nfl-team"></small></div><button id="keeper-clear-player" class="secondary" type="button">Change</button></div>
+            <button id="add-custom-keeper-player" class="secondary" type="button" hidden>Add missing player manually</button>
+            <div class="form-grid keeper-fields">
+              <label>Fantasy team<select id="keeper-team" required></select></label>
+              <label>Keeper salary<input id="keeper-salary" type="number" min="0" step="1" inputmode="numeric" value="0" required></label>
+              <label>Contract year (optional)<input id="keeper-contract-year" type="number" min="1" max="20" inputmode="numeric" placeholder="e.g. 2"></label>
+              <label>Keeper round (optional)<input id="keeper-round" type="number" min="1" max="100" inputmode="numeric" placeholder="e.g. 8"></label>
+            </div>
+            <div id="keeper-preview" class="preview" hidden><strong id="keeper-preview-sentence">Pending keeper</strong><div class="preview-grid"><span>Cash before<b id="keeper-preview-before">—</b></span><span>Salary<b id="keeper-preview-price">—</b></span><span>Auction cash<b id="keeper-preview-after">—</b></span><span>Keeper count<b id="keeper-preview-count">—</b></span></div></div>
+            <p id="keeper-status" class="status" role="status">Choose a player, fantasy team, and salary.</p>
+            <button id="record-keeper" class="primary" type="submit" disabled>Record keeper</button>
+          </form>
+          <section aria-labelledby="keeper-progress-title"><div class="section-heading"><div><p class="eyebrow">Automatic preflight</p><h2 id="keeper-progress-title">Team keeper progress</h2><p id="keeper-preflight">Checking budgets and roster paths…</p></div></div><div id="keeper-team-grid" class="keeper-team-grid"></div></section>
+        </div>
+      </details>
 
       <div class="console-grid">
         <section class="panel sale-panel">
@@ -44,14 +70,15 @@
             </div>
             <div id="sale-preview" class="preview" hidden><strong id="preview-sentence">Pending sale</strong><div class="preview-grid"><span>Cash before<b id="preview-before">—</b></span><span>Price<b id="preview-price">—</b></span><span>Cash after<b id="preview-after">—</b></span><span>Legal max<b id="preview-max">—</b></span></div></div>
             <p id="sale-status" class="status" role="status">Choose a player, team, and price.</p>
-            <button id="record-sale" class="primary" type="submit" disabled>Record sale</button>
+            <button id="record-sale" class="primary" type="submit" disabled>Record first sale &amp; lock keeper entry</button>
           </form>
           <p class="privacy-note">Keyboard: Ctrl/⌘ K finds a player · Enter selects/records · Ctrl/⌘ Z undoes the latest active sale.</p>
         </section>
 
         <div>
+          <details id="clock-panel" class="panel clock-panel"><summary><span><span class="eyebrow">Optional room tool</span><strong>Nomination clock</strong></span><strong id="clock-display">OFF</strong></summary><div class="clock-controls"><label class="choice"><input id="clock-enabled" type="checkbox"> Enable clock</label><label>Seconds<select id="clock-duration"><option value="15">15</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option><option value="90">90</option></select></label><button id="clock-start" class="primary" type="button">Start</button><button id="clock-pause" class="secondary" type="button">Pause</button><button id="clock-reset" class="secondary" type="button">Reset</button></div><p class="privacy-note">Local to this auctioneer device. A recorded sale restarts it for the next nomination when enabled.</p></details>
           <section class="panel"><div class="section-heading"><div><p class="eyebrow">Room state</p><h2>Teams and cash</h2><p id="nominator-status"></p></div></div><div id="team-summary-grid" class="team-summary-grid"></div></section>
-          <section class="panel"><div class="section-heading"><div><p class="eyebrow">Corrections</p><h2>Assignment history</h2><p>Every correction stays in the audit trail.</p></div></div><div class="history-wrap"><table class="history-table"><thead><tr><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Status</th><th>Action</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
+          <section class="panel"><div class="section-heading"><div><p class="eyebrow">Corrections</p><h2>Assignment history</h2><p>Every keeper and sale correction stays in the audit trail.</p></div></div><div class="history-wrap"><table class="history-table"><thead><tr><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Details</th><th>Status</th><th>Action</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
         </div>
       </div>
     </section>
@@ -70,11 +97,12 @@
     <form id="correction-form" method="dialog">
       <p class="eyebrow">Correct assignment</p><h2 id="correction-title">Edit sale</h2><input id="correction-target" type="hidden">
       <label>Player name<input id="correction-name" maxlength="100" required></label>
-      <div class="form-grid"><label>Position<select id="correction-position"></select></label><label>NFL team<input id="correction-nfl-team" maxlength="20"></label><label>Buying team<select id="correction-team"></select></label><label>Price<input id="correction-price" type="number" min="1" required></label></div>
+      <div class="form-grid"><label>Position<select id="correction-position"></select></label><label>NFL team<input id="correction-nfl-team" maxlength="20"></label><label><span id="correction-team-label">Buying team</span><select id="correction-team"></select></label><label><span id="correction-price-label">Price</span><input id="correction-price" type="number" min="0" required></label></div>
+      <div id="correction-keeper-fields" class="form-grid" hidden><label>Contract year (optional)<input id="correction-contract-year" type="number" min="1" max="20"></label><label>Keeper round (optional)<input id="correction-keeper-round" type="number" min="1" max="100"></label></div>
       <div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button id="save-correction" class="primary" value="default">Save correction</button></div>
     </form>
   </dialog>
-  <script type="module" src="./auctioneer.mjs?v=20260817a"></script>
+  <script type="module" src="./auctioneer.mjs?v=20260817c"></script>
 </body>
 </html>
 

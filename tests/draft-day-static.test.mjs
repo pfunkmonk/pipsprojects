@@ -9,6 +9,7 @@ const auctioneerSource = await readFile(new URL("../public/draft-day/auctioneer/
 const boardSource = await readFile(new URL("../public/draft-day/board/board.mjs", import.meta.url), "utf8");
 const setupSource = await readFile(new URL("../public/draft-day/setup.mjs", import.meta.url), "utf8");
 const setupPage = await readFile(new URL("../public/draft-day/index.html", import.meta.url), "utf8");
+const auctioneerPage = await readFile(new URL("../public/draft-day/auctioneer/index.html", import.meta.url), "utf8");
 const environment = await readFile(new URL("../.env.example", import.meta.url), "utf8");
 const pages = [new URL("../public/draft-day/index.html", import.meta.url), new URL("../public/draft-day/auctioneer/index.html", import.meta.url), new URL("../public/draft-day/board/index.html", import.meta.url), new URL("../public/draft-day/guide/index.html", import.meta.url)];
 
@@ -61,4 +62,17 @@ test("position maximums are optional, persistent, and fast to clear", () => {
   assert.match(setupSource, /placeholder: "No positional limit"/);
   assert.match(setupSource, /rule\.maximum/);
   assert.doesNotMatch(setupSource, /"data-position-max": "true", required/);
+});
+
+test("keeper setup lives in the auctioneer cockpit with predictive search and CSV export", () => {
+  assert.doesNotMatch(setupPage, /id="keeper-editor"|id="keepers-enabled"/);
+  assert.match(setupPage, /id="keeper-maximum"/);
+  assert.match(setupPage, /Auctioneer records keepers, winners, and prices/);
+  for (const id of ["keeper-setup", "keeper-player-search", "keeper-player-results", "keeper-team", "keeper-salary", "keeper-contract-year", "keeper-round", "record-keeper", "export-csv", "clock-enabled", "copy-board-link"]) {
+    assert.match(auctioneerPage, new RegExp(`id="${id}"`));
+  }
+  assert.match(auctioneerSource, /keeperLegality/);
+  assert.match(auctioneerSource, /record-keeper/);
+  assert.match(auctioneerSource, /auction-results\.csv/);
+  assert.match(boardSource, /board-heartbeat/);
 });

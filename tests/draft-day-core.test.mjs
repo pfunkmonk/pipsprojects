@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyCommand,
+  draftCsv,
+  keeperLegality,
   normalizeLeagueConfig,
   publicSnapshot,
   saleLegality,
@@ -58,8 +60,12 @@ test("current-cash and pre-keeper modes never deduct keeper salaries twice", () 
     teams: [{ id: "alpha", name: "Alpha", enteredPool: 20 }, { id: "bravo", name: "Bravo", enteredPool: 20 }],
     keepersEnabled: true, keepers: [{ id: "keeper-one", player: qb, teamId: "alpha", salary: 5 }], nominationOrder: ["alpha", "bravo"],
   };
-  assert.equal(normalizeLeagueConfig({ ...base, budgetMode: "current-cash" }).teams[0].auctionBudget, 20);
-  assert.equal(normalizeLeagueConfig({ ...base, budgetMode: "pre-keeper" }).teams[0].auctionBudget, 15);
+  const currentCash = snapshotFromDocument(document(normalizeLeagueConfig({ ...base, budgetMode: "current-cash" }))).teams[0];
+  const preKeeper = snapshotFromDocument(document(normalizeLeagueConfig({ ...base, budgetMode: "pre-keeper" }))).teams[0];
+  assert.equal(currentCash.auctionBudget, 20);
+  assert.equal(currentCash.remainingBudget, 20);
+  assert.equal(preKeeper.auctionBudget, 15);
+  assert.equal(preKeeper.remainingBudget, 15);
 });
 
 test("legal maximum preserves enough cash to complete roster and position minimums", () => {
@@ -81,6 +87,15 @@ test("record, correction, undo, and restore remain append-only", () => {
   assert.equal(snapshot.assignments[0].price, 7);
   assert.equal(snapshot.assignments[0].status, "active");
   assert.equal(snapshot.revision, 4);
+});
+
+test("sale correction and restore use the same legality rules as a new sale", () => {
+  let state = document();
+  state = applyCommand(state, { type: "record-sale", eventId: "sale-one", idempotencyKey: "record-one", expectedRevision: 0, player: rb, teamId: "alpha", price: 3 });
+  assert.throws(() => applyCommand(state, { type: "correct-sale", eventId: "illegal-correction", idempotencyKey: "illegal-correction-key", expectedRevision: 1, targetId: "sale-one", player: rb, teamId: "alpha", price: 20 }), /bid at most/i);
+  state = applyCommand(state, { type: "void-sale", eventId: "void-one", idempotencyKey: "void-one-key", expectedRevision: 1, targetId: "sale-one" });
+  state = applyCommand(state, { type: "record-sale", eventId: "replacement-sale", idempotencyKey: "replacement-sale-key", expectedRevision: 2, player: rb, teamId: "bravo", price: 3 });
+  assert.throws(() => applyCommand(state, { type: "restore-sale", eventId: "illegal-restore", idempotencyKey: "illegal-restore-key", expectedRevision: 3, targetId: "sale-one" }), /already assigned/i);
 });
 
 test("duplicate players are rejected even when a correction supplies a different id", () => {
@@ -177,6 +192,66 @@ test("an explicit numeric position maximum is still enforced", () => {
     teamId: "alpha",
     price: 1,
   }), /Quarterback maximum/i);
+});
+
+test("auctioneer keeper events preserve details, enforce limits, lock new entry, and remain repairable", () => {
+  const keeperConfig = config({
+    budgetMode: "pre-keeper",
+    rosterMinimum: 1,
+    rosterMaximum: 4,
+    keeperMaximum: 1,
+    positionRules: [{ id: "QB", label: "Quarterback", minimum: 0, maximum: null }],
+  });
+  let state = document(keeperConfig);
+  const firstKeeper = { player: qb, teamId: "alpha", salary: 5, contractYear: 2, keeperRound: 8 };
+  assert.equal(keeperLegality(snapshotFromDocument(state), firstKeeper).legal, true);
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-event-one", idempotencyKey: "keeper-record-one", expectedRevision: 0, ...firstKeeper });
+  let snapshot = snapshotFromDocument(state);
+  assert.equal(snapshot.teams[0].remainingBudget, 15);
+  assert.equal(snapshot.teams[0].keeperCount, 1);
+  assert.equal(snapshot.assignments[0].contractYear, 2);
+  assert.equal(snapshot.assignments[0].keeperRound, 8);
+  assert.equal(keeperLegality(snapshot, { player: { ...rb, id: "second-keeper" }, teamId: "alpha", salary: 1 }).legal, false);
+
+  state = applyCommand(state, { type: "record-sale", eventId: "sale-after-keeper", idempotencyKey: "sale-after-keeper-key", expectedRevision: 1, player: { id: "auction-qb", name: "Auction Quarterback", position: "QB", nflTeam: "FA" }, teamId: "alpha", price: 1 });
+  assert.throws(() => applyCommand(state, { type: "record-keeper", eventId: "late-keeper", idempotencyKey: "late-keeper-key", expectedRevision: 2, player: { id: "late-player", name: "Late Player", position: "QB", nflTeam: "FA" }, teamId: "bravo", salary: 1 }), /locked/i);
+  state = applyCommand(state, { type: "correct-keeper", eventId: "keeper-correction", idempotencyKey: "keeper-correction-key", expectedRevision: 2, targetId: "keeper-event-one", ...firstKeeper, salary: 6, contractYear: 3, keeperRound: 7 });
+  state = applyCommand(state, { type: "void-keeper", eventId: "keeper-void", idempotencyKey: "keeper-void-key", expectedRevision: 3, targetId: "keeper-event-one" });
+  state = applyCommand(state, { type: "restore-keeper", eventId: "keeper-restore", idempotencyKey: "keeper-restore-key", expectedRevision: 4, targetId: "keeper-event-one" });
+  snapshot = snapshotFromDocument(state);
+  const keeper = snapshot.assignments.find((assignment) => assignment.id === "keeper-event-one");
+  assert.equal(keeper.price, 6);
+  assert.equal(keeper.contractYear, 3);
+  assert.equal(keeper.keeperRound, 7);
+  assert.equal(keeper.status, "active");
+  assert.equal(snapshot.auctionStarted, true);
+  assert.equal(state.events.length, 5);
+});
+
+test("a voided keeper cannot be restored over a later active assignment", () => {
+  let state = document(config({ keeperMaximum: null }));
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-one", idempotencyKey: "keeper-one-key", expectedRevision: 0, player: qb, teamId: "alpha", salary: 4 });
+  state = applyCommand(state, { type: "void-keeper", eventId: "keeper-void", idempotencyKey: "keeper-void-key", expectedRevision: 1, targetId: "keeper-one" });
+  state = applyCommand(state, { type: "record-sale", eventId: "later-sale", idempotencyKey: "later-sale-key", expectedRevision: 2, player: qb, teamId: "bravo", price: 3 });
+  assert.throws(() => applyCommand(state, { type: "restore-keeper", eventId: "keeper-restore", idempotencyKey: "keeper-restore-key", expectedRevision: 3, targetId: "keeper-one" }), /already assigned/i);
+});
+
+test("organizer setup edits preserve auctioneer-recorded keepers before the first sale", () => {
+  let state = document(config({ keeperMaximum: 2 }));
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-before-edit", idempotencyKey: "keeper-before-edit-key", expectedRevision: 0, player: qb, teamId: "alpha", salary: 4, contractYear: 1, keeperRound: 6 });
+  state = applyCommand(state, { type: "replace-setup", idempotencyKey: "setup-after-keeper", expectedRevision: 1, config: config({ leagueName: "Keeper Edit Preserved", keeperMaximum: 2 }) }, { role: "admin" });
+  const snapshot = snapshotFromDocument(state);
+  assert.equal(snapshot.config.leagueName, "Keeper Edit Preserved");
+  assert.equal(snapshot.assignments.find((assignment) => assignment.id === "keeper-before-edit")?.playerName, qb.name);
+});
+
+test("CSV export includes keeper contract and round fields and remains spreadsheet safe", () => {
+  let state = document(config({ keeperMaximum: null }));
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-csv", idempotencyKey: "keeper-csv-key", expectedRevision: 0, player: { ...qb, name: "=Unsafe Keeper" }, teamId: "alpha", salary: 4, contractYear: 2, keeperRound: 9 });
+  const csv = draftCsv(snapshotFromDocument(state));
+  assert.match(csv, /"Contract Year","Keeper Round"/);
+  assert.match(csv, /"'=Unsafe Keeper"/);
+  assert.match(csv, /"keeper","2","9","active"/);
 });
 
 test("organizer can replace setup only before the first auction sale", () => {

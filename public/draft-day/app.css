@@ -91,6 +91,28 @@ input::placeholder { color: #7f91a8; }
 .sync-chip { padding: .45rem .7rem; border-radius: 999px; color: var(--green); background: rgba(93,211,158,.1); border: 1px solid rgba(93,211,158,.3); font-size: .72rem; font-weight: 900; }
 .sync-chip.is-error { color: var(--red); background: rgba(255,123,123,.1); border-color: rgba(255,123,123,.3); }
 .console-grid { display: grid; grid-template-columns: minmax(22rem, .78fr) minmax(28rem, 1.22fr); gap: .9rem; align-items: start; }
+.console-grid > *, .keeper-cockpit > * { min-width: 0; }
+.keeper-setup { margin-bottom: .9rem; }
+.keeper-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; list-style: none; }
+.keeper-summary::-webkit-details-marker, .clock-panel summary::-webkit-details-marker { display: none; }
+.keeper-summary > span:first-child { display: grid; gap: .18rem; }
+.keeper-summary strong { font-size: 1.35rem; }
+.keeper-summary small { color: var(--muted); }
+.keeper-cockpit { display: grid; grid-template-columns: minmax(21rem, .85fr) minmax(25rem, 1.15fr); gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
+.keeper-entry-form { min-width: 0; }
+.keeper-fields { margin-top: .7rem; }
+.keeper-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .55rem; }
+.keeper-team-progress { padding: .7rem; border: 1px solid var(--line); border-radius: .75rem; background: rgba(3,15,30,.32); cursor: pointer; }
+.keeper-team-progress:hover { border-color: rgba(244,185,66,.55); }
+.keeper-team-progress header { display: flex; justify-content: space-between; gap: .5rem; }
+.keeper-team-progress b { color: var(--gold-2); }
+.keeper-team-progress p { margin: .35rem 0 0; color: var(--muted); font-size: .75rem; }
+.clock-panel { margin-bottom: .9rem; }
+.clock-panel summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; list-style: none; }
+.clock-panel summary > span { display: grid; }
+#clock-display { color: var(--gold-2); font: 950 1.65rem/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+#clock-display.is-expired { color: var(--red); }
+.clock-controls { display: grid; grid-template-columns: minmax(10rem,1fr) minmax(7rem,.5fr) repeat(3,auto); gap: .55rem; align-items: end; margin-top: 1rem; }
 .sale-panel { position: sticky; top: .7rem; }
 .search-results { margin-top: .35rem; border: 1px solid var(--line); border-radius: .7rem; max-height: 17rem; overflow-y: auto; background: #07182e; }
 .search-result { width: 100%; min-height: auto; justify-content: space-between; border-radius: 0; color: var(--ink); background: transparent; border-bottom: 1px solid var(--line); }
@@ -143,11 +165,26 @@ dialog::backdrop { background: rgba(1,7,15,.76); }
 .board-footer .is-error { color: var(--red); }
 @media (max-width: 800px) {
   .hero, .console-grid { grid-template-columns: 1fr; }
+  .keeper-cockpit { grid-template-columns: 1fr; }
   .hero { padding-top: 2rem; }
   .form-grid, .form-grid.three, .access-grid { grid-template-columns: 1fr; }
   .keeper-row { grid-template-columns: 1fr 1fr; }
   .sale-panel { position: static; }
-  .console-header { align-items: flex-start; flex-direction: column; }
+  .console-header { align-items: stretch; flex-direction: column; }
+  .console-header .brand, .console-actions { min-width: 0; width: 100%; }
+  .console-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .console-actions > button, .console-actions > .button { width: 100%; padding-inline: .7rem; }
+  .console-actions > .sync-chip { display: grid; place-items: center; text-align: center; }
+  .clock-controls { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .console-shell { width: calc(100% - 1rem); }
+  .panel { padding: .9rem; border-radius: 1rem; }
+  .keeper-summary { align-items: flex-start; }
+  .keeper-summary > .sync-chip { flex: 0 0 auto; }
+  .keeper-team-grid { grid-template-columns: 1fr; }
+  .preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .history-table { min-width: 42rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
 

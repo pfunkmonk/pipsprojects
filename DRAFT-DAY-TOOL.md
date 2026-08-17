@@ -9,7 +9,7 @@ Every change must make the tool easier, more intuitive, more desirable, and fast
 ## Routes
 
 - `/draft-day/` — create a league or manage setup before the first auction sale
-- `/draft-day/auctioneer/` — public-result entry, corrections, undo/restore, backups, and exports
+- `/draft-day/auctioneer/` — predictive keeper and sale entry, corrections, undo/restore, backups, clock, board status, and CSV export
 - `/draft-day/board/` — code-protected read-only room board
 - `/draft-day/guide/` — short organizer and auctioneer operations guide
 
@@ -47,12 +47,17 @@ Set `DRAFT_DAY_SESSION_SECRET` to a new random value of at least 32 characters i
 1. Create a multi-team league with individualized pools and position rules.
    - A blank position maximum means no position-specific limit; the overall roster maximum still applies.
    - “Allow any mix of backups” clears every position maximum at once.
-2. Add keepers in either current-cash or pre-keeper budget mode.
+2. Add keepers from the collapsible auctioneer Keeper Setup using the identity-only 2026 player search.
+   - Player position and NFL team fill from the catalog.
+   - Salary is required; contract year and keeper round are optional.
+   - A league-level keeper maximum is optional and enforced per team.
+   - The first auction sale locks new keeper entry; legal audited correction, undo, and restore remain available.
+   - In current-cash mode salaries are not deducted twice; in pre-keeper mode they reduce auction cash automatically.
 3. Sign into auctioneer and Draft Board roles separately.
 4. Record a sale and observe the board update.
 5. Correct, undo, and restore the sale.
 6. Verify overspending and impossible-roster purchases are blocked.
-7. Export CSV and JSON.
+7. Export spreadsheet-safe CSV, including keeper contract year and keeper round, plus JSON backup.
 
 The later customizable VBD/ADP application should consume this event history through a separate normalized import/valuation layer; it must not add strategy fields to the Stage One board payload.
 

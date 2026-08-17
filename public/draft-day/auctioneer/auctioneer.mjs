@@ -1,17 +1,32 @@
-import { draftCsv, normalizeLeagueCode, optimisticSnapshot, playerIdentity, publicSnapshot, saleLegality } from "../core.mjs";
+import {
+  draftCsv,
+  keeperLegality,
+  normalizeLeagueCode,
+  optimisticSnapshot,
+  playerIdentity,
+  publicSnapshot,
+  saleLegality,
+} from "../core.mjs";
 
 const byId = (id) => document.getElementById(id);
 const loginPanel = byId("login-panel");
 const consolePanel = byId("console");
 const playerSearch = byId("player-search");
+const keeperSearch = byId("keeper-player-search");
+const query = new URLSearchParams(location.search);
 let snapshot = null;
 let serverSnapshot = null;
 let playerPool = [];
 let selectedPlayer = null;
+let selectedKeeperPlayer = null;
+let customPlayerTarget = "sale";
 let refreshInFlight = false;
 let queueInFlight = false;
 let pollTimer = null;
-const query = new URLSearchParams(location.search);
+let roomChannel = null;
+let boardLastSeen = 0;
+let clockTimer = null;
+let clockState = { enabled: false, duration: 30, remaining: 30, running: false, deadline: null };
 
 function leagueCode() { return snapshot?.leagueCode || normalizeLeagueCode(byId("league-code").value); }
 function cacheKey(code = leagueCode()) { return `pips-draft-day-auctioneer-${code}`; }
@@ -19,6 +34,8 @@ function queueKey(code = leagueCode()) { return `pips-draft-day-outbox-${code}`;
 function publicCacheKey(code = leagueCode()) { return `pips-draft-day-board-${code}`; }
 function channelName(code = leagueCode()) { return `pips-draft-day-${code}`; }
 function verifierKey(code) { return `pips-draft-day-auctioneer-verifier-${code}`; }
+function keeperOpenKey() { return `pips-draft-day-keeper-open-${leagueCode()}`; }
+function clockKey() { return `pips-draft-day-clock-${leagueCode()}`; }
 
 async function accessVerifier(value) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`pips-draft-day-auctioneer|${value}`));
@@ -26,13 +43,18 @@ async function accessVerifier(value) {
 }
 
 function setStatus(element, message, error = false) {
-  element.textContent = message; element.classList.toggle("is-error", error); element.classList.toggle("is-success", Boolean(message) && !error);
+  element.textContent = message;
+  element.classList.toggle("is-error", error);
+  element.classList.toggle("is-success", Boolean(message) && !error);
 }
 
 async function request(url, options = {}) {
   const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) { const error = new Error(body.error || "The Draft Day service is unavailable."); error.status = response.status; error.code = body.code; throw error; }
+  if (!response.ok) {
+    const error = new Error(body.error || "The Draft Day service is unavailable.");
+    error.status = response.status; error.code = body.code; throw error;
+  }
   return body;
 }
 
@@ -41,10 +63,12 @@ function normalizeSearch(value) {
 }
 
 function rankPlayers(players, value) {
-  const queryText = normalizeSearch(value); if (!queryText) return [];
+  const queryText = normalizeSearch(value);
+  if (!queryText) return [];
   const tokens = queryText.split(" ");
   return players.map((player) => {
-    const name = normalizeSearch(player.name); const haystack = `${name} ${normalizeSearch(player.position)} ${normalizeSearch(player.nflTeam)}`;
+    const name = normalizeSearch(player.name);
+    const haystack = `${name} ${normalizeSearch(player.position)} ${normalizeSearch(player.nflTeam)}`;
     if (!tokens.every((token) => haystack.includes(token))) return null;
     const score = name === queryText ? 0 : name.startsWith(queryText) ? 1 : haystack.startsWith(queryText) ? 2 : 3;
     return { player, score };
@@ -52,7 +76,9 @@ function rankPlayers(players, value) {
 }
 
 function option(value, label, selected = false) {
-  const element = document.createElement("option"); element.value = value; element.textContent = label; element.selected = selected; return element;
+  const element = document.createElement("option");
+  element.value = value; element.textContent = label; element.selected = selected;
+  return element;
 }
 
 function allPlayers() {
@@ -65,46 +91,136 @@ function activePlayerIds() {
   return new Set((snapshot?.assignments || []).filter((assignment) => assignment.status === "active").map((assignment) => playerIdentity({ id: assignment.playerId, name: assignment.playerName, position: assignment.position })));
 }
 
-function availablePlayers() { const active = activePlayerIds(); return allPlayers().filter((player) => !active.has(playerIdentity(player))); }
+function availablePlayers() {
+  const active = activePlayerIds();
+  return allPlayers().filter((player) => !active.has(playerIdentity(player)));
+}
 
-function renderSearchResults() {
-  const results = byId("player-results"); results.replaceChildren();
-  if (selectedPlayer || !playerSearch.value.trim()) { results.hidden = true; byId("add-custom-player").hidden = true; playerSearch.setAttribute("aria-expanded", "false"); return; }
-  const matches = rankPlayers(availablePlayers(), playerSearch.value).slice(0, 10);
-  for (const player of matches) {
-    const button = document.createElement("button"); button.type = "button"; button.className = "search-result"; button.setAttribute("role", "option");
-    const name = document.createElement("strong"); name.textContent = player.name; const meta = document.createElement("span"); meta.textContent = `${player.position} · ${player.nflTeam}`;
-    button.append(name, meta); button.addEventListener("click", () => selectPlayer(player)); results.append(button);
+function selectedFor(kind) { return kind === "keeper" ? selectedKeeperPlayer : selectedPlayer; }
+
+function predictiveElements(kind) {
+  return kind === "keeper"
+    ? { search: keeperSearch, results: byId("keeper-player-results"), add: byId("add-custom-keeper-player") }
+    : { search: playerSearch, results: byId("player-results"), add: byId("add-custom-player") };
+}
+
+function renderPredictiveResults(kind) {
+  const { search, results, add } = predictiveElements(kind);
+  results.replaceChildren();
+  if (selectedFor(kind) || !search.value.trim()) {
+    results.hidden = true; add.hidden = true; search.setAttribute("aria-expanded", "false"); return;
   }
-  if (!matches.length) { const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "No matching player in the built-in pool."; results.append(empty); }
-  results.hidden = false; byId("add-custom-player").hidden = false; playerSearch.setAttribute("aria-expanded", "true");
+  const matches = rankPlayers(availablePlayers(), search.value).slice(0, 10);
+  for (const player of matches) {
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "search-result"; button.setAttribute("role", "option");
+    const name = document.createElement("strong"); name.textContent = player.name;
+    const meta = document.createElement("span"); meta.textContent = `${player.position} · ${player.nflTeam}`;
+    button.append(name, meta);
+    button.addEventListener("click", () => kind === "keeper" ? selectKeeperPlayer(player) : selectPlayer(player));
+    button.addEventListener("keydown", (event) => {
+      if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+      event.preventDefault();
+      const buttons = [...results.querySelectorAll("button")];
+      const current = buttons.indexOf(button);
+      buttons[(current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length]?.focus();
+    });
+    results.append(button);
+  }
+  if (!matches.length) {
+    const empty = document.createElement("p"); empty.className = "empty-state"; empty.textContent = "No matching player in the 2026 pool."; results.append(empty);
+  }
+  results.hidden = false; add.hidden = false; search.setAttribute("aria-expanded", "true");
 }
 
 function selectPlayer(player) {
-  selectedPlayer = player; playerSearch.value = player.name; byId("player-results").hidden = true; byId("add-custom-player").hidden = true;
-  byId("selected-player").hidden = false; byId("selected-position").textContent = player.position; byId("selected-name").textContent = player.name; byId("selected-nfl-team").textContent = player.nflTeam;
+  selectedPlayer = player; playerSearch.value = player.name;
+  playerSearch.setAttribute("aria-expanded", "false");
+  byId("player-results").hidden = true; byId("add-custom-player").hidden = true;
+  byId("selected-player").hidden = false; byId("selected-position").textContent = player.position;
+  byId("selected-name").textContent = player.name; byId("selected-nfl-team").textContent = player.nflTeam;
   updatePendingSale(); byId("buying-team").focus();
 }
 
-function clearPlayer() { selectedPlayer = null; playerSearch.value = ""; byId("selected-player").hidden = true; updatePendingSale(); playerSearch.focus(); }
+function selectKeeperPlayer(player) {
+  selectedKeeperPlayer = player; keeperSearch.value = player.name;
+  keeperSearch.setAttribute("aria-expanded", "false");
+  byId("keeper-player-results").hidden = true; byId("add-custom-keeper-player").hidden = true;
+  byId("keeper-selected-player").hidden = false; byId("keeper-selected-position").textContent = player.position;
+  byId("keeper-selected-name").textContent = player.name; byId("keeper-selected-nfl-team").textContent = player.nflTeam;
+  updatePendingKeeper(); byId("keeper-team").focus();
+}
 
-function activeAssignments() { return snapshot.assignments.filter((assignment) => assignment.status === "active"); }
+function clearPlayer() {
+  selectedPlayer = null; playerSearch.value = ""; byId("selected-player").hidden = true;
+  updatePendingSale(); playerSearch.focus();
+}
+
+function clearKeeperPlayer() {
+  selectedKeeperPlayer = null; keeperSearch.value = ""; byId("keeper-selected-player").hidden = true;
+  updatePendingKeeper(); if (!snapshot?.auctionStarted) keeperSearch.focus();
+}
+
+function bindPredictiveSearch(kind) {
+  const { search, results } = predictiveElements(kind);
+  search.addEventListener("input", () => {
+    if (kind === "keeper" && selectedKeeperPlayer && search.value !== selectedKeeperPlayer.name) selectedKeeperPlayer = null;
+    if (kind === "sale" && selectedPlayer && search.value !== selectedPlayer.name) selectedPlayer = null;
+    byId(kind === "keeper" ? "keeper-selected-player" : "selected-player").hidden = !selectedFor(kind);
+    renderPredictiveResults(kind);
+    kind === "keeper" ? updatePendingKeeper() : updatePendingSale();
+  });
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { results.hidden = true; search.setAttribute("aria-expanded", "false"); return; }
+    if (event.key === "ArrowDown") { const first = results.querySelector("button"); if (first) { event.preventDefault(); first.focus(); } }
+    if (event.key === "Enter" && !selectedFor(kind)) { const first = results.querySelector("button"); if (first) { event.preventDefault(); first.click(); } }
+  });
+}
 
 function renderTeamOptions() {
-  const buying = byId("buying-team"); const correction = byId("correction-team"); const selected = buying.value;
-  buying.replaceChildren(option("", "Choose a team")); correction.replaceChildren();
+  const buying = byId("buying-team"); const correction = byId("correction-team"); const keeper = byId("keeper-team");
+  const buyingSelected = buying.value; const keeperSelected = keeper.value;
+  buying.replaceChildren(option("", "Choose a team")); correction.replaceChildren(); keeper.replaceChildren(option("", "Choose a team"));
   for (const team of snapshot.teams) {
-    buying.append(option(team.id, `${team.name} — $${team.remainingBudget} left · max $${team.legalMaxBid}`, team.id === selected));
+    buying.append(option(team.id, `${team.name} — $${team.remainingBudget} left · max $${team.legalMaxBid}`, team.id === buyingSelected));
     correction.append(option(team.id, team.name));
+    const keeperLimit = snapshot.config.keeperMaximum == null ? "no separate limit" : `${team.keeperCount}/${team.keeperMaximum} keepers`;
+    keeper.append(option(team.id, `${team.name} — ${keeperLimit} · $${team.remainingBudget} cash`, team.id === keeperSelected));
   }
+}
+
+function renderKeeperProgress() {
+  const activeKeepers = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.acquisitionType === "keeper");
+  const summaryLimit = snapshot.config.keeperMaximum == null ? "no separate keeper limit" : `maximum ${snapshot.config.keeperMaximum} per team`;
+  byId("keeper-summary-line").textContent = `${activeKeepers.length} recorded · ${summaryLimit}`;
+  byId("keeper-ready-state").textContent = snapshot.auctionStarted ? "LOCKED" : "READY";
+  byId("keeper-ready-state").classList.remove("is-error");
+  byId("keeper-preflight").textContent = snapshot.auctionStarted
+    ? "New keeper entry is locked. Audited corrections and legal undo/restore remain available below."
+    : "Preflight passed: current keeper counts, salaries, budgets, position limits, and legal roster paths are valid.";
+  const grid = byId("keeper-team-grid"); grid.replaceChildren();
+  for (const team of snapshot.teams) {
+    const card = document.createElement("article"); card.className = "keeper-team-progress"; card.tabIndex = 0;
+    const header = document.createElement("header"); const name = document.createElement("strong"); name.textContent = team.name;
+    const cash = document.createElement("b"); cash.textContent = `$${team.remainingBudget}`; header.append(name, cash);
+    const progress = document.createElement("p");
+    const limit = snapshot.config.keeperMaximum == null ? `${team.keeperCount} keepers` : `${team.keeperCount}/${team.keeperMaximum} keepers`;
+    progress.textContent = `${limit} · $${team.keeperSpend} keeper salary · ${team.rosterCount}/${snapshot.config.rosterMaximum} rostered`;
+    card.append(header, progress);
+    const choose = () => { if (!snapshot.auctionStarted) { byId("keeper-team").value = team.id; updatePendingKeeper(); keeperSearch.focus(); } };
+    card.addEventListener("click", choose); card.addEventListener("keydown", (event) => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
+    grid.append(card);
+  }
+  byId("keeper-form").querySelectorAll("input, select, button").forEach((control) => { control.disabled = snapshot.auctionStarted; });
 }
 
 function renderTeamSummaries() {
   const container = byId("team-summary-grid"); container.replaceChildren();
   for (const team of snapshot.teams) {
     const card = document.createElement("article"); card.className = "team-summary";
-    const header = document.createElement("header"); const name = document.createElement("strong"); name.textContent = team.name; const cash = document.createElement("b"); cash.textContent = `$${team.remainingBudget}`; header.append(name, cash);
-    const summary = document.createElement("p"); summary.textContent = `${team.rosterCount}/${snapshot.config.rosterMaximum} rostered · max legal bid $${team.legalMaxBid}${team.canFinish ? " · legal to finish" : ""}`;
+    const header = document.createElement("header"); const name = document.createElement("strong"); name.textContent = team.name;
+    const cash = document.createElement("b"); cash.textContent = `$${team.remainingBudget}`; header.append(name, cash);
+    const summary = document.createElement("p"); summary.textContent = `${team.rosterCount}/${snapshot.config.rosterMaximum} rostered · ${team.keeperCount} keepers · max legal bid $${team.legalMaxBid}${team.canFinish ? " · legal to finish" : ""}`;
     const counts = document.createElement("div"); counts.className = "count-row";
     for (const rule of snapshot.config.positionRules) { const chip = document.createElement("span"); chip.textContent = `${rule.id} ${team.positionCounts[rule.id] || 0}`; counts.append(chip); }
     card.append(header, summary, counts); container.append(card);
@@ -113,22 +229,27 @@ function renderTeamSummaries() {
   byId("nominator-status").textContent = snapshot.config.nominationMode === "manual" ? "Nomination tracking is off." : current ? `${current.name} is next to nominate.` : "Nomination order unavailable.";
 }
 
+function actionButton(label, className, handler) {
+  const button = document.createElement("button"); button.type = "button"; button.className = className; button.textContent = label; button.addEventListener("click", handler); return button;
+}
+
 function renderHistory() {
   const body = byId("history-rows"); body.replaceChildren();
   const assignments = [...snapshot.assignments].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
-  if (!assignments.length) { const row = document.createElement("tr"); const cell = document.createElement("td"); cell.colSpan = 6; cell.className = "empty-state"; cell.textContent = "No keepers or sales recorded yet."; row.append(cell); body.append(row); return; }
+  if (!assignments.length) { const row = document.createElement("tr"); const cell = document.createElement("td"); cell.colSpan = 7; cell.className = "empty-state"; cell.textContent = "No keepers or sales recorded yet."; row.append(cell); body.append(row); return; }
   for (const assignment of assignments) {
     const row = document.createElement("tr");
-    const values = [assignment.playerName, snapshot.config.teams.find((team) => team.id === assignment.teamId)?.name || assignment.teamId, `$${assignment.price}`, assignment.acquisitionType, assignment.status];
+    const details = assignment.acquisitionType === "keeper"
+      ? [assignment.contractYear ? `Year ${assignment.contractYear}` : null, assignment.keeperRound ? `Round ${assignment.keeperRound}` : null].filter(Boolean).join(" · ") || "—"
+      : assignment.nflTeam;
+    const values = [assignment.playerName, snapshot.config.teams.find((team) => team.id === assignment.teamId)?.name || assignment.teamId, `$${assignment.price}`, assignment.acquisitionType, details, assignment.status];
     values.forEach((value) => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
     const actions = document.createElement("td"); actions.className = "history-actions";
-    if (assignment.acquisitionType === "auction") {
-      if (assignment.status === "active") {
-        const edit = document.createElement("button"); edit.type = "button"; edit.className = "secondary"; edit.textContent = "Correct"; edit.addEventListener("click", () => openCorrection(assignment));
-        const undo = document.createElement("button"); undo.type = "button"; undo.className = "danger"; undo.textContent = "Undo"; undo.addEventListener("click", () => void runCommand({ type: "void-sale", targetId: assignment.id })); actions.append(edit, undo);
-      } else {
-        const restore = document.createElement("button"); restore.type = "button"; restore.className = "secondary"; restore.textContent = "Restore"; restore.addEventListener("click", () => void runCommand({ type: "restore-sale", targetId: assignment.id })); actions.append(restore);
-      }
+    if (assignment.status === "active") {
+      actions.append(actionButton("Correct", "secondary", () => openCorrection(assignment)));
+      actions.append(actionButton("Undo", "danger", () => void runCommand({ type: assignment.acquisitionType === "keeper" ? "void-keeper" : "void-sale", targetId: assignment.id })));
+    } else {
+      actions.append(actionButton("Restore", "secondary", () => void runCommand({ type: assignment.acquisitionType === "keeper" ? "restore-keeper" : "restore-sale", targetId: assignment.id })));
     }
     row.append(actions); body.append(row);
   }
@@ -137,31 +258,71 @@ function renderHistory() {
 function updatePendingSale() {
   if (!snapshot) return;
   const input = { player: selectedPlayer, teamId: byId("buying-team").value, price: Number(byId("winning-price").value) };
-  const inputReady = Boolean(selectedPlayer && input.teamId && input.price);
+  const inputReady = Boolean(selectedPlayer && input.teamId && byId("winning-price").value !== "");
   const legality = inputReady ? saleLegality(snapshot, input) : null;
   byId("record-sale").disabled = !legality?.legal;
+  byId("record-sale").textContent = snapshot.auctionStarted ? "Record sale" : "Record first sale & lock keeper entry";
   byId("sale-preview").hidden = !inputReady;
   if (!inputReady) { setStatus(byId("sale-status"), "Choose a player, team, and price."); return; }
   const team = snapshot.teams.find((candidate) => candidate.id === input.teamId);
   byId("preview-sentence").textContent = `${selectedPlayer.name} → ${team?.name || "team"} for $${input.price}`;
-  byId("preview-before").textContent = `$${team?.remainingBudget ?? 0}`; byId("preview-price").textContent = `$${input.price}`; byId("preview-after").textContent = `$${legality?.after?.remainingBudget ?? team?.remainingBudget - input.price}`; byId("preview-max").textContent = `$${legality?.legalMaxBid ?? team?.legalMaxBid ?? 0}`;
-  setStatus(byId("sale-status"), legality?.legal ? "Legal sale — ready to record." : legality?.message || "Sale is not legal.", !legality?.legal);
+  byId("preview-before").textContent = `$${team?.remainingBudget ?? 0}`; byId("preview-price").textContent = `$${input.price}`;
+  byId("preview-after").textContent = `$${legality?.after?.remainingBudget ?? team?.remainingBudget - input.price}`; byId("preview-max").textContent = `$${legality?.legalMaxBid ?? team?.legalMaxBid ?? 0}`;
+  const ready = legality?.legal ? (snapshot.auctionStarted ? "Legal sale — ready to record." : "Legal sale — recording it will lock new keeper entry.") : legality?.message || "Sale is not legal.";
+  setStatus(byId("sale-status"), ready, !legality?.legal);
+}
+
+function updatePendingKeeper() {
+  if (!snapshot) return;
+  if (snapshot.auctionStarted) { byId("keeper-preview").hidden = true; byId("record-keeper").disabled = true; setStatus(byId("keeper-status"), "New keeper entry is locked. Use Correct below for an audited repair."); return; }
+  const input = {
+    player: selectedKeeperPlayer,
+    teamId: byId("keeper-team").value,
+    salary: byId("keeper-salary").value,
+    contractYear: byId("keeper-contract-year").value,
+    keeperRound: byId("keeper-round").value,
+  };
+  const inputReady = Boolean(selectedKeeperPlayer && input.teamId && input.salary !== "");
+  const legality = inputReady ? keeperLegality(snapshot, input) : null;
+  byId("record-keeper").disabled = !legality?.legal; byId("keeper-preview").hidden = !inputReady;
+  if (!inputReady) { setStatus(byId("keeper-status"), "Choose a player, fantasy team, and salary."); return; }
+  const team = snapshot.teams.find((candidate) => candidate.id === input.teamId);
+  byId("keeper-preview-sentence").textContent = `${selectedKeeperPlayer.name} → ${team?.name || "team"} as a $${input.salary} keeper`;
+  byId("keeper-preview-before").textContent = `$${team?.remainingBudget ?? 0}`; byId("keeper-preview-price").textContent = `$${input.salary}`;
+  byId("keeper-preview-after").textContent = `$${legality?.after?.remainingBudget ?? team?.remainingBudget ?? 0}`;
+  byId("keeper-preview-count").textContent = legality?.after ? `${legality.after.keeperCount}/${legality.after.keeperMaximum}` : "—";
+  setStatus(byId("keeper-status"), legality?.legal ? "Legal keeper — ready to record." : legality?.message || "Keeper is not legal.", !legality?.legal);
 }
 
 function publishLocalSnapshot() {
   try {
     localStorage.setItem(cacheKey(), JSON.stringify(snapshot));
     const sanitized = publicSnapshot(snapshot); localStorage.setItem(publicCacheKey(), JSON.stringify(sanitized));
-    const channel = new BroadcastChannel(channelName()); channel.postMessage(sanitized); channel.close();
+    roomChannel?.postMessage(sanitized);
   } catch { /* The live server remains authoritative if browser storage is unavailable. */ }
+}
+
+function renderBoardState() {
+  const connected = Date.now() - boardLastSeen < 5_000;
+  byId("board-state").textContent = connected ? "BOARD CONNECTED" : "BOARD NOT OPEN";
+  byId("board-state").classList.toggle("is-error", !connected);
+}
+
+function attachRoomChannel() {
+  roomChannel?.close(); roomChannel = new BroadcastChannel(channelName());
+  roomChannel.addEventListener("message", (event) => {
+    if (event.data?.type !== "board-heartbeat" || event.data.leagueCode !== leagueCode()) return;
+    boardLastSeen = Date.now(); renderBoardState();
+  });
+  window.setInterval(renderBoardState, 1_000);
 }
 
 function render() {
   if (!snapshot) return;
   byId("header-league").textContent = snapshot.config.leagueName; byId("header-season").textContent = `${snapshot.config.season} · AUCTIONEER · PUBLIC RESULTS ONLY`;
-  byId("board-link").href = `../board/?league=${encodeURIComponent(snapshot.leagueCode)}`;
+  const boardUrl = `../board/?league=${encodeURIComponent(snapshot.leagueCode)}`; byId("board-link").href = boardUrl;
   byId("finish-draft").textContent = snapshot.draftStatus === "complete" ? "Reopen draft" : "Finish draft";
-  renderTeamOptions(); renderTeamSummaries(); renderHistory(); updatePendingSale(); publishLocalSnapshot();
+  renderTeamOptions(); renderKeeperProgress(); renderTeamSummaries(); renderHistory(); updatePendingSale(); updatePendingKeeper(); publishLocalSnapshot(); renderBoardState();
 }
 
 function getQueue() { try { return JSON.parse(localStorage.getItem(queueKey()) || "[]"); } catch { return []; } }
@@ -171,6 +332,8 @@ function renderSync(message = null, error = false) {
   const pending = getQueue().length; const chip = byId("sync-state");
   chip.textContent = message || (pending ? `${pending} PENDING` : "LIVE"); chip.classList.toggle("is-error", error || pending > 0);
 }
+
+function commandStatusElement(command) { return command?.type?.includes("keeper") || command?.statusTarget === "keeper" ? byId("keeper-status") : byId("sale-status"); }
 
 async function flushQueue() {
   if (queueInFlight || !navigator.onLine || !snapshot) return;
@@ -187,21 +350,36 @@ async function flushQueue() {
     }
     snapshot = serverSnapshot = canonical; render(); renderSync();
   } catch (error) {
-    if (error.status && error.status < 500 && error.status !== 409) { const queue = getQueue(); queue.shift(); setQueue(queue); setStatus(byId("sale-status"), `A pending action was rejected: ${error.message}`, true); }
+    if (error.status && error.status < 500 && error.status !== 409) {
+      const queue = getQueue(); const rejected = queue.shift(); setQueue(queue);
+      try { snapshot = serverSnapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`); render(); } catch { /* Keep the last usable snapshot. */ }
+      setStatus(commandStatusElement(rejected), `A pending action was rejected: ${error.message}`, true);
+    }
     renderSync(navigator.onLine ? "RETRYING" : "OFFLINE", true);
     if (navigator.onLine && getQueue().length) window.setTimeout(() => void flushQueue(), 750);
   } finally { queueInFlight = false; }
 }
 
 async function runCommand(fields) {
-  if (!snapshot) return;
+  if (!snapshot) return false;
   const command = { ...fields, idempotencyKey: crypto.randomUUID(), eventId: fields.eventId || `${fields.type}-${crypto.randomUUID()}` };
+  const firstSale = fields.type === "record-sale" && !snapshot.auctionStarted;
   try {
     const optimistic = optimisticSnapshot(snapshot, command);
     const queue = getQueue(); queue.push(command); setQueue(queue); snapshot = optimistic; render(); renderSync();
-    if (fields.type === "record-sale") { clearPlayer(); byId("winning-price").value = snapshot.config.minimumBid; playerSearch.focus(); setStatus(byId("sale-status"), "Sale saved on this device and queued for cloud confirmation."); }
-    await flushQueue();
-  } catch (error) { setStatus(byId("sale-status"), error.message, true); renderSync(null, !navigator.onLine); }
+    if (fields.type === "record-sale") {
+      clearPlayer(); byId("winning-price").value = snapshot.config.minimumBid; playerSearch.focus();
+      setStatus(byId("sale-status"), "Sale saved on this device and queued for cloud confirmation.");
+      if (firstSale) { byId("keeper-setup").open = false; localStorage.setItem(keeperOpenKey(), "false"); }
+      restartClockAfterSale();
+    }
+    if (fields.type === "record-keeper") {
+      clearKeeperPlayer(); setStatus(byId("keeper-status"), "Keeper saved on this device and queued for cloud confirmation.");
+    }
+    await flushQueue(); return true;
+  } catch (error) {
+    setStatus(commandStatusElement(command), error.message, true); renderSync(null, !navigator.onLine); return false;
+  }
 }
 
 async function refresh() {
@@ -211,22 +389,66 @@ async function refresh() {
     const next = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`);
     if (!snapshot || next.revision !== snapshot.revision) { snapshot = serverSnapshot = next; render(); }
     renderSync();
-  } catch (error) { renderSync(navigator.onLine ? "CONNECTION LOST" : "OFFLINE", true); }
+  } catch { renderSync(navigator.onLine ? "CONNECTION LOST" : "OFFLINE", true); }
   finally { refreshInFlight = false; }
 }
 
 function openCorrection(assignment) {
-  byId("correction-target").value = assignment.id; byId("correction-title").textContent = `Correct ${assignment.playerName}`; byId("correction-name").value = assignment.playerName; byId("correction-nfl-team").value = assignment.nflTeam; byId("correction-team").value = assignment.teamId; byId("correction-price").value = assignment.price; byId("correction-position").value = assignment.position; byId("correction-dialog").showModal();
+  const keeper = assignment.acquisitionType === "keeper";
+  byId("correction-dialog").dataset.kind = assignment.acquisitionType;
+  byId("correction-target").value = assignment.id; byId("correction-title").textContent = `Correct ${assignment.playerName}`;
+  byId("correction-name").value = assignment.playerName; byId("correction-nfl-team").value = assignment.nflTeam;
+  byId("correction-team").value = assignment.teamId; byId("correction-price").value = assignment.price;
+  byId("correction-position").value = assignment.position; byId("correction-price").min = keeper ? "0" : String(snapshot.config.minimumBid);
+  byId("correction-team-label").textContent = keeper ? "Fantasy team" : "Buying team";
+  byId("correction-price-label").textContent = keeper ? "Keeper salary" : "Price";
+  byId("correction-keeper-fields").hidden = !keeper;
+  byId("correction-contract-year").value = assignment.contractYear ?? ""; byId("correction-keeper-round").value = assignment.keeperRound ?? "";
+  byId("correction-dialog").showModal();
 }
 
 function populatePositionSelects() {
-  for (const select of [byId("custom-position"), byId("correction-position")]) { select.replaceChildren(); snapshot.config.positionRules.forEach((rule) => select.append(option(rule.id, rule.label))); }
+  for (const select of [byId("custom-position"), byId("correction-position")]) {
+    select.replaceChildren(); snapshot.config.positionRules.forEach((rule) => select.append(option(rule.id, rule.label)));
+  }
 }
+
+function loadClock() {
+  try { clockState = { ...clockState, ...JSON.parse(localStorage.getItem(clockKey()) || "{}") }; } catch { /* Use defaults. */ }
+  clockState.duration = Number(clockState.duration) || 30;
+  if (clockState.running && clockState.deadline) clockState.remaining = Math.max(0, Math.ceil((clockState.deadline - Date.now()) / 1_000));
+  byId("clock-enabled").checked = clockState.enabled; byId("clock-duration").value = String(clockState.duration);
+  renderClock(); clearInterval(clockTimer); clockTimer = window.setInterval(tickClock, 250);
+}
+
+function saveClock() { try { localStorage.setItem(clockKey(), JSON.stringify(clockState)); } catch { /* Clock remains usable in memory. */ } }
+function renderClock() {
+  const display = byId("clock-display"); display.textContent = clockState.enabled ? String(clockState.remaining).padStart(2, "0") : "OFF";
+  display.classList.toggle("is-expired", clockState.enabled && clockState.remaining <= 0);
+  byId("clock-start").disabled = !clockState.enabled || clockState.running;
+  byId("clock-pause").disabled = !clockState.enabled || !clockState.running;
+  byId("clock-reset").disabled = !clockState.enabled;
+}
+function tickClock() {
+  if (!clockState.running || !clockState.deadline) return;
+  const remaining = Math.max(0, Math.ceil((clockState.deadline - Date.now()) / 1_000));
+  if (remaining === clockState.remaining) return;
+  clockState.remaining = remaining;
+  if (!remaining) { clockState.running = false; clockState.deadline = null; }
+  saveClock(); renderClock();
+}
+function startClock() { if (!clockState.enabled) return; clockState.running = true; clockState.deadline = Date.now() + clockState.remaining * 1_000; saveClock(); renderClock(); }
+function pauseClock() { tickClock(); clockState.running = false; clockState.deadline = null; saveClock(); renderClock(); }
+function resetClock(run = false) { clockState.remaining = clockState.duration; clockState.running = run && clockState.enabled; clockState.deadline = clockState.running ? Date.now() + clockState.remaining * 1_000 : null; saveClock(); renderClock(); }
+function restartClockAfterSale() { if (clockState.enabled) resetClock(true); }
 
 async function enterConsole() {
   loginPanel.hidden = true; consolePanel.hidden = false;
   playerPool = await fetch("../player-pool.json", { cache: "force-cache" }).then((response) => response.ok ? response.json() : []);
-  populatePositionSelects(); byId("winning-price").value = snapshot.config.minimumBid; render();
+  populatePositionSelects(); byId("winning-price").value = snapshot.config.minimumBid;
+  attachRoomChannel();
+  const savedOpen = localStorage.getItem(keeperOpenKey()); byId("keeper-setup").open = savedOpen == null ? !snapshot.auctionStarted : savedOpen === "true";
+  loadClock(); render();
   pollTimer ||= window.setInterval(() => void refresh(), 1_200); playerSearch.focus(); void flushQueue();
 }
 
@@ -240,28 +462,91 @@ byId("login-form").addEventListener("submit", async (event) => {
     if (byId("open-board-after-login").checked) window.open(`../board/?league=${encodeURIComponent(code)}`, "pips-draft-day-board");
     await enterConsole();
   } catch (error) {
-    try { const code = normalizeLeagueCode(byId("league-code").value); const cached = JSON.parse(localStorage.getItem(cacheKey(code)) || "null"); const verified = localStorage.getItem(verifierKey(code)) === await accessVerifier(byId("access-code").value); if (cached && verified) { snapshot = cached; await enterConsole(); renderSync("OFFLINE CACHE", true); return; } } catch { /* Continue with the sign-in error. */ }
+    try {
+      const code = normalizeLeagueCode(byId("league-code").value); const cached = JSON.parse(localStorage.getItem(cacheKey(code)) || "null");
+      const verified = localStorage.getItem(verifierKey(code)) === await accessVerifier(byId("access-code").value);
+      if (cached && verified) { snapshot = cached; await enterConsole(); renderSync("OFFLINE CACHE", true); return; }
+    } catch { /* Continue with the sign-in error. */ }
     setStatus(byId("login-status"), error.message, true);
   }
 });
 
-playerSearch.addEventListener("input", () => { if (selectedPlayer && playerSearch.value !== selectedPlayer.name) selectedPlayer = null; byId("selected-player").hidden = !selectedPlayer; renderSearchResults(); updatePendingSale(); });
-playerSearch.addEventListener("keydown", (event) => { if (event.key === "Enter" && !selectedPlayer) { const first = byId("player-results").querySelector("button"); if (first) { event.preventDefault(); first.click(); } } });
-byId("clear-player").addEventListener("click", clearPlayer); byId("focus-search").addEventListener("click", () => playerSearch.focus());
+bindPredictiveSearch("sale"); bindPredictiveSearch("keeper");
+byId("clear-player").addEventListener("click", clearPlayer); byId("keeper-clear-player").addEventListener("click", clearKeeperPlayer);
+byId("focus-search").addEventListener("click", () => playerSearch.focus());
 byId("buying-team").addEventListener("change", updatePendingSale); byId("winning-price").addEventListener("input", updatePendingSale);
-byId("sale-form").addEventListener("submit", (event) => { event.preventDefault(); const legality = saleLegality(snapshot, { player: selectedPlayer, teamId: byId("buying-team").value, price: Number(byId("winning-price").value) }); if (!legality.legal) { setStatus(byId("sale-status"), legality.message, true); return; } void runCommand({ type: "record-sale", player: selectedPlayer, teamId: legality.team.id, price: legality.price }); });
-byId("add-custom-player").addEventListener("click", () => { byId("custom-name").value = playerSearch.value.trim(); byId("custom-player-dialog").showModal(); });
-byId("custom-player-form").addEventListener("submit", (event) => { if (event.submitter?.value === "cancel") return; event.preventDefault(); const name = byId("custom-name").value.trim(); const position = byId("custom-position").value; const player = { id: `custom-${crypto.randomUUID()}`, name, position, nflTeam: byId("custom-nfl-team").value.trim() || "FA" }; byId("custom-player-dialog").close(); void runCommand({ type: "add-player", player }).then(() => selectPlayer(player)); });
-byId("correction-form").addEventListener("submit", (event) => { if (event.submitter?.value === "cancel") return; event.preventDefault(); const targetId = byId("correction-target").value; const target = snapshot.assignments.find((assignment) => assignment.id === targetId); const command = { type: "correct-sale", targetId, player: { id: target?.playerId || `corrected-${targetId}`, name: byId("correction-name").value, position: byId("correction-position").value, nflTeam: byId("correction-nfl-team").value || "FA" }, teamId: byId("correction-team").value, price: Number(byId("correction-price").value) }; byId("correction-dialog").close(); void runCommand(command); });
-byId("finish-draft").addEventListener("click", () => void runCommand({ type: snapshot.draftStatus === "complete" ? "reopen-draft" : "finish-draft" }));
-byId("export-csv").addEventListener("click", () => download(draftCsv(snapshot), `${snapshot.leagueCode.toLowerCase()}-auction.csv`, "text/csv;charset=utf-8"));
-byId("export-json").addEventListener("click", () => download(JSON.stringify({ kind: "pips-draft-day-backup", exportedAt: new Date().toISOString(), snapshot }, null, 2), `${snapshot.leagueCode.toLowerCase()}-auction-backup.json`, "application/json"));
+for (const id of ["keeper-team", "keeper-salary", "keeper-contract-year", "keeper-round"]) byId(id).addEventListener("input", updatePendingKeeper);
 
-function download(contents, filename, type) { const url = URL.createObjectURL(new Blob([contents], { type })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); }
+byId("keeper-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const input = { player: selectedKeeperPlayer, teamId: byId("keeper-team").value, salary: byId("keeper-salary").value, contractYear: byId("keeper-contract-year").value, keeperRound: byId("keeper-round").value };
+  const legality = keeperLegality(snapshot, input); if (!legality.legal) { setStatus(byId("keeper-status"), legality.message, true); return; }
+  void runCommand({ type: "record-keeper", ...input });
+});
+
+byId("sale-form").addEventListener("submit", (event) => {
+  event.preventDefault(); const legality = saleLegality(snapshot, { player: selectedPlayer, teamId: byId("buying-team").value, price: Number(byId("winning-price").value) });
+  if (!legality.legal) { setStatus(byId("sale-status"), legality.message, true); return; }
+  void runCommand({ type: "record-sale", player: selectedPlayer, teamId: legality.team.id, price: legality.price });
+});
+
+function openCustomPlayer(target) {
+  customPlayerTarget = target; const search = target === "keeper" ? keeperSearch : playerSearch;
+  byId("custom-name").value = search.value.trim(); byId("custom-player-dialog").showModal();
+}
+byId("add-custom-player").addEventListener("click", () => openCustomPlayer("sale"));
+byId("add-custom-keeper-player").addEventListener("click", () => openCustomPlayer("keeper"));
+byId("custom-player-form").addEventListener("submit", async (event) => {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault(); const name = byId("custom-name").value.trim(); const position = byId("custom-position").value;
+  const player = { id: `custom-${crypto.randomUUID()}`, name, position, nflTeam: byId("custom-nfl-team").value.trim() || "FA" };
+  byId("custom-player-dialog").close();
+  if (await runCommand({ type: "add-player", player, statusTarget: customPlayerTarget })) customPlayerTarget === "keeper" ? selectKeeperPlayer(player) : selectPlayer(player);
+});
+
+byId("correction-form").addEventListener("submit", (event) => {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault(); const targetId = byId("correction-target").value; const target = snapshot.assignments.find((assignment) => assignment.id === targetId);
+  const player = { id: target?.playerId || `corrected-${targetId}`, name: byId("correction-name").value, position: byId("correction-position").value, nflTeam: byId("correction-nfl-team").value || "FA" };
+  const command = target?.acquisitionType === "keeper"
+    ? { type: "correct-keeper", targetId, player, teamId: byId("correction-team").value, salary: byId("correction-price").value, contractYear: byId("correction-contract-year").value, keeperRound: byId("correction-keeper-round").value }
+    : { type: "correct-sale", targetId, player, teamId: byId("correction-team").value, price: Number(byId("correction-price").value) };
+  byId("correction-dialog").close(); void runCommand(command);
+});
+
+byId("keeper-setup").addEventListener("toggle", () => { if (snapshot) localStorage.setItem(keeperOpenKey(), String(byId("keeper-setup").open)); });
+byId("copy-board-link").addEventListener("click", async () => {
+  const url = new URL(byId("board-link").href, location.href).href;
+  try { await navigator.clipboard.writeText(url); byId("copy-board-link").textContent = "Board link copied"; window.setTimeout(() => { byId("copy-board-link").textContent = "Copy board link"; }, 1_500); }
+  catch { setStatus(byId("sale-status"), `Board link: ${url}`); }
+});
+byId("finish-draft").addEventListener("click", () => void runCommand({ type: snapshot.draftStatus === "complete" ? "reopen-draft" : "finish-draft" }));
+byId("export-csv").addEventListener("click", () => exportFile(byId("export-csv"), draftCsv(snapshot), `${snapshot.leagueCode.toLowerCase()}-auction-results.csv`, "text/csv;charset=utf-8", "CSV download started"));
+byId("export-json").addEventListener("click", () => exportFile(byId("export-json"), JSON.stringify({ kind: "pips-draft-day-backup", exportedAt: new Date().toISOString(), snapshot }, null, 2), `${snapshot.leagueCode.toLowerCase()}-auction-backup.json`, "application/json", "Backup download started"));
+
+byId("clock-enabled").addEventListener("change", () => { clockState.enabled = byId("clock-enabled").checked; resetClock(false); });
+byId("clock-duration").addEventListener("change", () => { clockState.duration = Number(byId("clock-duration").value); resetClock(false); });
+byId("clock-start").addEventListener("click", startClock); byId("clock-pause").addEventListener("click", pauseClock); byId("clock-reset").addEventListener("click", () => resetClock(false));
+
+function download(contents, filename, type) {
+  const url = URL.createObjectURL(new Blob([contents], { type })); const link = document.createElement("a");
+  link.href = url; link.download = filename; link.hidden = true; document.body.append(link); link.click(); link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+function exportFile(button, contents, filename, type, confirmation) {
+  const originalLabel = button.dataset.originalLabel || button.textContent;
+  button.dataset.originalLabel = originalLabel; download(contents, filename, type); button.textContent = confirmation;
+  window.setTimeout(() => { button.textContent = originalLabel; }, 1_500);
+}
 
 document.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); playerSearch.focus(); }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && snapshot) { const latest = [...snapshot.assignments].reverse().find((assignment) => assignment.acquisitionType === "auction" && assignment.status === "active"); if (latest) { event.preventDefault(); void runCommand({ type: "void-sale", targetId: latest.id }); } }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && snapshot) {
+    const active = [...snapshot.assignments].filter((assignment) => assignment.status === "active").sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    const latest = snapshot.auctionStarted ? active.find((assignment) => assignment.acquisitionType === "auction") : active[0];
+    if (latest) { event.preventDefault(); void runCommand({ type: latest.acquisitionType === "keeper" ? "void-keeper" : "void-sale", targetId: latest.id }); }
+  }
 });
 window.addEventListener("online", () => void flushQueue()); window.addEventListener("offline", () => renderSync("OFFLINE", true));
 const initialLeague = query.get("league") || localStorage.getItem("pips-draft-day-last-league") || ""; byId("league-code").value = initialLeague;
