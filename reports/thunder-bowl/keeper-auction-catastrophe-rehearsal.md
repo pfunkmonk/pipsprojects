@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 — Keeper-to-Auction Catastrophe Rehearsal
 
-Generated: 2026-08-16T23:28:26.233Z
+Generated: 2026-08-17T21:27:42.504Z
 
 Result: **PASS**
 
@@ -11,10 +11,10 @@ This accepted deterministic gate uses the active validated 716-player practice p
 - 716 current practice players and 177 authenticated keeper candidates
 - 12 teams × 2 keepers + 144 auction purchases = 168 final rostered players
 - 174 physical audit events; 170 active events
-- Event replay p95: 0.8329 ms; maximum: 2.2388 ms
-- Public snapshot p95: 0.2832 ms; maximum: 0.2832 ms
-- Offline reconnect merge: 1.4222 ms
-- Recovery validation/replay: 45.699 ms
+- Event replay p95: 0.5259 ms; maximum: 0.8458 ms
+- Public snapshot p95: 0.3328 ms; maximum: 0.3328 ms
+- Offline reconnect merge: 1.3785 ms
+- Recovery validation/replay: 32.7458 ms
 
 ## Gate checks
 
@@ -54,8 +54,8 @@ This accepted deterministic gate uses the active validated 716-player practice p
 | The Hobbits | $100 | 2 | 14 | $53 | QB 2, RB 4, WR 4, TE 2, K 1, DST 1 |
 | Three Amigos | $100 | 2 | 14 | $55 | QB 2, RB 4, WR 4, TE 2, K 1, DST 1 |
 
-Pack SHA-256: `0d09fa17cdeed9d0dfe366a84c4a86481fa3c51282a392c14be221f6680d32fb`
+Pack SHA-256: `5e41275b354bf1c2b1b2820f91a0f81d411cffcac9a36b2c865d190720c3440c`
 
-Engine SHA-256: `861931cece846e63646b0f04edfb2ca19da993363d85161804a46cefa915663c`
+Engine SHA-256: `b6a7922ba7ca09c78641cfaf47a85ed66b518d2bfe5a6596ca3f10729571b2ec`
 
 Ledger SHA-256: `2d98a6dfcd65baa0a77b15b55e140984d193e1216a6ae5732b8a7455f6fabc19`

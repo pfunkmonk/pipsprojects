@@ -55,6 +55,7 @@ test("explicit logout expires every Draft Day role cookie", async () => {
     const cookie = cookies.find((value) => value.startsWith(`${name}=`));
     assert.ok(cookie, `${name} must be cleared`);
     assert.match(cookie, /Max-Age=0/);
+    assert.match(cookie, /Expires=Thu, 01 Jan 1970 00:00:00 GMT/);
     assert.match(cookie, /HttpOnly/);
     assert.match(cookie, /Secure/);
     assert.match(cookie, /SameSite=Strict/);

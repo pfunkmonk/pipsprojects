@@ -8,7 +8,7 @@
   <title>Pip's Draft Day Tool</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=20260817i">
+  <link rel="stylesheet" href="./app.css?v=20260817j">
   <link rel="stylesheet" href="./shell-safety.css">
 </head>
 <body>
@@ -64,7 +64,7 @@
               <label>Nomination order<select id="nomination-mode"><option value="snake">Snake</option><option value="linear">Repeat 1 through N</option><option value="manual">Do not track</option></select></label>
               <label>Roster minimum<input id="roster-minimum" type="number" min="1" value="8" required></label>
               <label>Roster maximum<input id="roster-maximum" type="number" min="1" value="14" required></label>
-              <label>Maximum keepers per team (optional)<input id="keeper-maximum" type="number" min="0" placeholder="No separate limit"><small>Leave blank to use only the overall roster maximum.</small></label>
+              <label>Maximum keepers per team (optional)<input id="keeper-maximum" type="number" min="0" placeholder="Same as roster maximum"><small>Leave blank to use the overall roster maximum.</small></label>
             </div>
             <h3>Position limits</h3>
             <p class="privacy-note">Minimums define a legal finished roster. Maximums are optional: leave one blank to allow any number at that position up to the overall roster maximum.</p>
@@ -115,6 +115,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./setup.mjs?v=20260817i"></script>
+  <script type="module" src="./setup.mjs?v=20260817j"></script>
 </body>
 </html>

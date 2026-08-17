@@ -542,7 +542,6 @@ export function saleLegality(snapshot, input) {
     if ((team.positionCounts[player.position] || 0) >= positionMaximum(rule, snapshot.config.rosterMaximum)) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
     if (price < snapshot.config.minimumBid) throw new Error(`The minimum bid is $${snapshot.config.minimumBid}.`);
     if ((price - snapshot.config.minimumBid) % snapshot.config.bidIncrement !== 0) throw new Error(`Prices must follow the $${snapshot.config.bidIncrement} bid increment.`);
-    const activeForTeam = active.filter((assignment) => assignment.teamId === teamId);
     const candidate = {
       id: targetId || "candidate-sale",
       ...assignmentPlayerFields(player),
@@ -557,7 +556,7 @@ export function saleLegality(snapshot, input) {
     if (price > candidateLegalMax || after.remainingBudget < after.requiredSlots * snapshot.config.minimumBid) {
       throw new Error(`${team.name} can bid at most $${candidateLegalMax} on this player and still complete a legal roster.`);
     }
-    return { legal: true, player, team, price, after, legalMaxBid: candidateLegalMax, activeForTeam };
+    return { legal: true, player, team, price, after, legalMaxBid: candidateLegalMax };
   } catch (error) {
     const team = snapshot?.teams?.find((candidate) => candidate.id === input?.teamId);
     return { legal: false, message: error.message, legalMaxBid: team?.legalMaxBid ?? 0 };

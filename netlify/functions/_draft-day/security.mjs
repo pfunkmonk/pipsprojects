@@ -51,7 +51,7 @@ export function createRoleCookie({ role, leagueCode, secret, secure = true, maxA
 }
 
 export function clearRoleCookies({ secure = true } = {}) {
-  return Object.values(ROLE_COOKIES).map((name) => `${name}=; Path=/; Max-Age=0; HttpOnly${secure ? "; Secure" : ""}; SameSite=Strict`);
+  return Object.values(ROLE_COOKIES).map((name) => `${name}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secure ? "; Secure" : ""}; SameSite=Strict`);
 }
 
 function cookieValue(header, name) {

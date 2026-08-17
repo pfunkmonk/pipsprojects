@@ -1,13 +1,14 @@
 import { DEFAULT_POSITION_RULES, normalizeLeagueCode, normalizeLeagueConfig } from "./core.mjs";
+import { clearRememberedAccess, rememberLeague, rememberedLeague } from "./session-storage.mjs";
 
 const byId = (id) => document.getElementById(id);
 const displayLeagueCode = (value) => String(value ?? "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
 const steps = [...document.querySelectorAll("[data-wizard-step]")];
 const pills = [...document.querySelectorAll("[data-step]")];
-const LAST_ORGANIZER_LEAGUE_KEY = "pips-draft-day-last-organizer-league";
 let currentStep = 0;
 let editingSnapshot = null;
 let resultAccess = null;
+let currentOrganizerLeague = "";
 
 function setStatus(element, message, error = false) {
   element.textContent = message;
@@ -131,6 +132,7 @@ function openSetup() {
 
 function loadSnapshot(snapshot) {
   editingSnapshot = snapshot;
+  currentOrganizerLeague = snapshot.leagueCode;
   byId("logout").hidden = false;
   const config = snapshot.config;
   byId("setup-title").textContent = `Manage ${config.leagueName}`;
@@ -152,6 +154,7 @@ async function api(url, options = {}) {
 
 function showResult(snapshot, access) {
   const friendlyCode = displayLeagueCode(snapshot.leagueCode);
+  currentOrganizerLeague = snapshot.leagueCode;
   resultAccess = { leagueCode: friendlyCode, leagueName: snapshot.config.leagueName, ...access };
   byId("logout").hidden = false;
   byId("setup-panel").hidden = true; byId("manage-panel").hidden = true; byId("result-panel").hidden = false;
@@ -172,7 +175,6 @@ pills.forEach((pill) => pill.addEventListener("click", () => showStep(Number(pil
 byId("previous-step").addEventListener("click", () => showStep(currentStep - 1));
 byId("next-step").addEventListener("click", () => { try { gatherConfig(); showStep(currentStep + 1); setStatus(byId("setup-status"), ""); } catch (error) { setStatus(byId("setup-status"), error.message, true); } });
 byId("team-count").addEventListener("input", () => renderTeams());
-byId("default-pool").addEventListener("change", () => {});
 byId("apply-default-pool").addEventListener("click", () => { const value = byId("default-pool").value; byId("team-rows").querySelectorAll("[data-team-pool]").forEach((field) => { field.value = value; }); });
 byId("add-position").addEventListener("click", () => {
   const rules = [...byId("position-rules").querySelectorAll("tr")].map((row) => ({ id: row.querySelector("[data-position-id]").value, label: row.querySelector("[data-position-label]").value, minimum: row.querySelector("[data-position-min]").value, maximum: row.querySelector("[data-position-max]").value }));
@@ -189,8 +191,9 @@ byId("manage-form").addEventListener("submit", async (event) => {
   try {
     const leagueCode = normalizeLeagueCode(byId("manage-league-code").value); byId("manage-league-code").value = leagueCode;
     await api("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode, role: "admin", code: byId("manage-admin-code").value }) });
+    byId("manage-admin-code").value = "";
     const snapshot = await api(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode)}`);
-    localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, leagueCode); localStorage.setItem("pips-draft-day-last-league", leagueCode);
+    rememberLeague(localStorage, "organizer", leagueCode);
     loadSnapshot(snapshot); setStatus(byId("manage-status"), "Organizer access confirmed.");
   } catch (error) { setStatus(byId("manage-status"), error.message, true); }
 });
@@ -205,7 +208,7 @@ byId("setup-form").addEventListener("submit", async (event) => {
     } else {
       const access = { adminCode: byId("admin-code").value, auctioneerCode: byId("auctioneer-code").value, boardCode: byId("board-code").value };
       const snapshot = await api("/api/draft-day/leagues", { method: "POST", body: JSON.stringify({ config, access }) });
-      localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, snapshot.leagueCode); localStorage.setItem("pips-draft-day-last-league", snapshot.leagueCode);
+      rememberLeague(localStorage, "organizer", snapshot.leagueCode);
       showResult(snapshot, access);
     }
   } catch (error) { setStatus(byId("setup-status"), error.message, true); } finally { byId("save-league").disabled = false; }
@@ -224,7 +227,7 @@ async function logOut() {
   const status = byId("setup-panel").hidden ? byId("manage-status") : byId("setup-status");
   try {
     await api("/api/draft-day/auth", { method: "DELETE" });
-    for (const key of [LAST_ORGANIZER_LEAGUE_KEY, "pips-draft-day-last-auctioneer-league", "pips-draft-day-last-board-league", "pips-draft-day-last-league"]) localStorage.removeItem(key);
+    clearRememberedAccess(localStorage, currentOrganizerLeague);
     location.reload();
   } catch (error) {
     button.disabled = false; button.textContent = "Log out";
@@ -239,7 +242,7 @@ async function restoreOrganizerSession(value) {
   try {
     const leagueCode = normalizeLeagueCode(value); byId("manage-league-code").value = leagueCode; setStatus(byId("manage-status"), "Restoring organizer session…");
     const snapshot = await api(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode)}`);
-    localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, leagueCode); localStorage.setItem("pips-draft-day-last-league", leagueCode);
+    rememberLeague(localStorage, "organizer", leagueCode);
     loadSnapshot(snapshot); setStatus(byId("manage-status"), "Organizer session restored."); return true;
   } catch (error) {
     setStatus(byId("manage-status"), error.status === 401 ? "Enter the organizer code to manage this league." : error.message, error.status !== 401); return false;
@@ -249,5 +252,5 @@ async function restoreOrganizerSession(value) {
 byId("season").value = new Date().getFullYear();
 renderPositionRules(); renderTeams([]); generateCodes(); showStep(0);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});
-const initialOrganizerLeague = new URLSearchParams(location.search).get("league") || localStorage.getItem(LAST_ORGANIZER_LEAGUE_KEY) || localStorage.getItem("pips-draft-day-last-league") || ""; byId("manage-league-code").value = initialOrganizerLeague;
+const initialOrganizerLeague = new URLSearchParams(location.search).get("league") || rememberedLeague(localStorage, "organizer"); byId("manage-league-code").value = initialOrganizerLeague;
 void restoreOrganizerSession(initialOrganizerLeague);

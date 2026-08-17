@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-16T23:28:26.233Z",
+  "generatedAt": "2026-08-17T21:27:42.504Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "0d09fa17cdeed9d0dfe366a84c4a86481fa3c51282a392c14be221f6680d32fb",
-    "engineSha256": "861931cece846e63646b0f04edfb2ca19da993363d85161804a46cefa915663c",
-    "scriptSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667"
+    "packSha256": "5e41275b354bf1c2b1b2820f91a0f81d411cffcac9a36b2c865d190720c3440c",
+    "engineSha256": "b6a7922ba7ca09c78641cfaf47a85ed66b518d2bfe5a6596ca3f10729571b2ec",
+    "scriptSha256": "ec0fad0251f42ca546b5536b2488588feda9e2d92bfd660a6ae2e64b54a36f9e"
   },
   "pack": {
     "id": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001",
@@ -44,27 +44,27 @@
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.4222,
+    "reconnectMs": 1.3785,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 45.699,
+    "durationMs": 32.7458,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.3408,
-      "p95Ms": 0.8329,
-      "maximumMs": 2.2388
+      "medianMs": 0.2379,
+      "p95Ms": 0.5259,
+      "maximumMs": 0.8458
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.2218,
-      "p95Ms": 0.2832,
-      "maximumMs": 0.2832
+      "medianMs": 0.1775,
+      "p95Ms": 0.3328,
+      "maximumMs": 0.3328
     }
   },
   "finalState": {

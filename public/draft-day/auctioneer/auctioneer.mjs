@@ -8,6 +8,7 @@ import {
   publicSnapshot,
   saleLegality,
 } from "../core.mjs";
+import { clearRememberedAccess, rememberLeague, rememberedLeague, savedVerifier, saveVerifier } from "../session-storage.mjs";
 
 const byId = (id) => document.getElementById(id);
 const loginPanel = byId("login-panel");
@@ -15,9 +16,7 @@ const consolePanel = byId("console");
 const playerSearch = byId("player-search");
 const keeperSearch = byId("keeper-player-search");
 const query = new URLSearchParams(location.search);
-const LAST_AUCTIONEER_LEAGUE_KEY = "pips-draft-day-last-auctioneer-league";
 let snapshot = null;
-let serverSnapshot = null;
 let playerPool = [];
 let selectedPlayer = null;
 let selectedKeeperPlayer = null;
@@ -25,6 +24,7 @@ let customPlayerTarget = "sale";
 let refreshInFlight = false;
 let queueInFlight = false;
 let pollTimer = null;
+let boardStateTimer = null;
 let roomChannel = null;
 let boardLastSeen = 0;
 let clockTimer = null;
@@ -35,7 +35,6 @@ function cacheKey(code = leagueCode()) { return `pips-draft-day-auctioneer-${cod
 function queueKey(code = leagueCode()) { return `pips-draft-day-outbox-${code}`; }
 function publicCacheKey(code = leagueCode()) { return `pips-draft-day-board-${code}`; }
 function channelName(code = leagueCode()) { return `pips-draft-day-${code}`; }
-function verifierKey(code) { return `pips-draft-day-auctioneer-verifier-${code}`; }
 function keeperOpenKey() { return `pips-draft-day-keeper-open-${leagueCode()}`; }
 function clockKey() { return `pips-draft-day-clock-${leagueCode()}`; }
 
@@ -323,7 +322,8 @@ function attachRoomChannel() {
     if (event.data?.type !== "board-heartbeat" || event.data.leagueCode !== leagueCode()) return;
     boardLastSeen = Date.now(); renderBoardState();
   });
-  window.setInterval(renderBoardState, 1_000);
+  if (boardStateTimer) window.clearInterval(boardStateTimer);
+  boardStateTimer = window.setInterval(renderBoardState, 1_000);
 }
 
 function render() {
@@ -351,17 +351,20 @@ async function flushQueue() {
     let queue = getQueue();
     if (!queue.length) { renderSync(); return; }
     let canonical = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`);
-    serverSnapshot = canonical;
     while (queue.length) {
       const command = { ...queue[0], leagueCode: canonical.leagueCode, expectedRevision: canonical.revision };
       canonical = await request("/api/draft-day/commands", { method: "POST", body: JSON.stringify(command) });
       queue.shift(); setQueue(queue);
     }
-    snapshot = serverSnapshot = canonical; render(); renderSync();
+    snapshot = canonical; render(); renderSync();
   } catch (error) {
+    if (error.status === 401) {
+      requireAuctioneerSignIn();
+      return;
+    }
     if (error.status && error.status < 500 && error.status !== 409) {
       const queue = getQueue(); const rejected = queue.shift(); setQueue(queue);
-      try { snapshot = serverSnapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`); render(); } catch { /* Keep the last usable snapshot. */ }
+      try { snapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`); render(); } catch { /* Keep the last usable snapshot. */ }
       setStatus(commandStatusElement(rejected), `A pending action was rejected: ${error.message}`, true);
     }
     renderSync(navigator.onLine ? "RETRYING" : "OFFLINE", true);
@@ -394,12 +397,16 @@ async function runCommand(fields) {
 
 async function refresh() {
   if (refreshInFlight || queueInFlight || !snapshot || getQueue().length) return;
+  if (!navigator.onLine) { renderSync("OFFLINE", true); return; }
   refreshInFlight = true;
   try {
     const next = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode())}`);
-    if (!snapshot || next.revision !== snapshot.revision) { snapshot = serverSnapshot = next; render(); }
+    if (!snapshot || next.revision !== snapshot.revision) { snapshot = next; render(); }
     renderSync();
-  } catch { renderSync(navigator.onLine ? "CONNECTION LOST" : "OFFLINE", true); }
+  } catch (error) {
+    if (error.status === 401) requireAuctioneerSignIn();
+    else renderSync(navigator.onLine ? "CONNECTION LOST" : "OFFLINE", true);
+  }
   finally { refreshInFlight = false; }
 }
 
@@ -454,12 +461,26 @@ function restartClockAfterSale() { if (clockState.enabled) resetClock(true); }
 
 async function enterConsole() {
   loginPanel.hidden = true; consolePanel.hidden = false;
-  playerPool = await fetch("../player-pool.json", { cache: "force-cache" }).then((response) => response.ok ? response.json() : []);
+  if (!playerPool.length) playerPool = await fetch("../player-pool.json", { cache: "force-cache" }).then((response) => response.ok ? response.json() : []);
   populatePositionSelects(); byId("winning-price").value = snapshot.config.minimumBid;
   attachRoomChannel();
   const savedOpen = localStorage.getItem(keeperOpenKey()); byId("keeper-setup").open = savedOpen == null ? !snapshot.auctionStarted : savedOpen === "true";
   loadClock(); render();
   pollTimer ||= window.setInterval(() => void refresh(), 1_200); playerSearch.focus(); void flushQueue();
+}
+
+function stopConsoleResources() {
+  if (pollTimer) window.clearInterval(pollTimer);
+  if (boardStateTimer) window.clearInterval(boardStateTimer);
+  if (clockTimer) window.clearInterval(clockTimer);
+  pollTimer = null; boardStateTimer = null; clockTimer = null;
+  roomChannel?.close(); roomChannel = null; boardLastSeen = 0;
+}
+
+function requireAuctioneerSignIn(message = "Auctioneer sign-in expired. Enter the auctioneer code again.") {
+  stopConsoleResources(); consolePanel.hidden = true; loginPanel.hidden = false; byId("access-code").value = "";
+  const pending = getQueue().length;
+  setStatus(byId("login-status"), pending ? `${message} ${pending} pending ${pending === 1 ? "action is" : "actions are"} safe on this device and will sync after sign-in.` : message, true);
 }
 
 async function restoreAuctioneerSession(value) {
@@ -468,14 +489,14 @@ async function restoreAuctioneerSession(value) {
   try {
     const code = normalizeLeagueCode(value); byId("league-code").value = code;
     setStatus(byId("login-status"), "Restoring auctioneer session…");
-    snapshot = serverSnapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(code)}`);
-    localStorage.setItem(LAST_AUCTIONEER_LEAGUE_KEY, code); localStorage.setItem("pips-draft-day-last-league", code);
+    snapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(code)}`);
+    rememberLeague(localStorage, "auctioneer", code);
     await enterConsole(); return true;
   } catch (error) {
     if (error.status !== 401) {
       try {
         const code = normalizeLeagueCode(value); const cached = JSON.parse(localStorage.getItem(cacheKey(code)) || "null");
-        if (cached && localStorage.getItem(verifierKey(code))) { snapshot = cached; await enterConsole(); renderSync("OFFLINE CACHE", true); return true; }
+        if (cached && savedVerifier(localStorage, "auctioneer", code)) { snapshot = cached; await enterConsole(); renderSync("OFFLINE CACHE", true); return true; }
       } catch { /* Leave the sign-in form available. */ }
     }
     loginPanel.hidden = false; setStatus(byId("login-status"), error.status === 401 ? "Enter the auctioneer code to open this league." : error.message, error.status !== 401); return false;
@@ -484,19 +505,28 @@ async function restoreAuctioneerSession(value) {
 
 byId("login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); setStatus(byId("login-status"), "Opening auction room…");
+  let code = ""; let verifier = ""; let boardWindow = null;
   try {
-    const code = normalizeLeagueCode(byId("league-code").value); byId("league-code").value = code;
-    await request("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode: code, role: "auctioneer", code: byId("access-code").value }) });
-    localStorage.setItem(verifierKey(code), await accessVerifier(byId("access-code").value));
-    snapshot = serverSnapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(code)}`); localStorage.setItem(LAST_AUCTIONEER_LEAGUE_KEY, code); localStorage.setItem("pips-draft-day-last-league", code);
-    if (byId("open-board-after-login").checked) window.open(`../board/?league=${encodeURIComponent(code)}`, "pips-draft-day-board");
+    code = normalizeLeagueCode(byId("league-code").value); byId("league-code").value = code;
+    if (byId("open-board-after-login").checked) boardWindow = window.open("about:blank", "pips-draft-day-board");
+    const accessCode = byId("access-code").value;
+    await request("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode: code, role: "auctioneer", code: accessCode }) });
+    verifier = await accessVerifier(accessCode); saveVerifier(localStorage, "auctioneer", code, verifier); byId("access-code").value = "";
+    snapshot = await request(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(code)}`); rememberLeague(localStorage, "auctioneer", code);
     await enterConsole();
+    if (byId("open-board-after-login").checked) {
+      const boardUrl = `../board/?league=${encodeURIComponent(code)}`;
+      if (boardWindow) boardWindow.location.replace(boardUrl);
+      else setStatus(byId("sale-status"), "The browser blocked the Draft Board window. Use Open board in the header.", true);
+    }
   } catch (error) {
     try {
-      const code = normalizeLeagueCode(byId("league-code").value); const cached = JSON.parse(localStorage.getItem(cacheKey(code)) || "null");
-      const verified = localStorage.getItem(verifierKey(code)) === await accessVerifier(byId("access-code").value);
-      if (cached && verified) { snapshot = cached; await enterConsole(); renderSync("OFFLINE CACHE", true); return; }
+      code ||= normalizeLeagueCode(byId("league-code").value); const cached = JSON.parse(localStorage.getItem(cacheKey(code)) || "null");
+      verifier ||= await accessVerifier(byId("access-code").value);
+      const verified = savedVerifier(localStorage, "auctioneer", code) === verifier;
+      if (cached && verified) { snapshot = cached; byId("access-code").value = ""; await enterConsole(); renderSync("OFFLINE CACHE", true); return; }
     } catch { /* Continue with the sign-in error. */ }
+    if (boardWindow && code) boardWindow.location.replace(`../board/?league=${encodeURIComponent(code)}`);
     setStatus(byId("login-status"), error.message, true);
   }
 });
@@ -560,7 +590,7 @@ async function logOut() {
   try {
     const code = leagueCode();
     await request("/api/draft-day/auth", { method: "DELETE" });
-    for (const key of [LAST_AUCTIONEER_LEAGUE_KEY, "pips-draft-day-last-organizer-league", "pips-draft-day-last-board-league", "pips-draft-day-last-league", verifierKey(code), `pips-draft-day-board-verifier-${code}`]) localStorage.removeItem(key);
+    clearRememberedAccess(localStorage, code);
     location.reload();
   } catch (error) {
     button.disabled = false; button.textContent = "Log out";
@@ -595,6 +625,6 @@ document.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("online", () => void flushQueue()); window.addEventListener("offline", () => renderSync("OFFLINE", true));
-const initialLeague = query.get("league") || localStorage.getItem(LAST_AUCTIONEER_LEAGUE_KEY) || localStorage.getItem("pips-draft-day-last-league") || ""; byId("league-code").value = initialLeague;
+const initialLeague = query.get("league") || rememberedLeague(localStorage, "auctioneer"); byId("league-code").value = initialLeague;
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("../service-worker.js").catch(() => {});
 void restoreAuctioneerSession(initialLeague);
