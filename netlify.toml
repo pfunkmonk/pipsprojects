@@ -90,6 +90,26 @@
   to = "/thunder-bowl/board.html"
   status = 200
 
+[[redirects]]
+  from = "/api/draft-day/leagues"
+  to = "/.netlify/functions/draft-day-leagues"
+  status = 200
+
+[[redirects]]
+  from = "/api/draft-day/auth"
+  to = "/.netlify/functions/draft-day-auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/draft-day/snapshot"
+  to = "/.netlify/functions/draft-day-snapshot"
+  status = 200
+
+[[redirects]]
+  from = "/api/draft-day/commands"
+  to = "/.netlify/functions/draft-day-commands"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -111,5 +131,23 @@
 
 [[headers]]
   for = "/api/thunder-bowl/*"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/draft-day/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/draft-day/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/api/draft-day/*"
   [headers.values]
     Cache-Control = "no-store"

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07182e">
+  <title>Pip's Draft Day Tool · Draft Board</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="stylesheet" href="../app.css?v=20260816a">
+  <link rel="stylesheet" href="../shell-safety.css">
+</head>
+<body class="board-body">
+  <main>
+    <section id="login-panel" class="login-wrap">
+      <form id="login-form" class="login-card">
+        <span class="brand-mark">PDD</span><p class="eyebrow">Pip's Draft Day Tool</p><h1>Draft Board</h1>
+        <p class="privacy-note">Read-only access to team rosters, winning prices, and remaining cash.</p>
+        <label>League code<input id="league-code" autocomplete="off" placeholder="ABCD-EFGH" required></label>
+        <label>Draft Board code<input id="access-code" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Open Draft Board</button>
+        <p id="login-status" class="status" role="status"></p>
+        <a href="../">Back to Draft Day Tool</a>
+      </form>
+    </section>
+
+    <section id="board-app" class="board-app" hidden>
+      <header class="board-topbar"><div><p class="eyebrow" id="board-season">PIP'S DRAFT DAY TOOL</p><h1 id="board-title">Draft Board</h1><p id="nominator-line">Waiting for the first nomination</p></div><div class="console-actions"><span id="connection-state" class="sync-chip">CONNECTING</span><button id="fullscreen-board" class="secondary" type="button">Fullscreen</button></div></header>
+      <section id="board-grid" class="board-grid" aria-label="League rosters"></section>
+      <footer class="board-footer"><span id="board-status">Connecting to the auction room…</span><span>Read-only · no rankings or draft advice</span></footer>
+    </section>
+  </main>
+  <script type="module" src="./board.mjs?v=20260816a"></script>
+</body>
+</html>
+

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c223f">
+  <meta name="description" content="Set up and run a custom fantasy-football auction with a private auctioneer console and live public board.">
+  <title>Pip's Draft Day Tool</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./app.css?v=20260816a">
+  <link rel="stylesheet" href="./shell-safety.css">
+</head>
+<body>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="brand" href="/draft-day/"><span class="brand-mark">PDD</span><span><strong>Pip's Draft Day Tool</strong><small>Auction room, simplified</small></span></a>
+      <nav class="console-actions"><a href="./guide/">Quick guide</a><a href="/">Back to Pip's Projects</a></nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">No rankings. No draft advice. Just the room.</p>
+          <h1>Run the auction.<br>Share the board.</h1>
+          <p class="hero-copy">Create a league, enter its teams, salary pools, roster rules, and keepers, then give the auctioneer a fast private console and everyone else a clean live board.</p>
+          <div class="hero-actions">
+            <button id="start-create" class="primary" type="button">Create a league</button>
+            <a class="button secondary" href="./auctioneer/">Auctioneer sign in</a>
+            <a class="button secondary" href="./board/">Open Draft Board</a>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <p class="eyebrow">Draft-day flow</p>
+          <ol><li>Organizer enters league rules and keepers.</li><li>Auctioneer records each winner and price.</li><li>The read-only board updates for the room.</li><li>Final results export to CSV and JSON.</li></ol>
+        </aside>
+      </section>
+
+      <section id="manage-panel" class="panel">
+        <div class="section-heading"><div><p class="eyebrow">Already created?</p><h2>Manage league setup</h2><p>Setup remains editable until the first auction sale.</p></div></div>
+        <form id="manage-form" class="form-grid three">
+          <label>League code<input id="manage-league-code" autocomplete="off" placeholder="ABCD-EFGH" required></label>
+          <label>Organizer code<input id="manage-admin-code" type="password" autocomplete="current-password" required></label>
+          <button class="secondary" type="submit">Open setup</button>
+        </form>
+        <p id="manage-status" class="status" role="status"></p>
+      </section>
+
+      <section id="setup-panel" class="panel" hidden>
+        <div class="section-heading"><div><p class="eyebrow">League setup</p><h2 id="setup-title">Create the auction room</h2><p id="setup-subtitle">Nothing here affects projections or player advice.</p></div><button id="close-setup" class="secondary" type="button">Close</button></div>
+        <div class="step-list" aria-label="Setup progress">
+          <button class="step-pill is-active" type="button" data-step="0">1 · League rules</button>
+          <button class="step-pill" type="button" data-step="1">2 · Teams & pools</button>
+          <button class="step-pill" type="button" data-step="2">3 · Keepers</button>
+          <button class="step-pill" type="button" data-step="3">4 · Access</button>
+        </div>
+        <form id="setup-form">
+          <section class="wizard-step" data-wizard-step="0">
+            <div class="form-grid three">
+              <label>League name<input id="league-name" value="Sunday Auction League" maxlength="80" required></label>
+              <label>Season<input id="season" type="number" min="2020" max="2100" required></label>
+              <label>Number of teams<input id="team-count" type="number" min="2" max="20" value="12" required></label>
+              <label>Minimum winning bid<input id="minimum-bid" type="number" min="1" value="1" required></label>
+              <label>Bid increment<input id="bid-increment" type="number" min="1" value="1" required></label>
+              <label>Nomination order<select id="nomination-mode"><option value="snake">Snake</option><option value="linear">Repeat 1 through N</option><option value="manual">Do not track</option></select></label>
+              <label>Roster minimum<input id="roster-minimum" type="number" min="1" value="8" required></label>
+              <label>Roster maximum<input id="roster-maximum" type="number" min="1" value="14" required></label>
+            </div>
+            <h3>Position limits</h3>
+            <p class="privacy-note">Minimums define a legal finished roster. Maximums prevent accidental overfilling during the auction.</p>
+            <div class="scroll-x"><table class="rule-table"><thead><tr><th>Abbreviation</th><th>Label</th><th>Minimum</th><th>Maximum</th><th></th></tr></thead><tbody id="position-rules"></tbody></table></div>
+            <button id="add-position" class="secondary" type="button">Add position</button>
+          </section>
+
+          <section class="wizard-step" data-wizard-step="1" hidden>
+            <div class="form-grid">
+              <label>How are the pool amounts being entered?<select id="budget-mode"><option value="current-cash">Current auction cash — keeper costs already deducted</option><option value="pre-keeper">Starting pool — deduct keeper salaries automatically</option></select></label>
+              <label>Default pool for all teams<input id="default-pool" type="number" min="1" value="200"></label>
+            </div>
+            <div class="callout" id="budget-help">Enter the cash each team actually has available when bidding begins. Keeper prices will still appear on the board, but will not be deducted twice.</div>
+            <div class="scroll-x"><table class="team-table"><thead><tr><th>Order</th><th>Team name</th><th id="pool-heading">Current auction cash</th></tr></thead><tbody id="team-rows"></tbody></table></div>
+            <button id="apply-default-pool" class="secondary" type="button">Apply default pool to every team</button>
+          </section>
+
+          <section class="wizard-step" data-wizard-step="2" hidden>
+            <label class="choice"><input id="keepers-enabled" type="checkbox"> This league has keepers already assigned before the auction</label>
+            <div id="keeper-editor" hidden>
+              <div class="callout">Add each keeper with the salary you want displayed. If you chose “current auction cash,” those salaries are assumed to be reflected in each team's pool already.</div>
+              <div id="keeper-rows"></div>
+              <button id="add-keeper" class="secondary" type="button">Add keeper</button>
+            </div>
+          </section>
+
+          <section class="wizard-step" data-wizard-step="3" hidden>
+            <div id="new-access-fields">
+              <p class="callout">These roles are deliberately separate. The organizer can edit setup, the auctioneer can record results, and the Draft Board is read-only.</p>
+              <div class="access-grid">
+                <label class="access-card"><strong>Organizer code</strong><input id="admin-code" autocomplete="new-password" minlength="8" required><small>Controls league setup.</small></label>
+                <label class="access-card"><strong>Auctioneer code</strong><input id="auctioneer-code" autocomplete="new-password" minlength="8" required><small>Records and corrects sales.</small></label>
+                <label class="access-card"><strong>Draft Board code</strong><input id="board-code" autocomplete="new-password" minlength="8" required><small>Read-only room access.</small></label>
+              </div>
+              <button id="regenerate-codes" class="secondary" type="button">Generate new codes</button>
+            </div>
+            <div id="existing-access-note" class="callout" hidden>Existing access codes stay unchanged. This edit updates only league rules, teams, pools, and keepers.</div>
+          </section>
+
+          <p id="setup-status" class="status" role="status"></p>
+          <div class="wizard-actions"><button id="previous-step" class="secondary" type="button">Previous</button><button id="next-step" class="primary" type="button">Next</button><button id="save-league" class="primary" type="submit" hidden>Create league</button></div>
+        </form>
+      </section>
+
+      <section id="result-panel" class="panel result-card" hidden>
+        <p class="eyebrow">League ready</p><h2 id="result-league-name">Your auction room is ready</h2>
+        <p>League code</p><code id="result-league-code" class="league-code"></code>
+        <div id="result-access" class="access-grid"></div>
+        <p class="callout">Download the access sheet now. Access codes are not displayed again after you leave this page.</p>
+        <div class="hero-actions">
+          <button id="download-access" class="secondary" type="button">Download access sheet</button>
+          <a id="result-auctioneer-link" class="button primary" href="./auctioneer/">Open auctioneer console</a>
+          <a id="result-board-link" class="button secondary" href="./board/">Open Draft Board</a>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="./setup.mjs?v=20260816a"></script>
+</body>
+</html>

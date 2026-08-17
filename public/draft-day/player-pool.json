@@ -1,0 +1,4298 @@
+[
+  {
+    "id": "fbg-browaj00",
+    "name": "A.J. Brown",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-joneaa00",
+    "name": "Aaron Jones Sr.",
+    "position": "RB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-rodgaa00",
+    "name": "Aaron Rodgers",
+    "position": "QB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "cbs-2188826",
+    "name": "Adam Prentice",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-randad00",
+    "name": "Adam Randall",
+    "position": "RB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-trauad00",
+    "name": "Adam Trautman",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-mitcad00",
+    "name": "Adonai Mitchell",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-martad00",
+    "name": "Adrian Martinez",
+    "position": "QB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-barnaj00",
+    "name": "AJ Barner",
+    "position": "TE",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-dilla-00",
+    "name": "AJ Dillon",
+    "position": "RB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-ingoal00",
+    "name": "Alec Ingold",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-pieral00",
+    "name": "Alec Pierce",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "cbs-2186388",
+    "name": "Alex Bachman",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-kamaal00",
+    "name": "Alvin Kamara",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-1824308",
+    "name": "Ameer Abdullah",
+    "position": "RB",
+    "nflTeam": "JAC"
+  },
+  {
+    "id": "fbg-stbram00",
+    "name": "Amon-Ra St. Brown",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "cbs-3159102",
+    "name": "Andre Baccellia",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-szmyan44",
+    "name": "Andre Szmyt",
+    "position": "K",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-iosian00",
+    "name": "Andrei Iosivas",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "cbs-2131774",
+    "name": "Andrew Beck",
+    "position": "RB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "cbs-26725942",
+    "name": "Andrew Ogletree",
+    "position": "TE",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-borran00",
+    "name": "Andy Borregales",
+    "position": "K",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-daltan00",
+    "name": "Andy Dalton",
+    "position": "QB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-2818971",
+    "name": "Anthony Firkser",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-goulan00",
+    "name": "Anthony Gould",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-richan00",
+    "name": "Anthony Richardson Sr.",
+    "position": "QB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-willan02",
+    "name": "Antonio Williams",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-smitar01",
+    "name": "Arian Smith",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-crdxxx99",
+    "name": "Arizona Cardinals",
+    "position": "DST",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-dulias00",
+    "name": "Ashton Dulin",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-jeanas00",
+    "name": "Ashton Jeanty",
+    "position": "RB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-kaliat00",
+    "name": "Athan Kaliakmanis",
+    "position": "QB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-atlxxx99",
+    "name": "Atlanta Falcons",
+    "position": "DST",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-estiau00",
+    "name": "Audric Estimé",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-2820090",
+    "name": "Austin Ekeler",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-hoopau00",
+    "name": "Austin Hooper",
+    "position": "TE",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-zappba00",
+    "name": "Bailey Zappe",
+    "position": "QB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-mayfba00",
+    "name": "Baker Mayfield",
+    "position": "QB",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-ravxxx99",
+    "name": "Baltimore Ravens",
+    "position": "DST",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-knigzo00",
+    "name": "Bam Knight",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-browba01",
+    "name": "Barion Brown",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-sharba00",
+    "name": "Bauer Sharp",
+    "position": "TE",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "cbs-26694592",
+    "name": "Beaux Collins",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-26696177",
+    "name": "Behren Morton",
+    "position": "QB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-saulbe00",
+    "name": "Ben Sauls",
+    "position": "K",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-simsbe00",
+    "name": "Ben Sims",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-sinnbe00",
+    "name": "Ben Sinnott",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-skowbe00",
+    "name": "Ben Skowronek",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "cbs-2968491",
+    "name": "Ben VanSumeren",
+    "position": "RB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-yurobe00",
+    "name": "Ben Yurosek",
+    "position": "TE",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-tutebh00",
+    "name": "Bhayshul Tuten",
+    "position": "RB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-robibi01",
+    "name": "Bijan Robinson",
+    "position": "RB",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-corubl00",
+    "name": "Blake Corum",
+    "position": "RB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-grupbl00",
+    "name": "Blake Grupe",
+    "position": "K",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "cbs-2963426",
+    "name": "Blake Watson",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "cbs-2964419",
+    "name": "Blake Whiteheart",
+    "position": "TE",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-nixxbo00",
+    "name": "Bo Nix",
+    "position": "QB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-cookbr00",
+    "name": "Brady Cook",
+    "position": "QB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-allebr01",
+    "name": "Braelon Allen",
+    "position": "RB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "cbs-1880880",
+    "name": "Brandin Cooks",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-aiyubr00",
+    "name": "Brandon Aiyuk",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-aubrbr00",
+    "name": "Brandon Aubrey",
+    "position": "K",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-mcmabr44",
+    "name": "Brandon McManus",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "cbs-2865783",
+    "name": "Brandon Smith",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-smitbr00",
+    "name": "Brashard Smith",
+    "position": "RB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-berrbr00",
+    "name": "Braxton Berrios",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-hallbr01",
+    "name": "Breece Hall",
+    "position": "RB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-batebr00",
+    "name": "Brenden Bates",
+    "position": "TE",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-3166803",
+    "name": "Brenden Rice",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-thombr02",
+    "name": "Brenen Thompson",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-strabr00",
+    "name": "Brenton Strange",
+    "position": "TE",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-spanbr00",
+    "name": "Brevyn Spann-Ford",
+    "position": "TE",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-robibr01",
+    "name": "Brian Robinson Jr",
+    "position": "RB",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-thombr01",
+    "name": "Brian Thomas Jr.",
+    "position": "WR",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-covebr00",
+    "name": "Britain Covey",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-2961993",
+    "name": "British Brooks",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-bowebr00",
+    "name": "Brock Bowers",
+    "position": "TE",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-purdbr00",
+    "name": "Brock Purdy",
+    "position": "QB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-wrigbr00",
+    "name": "Brock Wright",
+    "position": "TE",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "cbs-2963723",
+    "name": "Bryce Ford-Wheaton",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-lancbr00",
+    "name": "Bryce Lance",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-younbr01",
+    "name": "Bryce Young",
+    "position": "QB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "cbs-2967463",
+    "name": "Brycen Tremayne",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "cbs-3123413",
+    "name": "Bub Means",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-irvibu00",
+    "name": "Bucky Irving",
+    "position": "RB",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-bufxxx99",
+    "name": "Buffalo Bills",
+    "position": "DST",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-strocj00",
+    "name": "C.J. Stroud",
+    "position": "QB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-klubca00",
+    "name": "Cade Klubnik",
+    "position": "QB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-ottoca00",
+    "name": "Cade Otton",
+    "position": "TE",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-stovca00",
+    "name": "Cade Stover",
+    "position": "TE",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-yorkca44",
+    "name": "Cade York",
+    "position": "K",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-santca44",
+    "name": "Cairo Santos",
+    "position": "K",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-dougca00",
+    "name": "Caleb Douglas",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-willca01",
+    "name": "Caleb Williams",
+    "position": "QB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-austca00",
+    "name": "Calvin Austin III",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-ridlca00",
+    "name": "Calvin Ridley",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "cbs-29148608",
+    "name": "Cam Grandy",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-littca00",
+    "name": "Cam Little",
+    "position": "K",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-skatca00",
+    "name": "Cam Skattebo",
+    "position": "RB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-wardca00",
+    "name": "Cam Ward",
+    "position": "QB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-dickca44",
+    "name": "Cameron Dicker",
+    "position": "K",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "cbs-2867377",
+    "name": "Carlos Washington Jr.",
+    "position": "RB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-tateca00",
+    "name": "Carnell Tate",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-carxxx99",
+    "name": "Carolina Panthers",
+    "position": "DST",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-beckca00",
+    "name": "Carson Beck",
+    "position": "QB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-26698435",
+    "name": "Carson Steele",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-29184228",
+    "name": "Carter Runyon",
+    "position": "TE",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "cbs-3126493",
+    "name": "Casey Washington",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-tillce00",
+    "name": "Cedric Tillman",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-2240685",
+    "name": "Cedrick Wilson Jr.",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-lambce00",
+    "name": "CeeDee Lamb",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-rylach00",
+    "name": "Chad Ryland",
+    "position": "K",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-2868959",
+    "name": "Charlie Jones",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-kolach00",
+    "name": "Charlie Kolar",
+    "position": "TE",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-smytch00",
+    "name": "Charlie Smyth",
+    "position": "K",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-woerch00",
+    "name": "Charlie Woerner",
+    "position": "TE",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-browch06",
+    "name": "Chase Brown",
+    "position": "RB",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-mclach44",
+    "name": "Chase McLaughlin",
+    "position": "K",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-chixxx99",
+    "name": "Chicago Bears",
+    "position": "DST",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-okonch00",
+    "name": "Chig Okonkwo",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-dikech00",
+    "name": "Chimere Dike",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-bellch01",
+    "name": "Chris Bell",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-boswch44",
+    "name": "Chris Boswell",
+    "position": "K",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-brazch01",
+    "name": "Chris Brazzell II",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-brooch01",
+    "name": "Chris Brooks",
+    "position": "RB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-godwch00",
+    "name": "Chris Godwin Jr.",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "cbs-2167520",
+    "name": "Chris Manhertz",
+    "position": "TE",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-1871375",
+    "name": "Chris Moore",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "cbs-2261701",
+    "name": "Chris Oladokun",
+    "position": "QB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-olavch00",
+    "name": "Chris Olave",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-rodrch01",
+    "name": "Chris Rodriguez Jr.",
+    "position": "RB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-kirkch00",
+    "name": "Christian Kirk",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-mccach00",
+    "name": "Christian McCaffrey",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-watsch00",
+    "name": "Christian Watson",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-hubbch00",
+    "name": "Chuba Hubbard",
+    "position": "RB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-cinxxx99",
+    "name": "Cincinnati Bengals",
+    "position": "DST",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-danicj00",
+    "name": "CJ Daniels",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-clexxx99",
+    "name": "Cleveland Browns",
+    "position": "DST",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-younco00",
+    "name": "Colbie Young",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-parkco00",
+    "name": "Colby Parkinson",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-kmetco00",
+    "name": "Cole Kmet",
+    "position": "TE",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "cbs-26725861",
+    "name": "Cole Payton",
+    "position": "QB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-2961855",
+    "name": "Cole Turner",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-2961827",
+    "name": "Colson Yankoff",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-loveco00",
+    "name": "Colston Loveland",
+    "position": "TE",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "cbs-2828751",
+    "name": "Colton Dowell",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "cbs-2867599",
+    "name": "Connor Heyward",
+    "position": "TE",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-kuppco00",
+    "name": "Cooper Kupp",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "cbs-26698879",
+    "name": "Corey Kiner",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-suttco00",
+    "name": "Courtland Sutton",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-samucu00",
+    "name": "Curtis Samuel",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-allecy00",
+    "name": "Cyrus Allen",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-swifda00",
+    "name": "D'Andre Swift",
+    "position": "RB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-presda01",
+    "name": "Dak Prescott",
+    "position": "QB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-dalxxx99",
+    "name": "Dallas Cowboys",
+    "position": "DST",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-goedda00",
+    "name": "Dallas Goedert",
+    "position": "TE",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-29164633",
+    "name": "Dallen Bentley",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-kincda00",
+    "name": "Dalton Kincaid",
+    "position": "TE",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-schuda00",
+    "name": "Dalton Schultz",
+    "position": "TE",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-2964236",
+    "name": "Dameon Pierce",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-bellda03",
+    "name": "Daniel Bellinger",
+    "position": "TE",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-carlda44",
+    "name": "Daniel Carlson",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-joneda05",
+    "name": "Daniel Jones",
+    "position": "QB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "cbs-2139642",
+    "name": "Dante Pettis",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-2010409",
+    "name": "Dare Ogunbowale",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-27017067",
+    "name": "Dareke Young",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "cbs-3165205",
+    "name": "Darius Cooper",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-slayda00",
+    "name": "Darius Slayton",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-moonda00",
+    "name": "Darnell Mooney",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-washda02",
+    "name": "Darnell Washington",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "cbs-1850793",
+    "name": "Darren Waller",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-adamda01",
+    "name": "Davante Adams",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-montda01",
+    "name": "David Montgomery",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-2818351",
+    "name": "David Moore",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-njokda00",
+    "name": "David Njoku",
+    "position": "TE",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "cbs-2179491",
+    "name": "David Sills",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-alleda01",
+    "name": "Davis Allen",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-millda00",
+    "name": "Davis Mills",
+    "position": "QB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-knoxda00",
+    "name": "Dawson Knox",
+    "position": "TE",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-achade00",
+    "name": "De'Von Achane",
+    "position": "RB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-stride00",
+    "name": "De'Zhaun Stribling",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "cbs-2174795",
+    "name": "DeAndre Carter",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-1737078",
+    "name": "DeAndre Hopkins",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-samude00",
+    "name": "Deebo Samuel Sr.",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-dallde00",
+    "name": "DeeJay Dallas",
+    "position": "RB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-burkde00",
+    "name": "Deion Burks",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-robide01",
+    "name": "Demarcus Robinson",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-dougde00",
+    "name": "DeMario Douglas",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-claide00",
+    "name": "Demond Claiborne",
+    "position": "RB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-denxxx99",
+    "name": "Denver Broncos",
+    "position": "DST",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-bostde00",
+    "name": "Denzel Boston",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-davide01",
+    "name": "Derius Davis",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-henrde00",
+    "name": "Derrick Henry",
+    "position": "RB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-watsde00",
+    "name": "Deshaun Watson",
+    "position": "QB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-2864759",
+    "name": "Desmond Ridder",
+    "position": "QB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-detxxx99",
+    "name": "Detroit Lions",
+    "position": "DST",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "cbs-3168666",
+    "name": "Deuce Vaughn",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-velede00",
+    "name": "Devaughn Vele",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-culpde00",
+    "name": "Devin Culp",
+    "position": "TE",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "cbs-2246849",
+    "name": "Devin Duvernay",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-nealde00",
+    "name": "Devin Neal",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-singde00",
+    "name": "Devin Singletary",
+    "position": "RB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-smitde04",
+    "name": "DeVonta Smith",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-walkde01",
+    "name": "Devontez Walker",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-gidddj00",
+    "name": "DJ Giddens",
+    "position": "RB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-moordj00",
+    "name": "DJ Moore",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-metcdk00",
+    "name": "DK Metcalf",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "cbs-26696063",
+    "name": "Dominic Lovett",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-zvaddo00",
+    "name": "Dominic Zvada",
+    "position": "K",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-2183713",
+    "name": "Donald Parham Jr.",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "cbs-26697211",
+    "name": "Donovan Edwards",
+    "position": "RB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-thordo00",
+    "name": "Dont'e Thornton Jr.",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-wickdo00",
+    "name": "Dontayvion Wicks",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-3168310",
+    "name": "Drake Dabney",
+    "position": "TE",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-londdr00",
+    "name": "Drake London",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-mayedr00",
+    "name": "Drake Maye",
+    "position": "QB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "cbs-28876938",
+    "name": "Drew Allar",
+    "position": "QB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-lockdr00",
+    "name": "Drew Lock",
+    "position": "QB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-sampdr00",
+    "name": "Drew Sample",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-stevdr01",
+    "name": "Drew Stevens",
+    "position": "K",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-smytdu00",
+    "name": "Durham Smythe",
+    "position": "TE",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-browdy00",
+    "name": "Dyami Brown",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-laubdy00",
+    "name": "Dylan Laube",
+    "position": "RB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-sampdy00",
+    "name": "Dylan Sampson",
+    "position": "RB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-pineed44",
+    "name": "Eddy Piñeiro",
+    "position": "K",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "cbs-28901170",
+    "name": "Eli Heidenreich",
+    "position": "RB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-rariel00",
+    "name": "Eli Raridon",
+    "position": "TE",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-stowel00",
+    "name": "Eli Stowers",
+    "position": "TE",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-ayomel00",
+    "name": "Elic Ayomanor",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-arroel00",
+    "name": "Elijah Arroyo",
+    "position": "TE",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "cbs-2804732",
+    "name": "Elijah Cooks",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-higgel00",
+    "name": "Elijah Higgins",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-2819876",
+    "name": "Elijah Mitchell",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-2963569",
+    "name": "Elijah Moore",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-sarrel00",
+    "name": "Elijah Sarratt",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-wilsem00",
+    "name": "Emanuel Wilson",
+    "position": "RB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-demeem00",
+    "name": "Emari Demercado",
+    "position": "RB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-egbuem00",
+    "name": "Emeka Egbuka",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-hendem00",
+    "name": "Emmanuel Henderson Jr.",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-johnem00",
+    "name": "Emmett Johnson",
+    "position": "RB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "cbs-3123569",
+    "name": "Eric Gray",
+    "position": "RB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-sauber00",
+    "name": "Eric Saubert",
+    "position": "TE",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-allxer00",
+    "name": "Erick All Jr.",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-engrev00",
+    "name": "Evan Engram",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "cbs-3124679",
+    "name": "Evan Hull",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-mcphev44",
+    "name": "Evan McPherson",
+    "position": "K",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "cbs-2221829",
+    "name": "Feleipe Franks",
+    "position": "TE",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-mendfe00",
+    "name": "Fernando Mendoza",
+    "position": "QB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-morefo00",
+    "name": "Foster Moreau",
+    "position": "TE",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-3172189",
+    "name": "Frank Gore Jr.",
+    "position": "RB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-2804813",
+    "name": "Gabe Davis",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-26718347",
+    "name": "Gage Larvadain",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-minsga00",
+    "name": "Gardner Minshew II",
+    "position": "QB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-26701706",
+    "name": "Garrett Nussmeier",
+    "position": "QB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-wilsga00",
+    "name": "Garrett Wilson",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-bartga00",
+    "name": "Gavin Bartholomew",
+    "position": "TE",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-smitge01",
+    "name": "Geno Smith",
+    "position": "QB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-holage01",
+    "name": "George Holani",
+    "position": "RB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-kittge00",
+    "name": "George Kittle",
+    "position": "TE",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-pickge00",
+    "name": "George Pickens",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-bernge00",
+    "name": "Germie Bernard",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-ganogr44",
+    "name": "Graham Gano",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-calcgr00",
+    "name": "Grant Calcaterra",
+    "position": "TE",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-gnbxxx99",
+    "name": "Green Bay Packers",
+    "position": "DST",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-dortgr00",
+    "name": "Greg Dortch",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-dulcgr00",
+    "name": "Greg Dulcich",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-helmgu00",
+    "name": "Gunnar Helm",
+    "position": "TE",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-fannha00",
+    "name": "Harold Fannin Jr.",
+    "position": "TE",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-butkha99",
+    "name": "Harrison Butker",
+    "position": "K",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-meviha00",
+    "name": "Harrison Mevis",
+    "position": "K",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "cbs-2968506",
+    "name": "Hassan Haskins",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "cbs-3131519",
+    "name": "Hayden Rucci",
+    "position": "TE",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-browma05",
+    "name": "Hollywood Brown",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-htxxxx99",
+    "name": "Houston Texans",
+    "position": "DST",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-henrhu00",
+    "name": "Hunter Henry",
+    "position": "TE",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-longhu00",
+    "name": "Hunter Long",
+    "position": "TE",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-luephu01",
+    "name": "Hunter Luepke",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "cbs-2253359",
+    "name": "Ian Thomas",
+    "position": "TE",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "cbs-2865894",
+    "name": "Ihmir Smith-Marsette",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-cltxxx99",
+    "name": "Indianapolis Colts",
+    "position": "DST",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-gueris00",
+    "name": "Isaac Guerendo",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-teslis00",
+    "name": "Isaac TeSlaa",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-bondis00",
+    "name": "Isaiah Bond",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-daviis00",
+    "name": "Isaiah Davis",
+    "position": "RB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-hodgis00",
+    "name": "Isaiah Hodgins",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-likeis00",
+    "name": "Isaiah Likely",
+    "position": "TE",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-wiliis00",
+    "name": "Isaiah Williams",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-pachis00",
+    "name": "Isiah Pacheco",
+    "position": "RB",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "cbs-3163291",
+    "name": "Israel Abanikanda",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-mccajj00",
+    "name": "J.J. McCarthy",
+    "position": "QB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-dobbj-00",
+    "name": "J.K. Dobbins",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-laneja01",
+    "name": "Ja'Kobi Lane",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-polkja00",
+    "name": "Ja'Lynn Polk",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-chasja00",
+    "name": "Ja'Marr Chase",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-sandja00",
+    "name": "Ja'Tavion Sanders",
+    "position": "TE",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-bechja00",
+    "name": "Jack Bech",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-endrja00",
+    "name": "Jack Endries",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-stolja00",
+    "name": "Jack Stoll",
+    "position": "TE",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-2964293",
+    "name": "Jack Westover",
+    "position": "TE",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-haweja00",
+    "name": "Jackson Hawes",
+    "position": "TE",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-jaxxxx99",
+    "name": "Jacksonville Jaguars",
+    "position": "DST",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-cowija00",
+    "name": "Jacob Cowing",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-brisja00",
+    "name": "Jacoby Brissett",
+    "position": "QB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-crosja00",
+    "name": "Jacory Croskey-Merritt",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-pricja00",
+    "name": "Jadarian Price",
+    "position": "RB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-dotsja00",
+    "name": "Jahan Dotson",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-walkja01",
+    "name": "Jahdae Walker",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "cbs-3169583",
+    "name": "Jaheim Bell",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-gibbja00",
+    "name": "Jahmyr Gibbs",
+    "position": "RB",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-bateja00",
+    "name": "Jake Bates",
+    "position": "K",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-boboja00",
+    "name": "Jake Bobo",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-browja01",
+    "name": "Jake Browning",
+    "position": "QB",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-ellija98",
+    "name": "Jake Elliott",
+    "position": "K",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-fergja01",
+    "name": "Jake Ferguson",
+    "position": "TE",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-moodja44",
+    "name": "Jake Moody",
+    "position": "K",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-tongja00",
+    "name": "Jake Tonges",
+    "position": "TE",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-meyeja00",
+    "name": "Jakobi Meyers",
+    "position": "WR",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "cbs-3122024",
+    "name": "Jakobie Keeney-James",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-mclaja00",
+    "name": "Jaleel McLaughlin",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "cbs-3165078",
+    "name": "Jalen Brooks",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-cokeja01",
+    "name": "Jalen Coker",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-hurtja00",
+    "name": "Jalen Hurts",
+    "position": "QB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-mcmija00",
+    "name": "Jalen McMillan",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-milrja00",
+    "name": "Jalen Milroe",
+    "position": "QB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-nailja00",
+    "name": "Jalen Nailor",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-royaja00",
+    "name": "Jalen Royals",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-tolbja00",
+    "name": "Jalen Tolbert",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-hyatja00",
+    "name": "Jalin Hyatt",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-millja01",
+    "name": "Jam Miller",
+    "position": "RB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-winsja00",
+    "name": "Jameis Winston",
+    "position": "QB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-connja00",
+    "name": "James Conner",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-cookja05",
+    "name": "James Cook III",
+    "position": "RB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-willja09",
+    "name": "Jameson Williams",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-goffja00",
+    "name": "Jared Goff",
+    "position": "QB",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-wileja00",
+    "name": "Jared Wiley",
+    "position": "TE",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "cbs-28875704",
+    "name": "Jaren Kanak",
+    "position": "TE",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-pattja00",
+    "name": "Jaret Patterson",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-huntja02",
+    "name": "Jarquez Hunter",
+    "position": "RB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-stidja00",
+    "name": "Jarrett Stidham",
+    "position": "QB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-myerja44",
+    "name": "Jason Myers",
+    "position": "K",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-sandja44",
+    "name": "Jason Sanders",
+    "position": "K",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-jennja00",
+    "name": "Jauan Jennings",
+    "position": "WR",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-willja08",
+    "name": "Javonte Williams",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-jordja00",
+    "name": "Jawhar Jordan",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-smitja02",
+    "name": "Jaxon Smith-Njigba",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-dartja00",
+    "name": "Jaxson Dart",
+    "position": "QB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-danija00",
+    "name": "Jayden Daniels",
+    "position": "QB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-higgja00",
+    "name": "Jayden Higgins",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-reedja01",
+    "name": "Jayden Reed",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-blueja01",
+    "name": "Jaydon Blue",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-waddja00",
+    "name": "Jaylen Waddle",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-warrja00",
+    "name": "Jaylen Warren",
+    "position": "RB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-wrigja04",
+    "name": "Jaylen Wright",
+    "position": "RB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-laneja00",
+    "name": "Jaylin Lane",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-noelja00",
+    "name": "Jaylin Noel",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-2787078",
+    "name": "Jelani Woods",
+    "position": "TE",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-loveje01",
+    "name": "Jeremiyah Love",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-mcnije00",
+    "name": "Jeremy McNichols",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-ruckje00",
+    "name": "Jeremy Ruckert",
+    "position": "TE",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-fordje00",
+    "name": "Jerome Ford",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-jeudje00",
+    "name": "Jerry Jeudy",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-hornji00",
+    "name": "Jimmy Horn Jr.",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-galbjj00",
+    "name": "JJ Galbreath",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-burrjo01",
+    "name": "Joe Burrow",
+    "position": "QB",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-flacjo00",
+    "name": "Joe Flacco",
+    "position": "QB",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-miltjo00",
+    "name": "Joe Milton III",
+    "position": "QB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-mixojo00",
+    "name": "Joe Mixon",
+    "position": "RB",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-royejo00",
+    "name": "Joe Royer",
+    "position": "TE",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-slyejo44",
+    "name": "Joey Slye",
+    "position": "K",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-batejo00",
+    "name": "John Bates",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "cbs-2975736",
+    "name": "John FitzPatrick",
+    "position": "TE",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-metcjo00",
+    "name": "John Metchie III",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-mundjo00",
+    "name": "Johnny Mundt",
+    "position": "TE",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-wilsjo02",
+    "name": "Johnny Wilson",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-colejo00",
+    "name": "Jonah Coleman",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-mingjo00",
+    "name": "Jonathan Mingo",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-tayljo02",
+    "name": "Jonathan Taylor",
+    "position": "RB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-broojo00",
+    "name": "Jonathon Brooks",
+    "position": "RB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-addijo00",
+    "name": "Jordan Addison",
+    "position": "WR",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-jamejo02",
+    "name": "Jordan James",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-lovejo01",
+    "name": "Jordan Love",
+    "position": "QB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-masojo00",
+    "name": "Jordan Mason",
+    "position": "RB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-watkjo00",
+    "name": "Jordan Watkins",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-whitjo04",
+    "name": "Jordan Whittington",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-tysojo00",
+    "name": "Jordyn Tyson",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-allejo01",
+    "name": "Josh Allen",
+    "position": "QB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-26726935",
+    "name": "Josh Cameron",
+    "position": "WR",
+    "nflTeam": "JAC"
+  },
+  {
+    "id": "fbg-cuevjo00",
+    "name": "Josh Cuevas",
+    "position": "TE",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-downjo00",
+    "name": "Josh Downs",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-jacojo00",
+    "name": "Josh Jacobs",
+    "position": "RB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-olivjo00",
+    "name": "Josh Oliver",
+    "position": "TE",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "cbs-2867325",
+    "name": "Josh Palmer",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-2131796",
+    "name": "Josh Reynolds",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-whyljo00",
+    "name": "Josh Whyle",
+    "position": "TE",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "cbs-2071844",
+    "name": "Joshua Dobbs",
+    "position": "QB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-kartjo00",
+    "name": "Joshua Karty",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-palmjo01",
+    "name": "Joshua Palmer",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-smitju00",
+    "name": "JuJu Smith-Schuster",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-2967664",
+    "name": "Julius Chestnut",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-hillju00",
+    "name": "Justice Hill",
+    "position": "RB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-fielju00",
+    "name": "Justin Fields",
+    "position": "QB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-herbju00",
+    "name": "Justin Herbert",
+    "position": "QB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-jeffju00",
+    "name": "Justin Jefferson",
+    "position": "WR",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-jolyju00",
+    "name": "Justin Joly",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-watsju01",
+    "name": "Justin Watson",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-johnju00",
+    "name": "Juwan Johnson",
+    "position": "TE",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-2184383",
+    "name": "K.J. Osborn",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-fairka99",
+    "name": "Ka'imi Fairbairn",
+    "position": "K",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-wetjka00",
+    "name": "Kaden Wetjen",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-blacka00",
+    "name": "Kaelon Black",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-johnka01",
+    "name": "Kaleb Johnson",
+    "position": "RB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-mullka00",
+    "name": "Kalel Mullings",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-raymka00",
+    "name": "Kalif Raymond",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "cbs-29380891",
+    "name": "Kameron Johnson",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-kanxxx99",
+    "name": "Kansas City Chiefs",
+    "position": "DST",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-matska00",
+    "name": "Kansei Matsuzawa",
+    "position": "K",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-huntka00",
+    "name": "Kareem Hunt",
+    "position": "RB",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-turpka00",
+    "name": "KaVontae Turpin",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-boutka00",
+    "name": "Kayshon Boutte",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-alleka01",
+    "name": "Kaytron Allen",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-conckc00",
+    "name": "KC Concepcion",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-3171149",
+    "name": "Ke'Shawn Williams",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-lambke00",
+    "name": "Keandre Lambert-Smith",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-mitcke01",
+    "name": "Keaton Mitchell",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-alleke00",
+    "name": "Keenan Allen",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-walkke01",
+    "name": "Ken Walker III",
+    "position": "RB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-millke00",
+    "name": "Kendre Miller",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-bourke00",
+    "name": "Kendrick Bourne",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-lawxke00",
+    "name": "Kendrick Law",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "cbs-2261254",
+    "name": "Kene Nwangwu",
+    "position": "RB",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-gainke00",
+    "name": "Kenny Gainwell",
+    "position": "RB",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-pickke00",
+    "name": "Kenny Pickett",
+    "position": "QB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-sadike00",
+    "name": "Kenyon Sadiq",
+    "position": "TE",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-coleke01",
+    "name": "Keon Coleman",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-2969073",
+    "name": "Kevin Austin Jr.",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-coleke02",
+    "name": "Kevin Coleman Jr.",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-shakkh00",
+    "name": "Khalil Shakir",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-vidaki00",
+    "name": "Kimani Vidal",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-couski00",
+    "name": "Kirk Cousins",
+    "position": "QB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "cbs-2239763",
+    "name": "Ko Kieft",
+    "position": "TE",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-mumpko00",
+    "name": "Konata Mumpfield",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-alleky00",
+    "name": "Kyle Allen",
+    "position": "QB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-juszky00",
+    "name": "Kyle Juszczyk",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-monaky00",
+    "name": "Kyle Monangai",
+    "position": "RB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-pittky00",
+    "name": "Kyle Pitts Sr.",
+    "position": "TE",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-willky01",
+    "name": "Kyle Williams",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-granky00",
+    "name": "Kylen Granson",
+    "position": "TE",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-murrky00",
+    "name": "Kyler Murray",
+    "position": "QB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-willky02",
+    "name": "Kyren Williams",
+    "position": "RB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-mccola00",
+    "name": "Ladd McConkey",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "cbs-3170389",
+    "name": "LaJohntay Wester",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-jackla00",
+    "name": "Lamar Jackson",
+    "position": "QB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-treala00",
+    "name": "Laquon Treadwell",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-raixxx99",
+    "name": "Las Vegas Raiders",
+    "position": "DST",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-allele01",
+    "name": "LeQuint Allen Jr.",
+    "position": "RB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "cbs-26695655",
+    "name": "Lewis Bond",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-humpli00",
+    "name": "Lil'Jordan Humphrey",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-sdgxxx99",
+    "name": "Los Angeles Chargers",
+    "position": "DST",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-ramxxx99",
+    "name": "Los Angeles Rams",
+    "position": "DST",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-havrlu44",
+    "name": "Lucas Havrisik",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "cbs-2961761",
+    "name": "Lucas Krull",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "cbs-26728625",
+    "name": "Lucas Scott",
+    "position": "RB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-farrlu00",
+    "name": "Luke Farrell",
+    "position": "TE",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-mccalu00",
+    "name": "Luke McCaffrey",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-musglu00",
+    "name": "Luke Musgrave",
+    "position": "TE",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-scholu00",
+    "name": "Luke Schoonmaker",
+    "position": "TE",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-burdlu00",
+    "name": "Luther Burden III",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-jonema04",
+    "name": "Mac Jones",
+    "position": "QB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-hollma00",
+    "name": "Mack Hollins",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-lemoma00",
+    "name": "Makai Lemon",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-3162613",
+    "name": "Malachi Corley",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-fielma00",
+    "name": "Malachi Fields",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-bensma00",
+    "name": "Malik Benson",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-davima02",
+    "name": "Malik Davis",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "cbs-3171033",
+    "name": "Malik Heath",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-nabema00",
+    "name": "Malik Nabers",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-washma01",
+    "name": "Malik Washington",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-willma05",
+    "name": "Malik Willis",
+    "position": "QB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-marima01",
+    "name": "Marcus Mariota",
+    "position": "QB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-andrma00",
+    "name": "Mark Andrews",
+    "position": "TE",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-kleima00",
+    "name": "Marlin Klein",
+    "position": "TE",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-2071540",
+    "name": "Marquez Valdes-Scantling",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "cbs-2804128",
+    "name": "Marquise Brown",
+    "position": "WR",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-lloyma00",
+    "name": "MarShawn Lloyd",
+    "position": "RB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-harrma05",
+    "name": "Marvin Harrison Jr.",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-mimsma00",
+    "name": "Marvin Mims Jr.",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "cbs-3161133",
+    "name": "Mason Kinsey",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-rudoma00",
+    "name": "Mason Rudolph",
+    "position": "QB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-taylma01",
+    "name": "Mason Taylor",
+    "position": "TE",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-tiptma00",
+    "name": "Mason Tipton",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-gayxma44",
+    "name": "Matt Gay",
+    "position": "K",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-hibnma00",
+    "name": "Matt Hibner",
+    "position": "TE",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-pratma44",
+    "name": "Matt Prater",
+    "position": "K",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-goldma00",
+    "name": "Matthew Golden",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-stafma00",
+    "name": "Matthew Stafford",
+    "position": "QB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "cbs-26727130",
+    "name": "Max Bredeson",
+    "position": "TE",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-klarma00",
+    "name": "Max Klare",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-miaxxx99",
+    "name": "Miami Dolphins",
+    "position": "DST",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-1759407",
+    "name": "Michael Burton",
+    "position": "RB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "cbs-2804075",
+    "name": "Michael Carter",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-mayemi00",
+    "name": "Michael Mayer",
+    "position": "TE",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-penimi00",
+    "name": "Michael Penix Jr.",
+    "position": "QB",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-pittmi01",
+    "name": "Michael Pittman Jr",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-wilsmi01",
+    "name": "Michael Wilson",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-evanmi00",
+    "name": "Mike Evans",
+    "position": "WR",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-gesimi00",
+    "name": "Mike Gesicki",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-washmi00",
+    "name": "Mike Washington Jr.",
+    "position": "RB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "cbs-2251305",
+    "name": "Miles Sanders",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-minxxx99",
+    "name": "Minnesota Vikings",
+    "position": "DST",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-tinsmi00",
+    "name": "Mitch Tinsley",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-evanmi01",
+    "name": "Mitchell Evans",
+    "position": "TE",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "cbs-3162481",
+    "name": "Mitchell Tinsley",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-trubmi00",
+    "name": "Mitchell Trubisky",
+    "position": "QB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-aliemo00",
+    "name": "Mo Alie-Cox",
+    "position": "TE",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-pricmy00",
+    "name": "Myles Price",
+    "position": "WR",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-harrna00",
+    "name": "Najee Harris",
+    "position": "RB",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-adkina00",
+    "name": "Nate Adkins",
+    "position": "TE",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-boerna00",
+    "name": "Nate Boerkircher",
+    "position": "TE",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-nwexxx99",
+    "name": "New England Patriots",
+    "position": "DST",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-norxxx99",
+    "name": "New Orleans Saints",
+    "position": "DST",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-nygxxx99",
+    "name": "New York Giants",
+    "position": "DST",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-nyjxxx99",
+    "name": "New York Jets",
+    "position": "DST",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-singni00",
+    "name": "Nicholas Singleton",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "cbs-2131579",
+    "name": "Nick Chubb",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-folkni44",
+    "name": "Nick Folk",
+    "position": "K",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-mullni00",
+    "name": "Nick Mullens",
+    "position": "QB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "cbs-1871322",
+    "name": "Nick Vannett",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-westni00",
+    "name": "Nick Westbrook-Ikhine",
+    "position": "WR",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-collni00",
+    "name": "Nico Collins",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-2964863",
+    "name": "Nikko Remigio",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "cbs-2139270",
+    "name": "Noah Brown",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-fantno00",
+    "name": "Noah Fant",
+    "position": "TE",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-grayno00",
+    "name": "Noah Gray",
+    "position": "TE",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-beckod01",
+    "name": "Odell Beckham Jr",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-zaccol00",
+    "name": "Olamide Zaccheaus",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-gordol00",
+    "name": "Ollie Gordon II",
+    "position": "RB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-coopom00",
+    "name": "Omar Cooper Jr.",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-hampom00",
+    "name": "Omarion Hampton",
+    "position": "RB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-gadsor01",
+    "name": "Oronde Gadsden",
+    "position": "TE",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-delpos00",
+    "name": "Oscar Delp",
+    "position": "TE",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-washpa01",
+    "name": "Parker Washington",
+    "position": "WR",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-camppa00",
+    "name": "Parris Campbell",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "fbg-bryapa00",
+    "name": "Pat Bryant",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-freipa00",
+    "name": "Pat Freiermuth",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-mahopa00",
+    "name": "Patrick Mahomes II",
+    "position": "QB",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-ricapa00",
+    "name": "Patrick Ricard",
+    "position": "RB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-2256736",
+    "name": "Patrick Taylor",
+    "position": "RB",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-durhpa00",
+    "name": "Payne Durham",
+    "position": "TE",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-mafaph00",
+    "name": "Phil Mafah",
+    "position": "RB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-phixxx99",
+    "name": "Philadelphia Eagles",
+    "position": "DST",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-stropi00",
+    "name": "Pierre Strong Jr",
+    "position": "RB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-pitxxx99",
+    "name": "Pittsburgh Steelers",
+    "position": "DST",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-nacupu00",
+    "name": "Puka Nacua",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-johnqu01",
+    "name": "Quentin Johnston",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-ewerqu00",
+    "name": "Quinn Ewers",
+    "position": "QB",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-judkqu00",
+    "name": "Quinshon Judkins",
+    "position": "RB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-morrqu00",
+    "name": "Quintin Morris",
+    "position": "TE",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-whitra00",
+    "name": "Rachaad White",
+    "position": "RB",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "cbs-2174957",
+    "name": "Raheem Mostert",
+    "position": "RB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-sandra00",
+    "name": "Raheim Sanders",
+    "position": "RB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-ricera01",
+    "name": "Rashee Rice",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-alixra00",
+    "name": "Rasheen Ali",
+    "position": "RB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-shahra00",
+    "name": "Rashid Shaheed",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-batera00",
+    "name": "Rashod Bateman",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-davira02",
+    "name": "Ray Davis",
+    "position": "RB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-3161112",
+    "name": "Reggie Gilliam",
+    "position": "RB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-virgre00",
+    "name": "Reggie Virgil",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-stevrh00",
+    "name": "Rhamondre Stevenson",
+    "position": "RB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-dowdda00",
+    "name": "Rico Dowdle",
+    "position": "RB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-leoari00",
+    "name": "Riley Leonard",
+    "position": "QB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "cbs-3175781",
+    "name": "Riley Nowakowski",
+    "position": "TE",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-pattri44",
+    "name": "Riley Patterson",
+    "position": "K",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-3165468",
+    "name": "Rivaldo Fairweather",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-harvrj00",
+    "name": "RJ Harvey",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "cbs-26697728",
+    "name": "Robbie Ouzts",
+    "position": "RB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-wilsro02",
+    "name": "Roman Wilson",
+    "position": "WR",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-odunro00",
+    "name": "Rome Odunze",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-doubro00",
+    "name": "Romeo Doubs",
+    "position": "WR",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "cbs-2968474",
+    "name": "Ronnie Bell",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-johnro07",
+    "name": "Roschon Johnson",
+    "position": "RB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-fitzry01",
+    "name": "Ryan Fitzgerald",
+    "position": "K",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-floury00",
+    "name": "Ryan Flournoy",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "cbs-2964726",
+    "name": "Ryan Miller",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-2815163",
+    "name": "Salvon Ahmed",
+    "position": "RB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-darnsa00",
+    "name": "Sam Darnold",
+    "position": "QB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-howesa00",
+    "name": "Sam Howell",
+    "position": "QB",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "fbg-laposa00",
+    "name": "Sam LaPorta",
+    "position": "TE",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-roussa00",
+    "name": "Sam Roush",
+    "position": "TE",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-perisa00",
+    "name": "Samaje Perine",
+    "position": "RB",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-sfoxxx99",
+    "name": "San Francisco 49ers",
+    "position": "DST",
+    "nflTeam": "SF"
+  },
+  {
+    "id": "fbg-barksa00",
+    "name": "Saquon Barkley",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-willsa00",
+    "name": "Savion Williams",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "cbs-2180075",
+    "name": "Scott Miller",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-mckese00",
+    "name": "Sean McKeon",
+    "position": "TE",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-tuckse00",
+    "name": "Sean Tucker",
+    "position": "RB",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-seaxxx99",
+    "name": "Seattle Seahawks",
+    "position": "DST",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-mcgose00",
+    "name": "Seth McGowan",
+    "position": "RB",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-traose00",
+    "name": "Seydou Traore",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-2240307",
+    "name": "Shane Buechele",
+    "position": "QB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "cbs-26688308",
+    "name": "Shane Zylstra",
+    "position": "TE",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-sandsh00",
+    "name": "Shedeur Sanders",
+    "position": "QB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-vakisi99",
+    "name": "Sione Vaki",
+    "position": "RB",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-bellsk00",
+    "name": "Skyler Bell",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-moorsk00",
+    "name": "Skyy Moore",
+    "position": "WR",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-rattsp00",
+    "name": "Spencer Rattler",
+    "position": "QB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-shrasp00",
+    "name": "Spencer Shrader",
+    "position": "K",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-diggst00",
+    "name": "Stefon Diggs",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "cbs-1996786",
+    "name": "Sterling Shepard",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-bennst00",
+    "name": "Stetson Bennett IV",
+    "position": "QB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "cbs-2864800",
+    "name": "Stone Smartt",
+    "position": "TE",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-hocktj00",
+    "name": "T.J. Hockenson",
+    "position": "TE",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-broota00",
+    "name": "Tahj Brooks",
+    "position": "RB",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "cbs-3122529",
+    "name": "Tahj Washington",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-feltta00",
+    "name": "Tai Felton",
+    "position": "WR",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-tamxxx99",
+    "name": "Tampa Bay Buccaneers",
+    "position": "DST",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-bigsta00",
+    "name": "Tank Bigsby",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-dellna00",
+    "name": "Tank Dell",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-arkita00",
+    "name": "Tanner Arkin",
+    "position": "TE",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "cbs-2260697",
+    "name": "Tanner Conner",
+    "position": "TE",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-hudsta00",
+    "name": "Tanner Hudson",
+    "position": "TE",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-kozita00",
+    "name": "Tanner Koziol",
+    "position": "TE",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-mcketa00",
+    "name": "Tanner McKee",
+    "position": "QB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "cbs-2965963",
+    "name": "Teagan Quitoriano",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-hurste00",
+    "name": "Ted Hurst",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-bridte00",
+    "name": "Teddy Bridgewater",
+    "position": "QB",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-higgte00",
+    "name": "Tee Higgins",
+    "position": "WR",
+    "nflTeam": "CIN"
+  },
+  {
+    "id": "fbg-otixxx99",
+    "name": "Tennessee Titans",
+    "position": "DST",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-marste00",
+    "name": "Terrace Marshall Jr",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-fergte00",
+    "name": "Terrance Ferguson",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "cbs-3133899",
+    "name": "Terrell Jennings",
+    "position": "RB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-mclate00",
+    "name": "Terry McLaurin",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-mcmite00",
+    "name": "Tetairoa McMillan",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-johnte01",
+    "name": "Tez Johnson",
+    "position": "WR",
+    "nflTeam": "TB"
+  },
+  {
+    "id": "fbg-johnth00",
+    "name": "Theo Johnson",
+    "position": "TE",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "cbs-3124276",
+    "name": "Theo Wease Jr.",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-fidoth00",
+    "name": "Thomas Fidone II",
+    "position": "TE",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-patrti00",
+    "name": "Tim Patrick",
+    "position": "WR",
+    "nflTeam": "NYJ"
+  },
+  {
+    "id": "fbg-reimti00",
+    "name": "Tip Reiman",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-3117113",
+    "name": "Tom Kennedy",
+    "position": "WR",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-devito00",
+    "name": "Tommy DeVito",
+    "position": "QB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-tremto00",
+    "name": "Tommy Tremble",
+    "position": "TE",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-pollto01",
+    "name": "Tony Pollard",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-hortto00",
+    "name": "Tory Horton",
+    "position": "WR",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "fbg-etietr00",
+    "name": "Travis Etienne Jr.",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-2249831",
+    "name": "Travis Homer",
+    "position": "RB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-hunttr00",
+    "name": "Travis Hunter",
+    "position": "WR",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-kelctr00",
+    "name": "Travis Kelce",
+    "position": "TE",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "cbs-2870478",
+    "name": "Travis Vokolek",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-2222046",
+    "name": "Trayveon Williams",
+    "position": "RB",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-tucktr00",
+    "name": "Tre Tucker",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-harrtr03",
+    "name": "Tre' Harris",
+    "position": "WR",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-hendtr00",
+    "name": "TreVeyon Henderson",
+    "position": "RB",
+    "nflTeam": "NE"
+  },
+  {
+    "id": "fbg-etietr01",
+    "name": "Trevor Etienne",
+    "position": "RB",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-lawrtr00",
+    "name": "Trevor Lawrence",
+    "position": "QB",
+    "nflTeam": "JAX"
+  },
+  {
+    "id": "fbg-benstr01",
+    "name": "Trey Benson",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-lanctr00",
+    "name": "Trey Lance",
+    "position": "QB",
+    "nflTeam": "LAC"
+  },
+  {
+    "id": "fbg-mcbrtr01",
+    "name": "Trey McBride",
+    "position": "TE",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-3122273",
+    "name": "Trey Palmer",
+    "position": "WR",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-smactr00",
+    "name": "Trey Smack",
+    "position": "K",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-burktr00",
+    "name": "Treylon Burks",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-frantr00",
+    "name": "Troy Franklin",
+    "position": "WR",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-tagotu00",
+    "name": "Tua Tagovailoa",
+    "position": "QB",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-kraftu00",
+    "name": "Tucker Kraft",
+    "position": "TE",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-atwetu00",
+    "name": "Tutu Atwell",
+    "position": "WR",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-2867472",
+    "name": "Ty Chandler",
+    "position": "RB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-johnty00",
+    "name": "Ty Johnson",
+    "position": "RB",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-simpty00",
+    "name": "Ty Simpson",
+    "position": "QB",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-speaty00",
+    "name": "Tyjae Spears",
+    "position": "RB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "cbs-2866424",
+    "name": "Tylan Wallace",
+    "position": "WR",
+    "nflTeam": "CLE"
+  },
+  {
+    "id": "fbg-allgty00",
+    "name": "Tyler Allgeier",
+    "position": "RB",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-badity00",
+    "name": "Tyler Badie",
+    "position": "RB",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-bassty44",
+    "name": "Tyler Bass",
+    "position": "K",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-conkty00",
+    "name": "Tyler Conklin",
+    "position": "TE",
+    "nflTeam": "DET"
+  },
+  {
+    "id": "fbg-goodty00",
+    "name": "Tyler Goodson",
+    "position": "RB",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "fbg-higbty01",
+    "name": "Tyler Higbee",
+    "position": "TE",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-huntty00",
+    "name": "Tyler Huntley",
+    "position": "QB",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "cbs-1620002",
+    "name": "Tyler Johnson",
+    "position": "WR",
+    "nflTeam": "DAL"
+  },
+  {
+    "id": "cbs-1860834",
+    "name": "Tyler Lockett",
+    "position": "WR",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-loopty00",
+    "name": "Tyler Loop",
+    "position": "K",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "fbg-shouty00",
+    "name": "Tyler Shough",
+    "position": "QB",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "fbg-warrty00",
+    "name": "Tyler Warren",
+    "position": "TE",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-thorty00",
+    "name": "Tyquan Thornton",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-hillty00",
+    "name": "Tyreek Hill",
+    "position": "WR",
+    "nflTeam": "FA"
+  },
+  {
+    "id": "cbs-2741208",
+    "name": "Tyrell Shavers",
+    "position": "WR",
+    "nflTeam": "BUF"
+  },
+  {
+    "id": "fbg-taylty00",
+    "name": "Tyrod Taylor",
+    "position": "QB",
+    "nflTeam": "GB"
+  },
+  {
+    "id": "fbg-tracty00",
+    "name": "Tyrone Tracy Jr.",
+    "position": "RB",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-bagety00",
+    "name": "Tyson Bagent",
+    "position": "QB",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-jeffva00",
+    "name": "Van Jefferson",
+    "position": "WR",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-robiwa00",
+    "name": "Wan'Dale Robinson",
+    "position": "WR",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "fbg-wasxxx99",
+    "name": "Washington Commanders",
+    "position": "DST",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-lutzwi44",
+    "name": "Wil Lutz",
+    "position": "K",
+    "nflTeam": "DEN"
+  },
+  {
+    "id": "fbg-howawi01",
+    "name": "Will Howard",
+    "position": "QB",
+    "nflTeam": "PIT"
+  },
+  {
+    "id": "fbg-kacmwi00",
+    "name": "Will Kacmarek",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "fbg-leviwi00",
+    "name": "Will Levis",
+    "position": "QB",
+    "nflTeam": "TEN"
+  },
+  {
+    "id": "cbs-2962073",
+    "name": "Will Mallory",
+    "position": "TE",
+    "nflTeam": "IND"
+  },
+  {
+    "id": "fbg-reicwi00",
+    "name": "Will Reichard",
+    "position": "K",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-shipwi00",
+    "name": "Will Shipley",
+    "position": "RB",
+    "nflTeam": "PHI"
+  },
+  {
+    "id": "fbg-markwo00",
+    "name": "Woody Marks",
+    "position": "RB",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "cbs-3127427",
+    "name": "Xavier Gipson",
+    "position": "WR",
+    "nflTeam": "NYG"
+  },
+  {
+    "id": "fbg-hutcxa00",
+    "name": "Xavier Hutchinson",
+    "position": "WR",
+    "nflTeam": "HOU"
+  },
+  {
+    "id": "fbg-legexa00",
+    "name": "Xavier Legette",
+    "position": "WR",
+    "nflTeam": "CAR"
+  },
+  {
+    "id": "fbg-smitxa00",
+    "name": "Xavier Smith",
+    "position": "WR",
+    "nflTeam": "LAR"
+  },
+  {
+    "id": "fbg-weavxa00",
+    "name": "Xavier Weaver",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "fbg-wortxa00",
+    "name": "Xavier Worthy",
+    "position": "WR",
+    "nflTeam": "KC"
+  },
+  {
+    "id": "fbg-charza00",
+    "name": "Zach Charbonnet",
+    "position": "RB",
+    "nflTeam": "SEA"
+  },
+  {
+    "id": "cbs-1685963",
+    "name": "Zach Ertz",
+    "position": "TE",
+    "nflTeam": "WAS"
+  },
+  {
+    "id": "fbg-branza00",
+    "name": "Zachariah Branch",
+    "position": "WR",
+    "nflTeam": "ATL"
+  },
+  {
+    "id": "cbs-2963243",
+    "name": "Zack Kuntz",
+    "position": "TE",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-26695325",
+    "name": "Zaire Mitchell-Paden",
+    "position": "TE",
+    "nflTeam": "NO"
+  },
+  {
+    "id": "cbs-2963641",
+    "name": "Zamir White",
+    "position": "RB",
+    "nflTeam": "LV"
+  },
+  {
+    "id": "fbg-gonzza99",
+    "name": "Zane Gonzalez",
+    "position": "K",
+    "nflTeam": "MIA"
+  },
+  {
+    "id": "cbs-2869402",
+    "name": "Zavier Scott",
+    "position": "RB",
+    "nflTeam": "MIN"
+  },
+  {
+    "id": "fbg-thomza01",
+    "name": "Zavion Thomas",
+    "position": "WR",
+    "nflTeam": "CHI"
+  },
+  {
+    "id": "fbg-flowza00",
+    "name": "Zay Flowers",
+    "position": "WR",
+    "nflTeam": "BAL"
+  },
+  {
+    "id": "cbs-2080270",
+    "name": "Zay Jones",
+    "position": "WR",
+    "nflTeam": "ARI"
+  },
+  {
+    "id": "cbs-3121860",
+    "name": "Zonovan Knight",
+    "position": "RB",
+    "nflTeam": "ARI"
+  }
+]

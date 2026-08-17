@@ -1,0 +1,11 @@
+{
+  "name": "Pip's Draft Day Tool",
+  "short_name": "Draft Day",
+  "start_url": "/draft-day/",
+  "scope": "/draft-day/",
+  "display": "standalone",
+  "background_color": "#07182e",
+  "theme_color": "#0c223f",
+  "icons": [{ "src": "/draft-day/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
+
