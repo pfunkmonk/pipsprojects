@@ -7,6 +7,8 @@ const root = new URL("../", import.meta.url);
 const report = JSON.parse(await readFile(new URL("reports/thunder-bowl/projection-ensemble-surrogate-backtest-20260809.json", root), "utf8"));
 const plan = await readFile(new URL("THUNDER-BOWL-2026-PRODUCT-PLAN.md", root), "utf8");
 const handoff = await readFile(new URL("artifacts/thunder-bowl/projection-handoff-2026/thunder-bowl-2026-projection-handoff-template.csv", root), "utf8");
+const projectionBacktest = await readFile(new URL("scripts/backtest-projection-ensemble.py", root), "utf8");
+const projectionRunner = await readFile(new URL("scripts/run-projection-backtest.mjs", root), "utf8");
 
 test("the old mean-reversion surrogate remains blocked while the simpler blend is registered", () => {
   assert.equal(report.scope.rows, 1153);
@@ -40,4 +42,12 @@ test("the checked-in handoff template covers the exact pack and carries no downs
   assert.equal(lines.length - 1, 716);
   assert.match(lines[0], /pack_player_id,player_name,position,nfl_team,fbg_id,cbs_id,fantasypros_id,gsis_id/);
   assert.doesNotMatch(lines[0], /vbd|market|max_bid|keeper|auction/i);
+});
+
+test("projection challenger rebuilds lag evidence and has a portable dependency-aware entrypoint", () => {
+  assert.match(projectionBacktest, /grouped\["fp_over_expected"\]\.shift\(1\)/);
+  assert.match(projectionBacktest, /grouped\["tb_ppg"\]\.shift\(1\)/);
+  assert.match(projectionBacktest, /Historical model is missing required columns/);
+  assert.match(projectionRunner, /THUNDER_BOWL_PYTHON/);
+  assert.match(projectionRunner, /requirements-backtests\.txt/);
 });

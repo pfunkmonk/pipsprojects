@@ -48,6 +48,7 @@ test("desktop draft controls remain pinned above the fold", () => {
   assert.match(wideDraftRule, /#view-draft \.sale-bar \{[\s\S]*position: fixed;/);
   assert.match(wideDraftRule, /bottom: 0\.75rem;/);
   assert.match(wideDraftRule, /left: clamp\(1rem, 2vw, 2rem\);/);
+  assert.match(wideDraftRule, /#view-draft \.sale-bar \.sale-status \{[\s\S]*font-size: 0\.74rem;/);
 });
 
 test("wide draft columns share one viewport height and keep secondary content internally scrollable", () => {
@@ -65,7 +66,16 @@ test("wide draft columns share one viewport height and keep secondary content in
   assert.match(balancedColumns, /height: max\(36rem, calc\(100dvh - 21\.5rem\)\)/);
   assert.match(balancedColumns, /grid-template-rows: auto auto auto minmax\(0, 1fr\) auto/);
   assert.match(balancedColumns, /\.decision-panel \{[\s\S]*overflow-y: auto/);
-  assert.match(balancedColumns, /\.decision-coach \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(balancedColumns, /\.decision-coach \{[\s\S]*grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(balancedColumns, /grid-auto-flow: row dense;/);
+  assert.match(balancedColumns, /\.decision-best-alternative \{ grid-column: span 2; \}/);
+  assert.match(balancedColumns, /\.decision-coach-fact \{ grid-column: span 2; padding: 0\.36rem 0\.48rem; \}/);
+  assert.match(balancedColumns, /\.decision-roster-safety \{ grid-column: 1 \/ 4; grid-row: 2;/);
+  assert.match(balancedColumns, /\.decision-roster-safety > div \{ min-width: 0; overflow: hidden; \}/);
+  assert.match(balancedColumns, /\.decision-roster-safety span \{ display: none; \}/);
+  assert.match(balancedColumns, /\.decision-roster-safety small \{ display: none; \}/);
+  assert.match(balancedColumns, /\.decision-market-strip \{ grid-column: 4 \/ -1; grid-row: 2; border-top: 0; padding-top: 0; \}/);
+  assert.match(balancedColumns, /\.decision-badges \{ flex-direction: row; \}/);
   assert.match(balancedColumns, /\.opponent-pressure-section \{[\s\S]*overflow-y: auto/);
   assert.match(balancedColumns, /grid-template-rows: auto auto minmax\(0, 1fr\)/);
   assert.match(appSource, /classList\.toggle\("is-auctioneer-feed", policy\.auctioneer/);
@@ -360,8 +370,11 @@ test("player intelligence uses an explicit full-screen dismiss layer around the 
   assert.match(indexHtml, /id="player-intel-backdrop" class="player-intel-backdrop"[\s\S]*id="player-intel-backdrop-hitbox"/);
   assert.match(appSource, /function closePlayerIntelFromBackdrop\(event\)/);
   assert.match(appSource, /!playerIntelDialog\.open/);
-  assert.match(appSource, /event\.currentTarget === byId\("player-intel-backdrop"\)/);
-  assert.match(appSource, /byId\("player-intel-backdrop"\)\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
+  assert.match(appSource, /playerIntelForm\.contains\(event\.target\)/);
+  assert.match(appSource, /const clickedOutsideCard = event\.clientX < cardBounds\.left/);
+  assert.match(appSource, /event\.target === playerIntelDialog/);
+  assert.match(appSource, /event\.target === byId\("player-intel-backdrop-hitbox"\)/);
+  assert.match(appSource, /playerIntelDialog\.addEventListener\("click", closePlayerIntelFromBackdrop\)/);
   assert.match(appCss, /\.player-intel-dialog \{[\s\S]*inset: 0;[\s\S]*width: 100vw;[\s\S]*height: 100vh;[\s\S]*background: transparent;/);
   assert.match(appCss, /\.player-intel-backdrop \{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*background: transparent;/);
   assert.match(appCss, /\.player-intel-backdrop > span \{[\s\S]*inset: 0 auto 0 0;[\s\S]*width: max\(1rem,/);

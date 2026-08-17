@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "modelVersion": "auction-value-advice-v1",
-  "generatedAt": "2026-08-16T23:33:50.913Z",
-  "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001",
+  "generatedAt": "2026-08-17T22:28:03.483Z",
+  "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1",
   "playersTested": 36,
   "forecastSamplesPerPlayer": 384,
   "remainingAuctionRolloutsPerPlayer": 96,
@@ -13,9 +13,9 @@
     "WAIT": 2
   },
   "timingMs": {
-    "median": 76.873,
-    "p95": 94.61,
-    "maximum": 104.095
+    "median": 72.489,
+    "p95": 91.67,
+    "maximum": 128.244
   },
   "rows": [
     {

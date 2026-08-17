@@ -1,0 +1,4 @@
+# Optional Python dependencies for the historical challenger backtests.
+# Install with: python -m pip install -r requirements-backtests.txt
+numpy>=2.0,<3
+pandas>=2.2,<4

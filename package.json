@@ -17,7 +17,7 @@
     "backtest:thunder-market": "node scripts/backtest-auction-market-calibration.mjs",
     "backtest:thunder-price-curve": "node scripts/build-auction-price-curve.mjs",
     "backtest:thunder-runs": "node scripts/backtest-position-runs.mjs",
-    "backtest:thunder-projections": "python scripts/backtest-projection-ensemble.py",
+    "backtest:thunder-projections": "node scripts/run-projection-backtest.mjs",
     "backtest:thunder-priority": "python scripts/backtest-priority-week-weights.py",
     "build:thunder-consensus": "node scripts/build-thunder-consensus-handoff.mjs",
     "import:thunder-weekly-assets": "node scripts/import-weekly-assets.mjs",

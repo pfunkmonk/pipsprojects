@@ -489,11 +489,32 @@ input[readonly] { color: var(--muted); }
     scrollbar-gutter: stable;
   }
   #view-draft .decision-panel {
+    padding: 0.75rem 0.9rem 1rem;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
   }
-  #view-draft .decision-coach { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #view-draft .decision-badges { flex-direction: row; }
+  #view-draft .decision-heading h2 { margin-top: 0.25rem; }
+  #view-draft .decision-coach {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    gap: 0.3rem;
+    margin-top: 0.65rem;
+    padding: 0.45rem;
+  }
+  #view-draft .decision-coach-verdict { padding: 0.45rem 0.58rem; }
+  #view-draft .decision-roster-safety { grid-column: 1 / 4; grid-row: 2; padding: 0.32rem 0.48rem; }
+  #view-draft .decision-roster-safety > div { min-width: 0; overflow: hidden; }
+  #view-draft .decision-roster-safety span { display: none; }
+  #view-draft .decision-roster-safety strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #view-draft .decision-roster-safety small { display: none; }
+  #view-draft .decision-coach-fact { grid-column: span 2; padding: 0.36rem 0.48rem; }
+  #view-draft .decision-best-alternative { grid-column: span 2; }
+  #view-draft .decision-market-strip { grid-column: 4 / -1; grid-row: 2; border-top: 0; padding-top: 0; }
+  #view-draft .decision-market-strip > span { gap: 0.15rem; padding: 0.26rem 0.28rem; }
+  #view-draft .decision-market-strip b { font-size: 0.52rem; }
+  #view-draft .decision-market-strip strong { font-size: 0.67rem; }
   #view-draft .current-bid-control { grid-template-columns: 28px minmax(42px, 1fr) 28px; }
   #view-draft .current-bid-control label { display: none; }
   #view-draft .pressure-panel {
@@ -600,8 +621,15 @@ input[readonly] { color: var(--muted); }
     right: clamp(1rem, 2vw, 2rem);
     bottom: 0.75rem;
     left: clamp(1rem, 2vw, 2rem);
+    gap: 0.42rem;
+    padding: 0.48rem 0.7rem;
     background: rgba(12, 40, 72, 0.98);
     backdrop-filter: blur(8px);
+  }
+  #view-draft .sale-bar .sale-status {
+    min-height: 1em;
+    font-size: 0.74rem;
+    line-height: 1.15;
   }
   #view-draft .practice-console {
     position: fixed;

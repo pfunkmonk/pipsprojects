@@ -58,6 +58,8 @@ test("operations guide matches the released keeper, failover, and readiness work
   assert.match(guide, /Promote &amp; lock this final pack/i);
   assert.match(guide, /practice pack remains unchanged/i);
   assert.match(guide, /only writable offline authority/i);
+  assert.match(guide, /CBS Auction Import CSV/);
+  assert.match(guide, /player_name,nfl_team,position,fantasy_team,auction_price,player_id/);
   assert.doesNotMatch(guide, /Run the real app server on its LAN interface/);
 });
 

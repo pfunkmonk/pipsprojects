@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -260,11 +261,35 @@ def auction_metrics(frame: pd.DataFrame, column: str) -> dict | None:
 
 def load_history(model_path: Path, history_path: Path) -> pd.DataFrame:
     model = pd.read_csv(model_path, low_memory=False)
+    required_model_columns = {
+        "name", "pos", "season", "tb_points", "tb_ppg", "games",
+        "fp_over_expected", "total_xfp",
+    }
+    missing_model_columns = sorted(required_model_columns - set(model.columns))
+    if missing_model_columns:
+        raise SystemExit(f"Historical model is missing required columns: {', '.join(missing_model_columns)}")
     model = model[model["pos"].isin(POSITIONS)].copy()
     model["norm_name"] = model["name"].map(norm_name)
     model["season"] = pd.to_numeric(model["season"], errors="coerce")
     model["actual"] = pd.to_numeric(model["tb_points"], errors="coerce")
     model["auction_paid"] = pd.to_numeric(model.get("auction_paid"), errors="coerce")
+
+    # The unified model intentionally stores raw season facts. Rebuild every
+    # lag feature here so a schema refresh cannot silently drop time-forward
+    # inputs or tempt the challenger to read same-season outcomes.
+    if "gsis_id" in model.columns:
+        stable_id = model["gsis_id"].fillna("").astype(str).str.strip()
+        model["player_key"] = stable_id.where(stable_id.ne(""), model["norm_name"])
+    else:
+        model["player_key"] = model["norm_name"]
+    model = model.sort_values(["player_key", "season"], kind="stable")
+    grouped = model.groupby("player_key", sort=False)
+    model["prev1_fp_over_expected"] = grouped["fp_over_expected"].shift(1)
+    model["prev1_games"] = grouped["games"].shift(1)
+    model["prev1_tb_ppg"] = grouped["tb_ppg"].shift(1)
+    model["prev2_tb_ppg"] = grouped["tb_ppg"].shift(2)
+    model["ppg_trend"] = model["prev1_tb_ppg"] - model["prev2_tb_ppg"]
+    model["prev1_total_xfp"] = grouped["total_xfp"].shift(1)
 
     raw_history = json.loads(history_path.read_text(encoding="utf-8"))
     for source in SOURCE_NAMES:
@@ -410,16 +435,44 @@ def markdown(report: dict) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, type=Path)
-    parser.add_argument("--history", required=True, type=Path)
-    parser.add_argument("--json", required=True, type=Path)
-    parser.add_argument("--markdown", required=True, type=Path)
+    repository_root = Path(__file__).resolve().parents[1]
+    fantasy_root = Path(os.environ.get(
+        "THUNDER_BOWL_FANTASY_ROOT",
+        Path.home() / "Dropbox" / "Personal" / "FAMILY STUFF" / "Mike Stuff" / "Fantasy Football",
+    ))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--model",
+        type=Path,
+        default=fantasy_root / "_AGENT_HANDOFF" / "data" / "player_season_vbd.csv",
+        help="Unified historical player-season model CSV.",
+    )
+    parser.add_argument(
+        "--history",
+        type=Path,
+        default=fantasy_root / "_draft_app" / "cache" / "hist_projections.json",
+        help="Archived Sleeper/ESPN preseason projection snapshots.",
+    )
+    parser.add_argument(
+        "--json",
+        type=Path,
+        default=repository_root / "reports" / "thunder-bowl" / "projection-ensemble-surrogate-backtest-20260809.json",
+        help="Machine-readable challenger report destination.",
+    )
+    parser.add_argument(
+        "--markdown",
+        type=Path,
+        default=repository_root / "reports" / "thunder-bowl" / "projection-ensemble-surrogate-backtest-20260809.md",
+        help="Human-readable challenger report destination.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    for label, path in (("model", args.model), ("history", args.history)):
+        if not path.is_file():
+            raise SystemExit(f"Missing {label} input: {path}")
     history = load_history(args.model, args.history)
     report = build_report(history)
     args.json.parent.mkdir(parents=True, exist_ok=True)

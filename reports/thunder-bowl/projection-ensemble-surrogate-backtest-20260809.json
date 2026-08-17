@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-projection-ensemble-surrogate-backtest",
-  "generatedAt": "2026-08-09T16:13:15.811276+00:00",
+  "generatedAt": "2026-08-17T22:28:02.965974+00:00",
   "authority": "challenger_only",
   "scope": {
     "sources": [
@@ -281,7 +281,7 @@
         "mae": 39.456,
         "rmse": 54.666,
         "bias": -4.461,
-        "within_position_spearman": 0.7995,
+        "within_position_spearman": 0.7994,
         "top_tier_hit_rate": 0.7315,
         "catastrophic_bust_rate": 0.0856
       },
@@ -388,47 +388,47 @@
     "context_only": {
       "overall": {
         "n": 1153,
-        "mae": 39.999,
-        "rmse": 55.324,
-        "bias": -0.642,
-        "within_position_spearman": 0.7954,
+        "mae": 39.985,
+        "rmse": 55.31,
+        "bias": -0.655,
+        "within_position_spearman": 0.7955,
         "top_tier_hit_rate": 0.7198,
         "catastrophic_bust_rate": 0.0856
       },
       "by_position": {
         "QB": {
           "n": 165,
-          "mae": 58.587,
-          "rmse": 81.529,
-          "bias": 3.756,
-          "within_position_spearman": 0.8294,
+          "mae": 58.543,
+          "rmse": 81.473,
+          "bias": 3.685,
+          "within_position_spearman": 0.832,
           "top_tier_hit_rate": 0.6923,
           "catastrophic_bust_rate": 0.2051
         },
         "RB": {
           "n": 283,
-          "mae": 42.623,
-          "rmse": 57.283,
-          "bias": -1.815,
-          "within_position_spearman": 0.8107,
+          "mae": 42.599,
+          "rmse": 57.277,
+          "bias": -1.84,
+          "within_position_spearman": 0.8104,
           "top_tier_hit_rate": 0.8052,
           "catastrophic_bust_rate": 0.0779
         },
         "TE": {
           "n": 254,
-          "mae": 28.005,
-          "rmse": 37.818,
-          "bias": -4.127,
+          "mae": 28.004,
+          "rmse": 37.809,
+          "bias": -4.123,
           "within_position_spearman": 0.7642,
           "top_tier_hit_rate": 0.625,
           "catastrophic_bust_rate": 0.0208
         },
         "WR": {
           "n": 451,
-          "mae": 38.307,
-          "rmse": 50.286,
-          "bias": 0.448,
-          "within_position_spearman": 0.7908,
+          "mae": 38.303,
+          "rmse": 50.288,
+          "bias": 0.455,
+          "within_position_spearman": 0.7905,
           "top_tier_hit_rate": 0.7097,
           "catastrophic_bust_rate": 0.0753
         }
@@ -443,110 +443,110 @@
     "durability": {
       "overall": {
         "n": 1153,
-        "mae": 40.032,
-        "rmse": 55.376,
-        "bias": 0.339,
+        "mae": 40.041,
+        "rmse": 55.373,
+        "bias": 0.285,
         "within_position_spearman": 0.7914,
-        "top_tier_hit_rate": 0.7082,
+        "top_tier_hit_rate": 0.7043,
         "catastrophic_bust_rate": 0.0856
       },
       "by_position": {
         "QB": {
           "n": 165,
-          "mae": 59.094,
-          "rmse": 81.683,
-          "bias": 3.142,
-          "within_position_spearman": 0.8141,
+          "mae": 59.068,
+          "rmse": 81.639,
+          "bias": 3.079,
+          "within_position_spearman": 0.8131,
           "top_tier_hit_rate": 0.641,
           "catastrophic_bust_rate": 0.2051
         },
         "RB": {
           "n": 283,
-          "mae": 42.675,
-          "rmse": 57.445,
-          "bias": 1.028,
-          "within_position_spearman": 0.809,
+          "mae": 42.65,
+          "rmse": 57.407,
+          "bias": 0.887,
+          "within_position_spearman": 0.8095,
           "top_tier_hit_rate": 0.7792,
           "catastrophic_bust_rate": 0.0649
         },
         "TE": {
           "n": 254,
-          "mae": 28.099,
-          "rmse": 38.033,
-          "bias": -4.268,
-          "within_position_spearman": 0.7618,
+          "mae": 28.069,
+          "rmse": 37.977,
+          "bias": -4.313,
+          "within_position_spearman": 0.7644,
           "top_tier_hit_rate": 0.625,
-          "catastrophic_bust_rate": 0.0417
+          "catastrophic_bust_rate": 0.0208
         },
         "WR": {
           "n": 451,
-          "mae": 38.12,
-          "rmse": 50.134,
-          "bias": 1.475,
-          "within_position_spearman": 0.7887,
-          "top_tier_hit_rate": 0.7204,
-          "catastrophic_bust_rate": 0.0753
-        }
-      },
-      "auction": {
-        "n": 20,
-        "mae": 19.75,
-        "bias": 18.45,
-        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
-      }
-    },
-    "full_model": {
-      "overall": {
-        "n": 1153,
-        "mae": 40.295,
-        "rmse": 55.268,
-        "bias": -0.698,
-        "within_position_spearman": 0.7894,
-        "top_tier_hit_rate": 0.7121,
-        "catastrophic_bust_rate": 0.0934
-      },
-      "by_position": {
-        "QB": {
-          "n": 165,
-          "mae": 59.198,
-          "rmse": 80.308,
-          "bias": 2.283,
-          "within_position_spearman": 0.8112,
-          "top_tier_hit_rate": 0.641,
-          "catastrophic_bust_rate": 0.1795
-        },
-        "RB": {
-          "n": 283,
-          "mae": 42.723,
-          "rmse": 57.577,
-          "bias": -1.155,
-          "within_position_spearman": 0.8114,
-          "top_tier_hit_rate": 0.7922,
-          "catastrophic_bust_rate": 0.0779
-        },
-        "TE": {
-          "n": 254,
-          "mae": 28.001,
-          "rmse": 37.864,
-          "bias": -6.071,
-          "within_position_spearman": 0.7581,
-          "top_tier_hit_rate": 0.6458,
-          "catastrophic_bust_rate": 0.0625
-        },
-        "WR": {
-          "n": 451,
-          "mae": 38.779,
-          "rmse": 50.616,
-          "bias": 1.523,
-          "within_position_spearman": 0.7853,
+          "mae": 38.185,
+          "rmse": 50.201,
+          "bias": 1.473,
+          "within_position_spearman": 0.7874,
           "top_tier_hit_rate": 0.7097,
           "catastrophic_bust_rate": 0.086
         }
       },
       "auction": {
         "n": 20,
-        "mae": 19.7,
-        "bias": 18.5,
+        "mae": 19.65,
+        "bias": 18.35,
+        "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
+      }
+    },
+    "full_model": {
+      "overall": {
+        "n": 1153,
+        "mae": 40.28,
+        "rmse": 55.218,
+        "bias": -0.792,
+        "within_position_spearman": 0.789,
+        "top_tier_hit_rate": 0.716,
+        "catastrophic_bust_rate": 0.0934
+      },
+      "by_position": {
+        "QB": {
+          "n": 165,
+          "mae": 59.167,
+          "rmse": 80.271,
+          "bias": 1.932,
+          "within_position_spearman": 0.8078,
+          "top_tier_hit_rate": 0.6667,
+          "catastrophic_bust_rate": 0.1795
+        },
+        "RB": {
+          "n": 283,
+          "mae": 42.702,
+          "rmse": 57.55,
+          "bias": -1.23,
+          "within_position_spearman": 0.8107,
+          "top_tier_hit_rate": 0.7922,
+          "catastrophic_bust_rate": 0.0779
+        },
+        "TE": {
+          "n": 254,
+          "mae": 27.939,
+          "rmse": 37.795,
+          "bias": -6.157,
+          "within_position_spearman": 0.7603,
+          "top_tier_hit_rate": 0.6458,
+          "catastrophic_bust_rate": 0.0625
+        },
+        "WR": {
+          "n": 451,
+          "mae": 38.801,
+          "rmse": 50.546,
+          "bias": 1.507,
+          "within_position_spearman": 0.7846,
+          "top_tier_hit_rate": 0.7097,
+          "catastrophic_bust_rate": 0.086
+        }
+      },
+      "auction": {
+        "n": 20,
+        "mae": 19.75,
+        "bias": 18.55,
         "note": "Projection-only theoretical dollars versus actual Thunder Bowl price; the separate room-demand layer is intentionally absent."
       }
     }

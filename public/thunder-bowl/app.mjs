@@ -1416,7 +1416,16 @@ function closePlayerIntel() {
 
 function closePlayerIntelFromBackdrop(event) {
   if (!playerIntelDialog.open) return;
-  if (event.currentTarget === byId("player-intel-backdrop")) closePlayerIntel();
+  if (playerIntelForm.contains(event.target)) return;
+  const cardBounds = playerIntelForm.getBoundingClientRect();
+  const clickedOutsideCard = event.clientX < cardBounds.left
+    || event.clientX > cardBounds.right
+    || event.clientY < cardBounds.top
+    || event.clientY > cardBounds.bottom;
+  const clickedDismissLayer = event.target === playerIntelDialog
+    || event.target === byId("player-intel-backdrop")
+    || event.target === byId("player-intel-backdrop-hitbox");
+  if (clickedDismissLayer || clickedOutsideCard) closePlayerIntel();
 }
 
 async function refreshPlayerNewsInApp() {
@@ -5501,7 +5510,7 @@ function bindInteractions() {
   practicePauseButton.addEventListener("click", () => void togglePracticePause());
   playerIntelForm.addEventListener("submit", savePlayerIntel);
   byId("close-player-intel").addEventListener("click", closePlayerIntel);
-  byId("player-intel-backdrop").addEventListener("click", closePlayerIntelFromBackdrop);
+  playerIntelDialog.addEventListener("click", closePlayerIntelFromBackdrop);
   byId("clear-player-intel").addEventListener("click", clearPlayerIntel);
   byId("intel-news-link").addEventListener("click", () => void refreshPlayerNewsInApp());
   byId("intel-cbs-link").addEventListener("click", () => void refreshResearchInApp("cbs"));

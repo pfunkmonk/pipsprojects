@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 valuation and VBD discrepancy audit
 
-- Pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001` (716 players; as of 2026-08-13T18:00:01.000Z)
+- Pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1` (716 players; as of 2026-08-16T23:42:43.000Z)
 - FBG August 8 weekly coverage: 604/716 ({"QB":78,"RB":115,"WR":209,"TE":127,"K":43,"DST":32})
 - FBG auction-value coverage: 400/716 (supplied ranks 1-400)
 - Candidate projection coverage: 416/716
@@ -139,8 +139,8 @@ These are the source differences most capable of changing VBD rather than merely
 | Jonah Coleman | RB | -157.8 | $1 | $1 | $1 | 77/67 | $14.95 | 77/18 | MARKET_RANK_VS_MFL_12 |
 | Omar Cooper Jr. | WR | -92.9 | $1 | $1 | $1 | 71/66 | $14.75 | 71/17 | MARKET_RANK_VS_MFL_12 |
 | Makai Lemon | WR | -62.9 | $1 | $1 | $1 | 56/53 | $27.20 | 56/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| KC Concepcion | WR | -62.8 | $1 | $1 | $1 | 57/52 | $20.64 | 57/7 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Antonio Williams | WR | -112.6 | $1 | $1 | $1 | 78/99 | $8.58 | 78/35 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
+| KC Concepcion | WR | -62.7 | $1 | $1 | $1 | 57/52 | $20.64 | 57/7 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
+| Antonio Williams | WR | -112.5 | $1 | $1 | $1 | 78/99 | $8.58 | 78/35 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
 | Jordyn Tyson | WR | -41.5 | $1 | $1 | $1 | 44/43 | $31.59 | 44/2 | MARKET_RANK_VS_MFL_12 |
 | Eli Raridon | TE | -131.0 | $1 | $1 | $1 | 58/59 | $4.97 | 58/18 | MARKET_RANK_VS_MFL_12 |
 | Eli Stowers | TE | -116.8 | $1 | $1 | $1 | 44/43 | $12.37 | 44/5 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
@@ -161,7 +161,7 @@ These are the source differences most capable of changing VBD rather than merely
 | De'Von Achane | RB | 94.5 | $27 | $34 | $25 | 5/10 | $12.14 | 5/21 | PROJECTION_SOURCE_RANGE_50|MARKET_RANK_VS_MFL_12 |
 | Rashee Rice | WR | 50.0 | $17 | $18 | $10 | 8/11 | $12.07 | 8/24 | PROJECTION_SOURCE_RANGE_50|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
 | Evan Engram | TE | -63.1 | $1 | $1 | $1 | 28/31 | $1.08 | 28/44 | FBG_NEGATIVE_WEEK|MARKET_RANK_VS_MFL_12 |
-| Jameson Williams | WR | 5.3 | $5 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
+| Jameson Williams | WR | 5.4 | $5 | $6 | $8 | 21/14 | $8.51 | 21/36 | FBG_NEGATIVE_WEEK|CANDIDATE_MODEL_OUTLIER|MARKET_RANK_VS_MFL_12 |
 | Jeremiyah Love | RB | 42.9 | $12 | $13 | $14 | 15/17 | $51.56 | 15/1 | MARKET_RANK_VS_MFL_12 |
 
 ## Runtime invariants checked
