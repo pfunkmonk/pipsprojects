@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDraftDayService } from "../netlify/functions/_draft-day/service.mjs";
+import { createDraftDayService, friendlyLeagueCode } from "../netlify/functions/_draft-day/service.mjs";
 
 function memoryRepository() {
   const rows = new Map();
@@ -19,6 +19,22 @@ const input = {
   },
   access: { adminCode: "ORGANIZER-123", auctioneerCode: "AUCTION-123", boardCode: "BOARD-123" },
 };
+
+test("league codes use the first eight readable league-name characters", () => {
+  assert.equal(friendlyLeagueCode("Test League"), "TESTLEAG");
+  assert.equal(friendlyLeagueCode("Café League"), "CAFELEAG");
+  assert.equal(friendlyLeagueCode("NFL"), "NFL");
+  assert.equal(friendlyLeagueCode("Test League", 1), "TESTLEA2");
+});
+
+test("duplicate league names receive an obvious numeric suffix", async () => {
+  const repository = memoryRepository();
+  const service = createDraftDayService({ repository, now: () => "2026-08-16T12:00:00.000Z" });
+  const first = await service.createLeague(input);
+  const second = await service.createLeague(input);
+  assert.equal(first.leagueCode, "SERV-ICEL");
+  assert.equal(second.leagueCode, "SERV-ICE2");
+});
 
 test("service creates a league, authenticates separate roles, and sanitizes the board", async () => {
   const service = createDraftDayService({ repository: memoryRepository(), leagueCode: () => "ABCD-EFGH", now: () => "2026-08-16T12:00:00.000Z" });

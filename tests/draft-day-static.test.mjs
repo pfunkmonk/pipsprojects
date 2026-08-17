@@ -64,6 +64,11 @@ test("position maximums are optional, persistent, and fast to clear", () => {
   assert.doesNotMatch(setupSource, /"data-position-max": "true", required/);
 });
 
+test("league-code guidance explains the automatic name-based code", () => {
+  assert.match(setupPage, /first eight letters or numbers in the league name/i);
+  assert.match(setupSource, /displayLeagueCode/);
+});
+
 test("keeper setup lives in the auctioneer cockpit with predictive search and CSV export", () => {
   assert.doesNotMatch(setupPage, /id="keeper-editor"|id="keepers-enabled"/);
   assert.match(setupPage, /id="keeper-maximum"/);

@@ -15,7 +15,7 @@ Every change must make the tool easier, more intuitive, more desirable, and fast
 
 ## Data and security boundaries
 
-- Each league receives a random eight-character league code.
+- Each league receives a memorable code from the first eight letters or numbers of its name. Short names stay short; a duplicate receives a visible numeric suffix.
 - Organizer, auctioneer, and Draft Board access codes are independently salted and hashed with scrypt. Plaintext codes are returned only through the creator's own form state and are never stored by the server.
 - Role sessions are separate HTTP-only, same-site cookies signed with `DRAFT_DAY_SESSION_SECRET`.
 - The Draft Board snapshot excludes event history, custom-player management, entered salary-pool setup, and every credential field.

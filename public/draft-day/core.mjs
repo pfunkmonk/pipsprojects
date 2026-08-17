@@ -62,8 +62,9 @@ export function safeId(value, label = "Id") {
 
 export function normalizeLeagueCode(value) {
   const compact = String(value ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (compact.length !== 8) throw new Error("League code must contain eight letters or numbers.");
-  return `${compact.slice(0, 4)}-${compact.slice(4)}`;
+  if (compact.length < 2) throw new Error("League code must contain at least two letters or numbers.");
+  const code = compact.slice(0, 8);
+  return code.length <= 4 ? code : `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
 export function normalizePlayer(value, label = "Player") {

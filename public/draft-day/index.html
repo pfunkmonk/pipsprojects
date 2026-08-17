@@ -8,7 +8,7 @@
   <title>Pip's Draft Day Tool</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=20260817c">
+  <link rel="stylesheet" href="./app.css?v=20260817d">
   <link rel="stylesheet" href="./shell-safety.css">
 </head>
 <body>
@@ -87,7 +87,7 @@
 
           <section class="wizard-step" data-wizard-step="2" hidden>
             <div id="new-access-fields">
-              <p class="callout">These roles are deliberately separate. The organizer can edit setup, the auctioneer can record results, and the Draft Board is read-only.</p>
+              <p class="callout">Your league code is created automatically from the first eight letters or numbers in the league name. These access roles remain separate: the organizer can edit setup, the auctioneer can record results, and the Draft Board is read-only.</p>
               <div class="access-grid">
                 <label class="access-card"><strong>Organizer code</strong><input id="admin-code" autocomplete="new-password" minlength="8" required><small>Controls league setup.</small></label>
                 <label class="access-card"><strong>Auctioneer code</strong><input id="auctioneer-code" autocomplete="new-password" minlength="8" required><small>Records and corrects sales.</small></label>
@@ -116,6 +116,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./setup.mjs?v=20260817c"></script>
+  <script type="module" src="./setup.mjs?v=20260817d"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import {
   applyCommand,
   draftCsv,
   keeperLegality,
+  normalizeLeagueCode,
   normalizeLeagueConfig,
   publicSnapshot,
   saleLegality,
@@ -52,6 +53,13 @@ function document(configValue = config()) {
 
 const qb = { id: "player-qb", name: "Quarter Back", position: "QB", nflTeam: "DEN" };
 const rb = { id: "player-rb", name: "Runner One", position: "RB", nflTeam: "GB" };
+
+test("league codes accept the friendly whole name code up to eight characters", () => {
+  assert.equal(normalizeLeagueCode("Test League"), "TEST-LEAG");
+  assert.equal(normalizeLeagueCode("NFL"), "NFL");
+  assert.equal(normalizeLeagueCode("NineChars"), "NINE-CHAR");
+  assert.throws(() => normalizeLeagueCode("A"), /at least two/i);
+});
 
 test("current-cash and pre-keeper modes never deduct keeper salaries twice", () => {
   const base = {

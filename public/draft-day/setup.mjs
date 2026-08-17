@@ -1,6 +1,7 @@
 import { DEFAULT_POSITION_RULES, normalizeLeagueConfig } from "./core.mjs";
 
 const byId = (id) => document.getElementById(id);
+const displayLeagueCode = (value) => String(value ?? "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
 const steps = [...document.querySelectorAll("[data-wizard-step]")];
 const pills = [...document.querySelectorAll("[data-step]")];
 let currentStep = 0;
@@ -131,7 +132,7 @@ function loadSnapshot(snapshot) {
   editingSnapshot = snapshot;
   const config = snapshot.config;
   byId("setup-title").textContent = `Manage ${config.leagueName}`;
-  byId("setup-subtitle").textContent = `League ${snapshot.leagueCode} · Setup locks after the first auction sale.`;
+  byId("setup-subtitle").textContent = `League ${displayLeagueCode(snapshot.leagueCode)} · Setup locks after the first auction sale.`;
   byId("league-name").value = config.leagueName; byId("season").value = config.season; byId("team-count").value = config.teams.length;
   byId("minimum-bid").value = config.minimumBid; byId("bid-increment").value = config.bidIncrement; byId("nomination-mode").value = config.nominationMode;
   byId("roster-minimum").value = config.rosterMinimum; byId("roster-maximum").value = config.rosterMaximum; byId("keeper-maximum").value = config.keeperMaximum ?? ""; byId("budget-mode").value = config.budgetMode;
@@ -148,15 +149,16 @@ async function api(url, options = {}) {
 }
 
 function showResult(snapshot, access) {
-  resultAccess = { leagueCode: snapshot.leagueCode, leagueName: snapshot.config.leagueName, ...access };
+  const friendlyCode = displayLeagueCode(snapshot.leagueCode);
+  resultAccess = { leagueCode: friendlyCode, leagueName: snapshot.config.leagueName, ...access };
   byId("setup-panel").hidden = true; byId("manage-panel").hidden = true; byId("result-panel").hidden = false;
   byId("result-league-name").textContent = `${snapshot.config.leagueName} is ready`;
-  byId("result-league-code").textContent = snapshot.leagueCode;
+  byId("result-league-code").textContent = friendlyCode;
   const container = byId("result-access"); container.replaceChildren();
   for (const [label, key] of [["Organizer", "adminCode"], ["Auctioneer", "auctioneerCode"], ["Draft Board", "boardCode"]]) {
     const card = document.createElement("div"); card.className = "access-card"; const strong = document.createElement("strong"); strong.textContent = `${label} code`; const code = document.createElement("code"); code.textContent = access[key]; card.append(strong, code); container.append(card);
   }
-  const encoded = encodeURIComponent(snapshot.leagueCode);
+  const encoded = encodeURIComponent(friendlyCode);
   byId("result-auctioneer-link").href = `./auctioneer/?league=${encoded}`; byId("result-board-link").href = `./board/?league=${encoded}`;
   byId("result-panel").scrollIntoView({ behavior: "smooth" });
 }
@@ -208,7 +210,9 @@ byId("setup-form").addEventListener("submit", async (event) => {
 byId("download-access").addEventListener("click", () => {
   if (!resultAccess) return;
   const blob = new Blob([JSON.stringify({ kind: "pips-draft-day-access-sheet", createdAt: new Date().toISOString(), ...resultAccess }, null, 2)], { type: "application/json" });
-  const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${resultAccess.leagueCode.toLowerCase()}-draft-day-access.json`; link.click(); URL.revokeObjectURL(link.href);
+  const link = document.createElement("a"); const url = URL.createObjectURL(blob);
+  link.href = url; link.download = `${resultAccess.leagueCode.toLowerCase()}-draft-day-access.json`; link.hidden = true; document.body.append(link); link.click(); link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 });
 
 byId("season").value = new Date().getFullYear();

@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   applyCommand,
   DRAFT_DAY_SCHEMA_VERSION,
@@ -9,22 +9,21 @@ import {
 } from "../../../public/draft-day/core.mjs";
 import { accessRecords, verifyAccessCode } from "./security.mjs";
 
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-export function randomLeagueCode() {
-  const bytes = randomBytes(8);
-  const characters = [...bytes].map((byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length]).join("");
-  return `${characters.slice(0, 4)}-${characters.slice(4)}`;
+export function friendlyLeagueCode(leagueName, attempt = 0) {
+  const nameCode = String(leagueName ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "LEAGUE";
+  if (!attempt) return nameCode;
+  const suffix = String(attempt + 1);
+  return `${nameCode.slice(0, Math.max(1, 8 - suffix.length))}${suffix}`;
 }
 
-export function createDraftDayService({ repository, now = () => new Date().toISOString(), leagueCode = randomLeagueCode }) {
+export function createDraftDayService({ repository, now = () => new Date().toISOString(), leagueCode = null }) {
   if (!repository?.create || !repository?.read || !repository?.commit) throw new Error("Draft Day repository is required.");
 
   async function createLeague(input) {
     const config = normalizeLeagueConfig(input?.config);
     const access = accessRecords(input?.access);
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const code = normalizeLeagueCode(leagueCode());
+      const code = normalizeLeagueCode(leagueCode ? leagueCode({ config, attempt }) : friendlyLeagueCode(config.leagueName, attempt));
       const timestamp = now();
       const document = {
         schemaVersion: DRAFT_DAY_SCHEMA_VERSION,
