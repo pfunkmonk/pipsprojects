@@ -104,6 +104,18 @@ test("selected auction player drives a large public nomination overlay", () => {
   assert.match(appCss, /font-size: clamp\(3rem, 9vw, 8\.5rem\)/);
 });
 
+test("auction history stays with the compact winning-assignment column", () => {
+  const saleColumn = auctioneerPage.match(/<div class="sale-column">([\s\S]*?)<div>\s*<details id="clock-panel"/)?.[1] || "";
+  assert.match(saleColumn, /<h1>Winning assignment<\/h1>/);
+  assert.match(saleColumn, /<h2>Assignment history<\/h2>/);
+  assert.match(saleColumn, /id="history-rows"/);
+  assert.equal(auctioneerPage.match(/id="history-rows"/g)?.length, 1);
+  assert.match(appCss, /\.sale-panel > h1 \{ font-size: clamp\(2rem, 3vw, 3\.1rem\)/);
+  assert.match(appCss, /\.sale-column > \.panel \{ min-width: 0; \}/);
+  assert.match(appCss, /\.history-panel \.history-table tr \{ display: grid/);
+  assert.doesNotMatch(appCss, /\.sale-panel \{ position: sticky/);
+});
+
 test("Draft Board stickers expose position color, NFL team, bye week, and an explicit keeper marker", () => {
   for (const className of ["position-qb", "position-rb", "position-wr", "position-te", "position-k", "position-dst"]) assert.match(appCss, new RegExp(`\\.${className}`));
   for (const token of ["positionClass", "nfl-team", "bye-week", "keeper-flag", 'flag.textContent = "KEEPER"']) assert.ok(boardSource.includes(token));

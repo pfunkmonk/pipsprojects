@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c223f">
   <title>Pip's Draft Day Tool · Auctioneer</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <link rel="stylesheet" href="../app.css?v=20260817f">
+  <link rel="stylesheet" href="../app.css?v=20260817g">
   <link rel="stylesheet" href="../shell-safety.css">
 </head>
 <body>
@@ -57,28 +57,30 @@
       </details>
 
       <div class="console-grid">
-        <section class="panel sale-panel">
-          <p class="eyebrow">Record a sale</p><h1>Winning assignment</h1>
-          <form id="sale-form">
-            <label>Player<input id="player-search" type="search" autocomplete="off" role="combobox" aria-controls="player-results" aria-expanded="false" placeholder="Search player, position, or NFL team" required></label>
-            <div id="player-results" class="search-results" role="listbox" hidden></div>
-            <div id="selected-player" class="selected-player" hidden><span id="selected-position" class="position-chip"></span><div><strong id="selected-name"></strong><small id="selected-nfl-team"></small></div><button id="clear-player" class="secondary" type="button">Change</button></div>
-            <button id="add-custom-player" class="secondary" type="button" hidden>Add typed player manually</button>
-            <div class="form-grid">
-              <label>Buying team<select id="buying-team" required></select></label>
-              <label>Winning price<input id="winning-price" type="number" min="1" step="1" inputmode="numeric" required></label>
-            </div>
-            <div id="sale-preview" class="preview" hidden><strong id="preview-sentence">Pending sale</strong><div class="preview-grid"><span>Cash before<b id="preview-before">—</b></span><span>Price<b id="preview-price">—</b></span><span>Cash after<b id="preview-after">—</b></span><span>Legal max<b id="preview-max">—</b></span></div></div>
-            <p id="sale-status" class="status" role="status">Choose a player, team, and price.</p>
-            <button id="record-sale" class="primary" type="submit" disabled>Record first sale &amp; lock keeper entry</button>
-          </form>
-          <p class="privacy-note">Keyboard: Ctrl/⌘ K finds a player · Enter selects/records · Ctrl/⌘ Z undoes the latest active sale.</p>
-        </section>
+        <div class="sale-column">
+          <section class="panel sale-panel">
+            <p class="eyebrow">Record a sale</p><h1>Winning assignment</h1>
+            <form id="sale-form">
+              <label>Player<input id="player-search" type="search" autocomplete="off" role="combobox" aria-controls="player-results" aria-expanded="false" placeholder="Search player, position, or NFL team" required></label>
+              <div id="player-results" class="search-results" role="listbox" hidden></div>
+              <div id="selected-player" class="selected-player" hidden><span id="selected-position" class="position-chip"></span><div><strong id="selected-name"></strong><small id="selected-nfl-team"></small></div><button id="clear-player" class="secondary" type="button">Change</button></div>
+              <button id="add-custom-player" class="secondary" type="button" hidden>Add typed player manually</button>
+              <div class="form-grid">
+                <label>Buying team<select id="buying-team" required></select></label>
+                <label>Winning price<input id="winning-price" type="number" min="1" step="1" inputmode="numeric" required></label>
+              </div>
+              <div id="sale-preview" class="preview" hidden><strong id="preview-sentence">Pending sale</strong><div class="preview-grid"><span>Cash before<b id="preview-before">—</b></span><span>Price<b id="preview-price">—</b></span><span>Cash after<b id="preview-after">—</b></span><span>Legal max<b id="preview-max">—</b></span></div></div>
+              <p id="sale-status" class="status" role="status">Choose a player, team, and price.</p>
+              <button id="record-sale" class="primary" type="submit" disabled>Record first sale &amp; lock keeper entry</button>
+            </form>
+            <p class="privacy-note">Keyboard: Ctrl/⌘ K finds a player · Enter selects/records · Ctrl/⌘ Z undoes the latest active sale.</p>
+          </section>
+          <section class="panel history-panel"><div class="section-heading"><div><p class="eyebrow">Corrections</p><h2>Assignment history</h2><p>Every keeper and sale correction stays in the audit trail.</p></div></div><div class="history-wrap"><table class="history-table"><thead><tr><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Details</th><th>Status</th><th>Action</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
+        </div>
 
         <div>
           <details id="clock-panel" class="panel clock-panel"><summary><span><span class="eyebrow">Optional room tool</span><strong>Nomination clock</strong></span><strong id="clock-display">OFF</strong></summary><div class="clock-controls"><label class="choice"><input id="clock-enabled" type="checkbox"> Enable clock</label><label>Seconds<select id="clock-duration"><option value="15">15</option><option value="30" selected>30</option><option value="45">45</option><option value="60">60</option><option value="90">90</option></select></label><button id="clock-start" class="primary" type="button">Start</button><button id="clock-pause" class="secondary" type="button">Pause</button><button id="clock-reset" class="secondary" type="button">Reset</button></div><p class="privacy-note">Local to this auctioneer device. A recorded sale restarts it for the next nomination when enabled.</p></details>
           <section class="panel"><div class="section-heading"><div><p class="eyebrow">Room state</p><h2>Teams and cash</h2><p id="nominator-status"></p></div></div><div id="team-summary-grid" class="team-summary-grid"></div></section>
-          <section class="panel"><div class="section-heading"><div><p class="eyebrow">Corrections</p><h2>Assignment history</h2><p>Every keeper and sale correction stays in the audit trail.</p></div></div><div class="history-wrap"><table class="history-table"><thead><tr><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Details</th><th>Status</th><th>Action</th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
         </div>
       </div>
     </section>
@@ -102,7 +104,7 @@
       <div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button id="save-correction" class="primary" value="default">Save correction</button></div>
     </form>
   </dialog>
-  <script type="module" src="./auctioneer.mjs?v=20260817f"></script>
+  <script type="module" src="./auctioneer.mjs?v=20260817g"></script>
 </body>
 </html>
 
