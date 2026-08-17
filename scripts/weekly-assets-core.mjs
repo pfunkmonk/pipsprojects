@@ -29,7 +29,7 @@ export const SEASON_ASSET_COLUMNS = [
 ];
 const FORBIDDEN_VALUE_PATTERN = /(?:^|_)(?:point|points|projected_points|vbd|intrinsic|auction|market|keeper|price|max_bid|recommended_bid)(?:$|_)/i;
 const POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
-const SEASON_SOURCES = new Set(["FBG", "CBS", "FP", "NONE"]);
+const SEASON_SOURCES = new Set(["FBG", "CBS", "FP", "PFF", "BLEND", "NONE"]);
 const SHAPE_SOURCES = new Set(["FBG", "CBS", "TEAM", "FLAT"]);
 
 function fail(code, message) {
@@ -139,6 +139,23 @@ function validateRowMetadata(row, metadata, label) {
   }
 }
 
+function validateCoverage(supplied, observed) {
+  if (!supplied || typeof supplied !== "object" || Array.isArray(supplied)) {
+    fail("WEEKLY_ASSET_COVERAGE", "Weekly-asset manifest coverage must be an object.");
+  }
+  const expectedKeys = new Set(Object.keys(observed));
+  const unsupportedKeys = Object.keys(supplied).filter((key) => !expectedKeys.has(key));
+  if (unsupportedKeys.length) {
+    fail("WEEKLY_ASSET_COVERAGE", `Weekly-asset manifest contains unsupported coverage field(s): ${unsupportedKeys.join(", ")}.`);
+  }
+  for (const [key, observedValue] of Object.entries(observed)) {
+    const suppliedValue = supplied[key] ?? 0;
+    if (!Number.isSafeInteger(suppliedValue) || suppliedValue < 0 || suppliedValue !== observedValue) {
+      fail("WEEKLY_ASSET_COVERAGE", `Weekly-asset manifest coverage '${key}' expected ${observedValue} but supplied ${String(suppliedValue)}.`);
+    }
+  }
+}
+
 function pointsAllowedScore(value) {
   if (value <= 0) return 10;
   if (value <= 6) return 8;
@@ -180,7 +197,7 @@ export function validateWeeklyAssetBundle({ manifest, manifestText = "", weeklyT
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const seasonById = new Map();
   const weeklyById = new Map();
-  const coverage = { total: pack.players.length, season_fbg: 0, season_cbs: 0, season_fp: 0, season_none: 0, shape_fbg: 0, shape_cbs: 0, shape_team: 0, shape_flat: 0 };
+  const coverage = { total: pack.players.length, season_fbg: 0, season_cbs: 0, season_fp: 0, season_pff: 0, season_blend: 0, season_none: 0, shape_fbg: 0, shape_cbs: 0, shape_team: 0, shape_flat: 0 };
 
   for (const row of seasonRows) {
     validateRowMetadata(row, metadata, `season row ${row.pack_player_id}`);
@@ -282,7 +299,7 @@ export function validateWeeklyAssetBundle({ manifest, manifestText = "", weeklyT
       dstPtsAllowed: season.dst_pts_allowed,
     });
   }
-  if (JSON.stringify(coverage) !== JSON.stringify(manifest.coverage)) fail("WEEKLY_ASSET_COVERAGE", "Observed source coverage does not match the manifest.");
+  validateCoverage(manifest.coverage, coverage);
   return {
     metadata,
     manifestHash: sha256(manifestText || `${JSON.stringify(manifest, null, 2)}\n`),

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-08-13T13:49:33.616Z",
+  "auditedAt": "2026-08-16T23:42:44.603Z",
   "approved": true,
   "candidate": {
-    "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001",
-    "asOf": "2026-08-13T18:00:01.000Z",
-    "sha256": "a0ba55ab4447b9e6d2c3e785ed0f207ecd05e80f92aa0236bb41357f5b52b81d",
+    "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1",
+    "asOf": "2026-08-16T23:42:43.000Z",
+    "sha256": "f9bce74f7583f58708d90cb96eb98a26220eea82d431e2b3dddc4dec0070f793",
     "players": 716,
     "keeperCandidates": 177,
     "keeperTeams": 12,
@@ -22,9 +22,9 @@
     "allocatedMarketDollars": 1212
   },
   "current": {
-    "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180000",
-    "asOf": "2026-08-13T18:00:00.000Z",
-    "sha256": "8388918855bcdeca45933d25c6a4457a4012af77731de36d750fee186e8a46fe",
+    "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-manager-history-20260813T180001",
+    "asOf": "2026-08-13T18:00:01.000Z",
+    "sha256": "a0ba55ab4447b9e6d2c3e785ed0f207ecd05e80f92aa0236bb41357f5b52b81d",
     "players": 716
   },
   "contentChanged": true,

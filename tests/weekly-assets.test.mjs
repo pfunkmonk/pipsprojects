@@ -122,6 +122,26 @@ test("weekly-asset intake covers every player while preserving every season proj
   assert.equal(audit.valueFieldsAccepted, 0);
 });
 
+test("weekly-asset coverage accepts omitted zero-count source keys but rejects semantic drift", () => {
+  const compatible = bundle();
+  assert.doesNotThrow(() => createWeeklyAssetsCandidatePack(pack, compatible));
+
+  const drifted = bundle();
+  drifted.manifest.coverage.season_fbg -= 1;
+  drifted.manifest.coverage.season_blend = 1;
+  assert.throws(
+    () => createWeeklyAssetsCandidatePack(pack, drifted),
+    (error) => error.code === "WEEKLY_ASSET_COVERAGE" && /season_fbg/.test(error.message),
+  );
+
+  const unsupported = bundle();
+  unsupported.manifest.coverage.season_mystery = 0;
+  assert.throws(
+    () => createWeeklyAssetsCandidatePack(pack, unsupported),
+    (error) => error.code === "WEEKLY_ASSET_COVERAGE" && /season_mystery/.test(error.message),
+  );
+});
+
 test("weekly-asset intake fails closed on hash drift and forbidden value columns", () => {
   const hashDrift = bundle();
   hashDrift.weeklyText += "\n";

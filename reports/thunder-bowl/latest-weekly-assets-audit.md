@@ -1,7 +1,7 @@
 # Thunder Bowl pack refresh audit
 
-- Audited: 2026-08-12T23:21:46.793Z
-- Candidate: `tb26-tb-accuracy-consensus-20260809-v1-2026080922-weekly-assets-20260812232146-priority-v1-assets-v1` (716 players, 177 keeper rows)
+- Audited: 2026-08-16T23:42:44.381Z
+- Candidate: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1` (716 players, 177 keeper rows)
 - Decision: **PASS**
 - Market allocation: $1212 / $1212
 - Changes: 0 added, 0 removed, 0 material
@@ -26,7 +26,7 @@
   "weeklyRows": 12888,
   "seasonRows": 716,
   "zeroAssetFallbackPlayers": 92,
-  "maximumReconciliationDelta": 0.0008,
+  "maximumReconciliationDelta": 0.001,
   "valueFieldsAccepted": 0,
   "seasonProjectionChanges": 0,
   "scoringCaveats": [
