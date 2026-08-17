@@ -34,6 +34,13 @@ function render() {
   byId("board-title").textContent = snapshot.config.leagueName; byId("board-season").textContent = `${snapshot.config.season} · PIP'S DRAFT DAY TOOL`;
   const current = snapshot.teams.find((team) => team.id === snapshot.currentNominatorTeamId);
   byId("nominator-line").textContent = snapshot.draftStatus === "complete" ? "Draft complete" : current ? `${current.name} is next to nominate` : "Nomination order is not being tracked";
+  const nomination = snapshot.nominatedPlayer; const nominationOverlay = byId("nomination-overlay"); nominationOverlay.hidden = !nomination;
+  if (nomination) {
+    const teamDetails = stickerTeam(nomination); const nominationCard = byId("nomination-card");
+    nominationCard.className = `nomination-card ${positionClass(nomination.position)}`;
+    byId("nomination-position").textContent = nomination.position; byId("nomination-player").textContent = nomination.name;
+    byId("nomination-team").textContent = `${teamDetails.fullName} · ${teamDetails.byeWeek == null ? "Bye —" : `Bye ${teamDetails.byeWeek}`}`;
+  }
   const grid = byId("board-grid"); grid.replaceChildren();
   const columns = snapshot.teams.length <= 12 ? snapshot.teams.length : Math.ceil(snapshot.teams.length / 2);
   grid.style.setProperty("--team-columns", columns); grid.style.setProperty("--roster-rows", snapshot.config.rosterMaximum);

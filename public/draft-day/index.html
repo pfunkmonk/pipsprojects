@@ -8,7 +8,7 @@
   <title>Pip's Draft Day Tool</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=20260817e">
+  <link rel="stylesheet" href="./app.css?v=20260817f">
   <link rel="stylesheet" href="./shell-safety.css">
 </head>
 <body>
@@ -77,11 +77,10 @@
 
           <section class="wizard-step" data-wizard-step="1" hidden>
             <div class="form-grid">
-              <label>How are the pool amounts being entered?<select id="budget-mode"><option value="current-cash">Current auction cash — keeper costs already deducted</option><option value="pre-keeper">Starting pool — deduct keeper salaries automatically</option></select></label>
-              <label>Default pool for all teams<input id="default-pool" type="number" min="1" value="200"></label>
+              <label>Default starting salary pool<input id="default-pool" type="number" min="1" value="200"><small>Enter the amount before keeper salaries.</small></label>
             </div>
-            <div class="callout" id="budget-help">Enter the cash each team actually has available when bidding begins. Keeper prices will still appear on the board, but will not be deducted twice.</div>
-            <div class="scroll-x"><table class="team-table"><thead><tr><th>Order</th><th>Team name</th><th id="pool-heading">Current auction cash</th></tr></thead><tbody id="team-rows"></tbody></table></div>
+            <div class="callout" id="budget-help"><strong>Keeper salaries deduct automatically.</strong> Enter each team's starting pool before keepers. Recording a $5 keeper from a $100 pool immediately leaves $95.</div>
+            <div class="scroll-x"><table class="team-table"><thead><tr><th>Order</th><th>Team name</th><th id="pool-heading">Starting pool before keepers</th></tr></thead><tbody id="team-rows"></tbody></table></div>
             <button id="apply-default-pool" class="secondary" type="button">Apply default pool to every team</button>
           </section>
 
@@ -116,6 +115,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./setup.mjs?v=20260817e"></script>
+  <script type="module" src="./setup.mjs?v=20260817f"></script>
 </body>
 </html>

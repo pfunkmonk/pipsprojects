@@ -61,7 +61,7 @@ test("league codes accept the friendly whole name code up to eight characters", 
   assert.throws(() => normalizeLeagueCode("A"), /at least two/i);
 });
 
-test("current-cash and pre-keeper modes never deduct keeper salaries twice", () => {
+test("keeper salaries always deduct from remaining cash, including legacy current-cash leagues", () => {
   const base = {
     leagueName: "Keeper League", season: 2026, minimumBid: 1, bidIncrement: 1, rosterMinimum: 1, rosterMaximum: 3,
     nominationMode: "linear", positionRules: [{ id: "QB", label: "QB", minimum: 1, maximum: 2 }],
@@ -70,10 +70,21 @@ test("current-cash and pre-keeper modes never deduct keeper salaries twice", () 
   };
   const currentCash = snapshotFromDocument(document(normalizeLeagueConfig({ ...base, budgetMode: "current-cash" }))).teams[0];
   const preKeeper = snapshotFromDocument(document(normalizeLeagueConfig({ ...base, budgetMode: "pre-keeper" }))).teams[0];
-  assert.equal(currentCash.auctionBudget, 20);
-  assert.equal(currentCash.remainingBudget, 20);
+  assert.equal(currentCash.auctionBudget, 15);
+  assert.equal(currentCash.remainingBudget, 15);
   assert.equal(preKeeper.auctionBudget, 15);
   assert.equal(preKeeper.remainingBudget, 15);
+  assert.equal(normalizeLeagueConfig({ ...base, budgetMode: "current-cash" }).budgetMode, "pre-keeper");
+});
+
+test("recording a keeper immediately reduces cash and legal maximum bid", () => {
+  let state = document(config({ keeperMaximum: null }));
+  const before = snapshotFromDocument(state).teams[0];
+  state = applyCommand(state, { type: "record-keeper", eventId: "cash-keeper", idempotencyKey: "cash-keeper-key", expectedRevision: 0, player: qb, teamId: "alpha", salary: 5 });
+  const after = snapshotFromDocument(state).teams[0];
+  assert.equal(after.remainingBudget, before.remainingBudget - 5);
+  assert.equal(after.keeperSpend, 5);
+  assert.ok(after.legalMaxBid < before.legalMaxBid);
 });
 
 test("legal maximum preserves enough cash to complete roster and position minimums", () => {
@@ -130,6 +141,15 @@ test("sale and keeper assignments automatically include official NFL team and by
   const sale = board.assignments.find((assignment) => assignment.id === "sale-team-data");
   assert.deepEqual([keeper.nflTeamName, keeper.nflTeamShortName, keeper.byeWeek], ["Denver Broncos", "Broncos", 10]);
   assert.deepEqual([sale.nflTeamName, sale.nflTeamShortName, sale.byeWeek], ["Green Bay Packers", "Packers", 11]);
+});
+
+test("a nomination is public immediately and clears when the winning sale is recorded", () => {
+  let state = document();
+  state = applyCommand(state, { type: "nominate-player", eventId: "nominate-rb", idempotencyKey: "nominate-rb-key", expectedRevision: 0, player: rb });
+  assert.equal(snapshotFromDocument(state).nominatedPlayer.name, rb.name);
+  assert.equal(publicSnapshot(snapshotFromDocument(state)).nominatedPlayer.nflTeamName, "Green Bay Packers");
+  state = applyCommand(state, { type: "record-sale", eventId: "sell-nominee", idempotencyKey: "sell-nominee-key", expectedRevision: 1, player: rb, teamId: "alpha", price: 3 });
+  assert.equal(snapshotFromDocument(state).nominatedPlayer, null);
 });
 
 test("setup validates flexible team counts, positions, and impossible roster rules", () => {
@@ -245,6 +265,20 @@ test("auctioneer keeper events preserve details, enforce limits, lock new entry,
   assert.equal(keeper.status, "active");
   assert.equal(snapshot.auctionStarted, true);
   assert.equal(state.events.length, 5);
+});
+
+test("auctioneer can explicitly lock and unlock keeper entry until the first sale", () => {
+  let state = document(config({ keeperMaximum: null }));
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-before-lock", idempotencyKey: "keeper-before-lock-key", expectedRevision: 0, player: qb, teamId: "alpha", salary: 5 });
+  state = applyCommand(state, { type: "lock-keepers", eventId: "lock-keeper-setup", idempotencyKey: "lock-keeper-setup-key", expectedRevision: 1 });
+  assert.equal(snapshotFromDocument(state).keepersLocked, true);
+  assert.throws(() => applyCommand(state, { type: "record-keeper", eventId: "blocked-keeper", idempotencyKey: "blocked-keeper-key", expectedRevision: 2, player: rb, teamId: "bravo", salary: 2 }), /locked/i);
+  state = applyCommand(state, { type: "correct-keeper", eventId: "correct-while-locked", idempotencyKey: "correct-while-locked-key", expectedRevision: 2, targetId: "keeper-before-lock", player: qb, teamId: "alpha", salary: 4 });
+  state = applyCommand(state, { type: "unlock-keepers", eventId: "unlock-keeper-setup", idempotencyKey: "unlock-keeper-setup-key", expectedRevision: 3 });
+  assert.equal(snapshotFromDocument(state).keepersLocked, false);
+  state = applyCommand(state, { type: "record-sale", eventId: "first-sale-after-unlock", idempotencyKey: "first-sale-after-unlock-key", expectedRevision: 4, player: rb, teamId: "bravo", price: 2 });
+  assert.equal(snapshotFromDocument(state).keepersLocked, true);
+  assert.throws(() => applyCommand(state, { type: "unlock-keepers", eventId: "late-unlock", idempotencyKey: "late-unlock-key", expectedRevision: 5 }), /permanently locked/i);
 });
 
 test("a voided keeper cannot be restored over a later active assignment", () => {

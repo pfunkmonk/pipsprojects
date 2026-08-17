@@ -12,6 +12,7 @@ const playerPool = JSON.parse(await readFile(new URL("../public/draft-day/player
 const setupSource = await readFile(new URL("../public/draft-day/setup.mjs", import.meta.url), "utf8");
 const setupPage = await readFile(new URL("../public/draft-day/index.html", import.meta.url), "utf8");
 const auctioneerPage = await readFile(new URL("../public/draft-day/auctioneer/index.html", import.meta.url), "utf8");
+const boardPage = await readFile(new URL("../public/draft-day/board/index.html", import.meta.url), "utf8");
 const environment = await readFile(new URL("../.env.example", import.meta.url), "utf8");
 const pages = [new URL("../public/draft-day/index.html", import.meta.url), new URL("../public/draft-day/auctioneer/index.html", import.meta.url), new URL("../public/draft-day/board/index.html", import.meta.url), new URL("../public/draft-day/guide/index.html", import.meta.url)];
 
@@ -75,13 +76,32 @@ test("keeper setup lives in the auctioneer cockpit with predictive search and CS
   assert.doesNotMatch(setupPage, /id="keeper-editor"|id="keepers-enabled"/);
   assert.match(setupPage, /id="keeper-maximum"/);
   assert.match(setupPage, /Auctioneer records keepers, winners, and prices/);
-  for (const id of ["keeper-setup", "keeper-player-search", "keeper-player-results", "keeper-team", "keeper-salary", "keeper-contract-year", "keeper-round", "record-keeper", "export-csv", "clock-enabled", "copy-board-link"]) {
+  for (const id of ["keeper-setup", "keeper-toggle-label", "keeper-player-search", "keeper-player-results", "keeper-team", "keeper-salary", "keeper-contract-year", "keeper-round", "record-keeper", "toggle-keeper-lock", "export-csv", "clock-enabled", "copy-board-link"]) {
     assert.match(auctioneerPage, new RegExp(`id="${id}"`));
   }
   assert.match(auctioneerSource, /keeperLegality/);
   assert.match(auctioneerSource, /record-keeper/);
   assert.match(auctioneerSource, /auction-results\.csv/);
   assert.match(boardSource, /board-heartbeat/);
+  assert.match(auctioneerPage, /class="keeper-expand-icon"/);
+  assert.match(appCss, /\.keeper-expand-icon/);
+  assert.doesNotMatch(auctioneerSource, /no separate limit/i);
+});
+
+test("setup makes keeper salary deduction automatic instead of exposing a budget mode", () => {
+  assert.doesNotMatch(setupPage, /id="budget-mode"/);
+  assert.match(setupPage, /Keeper salaries deduct automatically/);
+  assert.match(setupPage, /Starting pool before keepers/);
+  assert.match(setupSource, /budgetMode: "pre-keeper"/);
+});
+
+test("selected auction player drives a large public nomination overlay", () => {
+  for (const id of ["nomination-overlay", "nomination-card", "nomination-player", "nomination-team"]) assert.match(boardPage, new RegExp(`id="${id}"`));
+  assert.match(auctioneerSource, /type: "nominate-player"/);
+  assert.match(auctioneerSource, /type: "clear-nomination"/);
+  assert.match(boardSource, /snapshot\.nominatedPlayer/);
+  assert.match(appCss, /\.nomination-overlay/);
+  assert.match(appCss, /font-size: clamp\(3rem, 9vw, 8\.5rem\)/);
 });
 
 test("Draft Board stickers expose position color, NFL team, bye week, and an explicit keeper marker", () => {

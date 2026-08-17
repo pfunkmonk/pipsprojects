@@ -142,6 +142,7 @@ function selectPlayer(player) {
   byId("selected-player").hidden = false; byId("selected-position").textContent = player.position;
   byId("selected-name").textContent = player.name; byId("selected-nfl-team").textContent = playerTeamLine(player);
   updatePendingSale(); byId("buying-team").focus();
+  void runCommand({ type: "nominate-player", player, statusTarget: "sale" });
 }
 
 function selectKeeperPlayer(player) {
@@ -153,21 +154,23 @@ function selectKeeperPlayer(player) {
   updatePendingKeeper(); byId("keeper-team").focus();
 }
 
-function clearPlayer() {
+function clearPlayer(clearNomination = true) {
+  const shouldClearNomination = clearNomination && Boolean(snapshot?.nominatedPlayer);
   selectedPlayer = null; playerSearch.value = ""; byId("selected-player").hidden = true;
   updatePendingSale(); playerSearch.focus();
+  if (shouldClearNomination) void runCommand({ type: "clear-nomination", statusTarget: "sale" });
 }
 
 function clearKeeperPlayer() {
   selectedKeeperPlayer = null; keeperSearch.value = ""; byId("keeper-selected-player").hidden = true;
-  updatePendingKeeper(); if (!snapshot?.auctionStarted) keeperSearch.focus();
+  updatePendingKeeper(); if (!snapshot?.keepersLocked) keeperSearch.focus();
 }
 
 function bindPredictiveSearch(kind) {
   const { search, results } = predictiveElements(kind);
   search.addEventListener("input", () => {
     if (kind === "keeper" && selectedKeeperPlayer && search.value !== selectedKeeperPlayer.name) selectedKeeperPlayer = null;
-    if (kind === "sale" && selectedPlayer && search.value !== selectedPlayer.name) selectedPlayer = null;
+    if (kind === "sale" && selectedPlayer && search.value !== selectedPlayer.name) { selectedPlayer = null; if (snapshot?.nominatedPlayer) void runCommand({ type: "clear-nomination", statusTarget: "sale" }); }
     byId(kind === "keeper" ? "keeper-selected-player" : "selected-player").hidden = !selectedFor(kind);
     renderPredictiveResults(kind);
     kind === "keeper" ? updatePendingKeeper() : updatePendingSale();
@@ -186,20 +189,23 @@ function renderTeamOptions() {
   for (const team of snapshot.teams) {
     buying.append(option(team.id, `${team.name} — $${team.remainingBudget} left · max $${team.legalMaxBid}`, team.id === buyingSelected));
     correction.append(option(team.id, team.name));
-    const keeperLimit = snapshot.config.keeperMaximum == null ? "no separate limit" : `${team.keeperCount}/${team.keeperMaximum} keepers`;
-    keeper.append(option(team.id, `${team.name} — ${keeperLimit} · $${team.remainingBudget} cash`, team.id === keeperSelected));
+    const keeperCount = snapshot.config.keeperMaximum == null ? `${team.keeperCount} keepers` : `${team.keeperCount}/${team.keeperMaximum} keepers`;
+    keeper.append(option(team.id, `${team.name} — ${keeperCount} · $${team.remainingBudget} cash`, team.id === keeperSelected));
   }
 }
 
 function renderKeeperProgress() {
   const activeKeepers = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.acquisitionType === "keeper");
-  const summaryLimit = snapshot.config.keeperMaximum == null ? "no separate keeper limit" : `maximum ${snapshot.config.keeperMaximum} per team`;
-  byId("keeper-summary-line").textContent = `${activeKeepers.length} recorded · ${summaryLimit}`;
-  byId("keeper-ready-state").textContent = snapshot.auctionStarted ? "LOCKED" : "READY";
+  const summaryLimit = snapshot.config.keeperMaximum == null ? "" : ` · maximum ${snapshot.config.keeperMaximum} per team`;
+  byId("keeper-summary-line").textContent = `${activeKeepers.length} recorded${summaryLimit}`;
+  byId("keeper-ready-state").textContent = snapshot.keepersLocked ? "LOCKED" : "READY";
   byId("keeper-ready-state").classList.remove("is-error");
   byId("keeper-preflight").textContent = snapshot.auctionStarted
-    ? "New keeper entry is locked. Audited corrections and legal undo/restore remain available below."
-    : "Preflight passed: current keeper counts, salaries, budgets, position limits, and legal roster paths are valid.";
+    ? "Keeper entry is permanently locked by the first sale. Corrections and undo/restore remain available below."
+    : snapshot.keepersLocked
+      ? "Keeper entry is locked. Unlock it here if the room needs to add another keeper before the first sale."
+      : "Preflight passed: keeper salaries are deducted and every team retains a legal roster path.";
+  const lockButton = byId("toggle-keeper-lock"); lockButton.textContent = snapshot.keepersLocked ? "Unlock keepers" : "Lock keepers"; lockButton.disabled = snapshot.auctionStarted;
   const grid = byId("keeper-team-grid"); grid.replaceChildren();
   for (const team of snapshot.teams) {
     const card = document.createElement("article"); card.className = "keeper-team-progress"; card.tabIndex = 0;
@@ -209,11 +215,11 @@ function renderKeeperProgress() {
     const limit = snapshot.config.keeperMaximum == null ? `${team.keeperCount} keepers` : `${team.keeperCount}/${team.keeperMaximum} keepers`;
     progress.textContent = `${limit} · $${team.keeperSpend} keeper salary · ${team.rosterCount}/${snapshot.config.rosterMaximum} rostered`;
     card.append(header, progress);
-    const choose = () => { if (!snapshot.auctionStarted) { byId("keeper-team").value = team.id; updatePendingKeeper(); keeperSearch.focus(); } };
+    const choose = () => { if (!snapshot.keepersLocked) { byId("keeper-team").value = team.id; updatePendingKeeper(); keeperSearch.focus(); } };
     card.addEventListener("click", choose); card.addEventListener("keydown", (event) => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); choose(); } });
     grid.append(card);
   }
-  byId("keeper-form").querySelectorAll("input, select, button").forEach((control) => { control.disabled = snapshot.auctionStarted; });
+  byId("keeper-form").querySelectorAll("input, select, button").forEach((control) => { control.disabled = snapshot.keepersLocked; });
 }
 
 function renderTeamSummaries() {
@@ -263,20 +269,20 @@ function updatePendingSale() {
   const inputReady = Boolean(selectedPlayer && input.teamId && byId("winning-price").value !== "");
   const legality = inputReady ? saleLegality(snapshot, input) : null;
   byId("record-sale").disabled = !legality?.legal;
-  byId("record-sale").textContent = snapshot.auctionStarted ? "Record sale" : "Record first sale & lock keeper entry";
+  byId("record-sale").textContent = snapshot.auctionStarted ? "Record sale" : snapshot.keepersLocked ? "Record first sale" : "Record first sale & lock keepers";
   byId("sale-preview").hidden = !inputReady;
   if (!inputReady) { setStatus(byId("sale-status"), "Choose a player, team, and price."); return; }
   const team = snapshot.teams.find((candidate) => candidate.id === input.teamId);
   byId("preview-sentence").textContent = `${selectedPlayer.name} → ${team?.name || "team"} for $${input.price}`;
   byId("preview-before").textContent = `$${team?.remainingBudget ?? 0}`; byId("preview-price").textContent = `$${input.price}`;
   byId("preview-after").textContent = `$${legality?.after?.remainingBudget ?? team?.remainingBudget - input.price}`; byId("preview-max").textContent = `$${legality?.legalMaxBid ?? team?.legalMaxBid ?? 0}`;
-  const ready = legality?.legal ? (snapshot.auctionStarted ? "Legal sale — ready to record." : "Legal sale — recording it will lock new keeper entry.") : legality?.message || "Sale is not legal.";
+  const ready = legality?.legal ? (snapshot.auctionStarted || snapshot.keepersLocked ? "Legal sale — ready to record." : "Legal sale — recording it will lock new keeper entry.") : legality?.message || "Sale is not legal.";
   setStatus(byId("sale-status"), ready, !legality?.legal);
 }
 
 function updatePendingKeeper() {
   if (!snapshot) return;
-  if (snapshot.auctionStarted) { byId("keeper-preview").hidden = true; byId("record-keeper").disabled = true; setStatus(byId("keeper-status"), "New keeper entry is locked. Use Correct below for an audited repair."); return; }
+  if (snapshot.keepersLocked) { byId("keeper-preview").hidden = true; byId("record-keeper").disabled = true; setStatus(byId("keeper-status"), "New keeper entry is locked. Use Unlock keepers before the first sale, or Correct below for an audited repair."); return; }
   const input = {
     player: selectedKeeperPlayer,
     teamId: byId("keeper-team").value,
@@ -370,7 +376,7 @@ async function runCommand(fields) {
     const optimistic = optimisticSnapshot(snapshot, command);
     const queue = getQueue(); queue.push(command); setQueue(queue); snapshot = optimistic; render(); renderSync();
     if (fields.type === "record-sale") {
-      clearPlayer(); byId("winning-price").value = snapshot.config.minimumBid; playerSearch.focus();
+      clearPlayer(false); byId("winning-price").value = snapshot.config.minimumBid; playerSearch.focus();
       setStatus(byId("sale-status"), "Sale saved on this device and queued for cloud confirmation.");
       if (firstSale) { byId("keeper-setup").open = false; localStorage.setItem(keeperOpenKey(), "false"); }
       restartClockAfterSale();
@@ -378,6 +384,7 @@ async function runCommand(fields) {
     if (fields.type === "record-keeper") {
       clearKeeperPlayer(); setStatus(byId("keeper-status"), "Keeper saved on this device and queued for cloud confirmation.");
     }
+    if (fields.type === "lock-keepers" || fields.type === "unlock-keepers") setStatus(byId("keeper-status"), fields.type === "lock-keepers" ? "Keeper entry locked. You can unlock it until the first sale." : "Keeper entry unlocked.");
     await flushQueue(); return true;
   } catch (error) {
     setStatus(commandStatusElement(command), error.message, true); renderSync(null, !navigator.onLine); return false;
@@ -516,7 +523,8 @@ byId("correction-form").addEventListener("submit", (event) => {
   byId("correction-dialog").close(); void runCommand(command);
 });
 
-byId("keeper-setup").addEventListener("toggle", () => { if (snapshot) localStorage.setItem(keeperOpenKey(), String(byId("keeper-setup").open)); });
+byId("keeper-setup").addEventListener("toggle", () => { byId("keeper-toggle-label").textContent = byId("keeper-setup").open ? "Collapse" : "Expand"; if (snapshot) localStorage.setItem(keeperOpenKey(), String(byId("keeper-setup").open)); });
+byId("toggle-keeper-lock").addEventListener("click", () => void runCommand({ type: snapshot.keepersLocked ? "unlock-keepers" : "lock-keepers", statusTarget: "keeper" }));
 byId("copy-board-link").addEventListener("click", async () => {
   const url = new URL(byId("board-link").href, location.href).href;
   try { await navigator.clipboard.writeText(url); byId("copy-board-link").textContent = "Board link copied"; window.setTimeout(() => { byId("copy-board-link").textContent = "Copy board link"; }, 1_500); }

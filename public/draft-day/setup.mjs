@@ -116,7 +116,7 @@ function gatherConfig() {
     rosterMinimum: byId("roster-minimum").value,
     rosterMaximum: byId("roster-maximum").value,
     keeperMaximum: byId("keeper-maximum").value,
-    budgetMode: byId("budget-mode").value,
+    budgetMode: "pre-keeper",
     nominationMode: byId("nomination-mode").value,
     positionRules, teams, keepers, keepersEnabled: true,
     nominationOrder: teams.map((team) => team.id),
@@ -135,7 +135,7 @@ function loadSnapshot(snapshot) {
   byId("setup-subtitle").textContent = `League ${displayLeagueCode(snapshot.leagueCode)} · Setup locks after the first auction sale.`;
   byId("league-name").value = config.leagueName; byId("season").value = config.season; byId("team-count").value = config.teams.length;
   byId("minimum-bid").value = config.minimumBid; byId("bid-increment").value = config.bidIncrement; byId("nomination-mode").value = config.nominationMode;
-  byId("roster-minimum").value = config.rosterMinimum; byId("roster-maximum").value = config.rosterMaximum; byId("keeper-maximum").value = config.keeperMaximum ?? ""; byId("budget-mode").value = config.budgetMode;
+  byId("roster-minimum").value = config.rosterMinimum; byId("roster-maximum").value = config.rosterMaximum; byId("keeper-maximum").value = config.keeperMaximum ?? "";
   renderPositionRules(config.positionRules); renderTeams(config.teams);
   byId("new-access-fields").hidden = true; byId("existing-access-note").hidden = false;
   openSetup();
@@ -171,7 +171,6 @@ byId("next-step").addEventListener("click", () => { try { gatherConfig(); showSt
 byId("team-count").addEventListener("input", () => renderTeams());
 byId("default-pool").addEventListener("change", () => {});
 byId("apply-default-pool").addEventListener("click", () => { const value = byId("default-pool").value; byId("team-rows").querySelectorAll("[data-team-pool]").forEach((field) => { field.value = value; }); });
-byId("budget-mode").addEventListener("change", () => { const current = byId("budget-mode").value === "current-cash"; byId("pool-heading").textContent = current ? "Current auction cash" : "Starting pool"; byId("budget-help").textContent = current ? "Enter the cash each team actually has available when bidding begins. Keeper prices will still appear on the board, but will not be deducted twice." : "Enter each team's pool before keepers. Keeper salaries will be deducted automatically to calculate auction-day cash."; });
 byId("add-position").addEventListener("click", () => {
   const rules = [...byId("position-rules").querySelectorAll("tr")].map((row) => ({ id: row.querySelector("[data-position-id]").value, label: row.querySelector("[data-position-label]").value, minimum: row.querySelector("[data-position-min]").value, maximum: row.querySelector("[data-position-max]").value }));
   renderPositionRules([...rules, { id: `POS${rules.length + 1}`, label: "Custom position", minimum: 0, maximum: null }]);

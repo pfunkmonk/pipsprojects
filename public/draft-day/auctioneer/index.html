@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c223f">
   <title>Pip's Draft Day Tool · Auctioneer</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <link rel="stylesheet" href="../app.css?v=20260817e">
+  <link rel="stylesheet" href="../app.css?v=20260817f">
   <link rel="stylesheet" href="../shell-safety.css">
 </head>
 <body>
@@ -33,7 +33,7 @@
       <details id="keeper-setup" class="panel keeper-setup" open>
         <summary class="keeper-summary">
           <span><span class="eyebrow">Before the first sale</span><strong>Keeper Setup</strong><small id="keeper-summary-line">Loading keeper status…</small></span>
-          <span id="keeper-ready-state" class="sync-chip">CHECKING</span>
+          <span class="keeper-summary-actions"><span id="keeper-ready-state" class="sync-chip">CHECKING</span><span class="keeper-toggle-control"><small id="keeper-toggle-label">Collapse</small><span class="keeper-expand-icon" aria-hidden="true">⌄</span></span></span>
         </summary>
         <div class="keeper-cockpit">
           <form id="keeper-form" class="keeper-entry-form">
@@ -52,7 +52,7 @@
             <p id="keeper-status" class="status" role="status">Choose a player, fantasy team, and salary.</p>
             <button id="record-keeper" class="primary" type="submit" disabled>Record keeper</button>
           </form>
-          <section aria-labelledby="keeper-progress-title"><div class="section-heading"><div><p class="eyebrow">Automatic preflight</p><h2 id="keeper-progress-title">Team keeper progress</h2><p id="keeper-preflight">Checking budgets and roster paths…</p></div></div><div id="keeper-team-grid" class="keeper-team-grid"></div></section>
+          <section aria-labelledby="keeper-progress-title"><div class="section-heading"><div><p class="eyebrow">Automatic preflight</p><h2 id="keeper-progress-title">Team keeper progress</h2><p id="keeper-preflight">Checking budgets and roster paths…</p></div><button id="toggle-keeper-lock" class="secondary" type="button">Lock keepers</button></div><div id="keeper-team-grid" class="keeper-team-grid"></div></section>
         </div>
       </details>
 
@@ -102,7 +102,7 @@
       <div class="dialog-actions"><button class="secondary" value="cancel">Cancel</button><button id="save-correction" class="primary" value="default">Save correction</button></div>
     </form>
   </dialog>
-  <script type="module" src="./auctioneer.mjs?v=20260817e"></script>
+  <script type="module" src="./auctioneer.mjs?v=20260817f"></script>
 </body>
 </html>
 

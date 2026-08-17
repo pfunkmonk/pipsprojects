@@ -19,6 +19,9 @@ const EVENT_TYPES = new Set([
   "KEEPER_CORRECTED",
   "KEEPER_VOIDED",
   "KEEPER_RESTORED",
+  "KEEPER_SETUP_STATUS_CHANGED",
+  "PLAYER_NOMINATED",
+  "NOMINATION_CLEARED",
   "CUSTOM_PLAYER_ADDED",
   "DRAFT_STATUS_CHANGED",
 ]);
@@ -121,7 +124,9 @@ export function normalizeLeagueConfig(input) {
   const rosterMinimum = integer(input.rosterMinimum, "Roster minimum", 1, 100);
   const rosterMaximum = integer(input.rosterMaximum, "Roster maximum", rosterMinimum, 100);
   const maximumKeepers = optionalInteger(input.keeperMaximum, "Maximum keepers per team", 0, rosterMaximum);
-  const budgetMode = input.budgetMode === "pre-keeper" ? "pre-keeper" : "current-cash";
+  // Team pools are always the starting amount. Keeper salaries are real roster
+  // spend and must reduce cash, legal bids, and every public view consistently.
+  const budgetMode = "pre-keeper";
   const nominationMode = ["snake", "linear", "manual"].includes(input.nominationMode) ? input.nominationMode : "snake";
 
   if (!Array.isArray(input.positionRules) || input.positionRules.length < 1 || input.positionRules.length > 20) {
@@ -279,6 +284,11 @@ export function normalizeDraftDayEvent(value) {
     event.keeperRound = optionalInteger(value.keeperRound, "Keeper round", 1, 100);
   } else if (type === "KEEPER_VOIDED" || type === "KEEPER_RESTORED") {
     event.targetId = safeId(value.targetId, "Keeper");
+  } else if (type === "KEEPER_SETUP_STATUS_CHANGED") {
+    if (typeof value.locked !== "boolean") throw new Error("Keeper setup status is invalid.");
+    event.locked = value.locked;
+  } else if (type === "PLAYER_NOMINATED") {
+    event.player = normalizePlayer(value.player, "Nominated player");
   } else if (type === "CUSTOM_PLAYER_ADDED") {
     event.player = normalizePlayer(value.player);
   } else if (type === "DRAFT_STATUS_CHANGED") {
@@ -313,8 +323,11 @@ function applyEvents(document) {
   const assignments = new Map(keeperAssignments(document.config, document.createdAt).map((assignment) => [assignment.id, assignment]));
   const customPlayers = new Map(document.config.keepers.map((keeper) => [keeper.player.id, keeper.player]));
   let draftStatus = "live";
+  let keeperSetupLocked = false;
+  let nominatedPlayer = null;
   for (const event of document.events) {
     if (event.type === "SALE_RECORDED") {
+      nominatedPlayer = null;
       assignments.set(event.id, {
         id: event.id,
         ...assignmentPlayerFields(event.player),
@@ -378,13 +391,19 @@ function applyEvents(document) {
       const target = assignments.get(event.targetId);
       if (!target || target.acquisitionType !== "keeper") throw new Error("A restore targets an unknown keeper.");
       assignments.set(event.targetId, { ...target, status: "active", updatedAt: event.createdAt });
+    } else if (event.type === "KEEPER_SETUP_STATUS_CHANGED") {
+      keeperSetupLocked = event.locked;
+    } else if (event.type === "PLAYER_NOMINATED") {
+      nominatedPlayer = event.player;
+    } else if (event.type === "NOMINATION_CLEARED") {
+      nominatedPlayer = null;
     } else if (event.type === "CUSTOM_PLAYER_ADDED") {
       customPlayers.set(event.player.id, event.player);
     } else if (event.type === "DRAFT_STATUS_CHANGED") {
       draftStatus = event.status;
     }
   }
-  return { assignments: [...assignments.values()], customPlayers: [...customPlayers.values()], draftStatus };
+  return { assignments: [...assignments.values()], customPlayers: [...customPlayers.values()], draftStatus, keeperSetupLocked, nominatedPlayer };
 }
 
 function nextNominator(config, nominationStep) {
@@ -400,7 +419,7 @@ function teamState(config, assignments, team) {
   const active = assignments.filter((assignment) => assignment.status === "active" && assignment.teamId === team.id);
   const auctionSpend = active.filter((assignment) => assignment.acquisitionType === "auction").reduce((sum, assignment) => sum + assignment.price, 0);
   const keeperSpend = active.filter((assignment) => assignment.acquisitionType === "keeper").reduce((sum, assignment) => sum + assignment.price, 0);
-  const auctionBudget = config.budgetMode === "pre-keeper" ? team.enteredPool - keeperSpend : team.enteredPool;
+  const auctionBudget = team.enteredPool - keeperSpend;
   const remainingBudget = auctionBudget - auctionSpend;
   const counts = positionCounts(active, team.id);
   const requiredSlots = requiredAdditionalSlots(config, active, team.id);
@@ -458,7 +477,7 @@ function validateActiveState(config, assignments) {
 
 export function snapshotFromDocument(documentValue) {
   const document = documentValue.config ? documentValue : validateLeagueDocument(documentValue);
-  const { assignments, customPlayers, draftStatus } = applyEvents(document);
+  const { assignments, customPlayers, draftStatus, keeperSetupLocked, nominatedPlayer } = applyEvents(document);
   validateActiveState(document.config, assignments);
   return {
     schemaVersion: DRAFT_DAY_SCHEMA_VERSION,
@@ -467,6 +486,8 @@ export function snapshotFromDocument(documentValue) {
     updatedAt: document.updatedAt,
     draftStatus,
     auctionStarted: document.events.some((event) => event.type === "SALE_RECORDED"),
+    keepersLocked: document.events.some((event) => event.type === "SALE_RECORDED") || keeperSetupLocked,
+    nominatedPlayer,
     nominationStep: document.nominationStep,
     currentNominatorTeamId: nextNominator(document.config, document.nominationStep),
     config: document.config,
@@ -484,6 +505,7 @@ export function publicSnapshot(snapshot) {
     revision: snapshot.revision,
     updatedAt: snapshot.updatedAt,
     draftStatus: snapshot.draftStatus,
+    nominatedPlayer: snapshot.nominatedPlayer,
     currentNominatorTeamId: snapshot.currentNominatorTeamId,
     config: {
       leagueName: snapshot.config.leagueName,
@@ -553,6 +575,7 @@ export function keeperLegality(snapshot, input) {
     const team = snapshot.teams.find((candidate) => candidate.id === teamId);
     if (!team) throw new Error("Choose the fantasy team keeping this player.");
     if (snapshot.draftStatus === "complete") throw new Error("Reopen the draft before changing keepers.");
+    if (snapshot.keepersLocked && !targetId) throw new Error("Keeper entry is locked. Unlock keepers before adding another player.");
     const active = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.id !== targetId);
     if (active.some((assignment) => samePlayer({ id: assignment.playerId, name: assignment.playerName, position: assignment.position }, player))) {
       throw new Error(`${player.name} is already assigned.`);
@@ -637,7 +660,7 @@ export function applyCommand(documentValue, input, options = {}) {
     }
     events.push(normalizeDraftDayEvent({ id: input.eventId || `${type}-${crypto.randomUUID()}`, type: type === "void-sale" ? "SALE_VOIDED" : "SALE_RESTORED", targetId, createdAt: now, actor }));
   } else if (type === "record-keeper") {
-    if (before.auctionStarted) throw new Error("Keeper entry locked when the first auction sale was recorded. Use Correct on an existing keeper if the room needs a repair.");
+    if (before.keepersLocked) throw new Error("Keeper entry is locked. Use Correct on an existing keeper if the room needs a repair.");
     const legality = keeperLegality(before, input);
     if (!legality.legal) throw new Error(legality.message);
     events.push(normalizeDraftDayEvent({
@@ -680,6 +703,20 @@ export function applyCommand(documentValue, input, options = {}) {
       if (!legality.legal) throw new Error(legality.message);
     }
     events.push(normalizeDraftDayEvent({ id: input.eventId || `${type}-${crypto.randomUUID()}`, type: type === "void-keeper" ? "KEEPER_VOIDED" : "KEEPER_RESTORED", targetId, createdAt: now, actor }));
+  } else if (type === "lock-keepers" || type === "unlock-keepers") {
+    const locked = type === "lock-keepers";
+    if (!locked && before.auctionStarted) throw new Error("Keeper entry is permanently locked after the first auction sale.");
+    if (before.keepersLocked === locked) throw new Error(locked ? "Keeper entry is already locked." : "Keeper entry is already unlocked.");
+    events.push(normalizeDraftDayEvent({ id: input.eventId || `keeper-status-${crypto.randomUUID()}`, type: "KEEPER_SETUP_STATUS_CHANGED", locked, createdAt: now, actor }));
+  } else if (type === "nominate-player") {
+    if (before.draftStatus === "complete") throw new Error("Reopen the draft before nominating another player.");
+    const player = normalizePlayer(input.player, "Nominated player");
+    if (before.assignments.some((assignment) => assignment.status === "active" && samePlayer({ id: assignment.playerId, name: assignment.playerName, position: assignment.position }, player))) throw new Error(`${player.name} is already assigned.`);
+    if (!before.config.positionRules.some((rule) => rule.id === player.position)) throw new Error(`${player.position} is not a configured roster position.`);
+    events.push(normalizeDraftDayEvent({ id: input.eventId || `nomination-${crypto.randomUUID()}`, type: "PLAYER_NOMINATED", player, createdAt: now, actor }));
+  } else if (type === "clear-nomination") {
+    if (!before.nominatedPlayer) throw new Error("There is no active nomination to clear.");
+    events.push(normalizeDraftDayEvent({ id: input.eventId || `nomination-clear-${crypto.randomUUID()}`, type: "NOMINATION_CLEARED", createdAt: now, actor }));
   } else if (type === "add-player") {
     const player = normalizePlayer(input.player);
     if (before.customPlayers.some((candidate) => candidate.id === player.id)) throw new Error("That custom player already exists.");
