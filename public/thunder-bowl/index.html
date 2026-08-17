@@ -665,12 +665,22 @@
             <p id="cbs-capture-status" class="form-status" role="status" aria-live="polite">The Chrome helper is not installed automatically; installation requires your explicit approval.</p>
           </section>
 
+          <section class="product-panel settings-card" aria-labelledby="cbs-auction-export-title">
+            <p class="eyebrow">CBS automation handoff</p>
+            <h3 id="cbs-auction-export-title">CBS Auction Import CSV</h3>
+            <p>Download one strictly validated row per active auction purchase using exactly <code>player_name,nfl_team,position,fantasy_team,auction_price,player_id</code>. The file contains no keepers, voided sales, totals, metadata, or private strategy.</p>
+            <div class="button-stack">
+              <button id="export-cbs-auction-import" class="button button-primary" type="button">Download CBS Auction Import CSV</button>
+            </div>
+            <p id="cbs-auction-export-status" class="form-status" role="status" aria-live="polite">The export fails closed if any active sale has missing, duplicate, illegal, or pack-mismatched data.</p>
+          </section>
+
           <section class="product-panel settings-card">
-            <p class="eyebrow">CBS entry &amp; next-year learning</p>
+            <p class="eyebrow">Audit &amp; next-year learning</p>
             <h3>Draft history CSV</h3>
             <p>Download every active cap trade, keeper decision, nomination skip, and auction purchase in chronological order. Audited corrections remain preserved in the recovery bundle; voided rows are excluded from this clean entry file.</p>
             <div class="button-stack">
-              <button id="export-draft-history" class="button button-primary" type="button">Download draft history CSV</button>
+              <button id="export-draft-history" class="button button-secondary" type="button">Download full draft history CSV</button>
             </div>
             <p id="draft-history-status" class="form-status" role="status" aria-live="polite"></p>
           </section>
@@ -963,6 +973,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260816a"></script>
+  <script type="module" src="./app.mjs?v=20260817a"></script>
 </body>
 </html>

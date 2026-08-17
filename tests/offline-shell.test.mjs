@@ -614,3 +614,13 @@ test("data setup exports a clean chronological draft history for CBS entry and f
   assert.match(appSource, /draftHistoryCsv\(rows\)/);
   assert.match(indexHtml, /active cap trade, keeper decision, nomination skip, and auction purchase/i);
 });
+
+test("Admin exports a strict six-column CBS auction automation handoff", () => {
+  for (const id of ["export-cbs-auction-import", "cbs-auction-export-status"]) {
+    assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(appSource, /buildCbsAuctionImportRows\(\{ events, pack: draftPack \}\)/);
+  assert.match(appSource, /cbsAuctionImportCsv\(rows\)/);
+  assert.match(indexHtml, /player_name,nfl_team,position,fantasy_team,auction_price,player_id/);
+  assert.match(indexHtml, /no keepers, voided sales, totals, metadata, or private strategy/i);
+});

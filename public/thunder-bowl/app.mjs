@@ -76,6 +76,7 @@ import {
 } from "./auction-telemetry.mjs?v=20260809a";
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
+import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260817a";
 import {
   buildBidRecommendation,
   buildAuctionValueAdvice,
@@ -5218,6 +5219,23 @@ async function loadBundledDraftPack() {
   }
 }
 
+function exportCbsAuctionImport() {
+  const status = byId("cbs-auction-export-status");
+  try {
+    const rows = buildCbsAuctionImportRows({ events, pack: draftPack });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const mode = REPLAY_2025 ? "-replay" : PRACTICE_AUCTION ? "-practice" : "";
+    downloadText(
+      `thunder-bowl-${ROOM_SEASON}${mode}-cbs-auction-import-${stamp}.csv`,
+      cbsAuctionImportCsv(rows),
+      "text/csv;charset=utf-8",
+    );
+    setStatus(status, `Exported ${rows.length} active auction purchase${rows.length === 1 ? "" : "s"} in the exact six-column CBS automation format. Keepers and voided sales were excluded.`);
+  } catch (error) {
+    setStatus(status, errorMessage(error), true);
+  }
+}
+
 async function promoteFinalPack() {
   const status = byId("pack-import-status");
   const button = byId("promote-final-pack");
@@ -5418,6 +5436,7 @@ function bindInteractions() {
   byId("export-morning-intelligence").addEventListener("click", exportMorningIntelligence);
   byId("open-emergency-board").addEventListener("click", openEmergencyBoard);
   byId("export-keeper-board").addEventListener("click", exportKeeperBoard);
+  byId("export-cbs-auction-import").addEventListener("click", exportCbsAuctionImport);
   byId("export-draft-history").addEventListener("click", exportDraftHistory);
   byId("export-personal-board").addEventListener("click", () => void exportPersonalBoard());
   byId("export-personal-board-csv").addEventListener("click", exportPersonalBoardCsv);
