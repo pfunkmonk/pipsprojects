@@ -37,6 +37,10 @@ function optionalText(value, maximum = 30) {
   return result;
 }
 
+export function positionMaximum(rule, rosterMaximum) {
+  return rule?.maximum == null ? rosterMaximum : rule.maximum;
+}
+
 export function safeId(value, label = "Id") {
   const result = String(value ?? "").trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(result)) throw new Error(`${label} is invalid.`);
@@ -95,12 +99,15 @@ export function normalizeLeagueConfig(input) {
     if (!/^[A-Z0-9][A-Z0-9+/_-]{0,19}$/.test(id)) throw new Error(`Position ${index + 1} abbreviation is invalid.`);
     const label = text(rule?.label || id, `Position ${id} label`, 30);
     const minimum = integer(rule?.minimum, `${id} minimum`, 0, rosterMaximum);
-    const maximum = integer(rule?.maximum, `${id} maximum`, minimum, rosterMaximum);
+    const maximumInput = rule?.maximum;
+    const maximum = maximumInput == null || String(maximumInput).trim() === ""
+      ? null
+      : integer(maximumInput, `${id} maximum`, minimum, rosterMaximum);
     return { id, label, minimum, maximum };
   });
   if (new Set(positionRules.map((rule) => rule.id)).size !== positionRules.length) throw new Error("Position abbreviations must be unique.");
   const minimumByPosition = positionRules.reduce((sum, rule) => sum + rule.minimum, 0);
-  const maximumByPosition = positionRules.reduce((sum, rule) => sum + rule.maximum, 0);
+  const maximumByPosition = positionRules.reduce((sum, rule) => sum + positionMaximum(rule, rosterMaximum), 0);
   if (minimumByPosition > rosterMaximum) throw new Error("Position minimums require more players than the roster maximum allows.");
   if (maximumByPosition < rosterMinimum) throw new Error("Position maximums cannot accommodate the roster minimum.");
 
@@ -204,7 +211,7 @@ function validateInitialAffordability(config) {
     if (roster.length > config.rosterMaximum) throw new Error(`${team.name} has more keepers than its roster maximum.`);
     const counts = positionCounts(assignments, team.id);
     for (const rule of config.positionRules) {
-      if ((counts[rule.id] || 0) > rule.maximum) throw new Error(`${team.name} has too many ${rule.label} keepers.`);
+      if ((counts[rule.id] || 0) > positionMaximum(rule, config.rosterMaximum)) throw new Error(`${team.name} has too many ${rule.label} keepers.`);
     }
     const reserve = requiredAdditionalSlots(config, assignments, team.id) * config.minimumBid;
     if (team.auctionBudget < reserve) throw new Error(`${team.name} needs at least $${reserve} to complete its minimum roster after keepers.`);
@@ -370,7 +377,7 @@ function validateActiveState(config, assignments) {
     if (state.rosterCount > config.rosterMaximum) throw new Error(`${team.name} is already at its roster maximum.`);
     if (state.remainingBudget < 0) throw new Error(`${team.name} does not have enough money.`);
     for (const rule of config.positionRules) {
-      if ((state.positionCounts[rule.id] || 0) > rule.maximum) throw new Error(`${team.name} is already at its ${rule.label} maximum.`);
+      if ((state.positionCounts[rule.id] || 0) > positionMaximum(rule, config.rosterMaximum)) throw new Error(`${team.name} is already at its ${rule.label} maximum.`);
     }
     if (state.remainingBudget < state.requiredSlots * config.minimumBid) {
       throw new Error(`${team.name} must reserve $${state.requiredSlots * config.minimumBid} to complete a legal roster.`);
@@ -434,7 +441,7 @@ export function saleLegality(snapshot, input) {
     const rule = snapshot.config.positionRules.find((candidate) => candidate.id === player.position);
     if (!rule) throw new Error(`${player.position} is not a configured roster position.`);
     if (team.rosterCount >= snapshot.config.rosterMaximum) throw new Error(`${team.name} is at its roster maximum.`);
-    if ((team.positionCounts[player.position] || 0) >= rule.maximum) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
+    if ((team.positionCounts[player.position] || 0) >= positionMaximum(rule, snapshot.config.rosterMaximum)) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
     if (price < snapshot.config.minimumBid) throw new Error(`The minimum bid is $${snapshot.config.minimumBid}.`);
     if ((price - snapshot.config.minimumBid) % snapshot.config.bidIncrement !== 0) throw new Error(`Prices must follow the $${snapshot.config.bidIncrement} bid increment.`);
     const activeForTeam = snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.teamId === teamId);

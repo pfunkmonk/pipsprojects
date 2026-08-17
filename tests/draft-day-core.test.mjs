@@ -104,6 +104,81 @@ test("setup validates flexible team counts, positions, and impossible roster rul
   assert.throws(() => config({ rosterMinimum: 5, rosterMaximum: 5, positionRules: [{ id: "QB", label: "QB", minimum: 0, maximum: 2 }] }), /cannot accommodate/i);
 });
 
+test("blank position maximums remain unlimited through save, reload, keepers, and auction sales", () => {
+  const unlimited = config({
+    rosterMinimum: 1,
+    rosterMaximum: 3,
+    positionRules: [{ id: "QB", label: "Quarterback", minimum: 0, maximum: "" }],
+  });
+  assert.equal(unlimited.positionRules[0].maximum, null);
+  assert.equal(normalizeLeagueConfig({ ...unlimited, keepersEnabled: true }).positionRules[0].maximum, null);
+
+  const withKeepers = config({
+    rosterMinimum: 1,
+    rosterMaximum: 3,
+    positionRules: [{ id: "QB", label: "Quarterback", minimum: 0, maximum: null }],
+    keepersEnabled: true,
+    keepers: [
+      { id: "keeper-one", player: { id: "keeper-qb-one", name: "Keeper One", position: "QB", nflTeam: "DEN" }, teamId: "alpha", salary: 0 },
+      { id: "keeper-two", player: { id: "keeper-qb-two", name: "Keeper Two", position: "QB", nflTeam: "GB" }, teamId: "alpha", salary: 0 },
+      { id: "keeper-three", player: { id: "keeper-qb-three", name: "Keeper Three", position: "QB", nflTeam: "NYJ" }, teamId: "alpha", salary: 0 },
+    ],
+  });
+  assert.equal(withKeepers.keepers.length, 3);
+
+  let state = document(unlimited);
+  for (let index = 1; index <= 3; index += 1) {
+    state = applyCommand(state, {
+      type: "record-sale",
+      eventId: `sale-qb-${index}`,
+      idempotencyKey: `record-qb-${index}`,
+      expectedRevision: index - 1,
+      player: { id: `qb-${index}`, name: `Quarterback ${index}`, position: "QB", nflTeam: "FA" },
+      teamId: "alpha",
+      price: 1,
+    });
+  }
+  assert.equal(snapshotFromDocument(state).teams[0].positionCounts.QB, 3);
+  assert.throws(() => applyCommand(state, {
+    type: "record-sale",
+    eventId: "sale-qb-four",
+    idempotencyKey: "record-qb-four",
+    expectedRevision: 3,
+    player: { id: "qb-four", name: "Quarterback Four", position: "QB", nflTeam: "FA" },
+    teamId: "alpha",
+    price: 1,
+  }), /roster maximum/i);
+});
+
+test("an explicit numeric position maximum is still enforced", () => {
+  const capped = config({
+    rosterMinimum: 1,
+    rosterMaximum: 4,
+    positionRules: [{ id: "QB", label: "Quarterback", minimum: 0, maximum: 2 }],
+  });
+  let state = document(capped);
+  for (let index = 1; index <= 2; index += 1) {
+    state = applyCommand(state, {
+      type: "record-sale",
+      eventId: `capped-sale-${index}`,
+      idempotencyKey: `capped-record-${index}`,
+      expectedRevision: index - 1,
+      player: { id: `capped-qb-${index}`, name: `Capped Quarterback ${index}`, position: "QB", nflTeam: "FA" },
+      teamId: "alpha",
+      price: 1,
+    });
+  }
+  assert.throws(() => applyCommand(state, {
+    type: "record-sale",
+    eventId: "capped-sale-three",
+    idempotencyKey: "capped-record-three",
+    expectedRevision: 2,
+    player: { id: "capped-qb-three", name: "Capped Quarterback Three", position: "QB", nflTeam: "FA" },
+    teamId: "alpha",
+    price: 1,
+  }), /Quarterback maximum/i);
+});
+
 test("organizer can replace setup only before the first auction sale", () => {
   let state = document();
   const replacement = config({ leagueName: "Renamed Auction" });

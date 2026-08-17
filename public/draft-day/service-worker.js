@@ -1,11 +1,11 @@
-const CACHE = "pips-draft-day-shell-20260816a";
+const CACHE = "pips-draft-day-shell-20260817a";
 const SHELL = [
   "/draft-day/",
   "/draft-day/index.html",
-  "/draft-day/app.css?v=20260816a",
+  "/draft-day/app.css?v=20260817a",
   "/draft-day/shell-safety.css",
   "/draft-day/core.mjs",
-  "/draft-day/setup.mjs?v=20260816a",
+  "/draft-day/setup.mjs?v=20260817a",
   "/draft-day/favicon.svg",
   "/draft-day/manifest.webmanifest",
   "/draft-day/player-pool.json",
@@ -13,10 +13,10 @@ const SHELL = [
   "/draft-day/guide/index.html",
   "/draft-day/auctioneer/",
   "/draft-day/auctioneer/index.html",
-  "/draft-day/auctioneer/auctioneer.mjs?v=20260816a",
+  "/draft-day/auctioneer/auctioneer.mjs?v=20260817a",
   "/draft-day/board/",
   "/draft-day/board/index.html",
-  "/draft-day/board/board.mjs?v=20260816a",
+  "/draft-day/board/board.mjs?v=20260817a",
 ];
 
 self.addEventListener("install", (event) => {

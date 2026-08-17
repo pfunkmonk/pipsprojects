@@ -8,7 +8,7 @@
   <title>Pip's Draft Day Tool</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css?v=20260816a">
+  <link rel="stylesheet" href="./app.css?v=20260817a">
   <link rel="stylesheet" href="./shell-safety.css">
 </head>
 <body>
@@ -67,9 +67,12 @@
               <label>Roster maximum<input id="roster-maximum" type="number" min="1" value="14" required></label>
             </div>
             <h3>Position limits</h3>
-            <p class="privacy-note">Minimums define a legal finished roster. Maximums prevent accidental overfilling during the auction.</p>
-            <div class="scroll-x"><table class="rule-table"><thead><tr><th>Abbreviation</th><th>Label</th><th>Minimum</th><th>Maximum</th><th></th></tr></thead><tbody id="position-rules"></tbody></table></div>
-            <button id="add-position" class="secondary" type="button">Add position</button>
+            <p class="privacy-note">Minimums define a legal finished roster. Maximums are optional: leave one blank to allow any number at that position up to the overall roster maximum.</p>
+            <div class="scroll-x"><table class="rule-table"><thead><tr><th>Abbreviation</th><th>Label</th><th>Minimum</th><th>Maximum (optional)</th><th></th></tr></thead><tbody id="position-rules"></tbody></table></div>
+            <div class="position-actions">
+              <button id="add-position" class="secondary" type="button">Add position</button>
+              <button id="allow-any-mix" class="secondary" type="button">Allow any mix of backups</button>
+            </div>
           </section>
 
           <section class="wizard-step" data-wizard-step="1" hidden>
@@ -122,6 +125,6 @@
       </section>
     </main>
   </div>
-  <script type="module" src="./setup.mjs?v=20260816a"></script>
+  <script type="module" src="./setup.mjs?v=20260817a"></script>
 </body>
 </html>

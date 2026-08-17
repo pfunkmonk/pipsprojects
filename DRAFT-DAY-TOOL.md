@@ -2,6 +2,10 @@
 
 Stage One is a league-configurable fantasy-football auction room at `/draft-day/`. It deliberately contains no VBD, ADP, projections, rankings, or draft advice.
 
+## Product operating principle
+
+Every change must make the tool easier, more intuitive, more desirable, and faster than paper or competing online services. Prefer eliminating a class of mistakes over patching one symptom, explain unusual league rules where they are entered, preserve the organizer's intent when setup is reopened, and test the complete affected workflow before shipping.
+
 ## Routes
 
 - `/draft-day/` — create a league or manage setup before the first auction sale
@@ -41,6 +45,8 @@ Set `DRAFT_DAY_SESSION_SECRET` to a new random value of at least 32 characters i
 ## Stage One acceptance flow
 
 1. Create a multi-team league with individualized pools and position rules.
+   - A blank position maximum means no position-specific limit; the overall roster maximum still applies.
+   - “Allow any mix of backups” clears every position maximum at once.
 2. Add keepers in either current-cash or pre-keeper budget mode.
 3. Sign into auctioneer and Draft Board roles separately.
 4. Record a sale and observe the board update.

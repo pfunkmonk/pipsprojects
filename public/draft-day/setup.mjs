@@ -38,7 +38,7 @@ function showStep(index) {
 function input(type, value, attributes = {}) {
   const element = document.createElement("input");
   element.type = type;
-  element.value = value;
+  element.value = value ?? "";
   for (const [key, attribute] of Object.entries(attributes)) element.setAttribute(key, attribute);
   return element;
 }
@@ -57,7 +57,13 @@ function renderPositionRules(rules = DEFAULT_POSITION_RULES) {
     idCell.append(input("text", rule.id, { maxlength: "20", "data-position-id": "true", required: "" }));
     labelCell.append(input("text", rule.label, { maxlength: "30", "data-position-label": "true", required: "" }));
     minCell.append(input("number", rule.minimum, { min: "0", "data-position-min": "true", required: "" }));
-    maxCell.append(input("number", rule.maximum, { min: "0", "data-position-max": "true", required: "" }));
+    maxCell.append(input("number", rule.maximum, {
+      min: "0",
+      placeholder: "No positional limit",
+      title: "Leave blank to allow any number at this position up to the overall roster maximum.",
+      "aria-label": `${rule.label} maximum; leave blank for no positional limit`,
+      "data-position-max": "true",
+    }));
     const remove = document.createElement("button");
     remove.type = "button"; remove.className = "secondary"; remove.textContent = "Remove";
     remove.addEventListener("click", () => row.remove());
@@ -213,7 +219,11 @@ byId("apply-default-pool").addEventListener("click", () => { const value = byId(
 byId("budget-mode").addEventListener("change", () => { const current = byId("budget-mode").value === "current-cash"; byId("pool-heading").textContent = current ? "Current auction cash" : "Starting pool"; byId("budget-help").textContent = current ? "Enter the cash each team actually has available when bidding begins. Keeper prices will still appear on the board, but will not be deducted twice." : "Enter each team's pool before keepers. Keeper salaries will be deducted automatically to calculate auction-day cash."; });
 byId("add-position").addEventListener("click", () => {
   const rules = [...byId("position-rules").querySelectorAll("tr")].map((row) => ({ id: row.querySelector("[data-position-id]").value, label: row.querySelector("[data-position-label]").value, minimum: row.querySelector("[data-position-min]").value, maximum: row.querySelector("[data-position-max]").value }));
-  renderPositionRules([...rules, { id: `POS${rules.length + 1}`, label: "Custom position", minimum: 0, maximum: 2 }]);
+  renderPositionRules([...rules, { id: `POS${rules.length + 1}`, label: "Custom position", minimum: 0, maximum: null }]);
+});
+byId("allow-any-mix").addEventListener("click", () => {
+  byId("position-rules").querySelectorAll("[data-position-max]").forEach((field) => { field.value = ""; });
+  setStatus(byId("setup-status"), "Position limits removed. The overall roster maximum still applies.");
 });
 byId("keepers-enabled").addEventListener("change", () => { byId("keeper-editor").hidden = !byId("keepers-enabled").checked; if (byId("keepers-enabled").checked && !byId("keeper-rows").children.length) addKeeperRow(); });
 byId("add-keeper").addEventListener("click", () => addKeeperRow());

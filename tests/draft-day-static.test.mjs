@@ -7,6 +7,8 @@ const config = await readFile(new URL("../netlify.toml", import.meta.url), "utf8
 const worker = await readFile(new URL("../public/draft-day/service-worker.js", import.meta.url), "utf8");
 const auctioneerSource = await readFile(new URL("../public/draft-day/auctioneer/auctioneer.mjs", import.meta.url), "utf8");
 const boardSource = await readFile(new URL("../public/draft-day/board/board.mjs", import.meta.url), "utf8");
+const setupSource = await readFile(new URL("../public/draft-day/setup.mjs", import.meta.url), "utf8");
+const setupPage = await readFile(new URL("../public/draft-day/index.html", import.meta.url), "utf8");
 const environment = await readFile(new URL("../.env.example", import.meta.url), "utf8");
 const pages = [new URL("../public/draft-day/index.html", import.meta.url), new URL("../public/draft-day/auctioneer/index.html", import.meta.url), new URL("../public/draft-day/board/index.html", import.meta.url), new URL("../public/draft-day/guide/index.html", import.meta.url)];
 
@@ -50,4 +52,13 @@ test("offline role access requires a verifier saved after successful online sign
     assert.match(source, /localStorage\.setItem\(verifierKey\(code\), await accessVerifier/);
     assert.match(source, /localStorage\.getItem\(verifierKey\(code\)\) === await accessVerifier/);
   }
+});
+
+test("position maximums are optional, persistent, and fast to clear", () => {
+  assert.match(setupPage, /Maximum \(optional\)/);
+  assert.match(setupPage, /leave one blank to allow any number at that position/i);
+  assert.match(setupPage, /id="allow-any-mix"[^>]*>Allow any mix of backups/);
+  assert.match(setupSource, /placeholder: "No positional limit"/);
+  assert.match(setupSource, /rule\.maximum/);
+  assert.doesNotMatch(setupSource, /"data-position-max": "true", required/);
 });
