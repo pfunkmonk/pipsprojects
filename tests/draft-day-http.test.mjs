@@ -45,6 +45,22 @@ test("an issued auctioneer session remains valid on a refresh snapshot request",
   assert.equal((await refreshed.json()).role, "auctioneer");
 });
 
+test("explicit logout expires every Draft Day role cookie", async () => {
+  const response = await handlers.auth(request("/api/draft-day/auth", { method: "DELETE" }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { signedOut: true });
+  const cookies = response.headers.getSetCookie();
+  assert.equal(cookies.length, 3);
+  for (const name of ["ddt_admin_session", "ddt_auctioneer_session", "ddt_board_session"]) {
+    const cookie = cookies.find((value) => value.startsWith(`${name}=`));
+    assert.ok(cookie, `${name} must be cleared`);
+    assert.match(cookie, /Max-Age=0/);
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /Secure/);
+    assert.match(cookie, /SameSite=Strict/);
+  }
+});
+
 test("board session receives board scope and cannot submit commands", async () => {
   const cookie = createRoleCookie({ role: "board", leagueCode: "ABCD-EFGH", secret });
   const header = cookie.split(";", 1)[0];

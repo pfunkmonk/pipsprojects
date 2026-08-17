@@ -50,6 +50,10 @@ export function createRoleCookie({ role, leagueCode, secret, secure = true, maxA
   return `${ROLE_COOKIES[role]}=${token}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly${secure ? "; Secure" : ""}; SameSite=Strict`;
 }
 
+export function clearRoleCookies({ secure = true } = {}) {
+  return Object.values(ROLE_COOKIES).map((name) => `${name}=; Path=/; Max-Age=0; HttpOnly${secure ? "; Secure" : ""}; SameSite=Strict`);
+}
+
 function cookieValue(header, name) {
   for (const part of String(header || "").split(";")) {
     const [key, ...value] = part.trim().split("=");

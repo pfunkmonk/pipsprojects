@@ -555,6 +555,21 @@ byId("finish-draft").addEventListener("click", () => void runCommand({ type: sna
 byId("export-csv").addEventListener("click", () => exportFile(byId("export-csv"), draftCsv(snapshot), `${snapshot.leagueCode.toLowerCase()}-auction-results.csv`, "text/csv;charset=utf-8", "CSV download started"));
 byId("export-json").addEventListener("click", () => exportFile(byId("export-json"), JSON.stringify({ kind: "pips-draft-day-backup", exportedAt: new Date().toISOString(), snapshot }, null, 2), `${snapshot.leagueCode.toLowerCase()}-auction-backup.json`, "application/json", "Backup download started"));
 
+async function logOut() {
+  const button = byId("logout"); button.disabled = true; button.textContent = "Logging out…";
+  try {
+    const code = leagueCode();
+    await request("/api/draft-day/auth", { method: "DELETE" });
+    for (const key of [LAST_AUCTIONEER_LEAGUE_KEY, "pips-draft-day-last-organizer-league", "pips-draft-day-last-board-league", "pips-draft-day-last-league", verifierKey(code), `pips-draft-day-board-verifier-${code}`]) localStorage.removeItem(key);
+    location.reload();
+  } catch (error) {
+    button.disabled = false; button.textContent = "Log out";
+    setStatus(byId("sale-status"), `Could not log out securely: ${error.message}`, true);
+  }
+}
+
+byId("logout").addEventListener("click", () => void logOut());
+
 byId("clock-enabled").addEventListener("change", () => { clockState.enabled = byId("clock-enabled").checked; resetClock(false); });
 byId("clock-duration").addEventListener("change", () => { clockState.duration = Number(byId("clock-duration").value); resetClock(false); });
 byId("clock-start").addEventListener("click", startClock); byId("clock-pause").addEventListener("click", pauseClock); byId("clock-reset").addEventListener("click", () => resetClock(false));

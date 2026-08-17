@@ -156,6 +156,20 @@ byId("login-form").addEventListener("submit", async (event) => {
   }
 });
 byId("fullscreen-board").addEventListener("click", async () => { if (document.fullscreenElement) await document.exitFullscreen(); else await byId("board-app").requestFullscreen(); });
+async function logOut() {
+  const button = byId("logout"); button.disabled = true; button.textContent = "Logging out…";
+  try {
+    const code = leagueCode;
+    await request("/api/draft-day/auth", { method: "DELETE" });
+    for (const key of [LAST_BOARD_LEAGUE_KEY, "pips-draft-day-last-organizer-league", "pips-draft-day-last-auctioneer-league", "pips-draft-day-last-league", verifierKey(code), `pips-draft-day-auctioneer-verifier-${code}`]) localStorage.removeItem(key);
+    location.reload();
+  } catch (error) {
+    button.disabled = false; button.textContent = "Log out";
+    byId("connection-state").textContent = "LOGOUT FAILED"; byId("connection-state").classList.add("is-error");
+    byId("board-status").textContent = `Could not log out securely: ${error.message}`;
+  }
+}
+byId("logout").addEventListener("click", () => void logOut());
 window.addEventListener("offline", () => { byId("connection-state").textContent = "OFFLINE"; byId("connection-state").classList.add("is-error"); });
 window.addEventListener("online", () => void refresh());
 const initialLeague = query.get("league") || localStorage.getItem(LAST_BOARD_LEAGUE_KEY) || localStorage.getItem("pips-draft-day-last-league") || ""; byId("league-code").value = initialLeague;

@@ -1,5 +1,5 @@
 import { normalizeLeagueCode } from "../../../public/draft-day/core.mjs";
-import { createRoleCookie, verifyRoleCookie } from "./security.mjs";
+import { clearRoleCookies, createRoleCookie, verifyRoleCookie } from "./security.mjs";
 
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -47,7 +47,13 @@ export function createDraftDayHttpHandlers({ service, env = process.env }) {
     },
 
     async auth(request) {
-      if (request.method !== "POST" || !sameOrigin(request)) return json({ error: "Method not allowed" }, 405);
+      if (!sameOrigin(request)) return json({ error: "Method not allowed" }, 405);
+      if (request.method === "DELETE") {
+        const headers = new Headers({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+        for (const cookie of clearRoleCookies({ secure: new URL(request.url).protocol === "https:" })) headers.append("Set-Cookie", cookie);
+        return new Response(JSON.stringify({ signedOut: true }), { status: 200, headers });
+      }
+      if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
       try {
         const body = await request.json();
         const session = await service.authenticate(body);

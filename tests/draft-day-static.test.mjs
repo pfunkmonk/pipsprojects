@@ -100,6 +100,18 @@ test("every Draft Day role restores its authenticated session after refresh", ()
   assert.match(setupSource, /pips-draft-day-last-organizer-league/);
 });
 
+test("logout is explicit and separate from automatic refresh restoration", () => {
+  for (const page of [setupPage, auctioneerPage, boardPage]) assert.match(page, /id="logout"[^>]*>Log out<\/button>/);
+  for (const source of [setupSource, auctioneerSource, boardSource]) {
+    assert.match(source, /\/api\/draft-day\/auth", \{ method: "DELETE" \}/);
+    assert.match(source, /location\.reload\(\)/);
+    assert.match(source, /Could not log out securely/);
+  }
+  assert.match(auctioneerSource, /void restoreAuctioneerSession\(initialLeague\)/);
+  assert.match(boardSource, /void restoreBoardSession\(initialLeague\)/);
+  assert.match(setupSource, /void restoreOrganizerSession\(initialOrganizerLeague\)/);
+});
+
 test("setup makes keeper salary deduction automatic instead of exposing a budget mode", () => {
   assert.doesNotMatch(setupPage, /id="budget-mode"/);
   assert.match(setupPage, /Keeper salaries deduct automatically/);

@@ -131,6 +131,7 @@ function openSetup() {
 
 function loadSnapshot(snapshot) {
   editingSnapshot = snapshot;
+  byId("logout").hidden = false;
   const config = snapshot.config;
   byId("setup-title").textContent = `Manage ${config.leagueName}`;
   byId("setup-subtitle").textContent = `League ${displayLeagueCode(snapshot.leagueCode)} · Setup locks after the first auction sale.`;
@@ -152,6 +153,7 @@ async function api(url, options = {}) {
 function showResult(snapshot, access) {
   const friendlyCode = displayLeagueCode(snapshot.leagueCode);
   resultAccess = { leagueCode: friendlyCode, leagueName: snapshot.config.leagueName, ...access };
+  byId("logout").hidden = false;
   byId("setup-panel").hidden = true; byId("manage-panel").hidden = true; byId("result-panel").hidden = false;
   byId("result-league-name").textContent = `${snapshot.config.leagueName} is ready`;
   byId("result-league-code").textContent = friendlyCode;
@@ -216,6 +218,21 @@ byId("download-access").addEventListener("click", () => {
   link.href = url; link.download = `${resultAccess.leagueCode.toLowerCase()}-draft-day-access.json`; link.hidden = true; document.body.append(link); link.click(); link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 });
+
+async function logOut() {
+  const button = byId("logout"); button.disabled = true; button.textContent = "Logging out…";
+  const status = byId("setup-panel").hidden ? byId("manage-status") : byId("setup-status");
+  try {
+    await api("/api/draft-day/auth", { method: "DELETE" });
+    for (const key of [LAST_ORGANIZER_LEAGUE_KEY, "pips-draft-day-last-auctioneer-league", "pips-draft-day-last-board-league", "pips-draft-day-last-league"]) localStorage.removeItem(key);
+    location.reload();
+  } catch (error) {
+    button.disabled = false; button.textContent = "Log out";
+    setStatus(status, `Could not log out securely: ${error.message}`, true);
+  }
+}
+
+byId("logout").addEventListener("click", () => void logOut());
 
 async function restoreOrganizerSession(value) {
   if (!value) return false;
