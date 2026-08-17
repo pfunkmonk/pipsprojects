@@ -1,9 +1,10 @@
-import { DEFAULT_POSITION_RULES, normalizeLeagueConfig } from "./core.mjs";
+import { DEFAULT_POSITION_RULES, normalizeLeagueCode, normalizeLeagueConfig } from "./core.mjs";
 
 const byId = (id) => document.getElementById(id);
 const displayLeagueCode = (value) => String(value ?? "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
 const steps = [...document.querySelectorAll("[data-wizard-step]")];
 const pills = [...document.querySelectorAll("[data-step]")];
+const LAST_ORGANIZER_LEAGUE_KEY = "pips-draft-day-last-organizer-league";
 let currentStep = 0;
 let editingSnapshot = null;
 let resultAccess = null;
@@ -144,7 +145,7 @@ function loadSnapshot(snapshot) {
 async function api(url, options = {}) {
   const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "The Draft Day service is unavailable.");
+  if (!response.ok) { const error = new Error(body.error || "The Draft Day service is unavailable."); error.status = response.status; throw error; }
   return body;
 }
 
@@ -184,9 +185,10 @@ byId("regenerate-codes").addEventListener("click", generateCodes);
 byId("manage-form").addEventListener("submit", async (event) => {
   event.preventDefault(); setStatus(byId("manage-status"), "Opening league setup…");
   try {
-    const leagueCode = byId("manage-league-code").value;
+    const leagueCode = normalizeLeagueCode(byId("manage-league-code").value); byId("manage-league-code").value = leagueCode;
     await api("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode, role: "admin", code: byId("manage-admin-code").value }) });
     const snapshot = await api(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode)}`);
+    localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, leagueCode); localStorage.setItem("pips-draft-day-last-league", leagueCode);
     loadSnapshot(snapshot); setStatus(byId("manage-status"), "Organizer access confirmed.");
   } catch (error) { setStatus(byId("manage-status"), error.message, true); }
 });
@@ -201,6 +203,7 @@ byId("setup-form").addEventListener("submit", async (event) => {
     } else {
       const access = { adminCode: byId("admin-code").value, auctioneerCode: byId("auctioneer-code").value, boardCode: byId("board-code").value };
       const snapshot = await api("/api/draft-day/leagues", { method: "POST", body: JSON.stringify({ config, access }) });
+      localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, snapshot.leagueCode); localStorage.setItem("pips-draft-day-last-league", snapshot.leagueCode);
       showResult(snapshot, access);
     }
   } catch (error) { setStatus(byId("setup-status"), error.message, true); } finally { byId("save-league").disabled = false; }
@@ -214,6 +217,20 @@ byId("download-access").addEventListener("click", () => {
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 });
 
+async function restoreOrganizerSession(value) {
+  if (!value) return false;
+  try {
+    const leagueCode = normalizeLeagueCode(value); byId("manage-league-code").value = leagueCode; setStatus(byId("manage-status"), "Restoring organizer session…");
+    const snapshot = await api(`/api/draft-day/snapshot?role=auctioneer&league=${encodeURIComponent(leagueCode)}`);
+    localStorage.setItem(LAST_ORGANIZER_LEAGUE_KEY, leagueCode); localStorage.setItem("pips-draft-day-last-league", leagueCode);
+    loadSnapshot(snapshot); setStatus(byId("manage-status"), "Organizer session restored."); return true;
+  } catch (error) {
+    setStatus(byId("manage-status"), error.status === 401 ? "Enter the organizer code to manage this league." : error.message, error.status !== 401); return false;
+  }
+}
+
 byId("season").value = new Date().getFullYear();
 renderPositionRules(); renderTeams([]); generateCodes(); showStep(0);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+const initialOrganizerLeague = new URLSearchParams(location.search).get("league") || localStorage.getItem(LAST_ORGANIZER_LEAGUE_KEY) || localStorage.getItem("pips-draft-day-last-league") || ""; byId("manage-league-code").value = initialOrganizerLeague;
+void restoreOrganizerSession(initialOrganizerLeague);

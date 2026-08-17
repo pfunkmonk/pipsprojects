@@ -88,6 +88,18 @@ test("keeper setup lives in the auctioneer cockpit with predictive search and CS
   assert.doesNotMatch(auctioneerSource, /no separate limit/i);
 });
 
+test("every Draft Day role restores its authenticated session after refresh", () => {
+  assert.match(auctioneerSource, /async function restoreAuctioneerSession/);
+  assert.match(auctioneerSource, /void restoreAuctioneerSession\(initialLeague\)/);
+  assert.match(auctioneerSource, /pips-draft-day-last-auctioneer-league/);
+  assert.match(boardSource, /async function restoreBoardSession/);
+  assert.match(boardSource, /void restoreBoardSession\(initialLeague\)/);
+  assert.match(boardSource, /pips-draft-day-last-board-league/);
+  assert.match(setupSource, /async function restoreOrganizerSession/);
+  assert.match(setupSource, /void restoreOrganizerSession\(initialOrganizerLeague\)/);
+  assert.match(setupSource, /pips-draft-day-last-organizer-league/);
+});
+
 test("setup makes keeper salary deduction automatic instead of exposing a budget mode", () => {
   assert.doesNotMatch(setupPage, /id="budget-mode"/);
   assert.match(setupPage, /Keeper salaries deduct automatically/);

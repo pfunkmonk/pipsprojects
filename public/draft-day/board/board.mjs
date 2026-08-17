@@ -3,6 +3,7 @@ import { nflTeamDetails } from "../nfl-teams.mjs";
 
 const byId = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search);
+const LAST_BOARD_LEAGUE_KEY = "pips-draft-day-last-board-league";
 let snapshot = null;
 let leagueCode = "";
 let refreshInFlight = false;
@@ -120,9 +121,26 @@ async function refresh() {
 
 async function openBoard(code) {
   leagueCode = normalizeLeagueCode(code); byId("league-code").value = leagueCode; attachChannel();
+  let usingCache = false;
   try { snapshot = await request(`/api/draft-day/snapshot?role=board&league=${encodeURIComponent(leagueCode)}`); lastSuccess = Date.now(); }
-  catch (error) { try { snapshot = JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch { snapshot = null; } if (!snapshot) throw error; }
+  catch (error) {
+    if (error.status === 401) throw error;
+    try { snapshot = localStorage.getItem(verifierKey(leagueCode)) ? JSON.parse(localStorage.getItem(cacheKey()) || "null") : null; } catch { snapshot = null; }
+    if (!snapshot) throw error; usingCache = true;
+  }
   byId("login-panel").hidden = true; byId("board-app").hidden = false; render(); announceBoardPresence(); window.setInterval(() => void refresh(), 1_200); window.setInterval(announceBoardPresence, 2_000);
+  if (usingCache) { byId("connection-state").textContent = "OFFLINE CACHE"; byId("connection-state").classList.add("is-error"); }
+}
+
+async function restoreBoardSession(value) {
+  if (!value) return false;
+  byId("login-panel").hidden = true;
+  try {
+    const code = normalizeLeagueCode(value); byId("league-code").value = code; setStatus(byId("login-status"), "Restoring Draft Board session…");
+    await openBoard(code); localStorage.setItem(LAST_BOARD_LEAGUE_KEY, code); localStorage.setItem("pips-draft-day-last-league", code); return true;
+  } catch (error) {
+    byId("login-panel").hidden = false; setStatus(byId("login-status"), error.status === 401 ? "Enter the Draft Board code to open this league." : error.message, error.status !== 401); return false;
+  }
 }
 
 byId("login-form").addEventListener("submit", async (event) => {
@@ -131,7 +149,7 @@ byId("login-form").addEventListener("submit", async (event) => {
     const code = normalizeLeagueCode(byId("league-code").value);
     await request("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode: code, role: "board", code: byId("access-code").value }) });
     localStorage.setItem(verifierKey(code), await accessVerifier(byId("access-code").value));
-    localStorage.setItem("pips-draft-day-last-league", code); await openBoard(code);
+    localStorage.setItem(LAST_BOARD_LEAGUE_KEY, code); localStorage.setItem("pips-draft-day-last-league", code); await openBoard(code);
   } catch (error) {
     try { const code = normalizeLeagueCode(byId("league-code").value); const verified = localStorage.getItem(verifierKey(code)) === await accessVerifier(byId("access-code").value); const cached = JSON.parse(localStorage.getItem(`pips-draft-day-board-${code}`) || "null"); if (verified && cached) { leagueCode = code; snapshot = cached; attachChannel(); byId("login-panel").hidden = true; byId("board-app").hidden = false; render(); byId("connection-state").textContent = "OFFLINE CACHE"; byId("connection-state").classList.add("is-error"); return; } } catch { /* Show the original sign-in error. */ }
     setStatus(byId("login-status"), error.message, true);
@@ -140,5 +158,6 @@ byId("login-form").addEventListener("submit", async (event) => {
 byId("fullscreen-board").addEventListener("click", async () => { if (document.fullscreenElement) await document.exitFullscreen(); else await byId("board-app").requestFullscreen(); });
 window.addEventListener("offline", () => { byId("connection-state").textContent = "OFFLINE"; byId("connection-state").classList.add("is-error"); });
 window.addEventListener("online", () => void refresh());
-byId("league-code").value = query.get("league") || localStorage.getItem("pips-draft-day-last-league") || "";
+const initialLeague = query.get("league") || localStorage.getItem(LAST_BOARD_LEAGUE_KEY) || localStorage.getItem("pips-draft-day-last-league") || ""; byId("league-code").value = initialLeague;
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("../service-worker.js").catch(() => {});
+void restoreBoardSession(initialLeague);

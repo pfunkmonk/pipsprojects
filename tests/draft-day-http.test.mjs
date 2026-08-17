@@ -34,6 +34,15 @@ test("role authentication issues a separate HTTP-only cookie", async () => {
   assert.match(response.headers.get("set-cookie"), /^ddt_board_session=/);
   assert.match(response.headers.get("set-cookie"), /HttpOnly/);
   assert.match(response.headers.get("set-cookie"), /SameSite=Strict/);
+  assert.match(response.headers.get("set-cookie"), /Max-Age=43200/);
+});
+
+test("an issued auctioneer session remains valid on a refresh snapshot request", async () => {
+  const auth = await handlers.auth(request("/api/draft-day/auth", { method: "POST", body: JSON.stringify({ leagueCode: "ABCD-EFGH", role: "auctioneer", code: "RIGHT-CODE" }) }));
+  const cookie = auth.headers.get("set-cookie").split(";", 1)[0];
+  const refreshed = await handlers.snapshot(request("/api/draft-day/snapshot?role=auctioneer&league=ABCD-EFGH", { headers: { Cookie: cookie } }));
+  assert.equal(refreshed.status, 200);
+  assert.equal((await refreshed.json()).role, "auctioneer");
 });
 
 test("board session receives board scope and cannot submit commands", async () => {
