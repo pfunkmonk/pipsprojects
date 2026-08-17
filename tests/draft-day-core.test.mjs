@@ -121,6 +121,17 @@ test("public board snapshot strips event history and setup-only data", () => {
   assert.deepEqual(Object.keys(board.config.teams[0]).sort(), ["id", "name"]);
 });
 
+test("sale and keeper assignments automatically include official NFL team and bye details", () => {
+  let state = document(config({ keeperMaximum: 2 }));
+  state = applyCommand(state, { type: "record-keeper", eventId: "keeper-team-data", idempotencyKey: "keeper-team-data-key", expectedRevision: 0, player: qb, teamId: "alpha", salary: 4 });
+  state = applyCommand(state, { type: "record-sale", eventId: "sale-team-data", idempotencyKey: "sale-team-data-key", expectedRevision: 1, player: rb, teamId: "bravo", price: 3 });
+  const board = publicSnapshot(snapshotFromDocument(state));
+  const keeper = board.assignments.find((assignment) => assignment.id === "keeper-team-data");
+  const sale = board.assignments.find((assignment) => assignment.id === "sale-team-data");
+  assert.deepEqual([keeper.nflTeamName, keeper.nflTeamShortName, keeper.byeWeek], ["Denver Broncos", "Broncos", 10]);
+  assert.deepEqual([sale.nflTeamName, sale.nflTeamShortName, sale.byeWeek], ["Green Bay Packers", "Packers", 11]);
+});
+
 test("setup validates flexible team counts, positions, and impossible roster rules", () => {
   const valid = config({ teams: Array.from({ length: 16 }, (_, index) => ({ id: `team-${index + 1}`, name: `Club ${index + 1}`, enteredPool: 100 })), nominationOrder: Array.from({ length: 16 }, (_, index) => `team-${index + 1}`) });
   assert.equal(valid.teams.length, 16);
@@ -257,9 +268,13 @@ test("CSV export includes keeper contract and round fields and remains spreadshe
   let state = document(config({ keeperMaximum: null }));
   state = applyCommand(state, { type: "record-keeper", eventId: "keeper-csv", idempotencyKey: "keeper-csv-key", expectedRevision: 0, player: { ...qb, name: "=Unsafe Keeper" }, teamId: "alpha", salary: 4, contractYear: 2, keeperRound: 9 });
   const csv = draftCsv(snapshotFromDocument(state));
+  assert.match(csv, /"NFL Team","NFL Team Code","Bye Week"/);
+  assert.match(csv, /"Denver Broncos","DEN","10"/);
   assert.match(csv, /"Contract Year","Keeper Round"/);
   assert.match(csv, /"'=Unsafe Keeper"/);
   assert.match(csv, /"keeper","2","9","active"/);
+  const legacyCsv = draftCsv({ ...snapshotFromDocument(state), assignments: snapshotFromDocument(state).assignments.map(({ nflTeamName, nflTeamShortName, byeWeek, ...assignment }) => assignment) });
+  assert.match(legacyCsv, /"Denver Broncos","DEN","10"/);
 });
 
 test("organizer can replace setup only before the first auction sale", () => {

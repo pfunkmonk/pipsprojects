@@ -1,4 +1,5 @@
 import { normalizeLeagueCode } from "../core.mjs";
+import { nflTeamDetails } from "../nfl-teams.mjs";
 
 const byId = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search);
@@ -43,12 +44,24 @@ function render() {
     const roster = document.createElement("div"); roster.className = "board-roster";
     const assignments = orderedAssignments(team.id);
     for (let index = 0; index < snapshot.config.rosterMaximum; index += 1) {
-      const assignment = assignments[index]; const row = document.createElement("div"); row.className = `board-player${assignment?.acquisitionType === "keeper" ? " is-keeper" : ""}`;
+      const assignment = assignments[index]; const row = document.createElement("div"); row.className = "board-player";
       if (assignment) {
+        const teamDetails = stickerTeam(assignment); const keeper = assignment.acquisitionType === "keeper";
+        row.classList.add("has-player", positionClass(assignment.position)); row.classList.toggle("is-keeper", keeper);
+        const byeLabel = teamDetails.byeWeek == null ? "Bye not available" : `Bye week ${teamDetails.byeWeek}`;
+        row.setAttribute("aria-label", `${assignment.playerName}, ${assignment.position}, ${teamDetails.fullName}, ${byeLabel}, $${assignment.price}${keeper ? ", keeper" : ""}`);
+        row.title = `${teamDetails.fullName} (${assignment.nflTeam}) · ${byeLabel}${keeper ? " · Keeper" : ""}`;
         const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = assignment.position;
+        const playerInfo = document.createElement("span"); playerInfo.className = "player-info";
         const name = document.createElement("span"); name.className = "name"; name.textContent = assignment.playerName;
-        const price = document.createElement("span"); price.className = "price"; price.textContent = `$${assignment.price}`;
-        row.append(pos, name, price);
+        const meta = document.createElement("span"); meta.className = "player-meta";
+        const nflTeam = document.createElement("span"); nflTeam.className = "nfl-team"; nflTeam.textContent = teamDetails.shortName; nflTeam.dataset.code = assignment.nflTeam;
+        const bye = document.createElement("span"); bye.className = "bye-week"; bye.textContent = teamDetails.byeWeek == null ? "BYE —" : `BYE ${teamDetails.byeWeek}`; bye.dataset.compact = teamDetails.byeWeek == null ? "B—" : `B${teamDetails.byeWeek}`;
+        meta.append(nflTeam, bye); playerInfo.append(name, meta);
+        const priceWrap = document.createElement("span"); priceWrap.className = "assignment-price";
+        const price = document.createElement("span"); price.className = "price"; price.textContent = `$${assignment.price}`; priceWrap.append(price);
+        if (keeper) { const flag = document.createElement("span"); flag.className = "keeper-flag"; flag.textContent = "KEEPER"; flag.dataset.compact = "KEEP"; priceWrap.append(flag); }
+        row.append(pos, playerInfo, priceWrap);
       }
       roster.append(row);
     }
@@ -66,6 +79,19 @@ function attachChannel() {
     if (event.data?.leagueCode !== leagueCode) return;
     if (!snapshot || event.data.revision >= snapshot.revision) { snapshot = event.data; lastSuccess = Date.now(); render(); byId("connection-state").textContent = "LOCAL LIVE"; }
   });
+}
+
+function positionClass(position) {
+  return `position-${String(position || "other").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "other"}`;
+}
+
+function stickerTeam(assignment) {
+  const team = nflTeamDetails(assignment.nflTeamName || assignment.nflTeam);
+  return {
+    fullName: assignment.nflTeamName || team.name,
+    shortName: assignment.nflTeamShortName || team.shortName,
+    byeWeek: assignment.byeWeek ?? team.byeWeek,
+  };
 }
 
 function announceBoardPresence() {

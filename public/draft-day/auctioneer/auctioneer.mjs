@@ -2,6 +2,7 @@ import {
   draftCsv,
   keeperLegality,
   normalizeLeagueCode,
+  normalizePlayer,
   optimisticSnapshot,
   playerIdentity,
   publicSnapshot,
@@ -68,7 +69,7 @@ function rankPlayers(players, value) {
   const tokens = queryText.split(" ");
   return players.map((player) => {
     const name = normalizeSearch(player.name);
-    const haystack = `${name} ${normalizeSearch(player.position)} ${normalizeSearch(player.nflTeam)}`;
+    const haystack = `${name} ${normalizeSearch(player.position)} ${normalizeSearch(player.nflTeam)} ${normalizeSearch(player.nflTeamName)} ${normalizeSearch(player.nflTeamShortName)}`;
     if (!tokens.every((token) => haystack.includes(token))) return null;
     const score = name === queryText ? 0 : name.startsWith(queryText) ? 1 : haystack.startsWith(queryText) ? 2 : 3;
     return { player, score };
@@ -97,6 +98,7 @@ function availablePlayers() {
 }
 
 function selectedFor(kind) { return kind === "keeper" ? selectedKeeperPlayer : selectedPlayer; }
+function playerTeamLine(player) { return `${player.nflTeamName || player.nflTeam} · ${player.byeWeek ? `Bye ${player.byeWeek}` : "Bye —"}`; }
 
 function predictiveElements(kind) {
   return kind === "keeper"
@@ -115,7 +117,7 @@ function renderPredictiveResults(kind) {
     const button = document.createElement("button");
     button.type = "button"; button.className = "search-result"; button.setAttribute("role", "option");
     const name = document.createElement("strong"); name.textContent = player.name;
-    const meta = document.createElement("span"); meta.textContent = `${player.position} · ${player.nflTeam}`;
+    const meta = document.createElement("span"); meta.textContent = `${player.position} · ${playerTeamLine(player)}`;
     button.append(name, meta);
     button.addEventListener("click", () => kind === "keeper" ? selectKeeperPlayer(player) : selectPlayer(player));
     button.addEventListener("keydown", (event) => {
@@ -138,7 +140,7 @@ function selectPlayer(player) {
   playerSearch.setAttribute("aria-expanded", "false");
   byId("player-results").hidden = true; byId("add-custom-player").hidden = true;
   byId("selected-player").hidden = false; byId("selected-position").textContent = player.position;
-  byId("selected-name").textContent = player.name; byId("selected-nfl-team").textContent = player.nflTeam;
+  byId("selected-name").textContent = player.name; byId("selected-nfl-team").textContent = playerTeamLine(player);
   updatePendingSale(); byId("buying-team").focus();
 }
 
@@ -147,7 +149,7 @@ function selectKeeperPlayer(player) {
   keeperSearch.setAttribute("aria-expanded", "false");
   byId("keeper-player-results").hidden = true; byId("add-custom-keeper-player").hidden = true;
   byId("keeper-selected-player").hidden = false; byId("keeper-selected-position").textContent = player.position;
-  byId("keeper-selected-name").textContent = player.name; byId("keeper-selected-nfl-team").textContent = player.nflTeam;
+  byId("keeper-selected-name").textContent = player.name; byId("keeper-selected-nfl-team").textContent = playerTeamLine(player);
   updatePendingKeeper(); byId("keeper-team").focus();
 }
 
@@ -499,7 +501,7 @@ byId("add-custom-keeper-player").addEventListener("click", () => openCustomPlaye
 byId("custom-player-form").addEventListener("submit", async (event) => {
   if (event.submitter?.value === "cancel") return;
   event.preventDefault(); const name = byId("custom-name").value.trim(); const position = byId("custom-position").value;
-  const player = { id: `custom-${crypto.randomUUID()}`, name, position, nflTeam: byId("custom-nfl-team").value.trim() || "FA" };
+  const player = normalizePlayer({ id: `custom-${crypto.randomUUID()}`, name, position, nflTeam: byId("custom-nfl-team").value.trim() || "FA" });
   byId("custom-player-dialog").close();
   if (await runCommand({ type: "add-player", player, statusTarget: customPlayerTarget })) customPlayerTarget === "keeper" ? selectKeeperPlayer(player) : selectPlayer(player);
 });

@@ -34,6 +34,7 @@ const required = [
   "public/draft-day/index.html",
   "public/draft-day/app.css",
   "public/draft-day/core.mjs",
+  "public/draft-day/nfl-teams.mjs",
   "public/draft-day/setup.mjs",
   "public/draft-day/service-worker.js",
   "public/draft-day/manifest.webmanifest",
@@ -104,7 +105,7 @@ if (pack.players.length < 10) throw new Error("Practice pack is too small for ra
 if (currentPack.status !== "practice" || currentPack.players.length < 650 || currentPack.keeperCandidates.length < 1) {
   throw new Error("The bundled 2026 practice pack is missing its evidence-approved minimum content.");
 }
-if (!Array.isArray(draftDayPlayers) || draftDayPlayers.length !== currentPack.players.length || draftDayPlayers.some((player) => Object.keys(player).sort().join(",") !== "id,name,nflTeam,position")) {
+if (!Array.isArray(draftDayPlayers) || draftDayPlayers.length !== currentPack.players.length || draftDayPlayers.some((player) => Object.keys(player).sort().join(",") !== "byeWeek,id,name,nflTeam,nflTeamName,nflTeamShortName,position")) {
   throw new Error("The Draft Day player pool must contain public identity fields only and match the current player universe.");
 }
 

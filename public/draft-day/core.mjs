@@ -1,3 +1,5 @@
+import { nflTeamDetails } from "./nfl-teams.mjs";
+
 export const DRAFT_DAY_SCHEMA_VERSION = 2;
 export const DEFAULT_POSITION_RULES = Object.freeze([
   { id: "QB", label: "QB", minimum: 1, maximum: 3 },
@@ -69,11 +71,15 @@ export function normalizeLeagueCode(value) {
 
 export function normalizePlayer(value, label = "Player") {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} is invalid.`);
+  const team = nflTeamDetails(value.nflTeam || value.nflTeamName);
   return {
     id: safeId(value.id, `${label} id`),
     name: text(value.name, `${label} name`, 100),
     position: text(value.position, `${label} position`, 20).toUpperCase(),
-    nflTeam: optionalText(value.nflTeam, 20).toUpperCase() || "FA",
+    nflTeam: team.code,
+    nflTeamName: team.name,
+    nflTeamShortName: team.shortName,
+    byeWeek: team.byeWeek ?? optionalInteger(value.byeWeek, `${label} bye week`, 1, 18),
   };
 }
 
@@ -92,6 +98,18 @@ function playerNameIdentity(player) {
 
 function samePlayer(left, right) {
   return playerIdentity(left) === playerIdentity(right) || playerNameIdentity(left) === playerNameIdentity(right);
+}
+
+function assignmentPlayerFields(player) {
+  return {
+    playerId: player.id,
+    playerName: player.name,
+    position: player.position,
+    nflTeam: player.nflTeam,
+    nflTeamName: player.nflTeamName,
+    nflTeamShortName: player.nflTeamShortName,
+    byeWeek: player.byeWeek,
+  };
 }
 
 export function normalizeLeagueConfig(input) {
@@ -201,10 +219,7 @@ function requiredAdditionalSlots(config, assignments, teamId) {
 function keeperAssignments(config, createdAt) {
   return config.keepers.map((keeper) => ({
     id: keeper.id,
-    playerId: keeper.player.id,
-    playerName: keeper.player.name,
-    position: keeper.player.position,
-    nflTeam: keeper.player.nflTeam,
+    ...assignmentPlayerFields(keeper.player),
     teamId: keeper.teamId,
     price: keeper.salary,
     contractYear: keeper.contractYear,
@@ -302,10 +317,7 @@ function applyEvents(document) {
     if (event.type === "SALE_RECORDED") {
       assignments.set(event.id, {
         id: event.id,
-        playerId: event.player.id,
-        playerName: event.player.name,
-        position: event.player.position,
-        nflTeam: event.player.nflTeam,
+        ...assignmentPlayerFields(event.player),
         teamId: event.teamId,
         price: event.price,
         acquisitionType: "auction",
@@ -318,10 +330,7 @@ function applyEvents(document) {
       if (!target || target.acquisitionType !== "auction") throw new Error("A correction targets an unknown auction sale.");
       assignments.set(event.targetId, {
         ...target,
-        playerId: event.player.id,
-        playerName: event.player.name,
-        position: event.player.position,
-        nflTeam: event.player.nflTeam,
+        ...assignmentPlayerFields(event.player),
         teamId: event.teamId,
         price: event.price,
         status: "active",
@@ -338,10 +347,7 @@ function applyEvents(document) {
     } else if (event.type === "KEEPER_RECORDED") {
       assignments.set(event.id, {
         id: event.id,
-        playerId: event.player.id,
-        playerName: event.player.name,
-        position: event.player.position,
-        nflTeam: event.player.nflTeam,
+        ...assignmentPlayerFields(event.player),
         teamId: event.teamId,
         price: event.salary,
         contractYear: event.contractYear,
@@ -356,10 +362,7 @@ function applyEvents(document) {
       if (!target || target.acquisitionType !== "keeper") throw new Error("A correction targets an unknown keeper.");
       assignments.set(event.targetId, {
         ...target,
-        playerId: event.player.id,
-        playerName: event.player.name,
-        position: event.player.position,
-        nflTeam: event.player.nflTeam,
+        ...assignmentPlayerFields(event.player),
         teamId: event.teamId,
         price: event.salary,
         contractYear: event.contractYear,
@@ -520,10 +523,7 @@ export function saleLegality(snapshot, input) {
     const activeForTeam = active.filter((assignment) => assignment.teamId === teamId);
     const candidate = {
       id: targetId || "candidate-sale",
-      playerId: player.id,
-      playerName: player.name,
-      position: player.position,
-      nflTeam: player.nflTeam,
+      ...assignmentPlayerFields(player),
       teamId,
       price,
       acquisitionType: "auction",
@@ -565,10 +565,7 @@ export function keeperLegality(snapshot, input) {
     if (teamAssignments.filter((assignment) => assignment.position === player.position).length >= positionMaximum(rule, snapshot.config.rosterMaximum)) throw new Error(`${team.name} is at its ${rule.label} maximum.`);
     const candidate = {
       id: targetId || "candidate-keeper",
-      playerId: player.id,
-      playerName: player.name,
-      position: player.position,
-      nflTeam: player.nflTeam,
+      ...assignmentPlayerFields(player),
       teamId,
       price: salary,
       contractYear,
@@ -737,10 +734,11 @@ export function optimisticSnapshot(snapshotValue, input) {
 }
 
 export function draftCsv(snapshot) {
-  const rows = [["League", "Season", "Player", "Position", "NFL Team", "Fantasy Team", "Price", "Type", "Contract Year", "Keeper Round", "Status", "Recorded", "Updated"]];
+  const rows = [["League", "Season", "Player", "Position", "NFL Team", "NFL Team Code", "Bye Week", "Fantasy Team", "Price", "Type", "Contract Year", "Keeper Round", "Status", "Recorded", "Updated"]];
   for (const assignment of snapshot.assignments) {
     const team = snapshot.config.teams.find((candidate) => candidate.id === assignment.teamId);
-    rows.push([snapshot.config.leagueName, snapshot.config.season, assignment.playerName, assignment.position, assignment.nflTeam, team?.name || assignment.teamId, assignment.price, assignment.acquisitionType, assignment.contractYear, assignment.keeperRound, assignment.status, assignment.createdAt, assignment.updatedAt]);
+    const nflTeam = nflTeamDetails(assignment.nflTeamName || assignment.nflTeam);
+    rows.push([snapshot.config.leagueName, snapshot.config.season, assignment.playerName, assignment.position, assignment.nflTeamName || nflTeam.name, assignment.nflTeam || nflTeam.code, assignment.byeWeek ?? nflTeam.byeWeek, team?.name || assignment.teamId, assignment.price, assignment.acquisitionType, assignment.contractYear, assignment.keeperRound, assignment.status, assignment.createdAt, assignment.updatedAt]);
   }
   const escape = (value) => {
     let string = String(value ?? "");

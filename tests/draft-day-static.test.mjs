@@ -7,6 +7,8 @@ const config = await readFile(new URL("../netlify.toml", import.meta.url), "utf8
 const worker = await readFile(new URL("../public/draft-day/service-worker.js", import.meta.url), "utf8");
 const auctioneerSource = await readFile(new URL("../public/draft-day/auctioneer/auctioneer.mjs", import.meta.url), "utf8");
 const boardSource = await readFile(new URL("../public/draft-day/board/board.mjs", import.meta.url), "utf8");
+const appCss = await readFile(new URL("../public/draft-day/app.css", import.meta.url), "utf8");
+const playerPool = JSON.parse(await readFile(new URL("../public/draft-day/player-pool.json", import.meta.url), "utf8"));
 const setupSource = await readFile(new URL("../public/draft-day/setup.mjs", import.meta.url), "utf8");
 const setupPage = await readFile(new URL("../public/draft-day/index.html", import.meta.url), "utf8");
 const auctioneerPage = await readFile(new URL("../public/draft-day/auctioneer/index.html", import.meta.url), "utf8");
@@ -38,8 +40,8 @@ test("Draft Day pages use external assets and every local asset exists", async (
   }
 });
 
-test("offline shell includes setup, auctioneer, board, and public player identities", () => {
-  for (const path of ["/draft-day/", "/draft-day/auctioneer/", "/draft-day/board/", "/draft-day/guide/", "/draft-day/player-pool.json"]) assert.ok(worker.includes(`"${path}"`));
+test("offline shell includes setup, auctioneer, board, team schedule, and public player identities", () => {
+  for (const path of ["/draft-day/", "/draft-day/auctioneer/", "/draft-day/board/", "/draft-day/guide/", "/draft-day/nfl-teams.mjs", "/draft-day/player-pool.json"]) assert.ok(worker.includes(`"${path}"`));
   assert.match(worker, /pathname\.startsWith\("\/draft-day\/"\)/);
 });
 
@@ -80,4 +82,19 @@ test("keeper setup lives in the auctioneer cockpit with predictive search and CS
   assert.match(auctioneerSource, /record-keeper/);
   assert.match(auctioneerSource, /auction-results\.csv/);
   assert.match(boardSource, /board-heartbeat/);
+});
+
+test("Draft Board stickers expose position color, NFL team, bye week, and an explicit keeper marker", () => {
+  for (const className of ["position-qb", "position-rb", "position-wr", "position-te", "position-k", "position-dst"]) assert.match(appCss, new RegExp(`\\.${className}`));
+  for (const token of ["positionClass", "nfl-team", "bye-week", "keeper-flag", 'flag.textContent = "KEEPER"']) assert.ok(boardSource.includes(token));
+  assert.match(boardSource, /nflTeamShortName/);
+  assert.match(boardSource, /nflTeamName/);
+  assert.match(boardSource, /aria-label/);
+});
+
+test("public player pool carries only sticker-ready identity and schedule fields", () => {
+  const expectedKeys = "byeWeek,id,name,nflTeam,nflTeamName,nflTeamShortName,position";
+  assert.ok(playerPool.length >= 650);
+  assert.ok(playerPool.every((player) => Object.keys(player).sort().join(",") === expectedKeys));
+  assert.ok(playerPool.every((player) => player.nflTeam === "FA" || (player.nflTeamName && player.nflTeamShortName && Number.isInteger(player.byeWeek))));
 });

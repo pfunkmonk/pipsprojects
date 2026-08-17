@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { nflTeamDetails } from "../public/draft-day/nfl-teams.mjs";
 
 const sourceUrl = new URL("../netlify/functions/_data/draft-pack-2026-provisional.json", import.meta.url);
 const outputUrl = new URL("../public/draft-day/player-pool.json", import.meta.url);
@@ -9,7 +10,8 @@ const players = source.players.map((player, index) => {
   if (id.length < 2) id = `player-${index + 1}`;
   while (seen.has(id)) id = `${id}-${index + 1}`;
   seen.add(id);
-  return { id, name: player.name, position: player.position, nflTeam: player.nflTeam || "FA" };
+  const team = nflTeamDetails(player.nflTeam);
+  return { id, name: player.name, position: player.position, nflTeam: team.code, nflTeamName: team.name, nflTeamShortName: team.shortName, byeWeek: team.byeWeek };
 }).sort((left, right) => left.name.localeCompare(right.name) || left.position.localeCompare(right.position));
 await writeFile(outputUrl, `${JSON.stringify(players, null, 2)}\n`, "utf8");
 console.log(`Built public-only Draft Day player pool with ${players.length} players.`);
