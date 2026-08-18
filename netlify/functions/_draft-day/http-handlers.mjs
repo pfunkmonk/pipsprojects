@@ -33,6 +33,19 @@ export function createDraftDayHttpHandlers({ service, env = process.env }) {
     });
   }
 
+  function firstAuthorizedRole(request, leagueCode, roles) {
+    return roles.find((role) => authorized(request, role, leagueCode)) || null;
+  }
+
+  function renewedRoleCookie(request, role, leagueCode) {
+    return createRoleCookie({
+      role,
+      leagueCode,
+      secret: env.DRAFT_DAY_SESSION_SECRET,
+      secure: new URL(request.url).protocol === "https:",
+    });
+  }
+
   return {
     async leagues(request) {
       if (request.method !== "POST" || !sameOrigin(request)) return json({ error: "Method not allowed" }, 405);
@@ -69,11 +82,9 @@ export function createDraftDayHttpHandlers({ service, env = process.env }) {
       try {
         const leagueCode = requestedLeague(request);
         const role = new URL(request.url).searchParams.get("role") === "board" ? "board" : "auctioneer";
-        const permitted = role === "board"
-          ? authorized(request, "board", leagueCode) || authorized(request, "auctioneer", leagueCode) || authorized(request, "admin", leagueCode)
-          : authorized(request, "auctioneer", leagueCode) || authorized(request, "admin", leagueCode);
-        if (!permitted) return json({ error: "Sign in to this league first." }, 401);
-        return json(await service.snapshot(leagueCode, role));
+        const authenticatedRole = firstAuthorizedRole(request, leagueCode, role === "board" ? ["board", "auctioneer", "admin"] : ["auctioneer", "admin"]);
+        if (!authenticatedRole) return json({ error: "Sign in to this league first." }, 401);
+        return json(await service.snapshot(leagueCode, role), 200, { "Set-Cookie": renewedRoleCookie(request, authenticatedRole, leagueCode) });
       } catch (error) {
         return errorResponse(error);
       }
@@ -84,9 +95,9 @@ export function createDraftDayHttpHandlers({ service, env = process.env }) {
       try {
         const body = await request.json();
         const leagueCode = requestedLeague(request, body);
-        const role = authorized(request, "admin", leagueCode) ? "admin" : authorized(request, "auctioneer", leagueCode) ? "auctioneer" : null;
+        const role = firstAuthorizedRole(request, leagueCode, ["admin", "auctioneer"]);
         if (!role) return json({ error: "Auctioneer or organizer access is required." }, 401);
-        return json(await service.command(leagueCode, body, role));
+        return json(await service.command(leagueCode, body, role), 200, { "Set-Cookie": renewedRoleCookie(request, role, leagueCode) });
       } catch (error) {
         return errorResponse(error);
       }

@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { PERSISTENT_SESSION_SECONDS } from "../_lib/session-policy.mjs";
 
 export const ROLE_COOKIES = Object.freeze({
   admin: "ddt_admin_session",
@@ -43,7 +44,7 @@ function signature(payload, secret) {
   return createHmac("sha256", signingSecret(secret)).update(payload).digest("base64url");
 }
 
-export function createRoleCookie({ role, leagueCode, secret, secure = true, maxAgeSeconds = 12 * 60 * 60 }) {
+export function createRoleCookie({ role, leagueCode, secret, secure = true, maxAgeSeconds = PERSISTENT_SESSION_SECONDS }) {
   if (!ROLE_COOKIES[role]) throw new Error("Session role is invalid.");
   const payload = Buffer.from(JSON.stringify({ role, leagueCode, exp: Date.now() + maxAgeSeconds * 1_000, nonce: randomBytes(12).toString("base64url") })).toString("base64url");
   const token = `${payload}.${signature(payload, secret)}`;

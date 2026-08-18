@@ -8,7 +8,7 @@ Every change must make the tool easier, more intuitive, more desirable, and fast
 
 ## Current status — August 17, 2026
 
-Stage One is feature-complete and released. The current web-shell release is `20260817j`.
+Stage One is feature-complete and released. The current web-shell release is `20260818a`.
 
 - League-specific teams, starting pools, bid rules, roster minimum/maximum, optional keeper maximum, optional position maximums, and nomination mode are configurable.
 - Organizer, Auctioneer, and Draft Board use separate access codes and role sessions.
@@ -19,7 +19,7 @@ Stage One is feature-complete and released. The current web-shell release is `20
 - Player stickers are position-colored and include NFL team, bye week, price, and a keeper marker.
 - Assignment correction, undo, restore, local nomination clock, board-presence indicator, CSV export, and JSON backup are available.
 - Ordinary refresh restores the active role screen. Explicit logout clears every Draft Day role cookie and the league's offline verifiers.
-- Session expiry stops repeating timers and preserves queued Auctioneer actions for re-authentication instead of dropping them.
+- Rejected or invalidated sessions stop repeating timers and preserve queued Auctioneer actions for re-authentication instead of dropping them.
 
 Stage Two—the customizable VBD/ADP, scoring, imported provider rules, and historical league modeling layer—has not started. It should consume the Stage One event history through a separate normalized import/valuation boundary and must not add strategy data to the public Stage One payload.
 
@@ -34,7 +34,7 @@ Stage Two—the customizable VBD/ADP, scoring, imported provider rules, and hist
 
 - A memorable league code comes from the first eight letters or numbers of the league name. Short names stay short; a duplicate receives a visible numeric suffix.
 - Organizer, Auctioneer, and Draft Board access codes are independently salted and hashed with scrypt. Plaintext codes are returned only to the league creator's form state and are never stored by the server.
-- Role sessions use signed, HTTP-only, SameSite=Strict cookies with a 12-hour lifetime. Refresh reuses them; explicit logout expires all three role cookies.
+- Role sessions use signed, HTTP-only, SameSite=Strict persistent cookies. Browser refresh and restart reuse them; every authenticated role check renews the cookie, while explicit logout expires the Draft Day role cookies.
 - Remembered league selection and offline verifiers are centralized in `public/draft-day/session-storage.mjs`, so every role follows one persistence/logout contract.
 - The Draft Board snapshot excludes event history, custom-player management, entered salary-pool setup, and all credential fields.
 - Netlify Blobs stores one strongly consistent, revisioned document per league. Auction events are append-only; correction, undo, and restore add events rather than rewriting a sale.

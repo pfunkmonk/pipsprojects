@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { PERSISTENT_SESSION_SECONDS } from "../_lib/session-policy.mjs";
 
 export const AUCTIONEER_COOKIE = "tb_auctioneer_session";
 export const DRAFT_BOARD_COOKIE = "tb_draft_board_session";
@@ -32,7 +33,7 @@ export function verifyDraftBoardCode(input, expected) {
 
 function createRoleCookie(cookieName, role, secret, options = {}) {
   if (typeof secret !== "string" || secret.length < 32) throw new Error("THUNDER_BOWL_SESSION_SECRET must contain at least 32 characters.");
-  const maxAgeSeconds = Number(options.maxAgeSeconds) || 12 * 60 * 60;
+  const maxAgeSeconds = Number(options.maxAgeSeconds) || PERSISTENT_SESSION_SECONDS;
   const payload = base64url(JSON.stringify({ role, exp: Date.now() + maxAgeSeconds * 1000, nonce: randomUUID() }));
   const token = `${payload}.${signature(payload, secret)}`;
   const path = options.path || "/";

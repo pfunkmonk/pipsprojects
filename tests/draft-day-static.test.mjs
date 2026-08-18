@@ -129,8 +129,8 @@ test("logout is explicit and separate from automatic refresh restoration", () =>
 });
 
 test("the user guide and engineering handoff cover the released workflows", () => {
-  for (const phrase of ["Allow any mix of backups", "Lock keepers", "nomination card", "Correct", "Undo", "Restore", "Finish draft", "Export", "Refresh stays signed in", "12-hour session", "Log out", "connection drops"]) assert.match(guidePage, new RegExp(phrase, "i"));
-  for (const phrase of ["session-storage.mjs", "audit:draft-day-live", "Stage Two", "716-player", "12-hour lifetime", "Engineering handoff"]) assert.match(draftDayDocumentation, new RegExp(phrase, "i"));
+  for (const phrase of ["Allow any mix of backups", "Lock keepers", "nomination card", "Correct", "Undo", "Restore", "Finish draft", "Export", "Refresh stays signed in", "persistent browser cookie", "Log out", "connection drops"]) assert.match(guidePage, new RegExp(phrase, "i"));
+  for (const phrase of ["session-storage.mjs", "audit:draft-day-live", "Stage Two", "716-player", "persistent cookies", "Engineering handoff"]) assert.match(draftDayDocumentation, new RegExp(phrase, "i"));
   assert.doesNotMatch(`${guidePage}\n${draftDayDocumentation}`, /current-cash mode|no separate limit/i);
 });
 

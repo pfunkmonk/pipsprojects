@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHttpHandlers } from "../netlify/functions/_auctioneer/http-handlers.mjs";
+import { PERSISTENT_SESSION_SECONDS } from "../netlify/functions/_lib/session-policy.mjs";
 
 const env = {
   THUNDER_BOWL_AUCTIONEER_ACCESS_CODE: "123456",
@@ -28,6 +29,10 @@ test("authenticates the auctioneer and permits public-only board access", async 
   const cookie = auth.headers.get("set-cookie");
   assert.match(cookie, /tb_auctioneer_session=/);
   assert.match(cookie, /Path=\//);
+
+  const refreshed = await handlers.auth(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/auth", { headers: { Cookie: cookie } }));
+  assert.equal(refreshed.status, 200);
+  assert.match(refreshed.headers.get("set-cookie"), new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
 
   const board = await handlers.boardSnapshot(new Request("https://pipsprojects.com/api/thunder-bowl/board/snapshot", { headers: { Cookie: cookie } }));
   assert.equal(board.status, 200);
@@ -80,6 +85,10 @@ test("Draft Board sign-in grants only the sanitized live board", async () => {
   assert.equal(auth.status, 204);
   const cookie = auth.headers.get("set-cookie");
   assert.match(cookie, /tb_draft_board_session=/);
+
+  const refreshed = await handlers.draftBoardAuth(new Request("https://pipsprojects.com/api/thunder-bowl/draft-board/auth", { headers: { Cookie: cookie } }));
+  assert.equal(refreshed.status, 200);
+  assert.match(refreshed.headers.get("set-cookie"), new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
 
   const board = await handlers.boardSnapshot(new Request("https://pipsprojects.com/api/thunder-bowl/board/snapshot", { headers: { Cookie: cookie } }));
   assert.equal(board.status, 200);

@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { PERSISTENT_SESSION_SECONDS } from "./session-policy.mjs";
 
 const COOKIE_NAME = "tb26_session";
-const SESSION_SECONDS = 12 * 60 * 60;
 
 function base64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -49,10 +49,18 @@ export function verifyAccessCode(code) {
   return safeEqual(code, requiredEnvironment("THUNDER_BOWL_ACCESS_CODE"));
 }
 
-export function issueSession() {
-  const now = Math.floor(Date.now() / 1000);
-  const payload = base64url(JSON.stringify({ sub: "dogs-of-war", aud: "thunder-bowl-2026", iat: now, exp: now + SESSION_SECONDS }));
+export function issueSession(now = Math.floor(Date.now() / 1000)) {
+  const payload = base64url(JSON.stringify({ sub: "dogs-of-war", aud: "thunder-bowl-2026", iat: now, exp: now + PERSISTENT_SESSION_SECONDS }));
   return `${payload}.${signPayload(payload)}`;
+}
+
+export function createPersistentSession(request) {
+  const now = Math.floor(Date.now() / 1000);
+  const token = issueSession(now);
+  return {
+    expiresAt: new Date((now + PERSISTENT_SESSION_SECONDS) * 1000).toISOString(),
+    cookie: sessionCookie(request, token),
+  };
 }
 
 export function verifySession(request) {
@@ -72,7 +80,7 @@ export function verifySession(request) {
 
 export function sessionCookie(request, token) {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  return `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_SECONDS}${secure}`;
+  return `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${PERSISTENT_SESSION_SECONDS}${secure}`;
 }
 
 export function clearSessionCookie(request) {

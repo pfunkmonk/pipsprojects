@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDraftDayHttpHandlers } from "../netlify/functions/_draft-day/http-handlers.mjs";
 import { createRoleCookie } from "../netlify/functions/_draft-day/security.mjs";
+import { PERSISTENT_SESSION_SECONDS } from "../netlify/functions/_lib/session-policy.mjs";
 
 const secret = "draft-day-http-test-secret-that-is-over-32-characters";
 const baseSnapshot = {
@@ -34,7 +35,7 @@ test("role authentication issues a separate HTTP-only cookie", async () => {
   assert.match(response.headers.get("set-cookie"), /^ddt_board_session=/);
   assert.match(response.headers.get("set-cookie"), /HttpOnly/);
   assert.match(response.headers.get("set-cookie"), /SameSite=Strict/);
-  assert.match(response.headers.get("set-cookie"), /Max-Age=43200/);
+  assert.match(response.headers.get("set-cookie"), new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
 });
 
 test("an issued auctioneer session remains valid on a refresh snapshot request", async () => {
@@ -43,6 +44,8 @@ test("an issued auctioneer session remains valid on a refresh snapshot request",
   const refreshed = await handlers.snapshot(request("/api/draft-day/snapshot?role=auctioneer&league=ABCD-EFGH", { headers: { Cookie: cookie } }));
   assert.equal(refreshed.status, 200);
   assert.equal((await refreshed.json()).role, "auctioneer");
+  assert.match(refreshed.headers.get("set-cookie"), /^ddt_auctioneer_session=/);
+  assert.match(refreshed.headers.get("set-cookie"), new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
 });
 
 test("explicit logout expires every Draft Day role cookie", async () => {

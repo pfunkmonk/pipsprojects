@@ -2,10 +2,9 @@ import {
   assertSameOrigin,
   clearSessionCookie,
   configurationError,
+  createPersistentSession,
   displayBoardUrl,
-  issueSession,
   json,
-  sessionCookie,
   verifyAccessCode,
   verifySession,
 } from "./_lib/auth.mjs";
@@ -14,9 +13,13 @@ export default async function handler(request) {
   try {
     if (request.method === "GET") {
       const session = verifySession(request);
-      return session
-        ? json({ authenticated: true, expiresAt: new Date(session.exp * 1000).toISOString(), displayBoardUrl: displayBoardUrl(request) })
-        : json({ authenticated: false }, 401);
+      if (!session) return json({ authenticated: false }, 401);
+      const renewed = createPersistentSession(request);
+      return json(
+        { authenticated: true, expiresAt: renewed.expiresAt, displayBoardUrl: displayBoardUrl(request) },
+        200,
+        { "Set-Cookie": renewed.cookie },
+      );
     }
 
     if (request.method === "POST") {
@@ -28,11 +31,11 @@ export default async function handler(request) {
         return json({ error: "A single access code is required." }, 400);
       }
       if (!verifyAccessCode(body.code)) return json({ error: "Access denied." }, 401);
-      const token = issueSession();
+      const session = createPersistentSession(request);
       return json(
-        { authenticated: true, displayBoardUrl: displayBoardUrl(request) },
+        { authenticated: true, expiresAt: session.expiresAt, displayBoardUrl: displayBoardUrl(request) },
         200,
-        { "Set-Cookie": sessionCookie(request, token) },
+        { "Set-Cookie": session.cookie },
       );
     }
 

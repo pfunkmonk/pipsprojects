@@ -9,6 +9,8 @@ import {
   verifySession,
 } from "../netlify/functions/_lib/auth.mjs";
 import packHandler from "../netlify/functions/thunder-pack.mjs";
+import thunderAuthHandler from "../netlify/functions/thunder-auth.mjs";
+import { PERSISTENT_SESSION_SECONDS } from "../netlify/functions/_lib/session-policy.mjs";
 
 process.env.THUNDER_BOWL_ACCESS_CODE = "test-access-code";
 process.env.THUNDER_BOWL_SESSION_SECRET = "test-session-secret-that-is-long-enough-for-unit-tests";
@@ -28,10 +30,20 @@ test("issued session round-trips through the HttpOnly cookie", () => {
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /SameSite=Strict/);
   assert.match(cookie, /Secure/);
+  assert.match(cookie, new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
   const request = new Request("https://pipsprojects.com/api/thunder-bowl/ledger", {
     headers: { cookie: cookie.split(";")[0] },
   });
   assert.equal(verifySession(request)?.sub, "dogs-of-war");
+});
+
+test("refresh silently renews the private command-center session", async () => {
+  const loginRequest = new Request("https://pipsprojects.com/api/thunder-bowl/auth");
+  const cookie = sessionCookie(loginRequest, issueSession()).split(";", 1)[0];
+  const response = await thunderAuthHandler(new Request(loginRequest.url, { headers: { cookie } }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).authenticated, true);
+  assert.match(response.headers.get("set-cookie"), new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
 });
 
 test("tampered sessions fail closed", () => {

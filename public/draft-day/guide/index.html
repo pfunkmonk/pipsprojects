@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c223f">
   <title>Pip's Draft Day Tool · Quick Guide</title>
-  <link rel="icon" type="image/svg+xml" href="../favicon.svg"><link rel="stylesheet" href="../app.css?v=20260817j"><link rel="stylesheet" href="../shell-safety.css">
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg"><link rel="stylesheet" href="../app.css?v=20260818a"><link rel="stylesheet" href="../shell-safety.css">
 </head>
 <body><div class="site-shell">
   <header class="site-header"><a class="brand" href="../"><span class="brand-mark">PDD</span><span><strong>Pip's Draft Day Tool</strong><small>Quick guide</small></span></a><a href="../">Back to setup</a></header>
@@ -21,7 +21,7 @@
 
     <section class="panel"><p class="eyebrow">Projection screen</p><h2>Draft Board workflow</h2><p>Open the board on the projector or a second device and sign in with the read-only Draft Board code. Use Fullscreen for the room display. Every player sticker shows position color, NFL team, bye week, and price. Keepers are pinned first and carry a gold <strong>KEEPER</strong> tag. The board contains public auction facts only—never rankings, event history, setup-only pool data, or draft advice.</p></section>
 
-    <section class="panel"><p class="eyebrow">Refresh and access</p><h2>Refresh stays signed in. Logout does not.</h2><p>An ordinary browser refresh returns to the same Organizer, Auctioneer, or Draft Board screen for the active 12-hour session. Use <strong>Log out</strong> only when you intentionally want to clear all Draft Day roles on that browser and require an access code next time. If a session expires while an Auctioneer action is waiting, sign in again: the pending action remains on that device and syncs after authentication.</p></section>
+    <section class="panel"><p class="eyebrow">Refresh and access</p><h2>Refresh stays signed in. Logout does not.</h2><p>An ordinary browser refresh or restart returns to the same Organizer, Auctioneer, or Draft Board screen without another code entry. Access is stored in a signed, persistent browser cookie and is renewed when the role session is checked. Use <strong>Log out</strong> only when you intentionally want to clear all Draft Day roles on that browser and require an access code next time. If the server rejects a cookie after a security-secret change, the Auctioneer's pending action remains on that device and syncs after authentication.</p></section>
 
     <section class="panel"><p class="eyebrow">Safety</p><h2>If the connection drops</h2><p>The signed-in Auctioneer device keeps a local snapshot and queues pending actions. A board open in the same browser receives local updates; separate devices catch up when the connection returns. Watch the Auctioneer status until it returns to <strong>LIVE</strong>. Use Backup JSON during breaks and Export results CSV at the end. If the app explicitly asks for sign-in again, re-enter the role code rather than refreshing repeatedly.</p></section>
   </main>

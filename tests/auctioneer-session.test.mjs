@@ -8,6 +8,7 @@ import {
   verifyDraftBoardCode,
   verifyDraftBoardSession,
 } from "../netlify/functions/_auctioneer/session.mjs";
+import { PERSISTENT_SESSION_SECONDS } from "../netlify/functions/_lib/session-policy.mjs";
 
 const secret = "a-secure-test-secret-with-more-than-32-characters";
 
@@ -22,6 +23,7 @@ test("creates and verifies an HTTP-only auctioneer session", () => {
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /Secure/);
   assert.match(cookie, /SameSite=Strict/);
+  assert.match(cookie, new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
   assert.equal(verifyAuctioneerSession(cookie, secret), true);
   assert.equal(verifyAuctioneerSession(cookie, `${secret}-wrong`), false);
 });

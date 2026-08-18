@@ -66,7 +66,11 @@ export function createHttpHandlers({ service, env = process.env, authorizeDispla
 
   return {
     async auth(request) {
-      if (request.method === "GET") return authorized(request) ? json({ role: "auctioneer" }) : json({ error: "Unauthorized" }, 401);
+      if (request.method === "GET") {
+        if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
+        const cookie = createAuctioneerCookie(env.THUNDER_BOWL_SESSION_SECRET, { path: "/", secure: new URL(request.url).protocol === "https:" });
+        return json({ role: "auctioneer" }, 200, { "Set-Cookie": cookie });
+      }
       if (request.method !== "POST" || !corsSafe(request)) return json({ error: "Method not allowed" }, 405);
       try {
         const body = await request.json();
@@ -79,7 +83,11 @@ export function createHttpHandlers({ service, env = process.env, authorizeDispla
     },
 
     async draftBoardAuth(request) {
-      if (request.method === "GET") return boardViewerAuthorized(request) ? json({ role: "draft-board" }) : json({ error: "Unauthorized" }, 401);
+      if (request.method === "GET") {
+        if (!boardViewerAuthorized(request)) return json({ error: "Unauthorized" }, 401);
+        const cookie = createDraftBoardCookie(env.THUNDER_BOWL_SESSION_SECRET, { path: "/", secure: new URL(request.url).protocol === "https:" });
+        return json({ role: "draft-board" }, 200, { "Set-Cookie": cookie });
+      }
       if (request.method !== "POST" || !corsSafe(request)) return json({ error: "Method not allowed" }, 405);
       try {
         const body = await request.json();
