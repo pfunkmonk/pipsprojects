@@ -12,16 +12,17 @@ function gibbs() {
       { source: "Footballguys", points: 339.6, modelEffect: "primary_projection", role: "primary", asOf: "2026-08-03T20:42:15Z" },
       { source: "CBS", points: 386.5, modelEffect: "none", role: "cross-check", asOf: "2026-08-03T20:46:57Z" },
       { source: "FantasyPros", points: 372.2, modelEffect: "none", role: "supplemental", asOf: "2026-08-03T23:31:50Z" },
+      { source: "PFF", points: 360, modelEffect: "none", role: "supplemental", asOf: "2026-08-03T23:31:50Z" },
     ],
     weeklyProjection: { points },
   };
 }
 
-test("three-source consensus uses the registered accuracy weights and exposes its authority", () => {
+test("four-source consensus uses the registered accuracy weights and exposes its authority", () => {
   const preview = buildProjectionLabPreview(gibbs(), { divisionWeeks: [1, 3, 11, 12], playoffWeeks: [15, 16, 17] });
-  assert.equal(preview.status, "complete_three_source");
-  assert.equal(preview.consensus, 365.9);
-  assert.equal(preview.modified, 365.9);
+  assert.equal(preview.status, "complete_four_source");
+  assert.equal(preview.consensus, 364.4);
+  assert.equal(preview.modified, 364.4);
   assert.equal(preview.automaticCorrectionDelta, 0);
   assert.deepEqual(preview.sourceRange, { low: 339.6, high: 386.5 });
   assert.equal(Math.round(preview.sources.reduce((sum, source) => sum + source.weight, 0) * 1000), 1000);

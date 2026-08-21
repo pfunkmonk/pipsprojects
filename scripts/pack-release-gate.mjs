@@ -1,8 +1,16 @@
 import { createHash } from "node:crypto";
 import { validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
-import { weightedProjectionConsensus } from "../public/thunder-bowl/projection-lab.mjs";
+import { PREMIUM_PROJECTION_SOURCES, weightedProjectionConsensus } from "../public/thunder-bowl/projection-lab.mjs";
 
 const SEALED_HOLDOUT_PATTERN = /(?:2025.{0,24}(?:actual|outcome|final)|(?:actual|outcome|final).{0,24}2025)/i;
+const MUTABLE_PROJECTION_SOURCE_NAMES = new Set([
+  "Footballguys 2026 preseason consensus raw categories",
+  "CBS Thunder Bowl weekly projections",
+  "FantasyPros 2026 consensus component projections",
+  "PFF 2026 component projections",
+  "Thunder Bowl weekly assets",
+  "Thunder Bowl Consensus",
+]);
 
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
@@ -137,9 +145,9 @@ function primaryProjectionChanged(candidate, current, sourceName) {
 
 function projectionRefreshNoteIsGoverned(prior, player) {
   const sourcePoints = Object.fromEntries((player.projectionSources || [])
-    .filter((source) => ["Footballguys", "CBS", "FantasyPros"].includes(source.source))
+    .filter((source) => PREMIUM_PROJECTION_SOURCES.includes(source.source))
     .map((source) => [source.source, source.points]));
-  const sourceSummary = ["Footballguys", "CBS", "FantasyPros"]
+  const sourceSummary = PREMIUM_PROJECTION_SOURCES
     .filter((source) => Number.isFinite(Number(sourcePoints[source])))
     .map((source) => `${source} ${Number(sourcePoints[source]).toFixed(1)}`)
     .join("; ");
@@ -147,8 +155,28 @@ function projectionRefreshNoteIsGoverned(prior, player) {
   const correction = Number((player.projectedPoints - consensus).toFixed(1));
   const signedCorrection = `${correction >= 0 ? "+" : ""}${correction.toFixed(1)}`;
   const supplemental = String(prior.notes || "").match(/Sleeper status is a supplemental fresh flag only; no projection or dollar adjustment applied\.?/i)?.[0] || "";
-  const expected = `${sourceSummary}. Thunder Bowl consensus ${player.projectedPoints.toFixed(1)} drives VBD; QA-approved automatic correction ${signedCorrection}.${supplemental ? ` ${supplemental}` : ""}`;
-  return player.notes === expected;
+  const suffix = `${supplemental ? ` ${supplemental}` : ""}`;
+  const expected = `${sourceSummary}. Thunder Bowl consensus ${player.projectedPoints.toFixed(1)} drives VBD; QA-approved automatic correction ${signedCorrection}.${suffix}`;
+  const availabilityAware = `${sourceSummary}. Thunder Bowl consensus ${player.projectedPoints.toFixed(1)} drives VBD; availability-aware weekly weighting and QA-approved automatic correction ${signedCorrection}.${suffix}`;
+  return player.notes === expected || player.notes === availabilityAware;
+}
+
+function weeklyContextPolicyIsStable(current, candidate) {
+  if (!current || !candidate) return current === candidate;
+  const evidenceKeys = new Set(["asOf", "coveredPlayers", "top168Coverage", "sourceManifestSha256"]);
+  const policy = (value) => Object.fromEntries(Object.entries(value).filter(([key]) => !evidenceKeys.has(key)));
+  return stableText(policy(current)) === stableText(policy(candidate));
+}
+
+function projectionSourceRefreshIsRegistered(current, candidate) {
+  const currentImmutable = current.sources.filter((source) => !MUTABLE_PROJECTION_SOURCE_NAMES.has(source.name));
+  const candidateImmutable = candidate.sources.filter((source) => !MUTABLE_PROJECTION_SOURCE_NAMES.has(source.name));
+  if (stableText(currentImmutable) !== stableText(candidateImmutable)) return false;
+  const candidateNames = candidate.sources.map((source) => source.name);
+  if (new Set(candidateNames).size !== candidateNames.length) return false;
+  return current.sources
+    .filter((source) => MUTABLE_PROJECTION_SOURCE_NAMES.has(source.name))
+    .every((source) => candidateNames.includes(source.name));
 }
 
 function classicChampionIssues(candidate, current) {
@@ -350,14 +378,10 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       if (stableText(candidate.scheduleContext) !== stableText(current.scheduleContext)) {
         blockingIssues.push("A primary projection update changed value-neutral schedule context.");
       }
-      const replacingPrimarySource = current.sources.some((source) => source.name === primaryProjectionSource);
-      const priorSourceFingerprints = new Set(current.sources
-        .filter((source) => !replacingPrimarySource || source.name !== primaryProjectionSource)
-        .map(stableText));
-      const retainedSourceCount = candidate.sources.filter((source) => priorSourceFingerprints.has(stableText(source))).length;
-      const expectedRetainedSources = current.sources.length - (replacingPrimarySource ? 1 : 0);
-      const expectedCandidateSources = current.sources.length + (replacingPrimarySource ? 0 : 1);
-      if (retainedSourceCount !== expectedRetainedSources || candidate.sources.length !== expectedCandidateSources) {
+      if (!weeklyContextPolicyIsStable(current.weeklyContext, candidate.weeklyContext)) {
+        blockingIssues.push("A primary projection update changed the approved weekly-context policy.");
+      }
+      if (!projectionSourceRefreshIsRegistered(current, candidate)) {
         blockingIssues.push("A primary projection update changed prior source evidence outside the registered append-or-replace path.");
       }
       const evidenceFields = ["id", "name", "position", "nflTeam", "injury", "sos"];

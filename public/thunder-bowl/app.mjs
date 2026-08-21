@@ -90,7 +90,7 @@ import {
 } from "./decision-context.mjs?v=20260816a";
 import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
-import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260809c";
+import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260821a";
 import {
   HUMAN_REHEARSAL_ITEMS,
   createHumanRehearsalEvidence,
@@ -1030,12 +1030,12 @@ function renderProjectionSources(player) {
   }
   const primary = sources.find((source) => source.modelEffect === "primary_projection");
   const liveConsensus = primary?.source === "Thunder Bowl Consensus";
-  const premiumSources = sources.filter((source) => ["Footballguys", "CBS", "FantasyPros"].includes(source.source));
+  const premiumSources = sources.filter((source) => ["Footballguys", "CBS", "FantasyPros", "PFF"].includes(source.source));
   const blendWeights = projectionSourceWeights(premiumSources.map((source) => source.source));
   byId("projection-evidence-rule").textContent = liveConsensus
     ? priorityScenario.mode === "live"
       ? "Consensus drives the base · bounded schedule timing adjusts VBD"
-      : "Near-equal three-source consensus drives value"
+      : "Accuracy-weighted source consensus drives value"
     : priorityScenario.mode === "live" ? "Primary drives the base · bounded schedule timing adjusts VBD" : "Only “primary” drives value";
   for (const source of sources) {
     const delta = primary && source !== primary ? source.points - primary.points : null;
@@ -1055,7 +1055,7 @@ function renderProjectionSources(player) {
     points.textContent = source.points.toFixed(1);
     const detail = document.createElement("small");
     const sourceNote = source.source === "Thunder Bowl Consensus"
-      ? "Near-equal three-source consensus (33–34% each); limited historical accuracy tilt; failed corrections remain value-neutral"
+      ? "Availability-aware source consensus; FBG/CBS use measured accuracy and FantasyPros/PFF use neutral priors; failed corrections remain value-neutral"
       : source.note;
     detail.textContent = `${shortDate(source.asOf)}${delta === null ? "" : ` · Δ ${signed(delta)}`} · ${sourceNote}`;
     item.append(heading, points, detail);
@@ -1075,10 +1075,10 @@ function renderProjectionLab(player) {
     playoffWeeks: weeklyContext?.playoffWeeks || [15, 16, 17],
   });
   disclosure.hidden = false;
-  const summaryStatus = preview.status === "complete_three_source"
-    ? `${preview.sourceCoverage}/3 sources`
+  const summaryStatus = preview.status === "complete_four_source"
+    ? `${preview.sourceCoverage}/${preview.requiredSources} sources`
     : preview.status === "partial_consensus"
-      ? `${preview.sourceCoverage}/3 sources · partial`
+      ? `${preview.sourceCoverage}/${preview.requiredSources} sources · partial`
       : "fallback";
   const live = preview.valueEffect === "primary_projection";
   byId("projection-lab-summary").textContent = `${preview.modified.toFixed(1)} Thunder projection · ${summaryStatus}`;
@@ -2408,7 +2408,7 @@ function renderPackStatus() {
     byId("pack-warning-title").textContent = illustrative ? "Illustrative values only." : "Current practice pack.";
     byId("pack-warning-copy").textContent = illustrative
       ? "The interface is live; the displayed player projections and prices are placeholders until the approved 2026 draft pack is imported."
-      : "The near-equal Footballguys, CBS, and FantasyPros consensus (33–34% each) drives VBD with a limited historical accuracy tilt. Validated 1.20× division and 1.50× playoff timing is live at 35% authority with a hard ±3 VBD cap. This release candidate is ready for practice; the only planned model-data replacement is next week's final projection refresh.";
+      : "The availability-aware Footballguys, CBS, FantasyPros, and PFF consensus drives VBD; CBS gaps are excluded rather than treated as zero. Validated 1.20× division and 1.50× playoff timing is live at 35% authority with a hard ±3 VBD cap.";
     }
   }
   const packChip = byId("pack-status");

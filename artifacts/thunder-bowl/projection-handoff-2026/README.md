@@ -7,7 +7,7 @@ The CSV template is the only supported boundary from the separate projection-upg
 1. Preserve all 716 template rows and every identity column exactly.
 2. Replace `model_id` with an immutable build ID and fill the same timezone-bearing `source_as_of` and `exported_at` timestamps on every row.
 3. Preserve the Thunder Bowl scoring fingerprint and `candidate_only` authority.
-4. Fill the raw source projections. `raw_consensus_points` must equal Thunder Bowl's registered accuracy-weighted consensus of the source values actually supplied (currently FBG 33.7%, FantasyPros 33.3%, CBS 33.0% when all three are present); missing means blank, not zero, and available weights renormalize automatically.
+4. Fill the raw source projections. `raw_consensus_points` must equal Thunder Bowl's registered accuracy-weighted consensus of the source values actually supplied. FBG and CBS retain their measured historical accuracy tilt; FantasyPros and PFF receive neutral priors pending comparable archives. Missing means blank, not zero, and available weights renormalize automatically.
 5. Fill every named adjustment. Use `0` when a layer makes no adjustment.
 6. Fill the modified projection and 80% uncertainty bounds. All adjustment columns must reconcile exactly to the modified projection.
 7. Explain the fallback whenever fewer than two premium sources exist.

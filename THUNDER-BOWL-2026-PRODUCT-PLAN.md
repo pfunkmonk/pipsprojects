@@ -72,7 +72,7 @@ The player-value foundation remains at least as important as price prediction. E
 The target pipeline is source evidence → Thunder projection → VBD → intrinsic dollars → historically calibrated auction market → live-room bid guidance. Source projections never write VBD or dollars directly.
 
 1. Rescore every source to the exact Thunder Bowl scoring fingerprint before comparison.
-2. Blend the available Footballguys, CBS, and FantasyPros point projections with registered inverse-MAE reliability weights. Missing sources reduce confidence and renormalize the remaining weights; they are never silently replaced with zero.
+2. Blend the available Footballguys, CBS, FantasyPros, and PFF league-scored weekly projections with registered reliability weights. FBG/CBS retain their measured inverse-MAE tilt; FantasyPros/PFF use neutral priors until comparable historical archives exist. Missing player-weeks reduce confidence and renormalize the remaining weights; they are never silently replaced with zero.
 3. Apply only adjustments that reconcile by named component: mean reversion, within-position correction, season context, durability, and current availability.
 4. Use weekly matchup, venue, travel, weather climatology, short-turnaround, division, and playoff evidence to shape weekly value. It may not manufacture extra season points unless an isolated time-forward season-total test earns that authority.
 5. Emit an honest uncertainty interval and explicit fallback reason for every player.
@@ -80,7 +80,7 @@ The target pipeline is source evidence → Thunder projection → VBD → intrin
 
 The August 9 surrogate test scored 1,153 player-seasons in strict time-forward folds. Equal weighting beat the single-source reference (41.041 versus 41.748 MAE), and equal consensus plus a lean position-specific mean-reversion calibration improved MAE to 39.456 with no position regression. Inverse-error source weighting, within-position shrinkage, season-total context, a second durability haircut, and the full feature pile did not beat that challenger and remain rejected for automatic use.
 
-The separate clean 2023 paired audit adds 412 like-for-like FBG/CBS player outcomes. Its two-source consensus scored 44.653 MAE versus 45.338 for the better single source. The confidence interval on the small FBG/CBS accuracy difference crossed zero, so the production source tilt is deliberately tiny rather than falsely precise: FBG 33.7%, FantasyPros 33.3%, and CBS 33.0% when all three are present. FantasyPros receives a neutral midpoint reliability prior until a comparable historical point archive exists.
+The separate clean 2023 paired audit adds 412 like-for-like FBG/CBS player outcomes. Its two-source consensus scored 44.653 MAE versus 45.338 for the better single source. The confidence interval on the small FBG/CBS accuracy difference crossed zero, so the production source tilt is deliberately tiny rather than falsely precise. FantasyPros and PFF each receive the same neutral midpoint reliability prior until a comparable historical point archive exists; with all four sources present the weights are approximately FBG 25.3%, FantasyPros 25.0%, PFF 25.0%, and CBS 24.7%.
 
 The released **Thunder Bowl Consensus** is therefore the accuracy-weighted source blend only. It drives projected points and the downstream VBD engine. Mean reversion, durability, weather, analog, and schedule total-point corrections remain at exactly zero because they did not clear their promotion gates. The draft room discloses the live weights, source range, fallback coverage, and zero QA correction for the selected player.
 
@@ -99,9 +99,9 @@ A separate priority-week calibration then joined 48 archived Thunder Bowl team-s
 ### Projection updater handoff contract
 
 - exactly one row for every one of the 716 active pack players;
-- exact pack ID plus available FBG, CBS, FantasyPros, and GSIS source IDs;
+- exact pack ID plus available FBG, CBS, FantasyPros, PFF, and GSIS source IDs;
 - immutable model ID, timezone-bearing source/export timestamps, scoring fingerprint, and `candidate_only` authority;
-- all three raw source values, their registered accuracy-weighted consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
+- all four raw source values, their registered accuracy-weighted consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
 - exactly one blank bye week when weekly values are supplied, with weekly values reconciling to the season total;
 - fail-closed rejection of missing/duplicate players, identity drift, stale or malformed metadata, forged consensus values, unreconciled adjustments, or malformed weeks;
 - candidate pack and audit output first; an explicit, separately audited promotion action is required before the active pack changes.
@@ -158,6 +158,14 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - Full QA passed 372/372 tests after rebasing the concurrent Draft Day release, plus the 168-sale rehearsal, 24-keeper/144-sale catastrophe recovery, 192-rollout foolproof roster safety, and 36-player/608-path auction-advice Monte Carlo. The historical market, price curve, position-run, priority-week, and projection challenger backtests were also rerun. Evidence and remaining operator-only departure gates are recorded in `reports/thunder-bowl/release-audit-20260817.md`.
 - Two release-process failure classes were repaired at their boundaries: weekly source coverage is now compared semantically instead of by JSON serialization, and the projection challenger now reconstructs time-forward lag features from raw season facts through a dependency-aware documented command. Neither change grants a supplemental source or challenger model live value authority.
 - The operator field guide now covers the deterministic six-column CBS auction handoff. The product still rejects a broad pre-draft `app.mjs` refactor because it would add risk without making an auction decision faster.
+
+## Four-source projection refresh — August 21, 2026
+
+- The active practice pack is `tb26-tb-weekly-source-consensus-20260821-v1-20260821144515`. It was rebuilt from the dated `by_source` Footballguys, CBS, FantasyPros, and PFF weekly asset exports and rescored under Thunder Bowl rules before any source blending.
+- Fresh evidence covers 627/716 players and every top-168 player. The 89 uncovered deep players preserve their previously validated season total and weekly shape. Every one of the 716 weekly profiles reconciles exactly to its authoritative season projection, and the dynamic auction allocation remains exactly `$1,212`.
+- The source-wide importer prevents three failure classes found during this refresh: FBG made/missed kick columns cannot be reversed, duplicate FBG rows cannot overwrite valid offense or split DST/return assets, and CBS `missing` rows cannot masquerade as zero projections. Kicker conversion and DST coverage sanity checks fail closed before a candidate is written.
+- Twelve players exceed a 75-point source spread and remain visible as role/workload uncertainty; no source triggered the repeated-collapse blocker. The current valuation audit reports four-source coverage/rank agreement and found zero VBD formula mismatches and zero starter/replacement reversals against every available external source.
+- Full automated tests pass 375/375. The public identity build, private/public isolation, exact-byte pack gate, catastrophe recovery, full auction, foolproof roster safety, and advice Monte Carlo are rerun after every promoted projection pack.
 
 ## Near-term sequence
 

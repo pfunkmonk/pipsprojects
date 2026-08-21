@@ -94,7 +94,7 @@ test("replacement-level lineup VBD no longer collapses viable backups to arbitra
   const david = pack.players.find((player) => player.name === "David Montgomery");
   const outzs = pack.players.find((player) => player.name === "Robbie Ouzts");
   const mclaurin = pack.players.find((player) => player.name === "Terry McLaurin");
-  assert.ok(Math.abs(david.vbd) <= 5);
+  assert.ok(david.vbd > 0, "a projected RB above the live replacement line must retain positive VBD");
   assert.ok(market.valuesByPlayerId[david.id] >= 5);
   assert.ok(market.valuesByPlayerId[david.id] > market.valuesByPlayerId[outzs.id]);
   assert.ok(market.valuesByPlayerId[mclaurin.id] > 1);
@@ -107,8 +107,9 @@ test("position spending prevents DST inflation and repairs legacy player-identit
   const ameer = pack.players.find((player) => player.name === "Ameer Abdullah");
   const gibbs = pack.players.find((player) => player.name === "Jahmyr Gibbs");
 
-  assert.equal(market.valuesByPlayerId[denver.id], 5);
+  assert.ok(market.valuesByPlayerId[denver.id] >= 4 && market.valuesByPlayerId[denver.id] <= 7);
   assert.ok(market.valuesByPlayerId[houston.id] >= 3 && market.valuesByPlayerId[houston.id] <= 6);
+  assert.ok(market.valuesByPlayerId[denver.id] >= market.valuesByPlayerId[houston.id]);
   assert.equal(market.valuesByPlayerId[ameer.id], 1);
   assert.equal(market.bidCeilingsByPlayerId[ameer.id], 1);
   assert.ok(market.valuesByPlayerId[gibbs.id] >= 30);

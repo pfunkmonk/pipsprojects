@@ -5,13 +5,13 @@ export const PROJECTION_HANDOFF_KIND = "thunder-bowl-projection-handoff-v1";
 export const PROJECTION_HANDOFF_AUTHORITY = "candidate_only";
 export const PROJECTION_PRIMARY_SOURCE = "Thunder Bowl Consensus";
 export const PROJECTION_SCORING_FINGERPRINT = "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1";
-export const PREMIUM_PROJECTION_SOURCES = ["Footballguys", "CBS", "FantasyPros"];
+export const PREMIUM_PROJECTION_SOURCES = ["Footballguys", "CBS", "FantasyPros", "PFF"];
 export const WEEK_COLUMNS = Array.from({ length: 18 }, (_, index) => `wk${index + 1}`);
 export const PROJECTION_HANDOFF_COLUMNS = [
   "pack_player_id", "player_name", "position", "nfl_team", "fbg_id", "cbs_id",
-  "fantasypros_id", "gsis_id",
+  "fantasypros_id", "pff_id", "gsis_id",
   "model_id", "source_as_of", "exported_at", "scoring_fingerprint", "authority",
-  "fbg_points", "cbs_points", "fantasypros_points", "raw_consensus_points",
+  "fbg_points", "cbs_points", "fantasypros_points", "pff_points", "raw_consensus_points",
   "mean_reversion_delta", "within_position_delta", "season_context_delta",
   "durability_delta", "availability_delta", "modified_projection_points",
   "uncertainty_low", "uncertainty_high", "fallback_reason", ...WEEK_COLUMNS,
@@ -113,6 +113,7 @@ export function createProjectionHandoffTemplateRows(packInput, {
       Footballguys: sourcePoint(player, "Footballguys"),
       CBS: sourcePoint(player, "CBS"),
       FantasyPros: sourcePoint(player, "FantasyPros"),
+      PFF: sourcePoint(player, "PFF"),
     })) : player.projectedPoints;
     const ids = sourceIdsByPlayerId[player.id] || {};
     return {
@@ -123,6 +124,7 @@ export function createProjectionHandoffTemplateRows(packInput, {
       fbg_id: ids.fbgId || (player.id.startsWith("fbg:") ? player.id.slice(4) : ""),
       cbs_id: ids.cbsId || (player.id.startsWith("cbs:") ? player.id.slice(4) : ""),
       fantasypros_id: ids.fantasyProsId || "",
+      pff_id: ids.pffId || "",
       gsis_id: ids.gsisId || "",
       model_id: modelId,
       source_as_of: sourceAsOf,
@@ -132,6 +134,7 @@ export function createProjectionHandoffTemplateRows(packInput, {
       fbg_points: sourcePoint(player, "Footballguys"),
       cbs_points: sourcePoint(player, "CBS"),
       fantasypros_points: sourcePoint(player, "FantasyPros"),
+      pff_points: sourcePoint(player, "PFF"),
       raw_consensus_points: consensus,
       mean_reversion_delta: "",
       within_position_delta: "",
@@ -177,7 +180,7 @@ export function validateProjectionHandoffRows(rows, packInput) {
       || normalizedTeam(text(row.nfl_team, `${label} NFL team`, { maximum: 10 }).toUpperCase()) !== normalizedTeam(player.nflTeam)) {
       fail("PROJECTION_PLAYER_IDENTITY", `${player.name}'s handoff identity does not match the active pack.`);
     }
-    for (const [column, source] of [["fbg_id", "FBG"], ["cbs_id", "CBS"], ["fantasypros_id", "FantasyPros"], ["gsis_id", "GSIS"]]) {
+    for (const [column, source] of [["fbg_id", "FBG"], ["cbs_id", "CBS"], ["fantasypros_id", "FantasyPros"], ["pff_id", "PFF"], ["gsis_id", "GSIS"]]) {
       const sourceId = text(row[column], `${label} ${source} id`, { minimum: 0, maximum: 80, nullable: true });
       if (sourceId && !/^[a-z0-9:._-]+$/i.test(sourceId)) fail("PROJECTION_SOURCE_ID", `${player.name}'s ${source} id contains unsupported characters.`);
     }
@@ -194,6 +197,7 @@ export function validateProjectionHandoffRows(rows, packInput) {
       Footballguys: finite(row.fbg_points, `${player.name} FBG points`, { nullable: true }),
       CBS: finite(row.cbs_points, `${player.name} CBS points`, { nullable: true }),
       FantasyPros: finite(row.fantasypros_points, `${player.name} FantasyPros points`, { nullable: true }),
+      PFF: finite(row.pff_points, `${player.name} PFF points`, { nullable: true }),
     };
     const supplied = Object.values(sourcePoints).filter((value) => value !== null);
     const consensus = finite(row.raw_consensus_points, `${player.name} consensus points`);
@@ -256,7 +260,7 @@ function scaleWeeklyProjection(existing, newTotal) {
   return { ...existing, points, sourceSeasonTotal: newTotal };
 }
 
-function recomputeClassicValues(candidate, current) {
+export function recomputeClassicValues(candidate, current) {
   const teamCount = candidate.leagueConfig.teams.length;
   const slots = teamCount * candidate.leagueConfig.rosterSize;
   const totalCap = candidate.leagueConfig.teams.reduce((sum, team) => sum + team.startingCap, 0);
@@ -329,7 +333,7 @@ export function createProjectionCandidatePack(currentInput, handoffRows) {
         source,
         points: row.sourcePoints[source],
         asOf: first.sourceAsOf,
-        role: priorSourcesByName.get(source)?.role || (source === "FantasyPros" ? "supplemental" : "cross-check"),
+        role: priorSourcesByName.get(source)?.role || (["FantasyPros", "PFF"].includes(source) ? "supplemental" : "cross-check"),
         modelEffect: "none",
       }));
     const premiumWeights = projectionSourceWeights(premiumRows.map((source) => source.source));

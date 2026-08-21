@@ -15,7 +15,7 @@ if (!outputArgument) {
 const root = resolve(new URL("..", import.meta.url).pathname.replace(/^\/(.:)/, "$1"));
 const packPath = resolve(root, "netlify/functions/_data/draft-pack-2026-provisional.json");
 const pack = JSON.parse(await readFile(packPath, "utf8"));
-const premiumNames = new Set(["Footballguys", "CBS", "FantasyPros"]);
+const premiumNames = new Set(["Footballguys", "CBS", "FantasyPros", "PFF"]);
 const sourceDates = pack.players.flatMap((player) => (player.projectionSources || [])
   .filter((source) => premiumNames.has(source.source) && Number.isFinite(Date.parse(source.asOf)))
   .map((source) => Date.parse(source.asOf)));
@@ -28,7 +28,7 @@ const rows = createProjectionHandoffTemplateRows(pack, {
   sourceAsOf,
   exportedAt,
 }).map((row) => {
-  const sourcePoints = [row.fbg_points, row.cbs_points, row.fantasypros_points]
+  const sourcePoints = [row.fbg_points, row.cbs_points, row.fantasypros_points, row.pff_points]
     .filter((value) => value !== "")
     .map(Number);
   const consensus = Number(row.raw_consensus_points);

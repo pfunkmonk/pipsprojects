@@ -1199,7 +1199,7 @@ const PLAYER_IDENTITY_ALIASES = new Map(Object.entries({
   mitchtrubisky: "mitchelltrubisky",
 }));
 
-function canonicalPlayerIdentity(name, position, nflTeam) {
+export function canonicalPlayerIdentity(name, position, nflTeam) {
   const normalizedName = name
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")

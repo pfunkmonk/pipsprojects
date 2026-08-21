@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-17T22:36:52.983Z",
+  "generatedAt": "2026-08-21T14:54:02.361Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "e8e7ef29f90d03ccef82e86922943d5e0d4cf4caf8428fdf4744de8bcbd6d2c2",
-    "engineSha256": "861931cece846e63646b0f04edfb2ca19da993363d85161804a46cefa915663c",
+    "packSha256": "9d22470e92699a6669c9156b5176c5c3296f132c26933d512cbb62999e54848d",
+    "engineSha256": "8b78d2604d458d6b49d8f59550bbe125618f3fca6a4b07f62fb24cb2a2681c6a",
     "scriptSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667"
   },
   "pack": {
-    "id": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1",
+    "id": "tb26-tb-weekly-source-consensus-20260821-v1-20260821144515",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -37,34 +37,34 @@
       "teamId": "el-guapo",
       "rejectedAmount": 61
     },
-    "sha256": "2d98a6dfcd65baa0a77b15b55e140984d193e1216a6ae5732b8a7455f6fabc19"
+    "sha256": "58a00d68798d72447e1456cbb78ed08dff46269c88321fcf19b272ed6d102709"
   },
   "outage": {
     "disconnectAtActiveSales": 72,
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.3998,
+    "reconnectMs": 1.1419,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 36.7647,
+    "durationMs": 27.9976,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2463,
-      "p95Ms": 0.5056,
-      "maximumMs": 0.8344
+      "medianMs": 0.2354,
+      "p95Ms": 0.4559,
+      "maximumMs": 1.7113
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.1718,
-      "p95Ms": 0.3151,
-      "maximumMs": 0.3151
+      "medianMs": 0.1513,
+      "p95Ms": 0.3164,
+      "maximumMs": 0.3164
     }
   },
   "finalState": {

@@ -21,6 +21,7 @@
     "backtest:thunder-priority": "python scripts/backtest-priority-week-weights.py",
     "build:thunder-consensus": "node scripts/build-thunder-consensus-handoff.mjs",
     "import:thunder-weekly-assets": "node scripts/import-weekly-assets.mjs",
+    "import:thunder-source-assets": "node scripts/import-source-weekly-assets.mjs",
     "export:thunder-projection-handoff": "node scripts/export-projection-handoff.mjs",
     "refresh:thunder-projections": "node scripts/run-projection-refresh.mjs",
     "refresh:thunder-managers": "python scripts/build-manager-history.py",

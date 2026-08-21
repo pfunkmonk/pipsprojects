@@ -1,19 +1,20 @@
-export const PREMIUM_PROJECTION_SOURCES = Object.freeze(["Footballguys", "CBS", "FantasyPros"]);
+export const PREMIUM_PROJECTION_SOURCES = Object.freeze(["Footballguys", "CBS", "FantasyPros", "PFF"]);
 
 // Comparable preseason point accuracy is limited to one clean, paired FBG/CBS
-// season. FantasyPros has no like-for-like archive, so it receives the neutral
-// midpoint error rather than an invented advantage. Inverse-MAE weighting makes
-// the requested accuracy tilt explicit while keeping it appropriately small.
+// season. FantasyPros and PFF have no like-for-like archive, so each receives the
+// neutral midpoint error rather than an invented advantage. Inverse-MAE weighting
+// makes the requested accuracy tilt explicit while keeping it appropriately small.
 export const PROJECTION_SOURCE_ACCURACY = Object.freeze({
   Footballguys: Object.freeze({ mae: 45.33767, evidence: "2023 paired Thunder-scored preseason audit", direct: true }),
   CBS: Object.freeze({ mae: 46.376408, evidence: "2023 paired Thunder-scored preseason audit", direct: true }),
   FantasyPros: Object.freeze({ mae: 45.857039, evidence: "neutral midpoint pending comparable archive", direct: false }),
+  PFF: Object.freeze({ mae: 45.857039, evidence: "neutral midpoint pending comparable archive", direct: false }),
 });
 
 export const PROJECTION_LAB_MODEL = Object.freeze({
-  id: "tb-accuracy-consensus-20260809-v1",
+  id: "tb-accuracy-consensus-20260821-v2",
   authority: "primary_projection",
-  sourceHistory: "FBG/CBS 2023 paired audit plus 2022-2025 time-forward ensemble surrogate",
+  sourceHistory: "FBG/CBS 2023 paired audit plus 2022-2025 time-forward ensemble surrogate; FantasyPros/PFF use neutral priors",
   pairedRows: 412,
   surrogateRows: 1153,
   bestSinglePairedMae: 45.3377,
@@ -111,7 +112,7 @@ export function buildProjectionLabPreview(player, {
   const isLive = primary?.source === "Thunder Bowl Consensus";
   return {
     model: PROJECTION_LAB_MODEL,
-    status: rows.length === PREMIUM_PROJECTION_SOURCES.length ? "complete_three_source" : rows.length >= 2 ? "partial_consensus" : "single_source",
+    status: rows.length === PREMIUM_PROJECTION_SOURCES.length ? "complete_four_source" : rows.length >= 2 ? "partial_consensus" : "single_source",
     sourceCoverage: rows.length,
     requiredSources: PREMIUM_PROJECTION_SOURCES.length,
     sources: rows.map((row) => ({ ...row, points: round1(row.points), weight: weights[row.source] })),

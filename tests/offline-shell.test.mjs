@@ -185,7 +185,7 @@ test("the Thunder projection exposes its live consensus and rejected corrections
   assert.match(appSource, /buildProjectionLabPreview\(player/);
   assert.match(appSource, /QA-approved automatic correction/);
   assert.match(appSource, /Failed mean-reversion, durability, weather, analog, and schedule total-point corrections remain value-neutral/);
-  assert.match(serviceWorker, /projection-lab\.mjs\?v=20260809c/);
+  assert.match(serviceWorker, /projection-lab\.mjs\?v=20260821a/);
   assert.doesNotMatch(publicBoardSource, /projection-lab|Thunder candidate/i);
 });
 

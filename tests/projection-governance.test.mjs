@@ -24,6 +24,7 @@ test("the old mean-reversion surrogate remains blocked while the simpler blend i
   assert.equal(PROJECTION_LAB_MODEL.pairedRows, 412);
   assert.ok(PROJECTION_LAB_MODEL.pairedConsensusMae < PROJECTION_LAB_MODEL.bestSinglePairedMae);
   assert.equal(PROJECTION_SOURCE_ACCURACY.FantasyPros.direct, false);
+  assert.equal(PROJECTION_SOURCE_ACCURACY.PFF.direct, false);
 });
 
 test("rejected sauce layers remain documented and outside automatic value authority", () => {
@@ -40,7 +41,7 @@ test("rejected sauce layers remain documented and outside automatic value author
 test("the checked-in handoff template covers the exact pack and carries no downstream dollar authority", () => {
   const lines = handoff.trim().split(/\r?\n/);
   assert.equal(lines.length - 1, 716);
-  assert.match(lines[0], /pack_player_id,player_name,position,nfl_team,fbg_id,cbs_id,fantasypros_id,gsis_id/);
+  assert.match(lines[0], /pack_player_id,player_name,position,nfl_team,fbg_id,cbs_id,fantasypros_id,pff_id,gsis_id/);
   assert.doesNotMatch(lines[0], /vbd|market|max_bid|keeper|auction/i);
 });
 

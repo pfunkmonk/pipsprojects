@@ -199,6 +199,12 @@ const [packText, fbgWeeklyText, modelText, modelingText, ddfText] = await Promis
   Object.values(sourcePaths).map((path) => readFile(path, "utf8")),
 );
 const pack = JSON.parse(packText);
+const currentSourceAsOf = [...pack.players.flatMap((player) => player.projectionSources || [])]
+  .filter((row) => row.source !== "Thunder Bowl Consensus" && row.asOf)
+  .map((row) => row.asOf)
+  .sort()
+  .at(-1) || pack.asOf;
+const currentSourceDate = String(currentSourceAsOf).slice(0, 10);
 const fbgWeeklyRows = parseFbgWeekly(fbgWeeklyText);
 const modelRows = parseCsv(modelText);
 const modelingRows = parseCsv(modelingText).filter((row) => row.season === "2026");
@@ -260,7 +266,7 @@ const starterReplacementPoints = Object.fromEntries(
   }),
 );
 const sourceReplacementPoints = Object.fromEntries(
-  ["CBS", "FantasyPros"].map((source) => [source, Object.fromEntries(
+  ["CBS", "FantasyPros", "PFF"].map((source) => [source, Object.fromEntries(
     Object.entries(pack.leagueConfig.starterRequirements).map(([pos, starters]) => {
       const values = pack.players
         .map((player) => ({ player, points: projectionSource(player, source) }))
@@ -280,10 +286,11 @@ const auditRows = valuePack.players.map((player) => {
   const fbgProjection = projectionSource(player, "Footballguys");
   const cbs = projectionSource(player, "CBS");
   const fantasyPros = projectionSource(player, "FantasyPros");
+  const pff = projectionSource(player, "PFF");
   const primary = sourcePlayer.projectedPoints;
   const primarySource = (sourcePlayer.projectionSources || []).find((row) => row.role === "primary")?.source || "Unknown";
   const latestFbgPoints = latestFbg?.total ?? null;
-  const currentSourceValues = [fbgProjection, cbs, fantasyPros].filter(Number.isFinite);
+  const currentSourceValues = [fbgProjection, cbs, fantasyPros, pff].filter(Number.isFinite);
   const sourceMedian = median(currentSourceValues);
   const sourceValues = currentSourceValues;
   const sourceRange = sourceValues.length > 1 ? Math.max(...sourceValues) - Math.min(...sourceValues) : null;
@@ -303,6 +310,9 @@ const auditRows = valuePack.players.map((player) => {
   const fantasyProsVbd = Number.isFinite(fantasyPros) && Number.isFinite(sourceReplacementPoints.FantasyPros[player.position])
     ? Math.round((fantasyPros - sourceReplacementPoints.FantasyPros[player.position]) * 10) / 10
     : null;
+  const pffVbd = Number.isFinite(pff) && Number.isFinite(sourceReplacementPoints.PFF[player.position])
+    ? Math.round((pff - sourceReplacementPoints.PFF[player.position]) * 10) / 10
+    : null;
   const flags = [];
   if (latestFbg && latestFbg.team && player.nflTeam && normalizedTeam(latestFbg.team) !== normalizedTeam(player.nflTeam)) flags.push("TEAM_CONFLICT_FBG");
   if (latestFbg?.negativeWeeks > 0) flags.push("FBG_NEGATIVE_WEEK");
@@ -313,7 +323,7 @@ const auditRows = valuePack.players.map((player) => {
   if (player.vbd <= 0 && market >= 8) flags.push("BENCH_DEMAND_VALUE");
   if (Number.isFinite(vbdDelta) && Math.abs(vbdDelta) > 0.11) flags.push("VBD_FORMULA_MISMATCH");
   if (Math.abs(roomCurveMarket - player.marketValue) >= 3 || Math.abs(runtimeMaxBid - player.maxBid) >= 3) flags.push("LEGACY_CURVE_IDENTITY_REPAIR");
-  const externalVbds = [cbsVbd, fantasyProsVbd].filter(Number.isFinite);
+  const externalVbds = [cbsVbd, fantasyProsVbd, pffVbd].filter(Number.isFinite);
   if (externalVbds.length
     && externalVbds.every((value) => (value > 0) !== (player.vbd > 0))
     && externalVbds.every((value) => Math.abs(value - player.vbd) >= 10)) {
@@ -330,9 +340,10 @@ const auditRows = valuePack.players.map((player) => {
     scheduleProjection: formatNumber(player.projectedPoints),
     scheduleVbdDelta: formatNumber(priorityOverlay[player.id]?.vbdDelta),
     fbg: formatNumber(fbgProjection),
-    latestFbgAug8: formatNumber(latestFbgPoints),
+    legacyFbgWeekly: formatNumber(latestFbgPoints),
     cbs: formatNumber(cbs),
     fantasyPros: formatNumber(fantasyPros),
+    pff: formatNumber(pff),
     sourceMedian: formatNumber(sourceMedian),
     sourceRange: formatNumber(sourceRange),
     candidateModel: formatNumber(modelProjection),
@@ -341,6 +352,7 @@ const auditRows = valuePack.players.map((player) => {
     vbdDelta: formatNumber(vbdDelta),
     cbsVbd: formatNumber(cbsVbd),
     fantasyProsVbd: formatNumber(fantasyProsVbd),
+    pffVbd: formatNumber(pffVbd),
     intrinsic: player.intrinsicValue,
     market,
     maxBid: runtimeMaxBid,
@@ -385,7 +397,7 @@ for (const row of flaggedRows) {
 const countByPosition = (rows) => Object.fromEntries(
   ["QB", "RB", "WR", "TE", "K", "DST"].map((pos) => [pos, rows.filter((row) => row.position === pos).length]),
 );
-const projectionCoverage = auditRows.filter((row) => row.latestFbgAug8 !== "");
+const projectionCoverage = auditRows.filter((row) => row.legacyFbgWeekly !== "");
 const fbgValueCoverage = auditRows.filter((row) => row.fbgValue !== "");
 const fbgNegativeRows = auditRows.filter((row) => Number(row.fbgNegativeWeeks) > 0);
 const severeProjectionRows = auditRows.filter((row) => /PROJECTION_SOURCE_RANGE|PRIMARY_OUTSIDE/.test(row.flags));
@@ -397,6 +409,7 @@ const sourcePositionSummary = ["QB", "RB", "WR", "TE", "K", "DST"].map((pos) => 
   const rows = auditRows.filter((row) => row.position === pos && row.fbg !== "");
   const cbsRows = rows.filter((row) => row.cbs !== "");
   const fantasyProsRows = rows.filter((row) => row.fantasyPros !== "");
+  const pffRows = rows.filter((row) => row.pff !== "");
   return {
     position: pos,
     cbsN: cbsRows.length,
@@ -405,6 +418,9 @@ const sourcePositionSummary = ["QB", "RB", "WR", "TE", "K", "DST"].map((pos) => 
     fantasyProsN: fantasyProsRows.length,
     medianFbgMinusFantasyPros: median(fantasyProsRows.map((row) => Number(row.fbg) - Number(row.fantasyPros))),
     fantasyProsSpearman: spearman(fantasyProsRows, "fbg", "fantasyPros"),
+    pffN: pffRows.length,
+    medianFbgMinusPff: median(pffRows.map((row) => Number(row.fbg) - Number(row.pff))),
+    pffSpearman: spearman(pffRows, "fbg", "pff"),
   };
 });
 
@@ -419,7 +435,8 @@ const markdown = [
   "# Thunder Bowl 2026 valuation and VBD discrepancy audit",
   "",
   `- Pack: \`${pack.packId}\` (${pack.players.length} players; as of ${pack.asOf})`,
-  `- FBG August 8 weekly coverage: ${projectionCoverage.length}/${pack.players.length} (${JSON.stringify(countByPosition(projectionCoverage))})`,
+  `- Current four-source weekly assets as of: ${currentSourceDate}`,
+  `- Legacy FBG weekly cross-check coverage: ${projectionCoverage.length}/${pack.players.length} (${JSON.stringify(countByPosition(projectionCoverage))})`,
   `- FBG auction-value coverage: ${fbgValueCoverage.length}/${pack.players.length} (supplied ranks ${pack.fbgAuctionValues.rankStart}-${pack.fbgAuctionValues.rankEnd})`,
   `- Candidate projection coverage: ${auditRows.filter((row) => row.candidateModel !== "").length}/${pack.players.length}`,
   `- FBG weekly rows with at least one negative projected week: ${fbgNegativeRows.length}/${projectionCoverage.length}`,
@@ -430,7 +447,7 @@ const markdown = [
   "",
   "## Systemic findings",
   "",
-  "1. The live pack's primary projection is the registered Thunder Bowl Consensus: a near-equal accuracy-weighted blend of the dated Footballguys, CBS, and FantasyPros rows available for each player. Missing sources renormalize rather than becoming zero.",
+  "1. The live pack's primary projection is the registered Thunder Bowl Consensus: an availability-aware blend of current Footballguys, CBS, FantasyPros, and PFF weekly assets. Footballguys and CBS retain measured inverse-MAE weights; FantasyPros and PFF use neutral priors until sufficient historical calibration exists. Missing source-weeks renormalize and never become zero.",
   "2. The supplied FBG auction PDF was generated from an incompatible Draft Dominator setup: 18 rounds, three starting WRs, non-PPR scoring, 4-point passing TDs, one-point sacks, and other scoring differences. Its ranks remain a directional opinion; its dollars are not Thunder Bowl dollars.",
   "3. The application market estimate uses validated historical roster counts and position spending. The bid ceiling remains the classic starter-VBD room curve because historical-depth VBD failed held-out decision utility.",
   "4. Runtime price curves are reassigned monotonically within each position by projected points. This repairs legacy identity anomalies (for example, a low-ranked player carrying a higher player's old dollar value) without inventing extra room dollars.",
@@ -447,9 +464,9 @@ const markdown = [
   "",
   "Point totals have systematic level differences, but VBD subtracts a same-position replacement line. Rank agreement is therefore more important than raw-point agreement. Spearman values closer to 1 indicate stronger ordering agreement.",
   "",
-  "| Pos | FBG-CBS matches | Median FBG minus CBS | Rank agreement | FBG-FP matches | Median FBG minus FP | Rank agreement |",
-  "|---|---:|---:|---:|---:|---:|---:|",
-  ...sourcePositionSummary.map((row) => `| ${row.position} | ${row.cbsN} | ${formatNumber(row.medianFbgMinusCbs)} | ${formatNumber(row.cbsSpearman, 3)} | ${row.fantasyProsN} | ${formatNumber(row.medianFbgMinusFantasyPros)} | ${formatNumber(row.fantasyProsSpearman, 3)} |`),
+  "| Pos | FBG-CBS matches | Median FBG minus CBS | Rank agreement | FBG-FP matches | Median FBG minus FP | Rank agreement | FBG-PFF matches | Median FBG minus PFF | Rank agreement |",
+  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+  ...sourcePositionSummary.map((row) => `| ${row.position} | ${row.cbsN} | ${formatNumber(row.medianFbgMinusCbs)} | ${formatNumber(row.cbsSpearman, 3)} | ${row.fantasyProsN} | ${formatNumber(row.medianFbgMinusFantasyPros)} | ${formatNumber(row.fantasyProsSpearman, 3)} | ${row.pffN} | ${formatNumber(row.medianFbgMinusPff)} | ${formatNumber(row.pffSpearman, 3)} |`),
   "",
   "## Flag counts",
   "",
@@ -459,20 +476,20 @@ const markdown = [
   "",
   "## Largest projection disagreements",
   "",
-  "| Player | Pos | Thunder | FBG (Aug 3) | FBG weekly (Aug 8) | CBS | FantasyPros | Source range | Challenger | Flags |",
-  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
-  ...topProjection.map((row) => `| ${row.name} | ${row.position} | ${row.primaryProjection} | ${row.fbg || "-"} | ${row.latestFbgAug8 || "-"} | ${row.cbs || "-"} | ${row.fantasyPros || "-"} | ${row.sourceRange || "-"} | ${row.candidateModel || "-"} | ${row.flags} |`),
+  "| Player | Pos | Thunder | FBG current | Legacy FBG check | CBS current | FantasyPros current | PFF current | Source range | Challenger | Flags |",
+  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+  ...topProjection.map((row) => `| ${row.name} | ${row.position} | ${row.primaryProjection} | ${row.fbg || "-"} | ${row.legacyFbgWeekly || "-"} | ${row.cbs || "-"} | ${row.fantasyPros || "-"} | ${row.pff || "-"} | ${row.sourceRange || "-"} | ${row.candidateModel || "-"} | ${row.flags} |`),
   "",
   "## Replacement-line source disagreements",
   "",
   "These are the source differences most capable of changing VBD rather than merely shifting every player at a position by a similar number of points.",
   "",
-  "| Player | Pos | Thunder VBD | CBS VBD | FantasyPros VBD | Market | Max | Flags |",
-  "|---|---:|---:|---:|---:|---:|---:|---|",
+  "| Player | Pos | Thunder VBD | CBS VBD | FantasyPros VBD | PFF VBD | Market | Max | Flags |",
+  "|---|---:|---:|---:|---:|---:|---:|---:|---|",
   ...[...starterDisagreementRows]
-    .sort((left, right) => Math.max(Math.abs(Number(right.cbsVbd || 0) - Number(right.vbd)), Math.abs(Number(right.fantasyProsVbd || 0) - Number(right.vbd))) - Math.max(Math.abs(Number(left.cbsVbd || 0) - Number(left.vbd)), Math.abs(Number(left.fantasyProsVbd || 0) - Number(left.vbd))))
+    .sort((left, right) => Math.max(...[right.cbsVbd, right.fantasyProsVbd, right.pffVbd].filter((value) => value !== "").map((value) => Math.abs(Number(value) - Number(right.vbd))), 0) - Math.max(...[left.cbsVbd, left.fantasyProsVbd, left.pffVbd].filter((value) => value !== "").map((value) => Math.abs(Number(value) - Number(left.vbd))), 0))
     .slice(0, 30)
-    .map((row) => `| ${row.name} | ${row.position} | ${row.vbd} | ${row.cbsVbd || "-"} | ${row.fantasyProsVbd || "-"} | $${row.market} | $${row.maxBid} | ${row.flags} |`),
+    .map((row) => `| ${row.name} | ${row.position} | ${row.vbd} | ${row.cbsVbd || "-"} | ${row.fantasyProsVbd || "-"} | ${row.pffVbd || "-"} | $${row.market} | $${row.maxBid} | ${row.flags} |`),
   "",
   "## Investigated high-variance cases",
   "",

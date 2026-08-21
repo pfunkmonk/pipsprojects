@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v100";
+const CACHE_VERSION = "thunder-bowl-shell-v101";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -39,7 +39,7 @@ const APP_SHELL = [
   "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260817b",
-  "/thunder-bowl/app.mjs?v=20260817c",
+  "/thunder-bowl/app.mjs?v=20260821a",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260810e",
   "/thunder-bowl/storage.mjs?v=20260805g",
@@ -62,7 +62,7 @@ const APP_SHELL = [
   "/thunder-bowl/roster-safety.mjs?v=20260816a",
   "/thunder-bowl/nomination-assistant.mjs?v=20260810a",
   "/thunder-bowl/position-run.mjs?v=20260810a",
-  "/thunder-bowl/projection-lab.mjs?v=20260809c",
+  "/thunder-bowl/projection-lab.mjs?v=20260821a",
   "/thunder-bowl/human-rehearsal.mjs?v=20260805g",
   "/thunder-bowl/priority-weights.mjs?v=20260810b",
   "/thunder-bowl/league-setup.mjs?v=20260809a",

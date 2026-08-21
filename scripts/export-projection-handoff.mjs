@@ -38,6 +38,7 @@ async function sourceIdsFromIdentityCsv(path) {
       fbgId: cells[indexes.pfr_id] || "",
       cbsId: cells[indexes.cbs_id] || "",
       fantasyProsId: cells[indexes.fantasypros_id] || "",
+      pffId: cells[indexes.pff_id] || "",
       gsisId: cells[indexes.gsis_id] || "",
     };
     if (values.fbgId) ids[`fbg:${values.fbgId}`] = { ...(ids[`fbg:${values.fbgId}`] || {}), ...values };

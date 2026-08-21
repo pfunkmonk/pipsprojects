@@ -1,6 +1,6 @@
 # Thunder Bowl pack refresh audit
 
-- Audited: 2026-08-21T14:46:08.626Z
+- Audited: 2026-08-21T14:45:15.572Z
 - Candidate: `tb26-tb-weekly-source-consensus-20260821-v1-20260821144515` (716 players, 177 keeper rows)
 - Decision: **PASS**
 - Market allocation: $1212 / $1212
@@ -66,3 +66,137 @@
 - Trey Smack (K): projection +26.2, market +$0, max +$0
 - Kirk Cousins (QB): projection +26, market +$0, max +$0
 - Shedeur Sanders (QB): projection -25.8, market +$0, max +$0
+
+## Per-source weekly asset intake
+
+```json
+{
+  "modelId": "tb-weekly-source-consensus-20260821-v1",
+  "sourceAsOf": "2026-08-21T14:45:07.709Z",
+  "exportedAt": "2026-08-21T14:45:15.162Z",
+  "combinedSha256": "e7a2cb6cc7085dc7d7ea2815784df9f92d5ad5ce87c04b793697c8f2fbb4e7e8",
+  "sourceCoverage": {
+    "Footballguys": {
+      "rows": 10710,
+      "players": 595,
+      "usableRows": 10132,
+      "missingRows": 0,
+      "byeRows": 578,
+      "sha256": "f88963b3f609663fe9fb463c3b4596bf87ec49fd7ee6fcfc244a3d4c83c73ce0"
+    },
+    "CBS": {
+      "rows": 4267,
+      "players": 251,
+      "usableRows": 3400,
+      "missingRows": 621,
+      "byeRows": 246,
+      "sha256": "67556ed0b5cef37030c26672528d09c8eafbd1fa075f2be964a99722ccfb741b"
+    },
+    "FantasyPros": {
+      "rows": 8478,
+      "players": 471,
+      "usableRows": 8019,
+      "missingRows": 0,
+      "byeRows": 459,
+      "sha256": "5ed29f787cbbd3a0341b799024db976868018cc938ea7fb9a6ff3c2be812b3b3"
+    },
+    "PFF": {
+      "rows": 1764,
+      "players": 98,
+      "usableRows": 1666,
+      "missingRows": 0,
+      "byeRows": 98,
+      "sha256": "84f667bf63cf303e8724886aa63c24a8dc71a3e6fbc5e7c5d886187733654dd8"
+    }
+  },
+  "players": 716,
+  "playersWithFreshRows": 627,
+  "fallbackPlayers": 89,
+  "changedPlayers": 624,
+  "scoringFingerprint": "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1",
+  "missingRowsTreatedAsZero": 0,
+  "automaticCorrectionDelta": 0,
+  "pffWeightPolicy": "neutral midpoint pending comparable historical archive",
+  "systematicCollapseSignals": {
+    "Footballguys": 1,
+    "CBS": 0,
+    "FantasyPros": 0,
+    "PFF": 0
+  },
+  "sourceDisagreementCount75": 12,
+  "largestSourceDisagreements": [
+    {
+      "playerId": "fbg:MendFe00",
+      "name": "Fernando Mendoza",
+      "position": "QB",
+      "spread": 114.7
+    },
+    {
+      "playerId": "fbg:TagoTu00",
+      "name": "Tua Tagovailoa",
+      "position": "QB",
+      "spread": 104.7
+    },
+    {
+      "playerId": "cbs:3123413",
+      "name": "Bub Means",
+      "position": "WR",
+      "spread": 102.7
+    },
+    {
+      "playerId": "fbg:CousKi00",
+      "name": "Kirk Cousins",
+      "position": "QB",
+      "spread": 101
+    },
+    {
+      "playerId": "fbg:KirkCh00",
+      "name": "Christian Kirk",
+      "position": "WR",
+      "spread": 93.9
+    },
+    {
+      "playerId": "fbg:DillA.00",
+      "name": "AJ Dillon",
+      "position": "RB",
+      "spread": 90.8
+    },
+    {
+      "playerId": "fbg:FranTr00",
+      "name": "Troy Franklin",
+      "position": "WR",
+      "spread": 84.3
+    },
+    {
+      "playerId": "fbg:BensMa00",
+      "name": "Malik Benson",
+      "position": "WR",
+      "spread": 83.5
+    },
+    {
+      "playerId": "fbg:ConnJa00",
+      "name": "James Conner",
+      "position": "RB",
+      "spread": 82.3
+    },
+    {
+      "playerId": "fbg:DikeCh00",
+      "name": "Chimere Dike",
+      "position": "WR",
+      "spread": 79.6
+    },
+    {
+      "playerId": "fbg:WillAn02",
+      "name": "Antonio Williams",
+      "position": "WR",
+      "spread": 78.5
+    },
+    {
+      "playerId": "fbg:RiceRa01",
+      "name": "Rashee Rice",
+      "position": "WR",
+      "spread": 77.2
+    }
+  ]
+}
+```

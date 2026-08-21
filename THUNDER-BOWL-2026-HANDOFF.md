@@ -1,18 +1,18 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 17, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 21, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
 - Production: `https://pipsprojects.com/thunder-bowl/`
 - Branch: `main`
 - Hosting: Netlify; source remote is `origin`
-- Active pack: `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1`
+- Active pack: `tb26-tb-weekly-source-consensus-20260821-v1-20260821144515`
 - Current authority: practice pack; 716 players; 12 teams
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
-- Release-candidate verification: 372/372 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, 36-player/608-rollout-per-player advice Monte Carlo, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit is recorded in `reports/thunder-bowl/release-audit-20260811.md`; the refreshed-pack code/browser/dependency wrap is in `reports/thunder-bowl/release-audit-20260817.md`; the August 16 price/advice evidence is in `reports/thunder-bowl/auction-price-curve-backtest.json` and `auction-advice-monte-carlo.json`.
-- The August 12 projection refresh is active for practice: fresh FBG/CBS/FantasyPros rows were blended through the registered consensus, all 716 weekly profiles were rebased to the new season totals, VBD/intrinsic/Market/Max/keeper surplus were recomputed by Thunder Bowl, and the $1,212 allocation reconciles exactly. The promotion audit found no identity additions/removals, 571 exact strategy changes, and only 10 material movements. The pack remains `practice` until Pip deliberately uses the Admin final-lock control.
+- Release-candidate verification: 375/375 automated tests, 716-player/12-team build, exact-byte pack audit, 168-sale full auction, 36-player/608-rollout-per-player advice Monte Carlo, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass. The complete August 11 signed-in production role audit is recorded in `reports/thunder-bowl/release-audit-20260811.md`; the refreshed-pack code/browser/dependency wrap is in `reports/thunder-bowl/release-audit-20260817.md`; current price/advice evidence is in `reports/thunder-bowl/auction-price-curve-backtest.json` and `auction-advice-monte-carlo.json`.
+- The August 21 projection refresh is active for practice. It league-scores and blends Footballguys, CBS, FantasyPros, and PFF weekly assets at the week level, renormalizes only across sources actually available for that player-week, and never converts CBS `missing` rows to zero. Fresh source evidence covers 627/716 players and 100% of the top 168; the remaining 89 deep players retain the prior validated projection and weekly shape. All 716 season/weekly totals reconcile, VBD/intrinsic/Market/Max/keeper surplus were recomputed by Thunder Bowl, and the $1,212 allocation reconciles exactly. The pack remains `practice` until Pip deliberately uses the Admin final-lock control.
 - The command center now has one collapsed Live Bid HUD: BID/HOLD/PASS, Win chance, next/current bid, hard maximum, comparable supply, cash leverage, budget runway, best alternative, market inflation, and position-run status. Full evidence is one `?` hotkey away; dated evidence is collapsed by default. On the three-column draft desk, player pool, HUD/evidence, and roster/forecast columns share the remaining viewport height; secondary lists scroll inside their own panel, Next nomination stays above the rival forecast list, and the static Safety rails reference lives in Admin & data instead of consuming draft-room height.
 - The nomination assistant ranks DRAIN RIVAL, FLOAT CHALK, and SECURE TARGET presentation plays over the existing WTP model. Surplus heat, season asset lines, per-card intel age, Pro mode, and keyboard-first B/Enter/N/Space/? controls are live. None creates a second value engine or ledger.
 - A red-and-white `!` appears beside a player in the pool and selected-player heading whenever the validated saved Footballguys, RotoWire, or CBS archive contains news for that player. It updates with any feed, points to the full player record, and has no projection, VBD, price, or ledger authority. Footballguys Latest News and its Footballguys View analysis share the protected 30-minute research refresh with FBG depth charts and CBS news, accumulate into the offline 45-day lockbox, and fail closed on page-contract drift.
@@ -51,7 +51,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Historical league price-curve rebuild/backtest: `scripts/build-auction-price-curve.mjs`; governed report is `reports/thunder-bowl/auction-price-curve-backtest.json`
 - Glance-decision and draft-pressure presentation: `decision-context.mjs`, `nomination-assistant.mjs`, `position-run.mjs`
 - Projection governance: `projection-lab.mjs`, `scripts/projection-refresh-core.mjs`
-- Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; raw component files remain outside the web tree
+- Weekly-asset governance: `scripts/weekly-assets-core.mjs`, `scripts/import-weekly-assets.mjs`; the current four-source path is `scripts/source-weekly-assets-core.mjs`, `scripts/import-source-weekly-assets.mjs`; raw component files remain outside the web tree
 - Annual divisions/schedule: `league-setup.mjs`; bounded live schedule weighting: `priority-weights.mjs`
 - Auctioneer: `public/thunder-bowl/auctioneer/`
 - Public board and login gate: `public/thunder-bowl/board/`, `board.html`, `draft-board/`
@@ -66,12 +66,12 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 
 ## Projection and VBD state
 
-- Thunder Bowl Consensus drives projected points: FBG 33.7%, FantasyPros 33.3%, CBS 33.0% when all three are present. Missing sources renormalize; they are never zero-filled.
+- Thunder Bowl Consensus drives projected points. FBG and CBS retain the small measured inverse-MAE tilt from their paired historical audit; FantasyPros and PFF receive the neutral midpoint prior until comparable archives exist. With all four present the weights are approximately FBG 25.3%, FantasyPros 25.0%, PFF 25.0%, and CBS 24.7%. Missing player-weeks renormalize; they are never zero-filled.
 - The production blend beat the single-source reference in strict time-forward tests. The source tilt is deliberately small because the clean paired historical difference was not statistically decisive.
 - The value chain is consensus projection → league scoring → replacement-level VBD → intrinsic dollars → historical roster-depth/position market → live room scarcity and cash → Max bid.
 - Unvalidated season-total weather, travel, venue, rest, durability, mean-reversion, and schedule corrections remain at zero. The failed 31,486 player-week raw-context challengers remain rejected.
 - The live weekly-importance policy is 1.20 division / 1.50 playoffs / zero Week 18. It was calibrated from 48 archived team-seasons and 150,000 Thunder Bowl simulations, then shrunk to 35% timing authority and capped at ±3 replacement-relative VBD because archived weekly forecast timing remains noisy. One adjusted runtime pack drives displayed VBD, Market, Max, keeper surplus, and bid guidance.
-- The August 16 weekly-asset bundle passes a private fail-closed intake: 716 players, 12,888 week rows, complete bye coverage, maximum component reconciliation delta 0.0008, and zero direct changes to signed season projections. Its profiles were automatically rebased to the active consensus so every weekly row still sums to its authoritative season total. Source coverage validation is semantic rather than JSON-key-order dependent: omitted zero-count source keys remain backward compatible, while unsupported keys, negative/non-integer counts, and real count drift fail closed.
+- The August 21 four-source bundle passes a private fail-closed intake: exact schemas and source identities, one row per source/player/week, explicit CBS native/bye/missing status, scoring through Thunder Bowl rules, duplicate-player protection, 716 reconciled season totals, and no direct value fields. Systemic source-collapse detection rejects repeated implausible near-zero outputs; the audit separately lists large source spreads as role uncertainty rather than silently averaging them away.
 
 ## Historical league auction-price curve and glance advice
 
@@ -97,6 +97,15 @@ After a final season projection pack is promoted, rebuild and attach the private
 npm.cmd run import:thunder-weekly-assets -- "C:\Users\mailp\Dropbox\Personal\FAMILY STUFF\Mike Stuff\Fantasy Football\_weekly_assets\output" "tmp\draft-pack-2026-weekly-assets.json"
 npm.cmd run stage:thunder-pack -- "tmp\draft-pack-2026-weekly-assets.json" --promote
 ```
+
+For the current per-source weekly files, use the newer single governed path instead:
+
+```powershell
+npm.cmd run import:thunder-source-assets -- "C:\Users\mailp\Dropbox\Personal\FAMILY STUFF\Mike Stuff\Fantasy Football\_weekly_assets\by_source" "reports\thunder-bowl\candidate-source-assets-20260821.json"
+npm.cmd run stage:thunder-pack -- "reports\thunder-bowl\candidate-source-assets-20260821.json" --promote
+```
+
+This path applies league scoring to raw assets, blends source weeks with availability-aware weights, recomputes all classic values, and emits a full audit before promotion. The upstream builders also fail closed if Footballguys kicker conversion rates or DST sack coverage indicate a column/duplicate-row parsing regression.
 
 The raw CSVs must never enter `public/`. Staging the governed candidate remains a separate explicit `--promote` action. After the final candidate is active, Pip uses the one-click **Promote & lock this final pack** control; the server reruns the release gate, pins the exact active bytes in strong-consistency storage, and only then serves that exact pack with production status.
 

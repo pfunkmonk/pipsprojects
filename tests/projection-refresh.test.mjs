@@ -19,7 +19,7 @@ function completedRows() {
     sourceAsOf: afterCurrent(1),
     exportedAt: afterCurrent(2),
   }).map((row) => {
-    const sourcePoints = [row.fbg_points, row.cbs_points, row.fantasypros_points].filter((value) => value !== "").map(Number);
+    const sourcePoints = [row.fbg_points, row.cbs_points, row.fantasypros_points, row.pff_points].filter((value) => value !== "").map(Number);
     const consensus = Number(row.raw_consensus_points);
     return {
       ...row,
@@ -54,10 +54,10 @@ test("the projection handoff is an exact strict 716-player contract", () => {
 test("a complete candidate recomputes values through the classic champion without changing the player universe", () => {
   const rows = completedRows();
   const first = rows[0];
-  for (const column of ["fbg_points", "cbs_points", "fantasypros_points"]) {
+  for (const column of ["fbg_points", "cbs_points", "fantasypros_points", "pff_points"]) {
     if (first[column] !== "") first[column] = 200;
   }
-  const sourcePoints = [first.fbg_points, first.cbs_points, first.fantasypros_points].filter((value) => value !== "").map(Number);
+  const sourcePoints = [first.fbg_points, first.cbs_points, first.fantasypros_points, first.pff_points].filter((value) => value !== "").map(Number);
   first.raw_consensus_points = 200;
   first.modified_projection_points = first.raw_consensus_points;
   first.uncertainty_low = Math.min(...sourcePoints);
@@ -81,6 +81,7 @@ test("a legitimate zero projection preserves weekly coverage and can later be re
   target.fbg_points = 0;
   target.cbs_points = 0;
   target.fantasypros_points = "";
+  target.pff_points = "";
   target.raw_consensus_points = 0;
   target.modified_projection_points = 0;
   target.uncertainty_low = 0;
@@ -108,7 +109,7 @@ test("a legitimate zero projection preserves weekly coverage and can later be re
     cbs_points: row.pack_player_id === target.pack_player_id ? 17 : row.cbs_points,
     uncertainty_low: row.pack_player_id === target.pack_player_id ? 17 : Math.max(0, Number(row.raw_consensus_points) - 50),
     uncertainty_high: row.pack_player_id === target.pack_player_id ? 17 : Number(row.raw_consensus_points) + 50,
-    fallback_reason: [row.fbg_points, row.cbs_points, row.fantasypros_points].filter((value) => value !== "").length >= 2 ? "" : "Current primary pass-through because fewer than two premium sources were supplied",
+    fallback_reason: [row.fbg_points, row.cbs_points, row.fantasypros_points, row.pff_points].filter((value) => value !== "").length >= 2 ? "" : "Current primary pass-through because fewer than two premium sources were supplied",
   }));
   const rebound = createProjectionCandidatePack(zeroCandidate, reboundRows);
   const reboundPlayer = rebound.players.find((player) => player.id === target.pack_player_id);
