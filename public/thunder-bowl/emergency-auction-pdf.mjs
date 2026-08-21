@@ -13,6 +13,10 @@ import {
 
 export const EMERGENCY_PDF_LIMIT = 200;
 export const EMERGENCY_PDF_ROWS_PER_PAGE = 25;
+export const EMERGENCY_PDF_SORT_ORDERS = Object.freeze({
+  VALUE: "value",
+  ALPHABETICAL: "alphabetical",
+});
 
 const PAGE_WIDTH = 792;
 const PAGE_HEIGHT = 612;
@@ -58,16 +62,38 @@ function placementMap(state) {
   return placements;
 }
 
+function valueOrder(left, right) {
+  return (
+    right.preAuctionValue - left.preAuctionValue
+    || right.vbd - left.vbd
+    || right.projectedPoints - left.projectedPoints
+    || left.name.localeCompare(right.name)
+  );
+}
+
+function alphabeticalOrder(left, right) {
+  return (
+    left.name.localeCompare(right.name)
+    || left.position.localeCompare(right.position)
+    || left.nflTeam.localeCompare(right.nflTeam)
+    || left.rank - right.rank
+  );
+}
+
 export function buildEmergencyAuctionRows({
   pack: packInput,
   priorityScenario = DEFAULT_PRIORITY_SCENARIO,
   weeklyContext = null,
   placementState = null,
   limit = EMERGENCY_PDF_LIMIT,
+  sortOrder = EMERGENCY_PDF_SORT_ORDERS.VALUE,
 } = {}) {
   const pack = validateDraftPack(packInput);
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > EMERGENCY_PDF_LIMIT) {
     throw new Error(`Emergency PDF limit must be an integer from 1-${EMERGENCY_PDF_LIMIT}.`);
+  }
+  if (!Object.values(EMERGENCY_PDF_SORT_ORDERS).includes(sortOrder)) {
+    throw new Error(`Emergency PDF sort order must be ${Object.values(EMERGENCY_PDF_SORT_ORDERS).join(" or ")}.`);
   }
   const overlay = buildPriorityVbdOverlay(pack.players, priorityScenario, weeklyContext || pack.weeklyContext);
   const valuationPack = applyPriorityVbdOverlay(pack, overlay);
@@ -91,18 +117,15 @@ export function buildEmergencyAuctionRows({
       actualPrice: placement?.price ?? null,
       keeper: placement?.keeper === true,
     };
-  }).sort((left, right) => (
-    right.preAuctionValue - left.preAuctionValue
-    || right.vbd - left.vbd
-    || right.projectedPoints - left.projectedPoints
-    || left.name.localeCompare(right.name)
-  )).slice(0, limit).map((row, index) => ({
+  }).sort(valueOrder).slice(0, limit).map((row, index) => ({
     ...row,
     rank: index + 1,
     vbdText: `${row.vbd >= 0 ? "+" : ""}${row.vbd.toFixed(1)}`,
     preAuctionText: `$${Math.round(row.preAuctionValue)}`,
     actualPriceText: row.actualPrice === null ? "" : `${row.keeper ? "K " : ""}$${Math.round(row.actualPrice)}`,
   }));
+
+  if (sortOrder === EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL) rows.sort(alphabeticalOrder);
 
   if (rows.length !== limit || new Set(rows.map((row) => row.playerId)).size !== rows.length) {
     throw new Error(`Emergency PDF expected ${limit} unique players but built ${rows.length}.`);
@@ -129,6 +152,12 @@ function pdfString(value) {
   return `(${ascii(value).replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)")})`;
 }
 
+function fieldName(prefix, playerId) {
+  const safeId = ascii(playerId).replace(/[^A-Za-z0-9_-]/g, "_");
+  if (!safeId) throw new Error("Emergency PDF player ID cannot produce an empty form-field name.");
+  return `${prefix}_${safeId}`;
+}
+
 function text(command, { x, y, size = 9, font = "F1", color = "0.07 0.15 0.25", align = "left", width = 0 }) {
   const averageCharacterWidth = size * 0.52;
   const estimatedWidth = ascii(command).length * averageCharacterWidth;
@@ -144,13 +173,15 @@ function rect({ x, y, width, height, fill = null, stroke = null, lineWidth = 0.5
   return commands.join(" ");
 }
 
-function pageContent({ rows, pageNumber, pageCount, season, packId, generatedAt }) {
+function pageContent({ rows, pageNumber, pageCount, season, packId, generatedAt, sortOrder }) {
   const commands = [];
   commands.push(rect({ x: MARGIN, y: 552, width: PAGE_WIDTH - MARGIN * 2, height: 36, fill: "0.035 0.165 0.300" }));
   commands.push(rect({ x: MARGIN, y: 548, width: PAGE_WIDTH - MARGIN * 2, height: 4, fill: "0.965 0.735 0.220" }));
-  commands.push(text(`Thunder Bowl ${season} - Emergency Auction Sheet`, { x: MARGIN + 8, y: 568, size: 16, font: "F2", color: "1 1 1" }));
-  commands.push(text("Pre-auction values stay frozen. Existing placements are prefilled; K = keeper.", { x: MARGIN + 8, y: 555.5, size: 7.5, color: "0.86 0.91 0.96" }));
-  commands.push(text(`Top ${EMERGENCY_PDF_LIMIT} by blank-room pre-auction value`, { x: MARGIN, y: 533, size: 8.5, font: "F2" }));
+  commands.push(text(`Thunder Bowl ${season} - Emergency Auction Sheet${sortOrder === EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL ? " - A-Z" : ""}`, { x: MARGIN + 8, y: 568, size: 16, font: "F2", color: "1 1 1" }));
+  commands.push(text("Team and Actual $ cells are fillable. Pre-auction values stay frozen; K = keeper.", { x: MARGIN + 8, y: 555.5, size: 7.5, color: "0.86 0.91 0.96" }));
+  commands.push(text(sortOrder === EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL
+    ? `Same Top ${EMERGENCY_PDF_LIMIT}, alphabetized by player name (# retains value rank)`
+    : `Top ${EMERGENCY_PDF_LIMIT} by blank-room pre-auction value`, { x: MARGIN, y: 533, size: 8.5, font: "F2" }));
   commands.push(text(`Generated ${ascii(generatedAt).replace("T", " ").replace("Z", " UTC")}`, { x: 470, y: 533, size: 7.5 }));
 
   let x = MARGIN;
@@ -182,6 +213,60 @@ function pageContent({ rows, pageNumber, pageCount, season, packId, generatedAt 
   return commands.join("\n");
 }
 
+function fieldAppearance({ value, width, height, align = "left" }) {
+  const display = clipped(value, align === "center" ? 7 : 38);
+  const size = 8.5;
+  const estimatedWidth = ascii(display).length * size * 0.52;
+  const x = align === "center" ? Math.max(3, (width - estimatedWidth) / 2) : 3;
+  const stream = [
+    "q",
+    "0.985 0.99 1 rg 0.25 0.46 0.66 RG 0.7 w",
+    `0.35 0.35 ${(width - 0.7).toFixed(2)} ${(height - 0.7).toFixed(2)} re B`,
+    `BT /Helv ${size} Tf 0.07 0.15 0.25 rg 1 0 0 1 ${x.toFixed(2)} ${((height - size) / 2 + 1).toFixed(2)} Tm ${pdfString(display)} Tj ET`,
+    "Q",
+  ].join("\n");
+  return `<< /Type /XObject /Subtype /Form /BBox [0 0 ${width.toFixed(2)} ${height.toFixed(2)}] /Resources << /Font << /Helv 3 0 R >> >> /Length ${new TextEncoder().encode(stream).length} >>\nstream\n${stream}\nendstream`;
+}
+
+function formFieldObject({ name, tooltip, value, rect: box, pageId, appearanceId, maxLength, align }) {
+  return [
+    "<< /Type /Annot /Subtype /Widget /FT /Tx",
+    `/T ${pdfString(name)} /TU ${pdfString(tooltip)}`,
+    `/Rect [${box.map((valuePart) => valuePart.toFixed(2)).join(" ")}] /P ${pageId} 0 R`,
+    `/F 4 /Ff 0 /MaxLen ${maxLength} /Q ${align === "center" ? 1 : 0}`,
+    `/V ${pdfString(value)} /DV ${pdfString(value)}`,
+    "/DA (/Helv 8.5 Tf 0.07 0.15 0.25 rg)",
+    "/MK << /BG [0.985 0.99 1] /BC [0.25 0.46 0.66] >> /BS << /W 0.7 /S /S >>",
+    `/AP << /N ${appearanceId} 0 R >> >>`,
+  ].join(" ");
+}
+
+function rowFormFields(row, rowIndex) {
+  const y = 516 - 18 - (rowIndex + 1) * 18;
+  return [
+    {
+      name: fieldName("drafted_by", row.playerId),
+      tooltip: `${row.name} - winning fantasy team`,
+      value: row.draftedBy,
+      rect: [408, y + 2, 690, y + 16],
+      width: 282,
+      height: 14,
+      maxLength: 40,
+      align: "left",
+    },
+    {
+      name: fieldName("actual_price", row.playerId),
+      tooltip: `${row.name} - actual auction price`,
+      value: row.actualPrice === null ? "" : String(row.actualPrice),
+      rect: [694, y + 2, 766, y + 16],
+      width: 72,
+      height: 14,
+      maxLength: 4,
+      align: "center",
+    },
+  ];
+}
+
 function encodePdf(objects, infoId) {
   const encoder = new TextEncoder();
   const chunks = ["%PDF-1.4\n"];
@@ -210,8 +295,9 @@ export function createEmergencyAuctionPdf({
   weeklyContext = null,
   placementState = null,
   generatedAt = new Date().toISOString(),
+  sortOrder = EMERGENCY_PDF_SORT_ORDERS.VALUE,
 } = {}) {
-  const rows = buildEmergencyAuctionRows({ pack, priorityScenario, weeklyContext, placementState });
+  const rows = buildEmergencyAuctionRows({ pack, priorityScenario, weeklyContext, placementState, sortOrder });
   const pages = [];
   for (let index = 0; index < rows.length; index += EMERGENCY_PDF_ROWS_PER_PAGE) {
     pages.push(rows.slice(index, index + EMERGENCY_PDF_ROWS_PER_PAGE));
@@ -219,6 +305,7 @@ export function createEmergencyAuctionPdf({
 
   const objects = [null, null, null, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"];
   const pageIds = [];
+  const fieldIds = [];
   for (let index = 0; index < pages.length; index += 1) {
     const pageId = objects.length;
     const contentId = pageId + 1;
@@ -230,13 +317,26 @@ export function createEmergencyAuctionPdf({
       season: pack.season,
       packId: pack.packId,
       generatedAt,
+      sortOrder,
     });
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`);
+    objects.push(null);
     objects.push(`<< /Length ${new TextEncoder().encode(content).length} >>\nstream\n${content}\nendstream`);
+    const pageFieldIds = [];
+    pages[index].forEach((row, rowIndex) => {
+      rowFormFields(row, rowIndex).forEach((field) => {
+        const widgetId = objects.length;
+        const appearanceId = widgetId + 1;
+        pageFieldIds.push(widgetId);
+        fieldIds.push(widgetId);
+        objects.push(formFieldObject({ ...field, pageId, appearanceId }));
+        objects.push(fieldAppearance(field));
+      });
+    });
+    objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R /Annots [${pageFieldIds.map((id) => `${id} 0 R`).join(" ")}] >>`;
   }
   const infoId = objects.length;
   objects.push(`<< /Title ${pdfString(`Thunder Bowl ${pack.season} Emergency Auction Sheet`)} /Creator ${pdfString("Thunder Bowl Command Center")} /CreationDate ${pdfString(`D:${generatedAt.replace(/[-:TZ.]/g, "").slice(0, 14)}Z`)} >>`);
-  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[1] = `<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [${fieldIds.map((id) => `${id} 0 R`).join(" ")}] /NeedAppearances true /DA (/Helv 8.5 Tf 0.07 0.15 0.25 rg) /DR << /Font << /Helv 3 0 R >> >> >> >>`;
   objects[2] = `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`;
   return { bytes: encodePdf(objects, infoId), rows, pageCount: pages.length };
 }

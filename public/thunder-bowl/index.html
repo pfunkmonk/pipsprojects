@@ -629,11 +629,12 @@
           <section class="product-panel settings-card" aria-labelledby="emergency-pdf-title">
             <p class="eyebrow">Printable paper fallback</p>
             <h3 id="emergency-pdf-title">Top-200 emergency auction sheet</h3>
-            <p>Download a landscape PDF with the top 200 players, VBD, a frozen pre-auction dollar value, and wide columns for Drafted by and Actual price. Existing keepers or sales are prefilled; the values always come from a clean pre-auction room.</p>
+            <p>Download a landscape, fillable PDF with the top 200 players, VBD, a frozen pre-auction dollar value, and editable fields for Drafted by and Actual price. Choose value order or the same 200 players alphabetized by name. Existing keepers or sales are prefilled; the values always come from a clean pre-auction room.</p>
             <div class="button-stack">
-              <button id="export-emergency-auction-pdf" class="button button-primary" type="button">Download emergency PDF</button>
+              <button id="export-emergency-auction-pdf" class="button button-primary" type="button">Download by value</button>
+              <button id="export-emergency-auction-pdf-alphabetical" class="button button-secondary" type="button">Download alphabetical</button>
             </div>
-            <p id="emergency-pdf-status" class="form-status" role="status" aria-live="polite">Eight large-print landscape pages. This read-only backup cannot change the ledger, projections, or values.</p>
+            <p id="emergency-pdf-status" class="form-status" role="status" aria-live="polite">Each version has eight large-print landscape pages and 400 editable fields. Typing in the PDF never changes the app ledger, projections, or values.</p>
           </section>
 
           <section class="product-panel settings-card personal-board-card" aria-labelledby="personal-board-title">
@@ -983,6 +984,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260821b"></script>
+  <script type="module" src="./app.mjs?v=20260821c"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   EMERGENCY_PDF_LIMIT,
   EMERGENCY_PDF_ROWS_PER_PAGE,
+  EMERGENCY_PDF_SORT_ORDERS,
   buildEmergencyAuctionRows,
   createEmergencyAuctionPdf,
 } from "../public/thunder-bowl/emergency-auction-pdf.mjs";
@@ -61,13 +62,34 @@ test("existing keepers and sales prefill writing columns without changing the pr
   assert.equal(placed[0].actualPriceText, "K $4");
 });
 
-test("emergency PDF is an offline-safe eight-page landscape document with no private strategy fields", () => {
+test("alphabetical sheet contains the identical value-selected Top 200 and retains value ranks", () => {
+  const valueRows = buildEmergencyAuctionRows({ pack });
+  const alphabeticalRows = buildEmergencyAuctionRows({
+    pack,
+    sortOrder: EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL,
+  });
+  assert.deepEqual(
+    new Set(alphabeticalRows.map((row) => row.playerId)),
+    new Set(valueRows.map((row) => row.playerId)),
+  );
+  assert.deepEqual(
+    alphabeticalRows.map((row) => row.name),
+    alphabeticalRows.map((row) => row.name).toSorted((left, right) => left.localeCompare(right)),
+  );
+  const valueRanks = new Map(valueRows.map((row) => [row.playerId, row.rank]));
+  alphabeticalRows.forEach((row) => assert.equal(row.rank, valueRanks.get(row.playerId)));
+});
+
+test("emergency PDF is an offline-safe eight-page fillable landscape document with no private strategy fields", () => {
   const result = createEmergencyAuctionPdf({ pack, generatedAt: "2026-08-21T15:00:00.000Z" });
   const source = new TextDecoder().decode(result.bytes);
   assert.equal(result.pageCount, Math.ceil(EMERGENCY_PDF_LIMIT / EMERGENCY_PDF_ROWS_PER_PAGE));
   assert.match(source, /^%PDF-1\.4/);
   assert.match(source, /\/MediaBox \[0 0 792 612\]/);
   assert.match(source, /\/Count 8/);
+  assert.match(source, /\/AcroForm/);
+  assert.equal(source.match(/\/Subtype \/Widget/g)?.length, EMERGENCY_PDF_LIMIT * 2);
+  assert.equal(source.match(/\/AP << \/N/g)?.length, EMERGENCY_PDF_LIMIT * 2);
   assert.match(source, /Emergency Auction Sheet/);
   assert.match(source, /DRAFTED BY/);
   assert.match(source, /ACTUAL \$/);
@@ -77,8 +99,9 @@ test("emergency PDF is an offline-safe eight-page landscape document with no pri
 
 test("Admin exposes and offline-caches the emergency PDF exporter", () => {
   assert.match(indexHtml, /id="export-emergency-auction-pdf"/);
+  assert.match(indexHtml, /id="export-emergency-auction-pdf-alphabetical"/);
+  assert.match(indexHtml, /400 editable fields/);
   assert.match(indexHtml, /Top-200 emergency auction sheet/);
   assert.match(appSource, /createEmergencyAuctionPdf\(\{/);
-  assert.match(serviceWorker, /emergency-auction-pdf\.mjs\?v=20260821a/);
+  assert.match(serviceWorker, /emergency-auction-pdf\.mjs\?v=20260821b/);
 });
-

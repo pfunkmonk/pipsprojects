@@ -77,7 +77,10 @@ import {
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260817a";
-import { createEmergencyAuctionPdf } from "./emergency-auction-pdf.mjs?v=20260821a";
+import {
+  EMERGENCY_PDF_SORT_ORDERS,
+  createEmergencyAuctionPdf,
+} from "./emergency-auction-pdf.mjs?v=20260821b";
 import {
   buildBidRecommendation,
   buildAuctionValueAdvice,
@@ -4895,7 +4898,7 @@ function downloadBytes(filename, value, type = "application/octet-stream") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function exportEmergencyAuctionPdf() {
+function exportEmergencyAuctionPdf(sortOrder = EMERGENCY_PDF_SORT_ORDERS.VALUE) {
   const status = byId("emergency-pdf-status");
   try {
     const generatedAt = new Date().toISOString();
@@ -4905,15 +4908,17 @@ function exportEmergencyAuctionPdf() {
       weeklyContext: currentWeeklyContext(),
       placementState: draftState,
       generatedAt,
+      sortOrder,
     });
     const mode = REPLAY_2025 ? "-replay" : PRACTICE_AUCTION ? "-practice" : "";
+    const orderLabel = sortOrder === EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL ? "alphabetical" : "by-value";
     downloadBytes(
-      `thunder-bowl-${ROOM_SEASON}${mode}-emergency-top-200-${generatedAt.slice(0, 10)}.pdf`,
+      `thunder-bowl-${ROOM_SEASON}${mode}-emergency-top-200-${orderLabel}-${generatedAt.slice(0, 10)}.pdf`,
       pdf.bytes,
       "application/pdf",
     );
     const filled = pdf.rows.filter((row) => row.draftedBy).length;
-    setStatus(status, `Downloaded ${pdf.rows.length} frozen pre-auction values across ${pdf.pageCount} readable pages${filled ? `; ${filled} existing placement${filled === 1 ? " was" : "s were"} prefilled` : ""}.`);
+    setStatus(status, `Downloaded the ${orderLabel === "alphabetical" ? "alphabetical" : "value-ranked"} fillable sheet: ${pdf.rows.length} frozen pre-auction values across ${pdf.pageCount} readable pages${filled ? `; ${filled} existing placement${filled === 1 ? " was" : "s were"} prefilled` : ""}.`);
   } catch (error) {
     setStatus(status, `Emergency PDF failed safely: ${errorMessage(error)}`, true);
   }
@@ -5483,7 +5488,8 @@ function bindInteractions() {
   byId("open-emergency-board").addEventListener("click", openEmergencyBoard);
   byId("export-keeper-board").addEventListener("click", exportKeeperBoard);
   byId("export-cbs-auction-import").addEventListener("click", exportCbsAuctionImport);
-  byId("export-emergency-auction-pdf").addEventListener("click", exportEmergencyAuctionPdf);
+  byId("export-emergency-auction-pdf").addEventListener("click", () => exportEmergencyAuctionPdf(EMERGENCY_PDF_SORT_ORDERS.VALUE));
+  byId("export-emergency-auction-pdf-alphabetical").addEventListener("click", () => exportEmergencyAuctionPdf(EMERGENCY_PDF_SORT_ORDERS.ALPHABETICAL));
   byId("export-draft-history").addEventListener("click", exportDraftHistory);
   byId("export-personal-board").addEventListener("click", () => void exportPersonalBoard());
   byId("export-personal-board-csv").addEventListener("click", exportPersonalBoardCsv);
