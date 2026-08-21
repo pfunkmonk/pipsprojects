@@ -23,6 +23,7 @@
     "import:thunder-weekly-assets": "node scripts/import-weekly-assets.mjs",
     "import:thunder-source-assets": "node scripts/import-source-weekly-assets.mjs",
     "export:thunder-projection-handoff": "node scripts/export-projection-handoff.mjs",
+    "export:thunder-emergency-pdf": "node scripts/build-emergency-auction-pdf.mjs",
     "refresh:thunder-projections": "node scripts/run-projection-refresh.mjs",
     "refresh:thunder-managers": "python scripts/build-manager-history.py",
     "rehearsal:thunder-advice": "node scripts/run-auction-advice-monte-carlo.mjs",

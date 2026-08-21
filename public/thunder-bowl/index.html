@@ -626,6 +626,16 @@
             <p id="recovery-status" class="form-status" role="status" aria-live="polite"></p>
           </section>
 
+          <section class="product-panel settings-card" aria-labelledby="emergency-pdf-title">
+            <p class="eyebrow">Printable paper fallback</p>
+            <h3 id="emergency-pdf-title">Top-200 emergency auction sheet</h3>
+            <p>Download a landscape PDF with the top 200 players, VBD, a frozen pre-auction dollar value, and wide columns for Drafted by and Actual price. Existing keepers or sales are prefilled; the values always come from a clean pre-auction room.</p>
+            <div class="button-stack">
+              <button id="export-emergency-auction-pdf" class="button button-primary" type="button">Download emergency PDF</button>
+            </div>
+            <p id="emergency-pdf-status" class="form-status" role="status" aria-live="polite">Eight large-print landscape pages. This read-only backup cannot change the ledger, projections, or values.</p>
+          </section>
+
           <section class="product-panel settings-card personal-board-card" aria-labelledby="personal-board-title">
             <p class="eyebrow">Private device-to-device board</p>
             <h3 id="personal-board-title">Targets, Avoids, prices, and notes</h3>
@@ -973,6 +983,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260821a"></script>
+  <script type="module" src="./app.mjs?v=20260821b"></script>
 </body>
 </html>

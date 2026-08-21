@@ -77,6 +77,7 @@ import {
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260817a";
+import { createEmergencyAuctionPdf } from "./emergency-auction-pdf.mjs?v=20260821a";
 import {
   buildBidRecommendation,
   buildAuctionValueAdvice,
@@ -4882,6 +4883,42 @@ function downloadText(filename, value, type = "text/plain;charset=utf-8") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function downloadBytes(filename, value, type = "application/octet-stream") {
+  const blob = new Blob([value], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportEmergencyAuctionPdf() {
+  const status = byId("emergency-pdf-status");
+  try {
+    const generatedAt = new Date().toISOString();
+    const pdf = createEmergencyAuctionPdf({
+      pack: draftPack,
+      priorityScenario,
+      weeklyContext: currentWeeklyContext(),
+      placementState: draftState,
+      generatedAt,
+    });
+    const mode = REPLAY_2025 ? "-replay" : PRACTICE_AUCTION ? "-practice" : "";
+    downloadBytes(
+      `thunder-bowl-${ROOM_SEASON}${mode}-emergency-top-200-${generatedAt.slice(0, 10)}.pdf`,
+      pdf.bytes,
+      "application/pdf",
+    );
+    const filled = pdf.rows.filter((row) => row.draftedBy).length;
+    setStatus(status, `Downloaded ${pdf.rows.length} frozen pre-auction values across ${pdf.pageCount} readable pages${filled ? `; ${filled} existing placement${filled === 1 ? " was" : "s were"} prefilled` : ""}.`);
+  } catch (error) {
+    setStatus(status, `Emergency PDF failed safely: ${errorMessage(error)}`, true);
+  }
+}
+
 function exportKeeperBoard() {
   try {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -5446,6 +5483,7 @@ function bindInteractions() {
   byId("open-emergency-board").addEventListener("click", openEmergencyBoard);
   byId("export-keeper-board").addEventListener("click", exportKeeperBoard);
   byId("export-cbs-auction-import").addEventListener("click", exportCbsAuctionImport);
+  byId("export-emergency-auction-pdf").addEventListener("click", exportEmergencyAuctionPdf);
   byId("export-draft-history").addEventListener("click", exportDraftHistory);
   byId("export-personal-board").addEventListener("click", () => void exportPersonalBoard());
   byId("export-personal-board-csv").addEventListener("click", exportPersonalBoardCsv);
