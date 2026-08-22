@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v103";
+const CACHE_VERSION = "thunder-bowl-shell-v104";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -38,8 +38,8 @@ const APP_SHELL = [
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
-  "/thunder-bowl/app.css?v=20260817b",
-  "/thunder-bowl/app.mjs?v=20260821c",
+  "/thunder-bowl/app.css?v=20260822a",
+  "/thunder-bowl/app.mjs?v=20260822a",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260810e",
   "/thunder-bowl/storage.mjs?v=20260805g",
@@ -58,6 +58,7 @@ const APP_SHELL = [
   "/thunder-bowl/fbg-configuration.mjs?v=20260808a",
   "/thunder-bowl/draft-history.mjs?v=20260808g",
   "/thunder-bowl/cbs-auction-export.mjs?v=20260817a",
+  "/thunder-bowl/keeper-sandbox-promotion.mjs?v=20260822a",
   "/thunder-bowl/emergency-auction-pdf.mjs?v=20260821b",
   "/thunder-bowl/decision-context.mjs?v=20260816a",
   "/thunder-bowl/roster-safety.mjs?v=20260816a",

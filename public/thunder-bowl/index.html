@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260817b" />
+  <link rel="stylesheet" href="./app.css?v=20260822a" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -358,13 +358,15 @@
           <div class="keeper-workspace-copy">
             <p class="eyebrow">Prediction workspace</p>
             <h3 id="keeper-workspace-title">Forecast keepers before they are official</h3>
-            <p id="keeper-workspace-description">Private sandbox changes stay on this laptop and never reach the public board.</p>
+            <p id="keeper-workspace-description">Private sandbox changes stay on this laptop until you explicitly review and sync them.</p>
           </div>
           <div class="keeper-mode-switch" role="group" aria-label="Keeper workspace mode">
             <button id="keeper-mode-sandbox" class="button button-primary" type="button" aria-pressed="true">Prediction sandbox</button>
             <button id="keeper-mode-official" class="button button-secondary" type="button" aria-pressed="false">Official ledger</button>
           </div>
           <div class="keeper-workspace-actions">
+            <button id="keeper-load-current-cloud" class="button button-danger" type="button" hidden>Load current cloud ledger</button>
+            <button id="keeper-sandbox-publish" class="button button-primary" type="button">Review &amp; sync sandbox</button>
             <button id="keeper-sandbox-copy-official" class="button button-secondary" type="button">Start from official ledger</button>
             <button id="keeper-sandbox-reset" class="button button-secondary" type="button">Reset prediction sandbox</button>
           </div>
@@ -390,7 +392,7 @@
             <div><p id="keeper-operations-eyebrow" class="eyebrow">Private prediction ledger</p><h3 id="keeper-operations-title">Test keeper declarations and rights trades</h3></div>
             <span id="keeper-recorded-count" class="count-label">0 keepers recorded</span>
           </header>
-          <p class="panel-note">A keeper-rights trade records every player move and any cap-dollar payment as one atomic action. Prediction-sandbox actions stay private on this laptop; only actions deliberately entered in Official ledger mode can sync to the public board.</p>
+          <p class="panel-note">A keeper-rights trade records every player move and any cap-dollar payment as one atomic action. Prediction-sandbox actions stay private on this laptop unless you deliberately approve the complete Review &amp; sync sandbox preview; direct Official ledger actions continue to sync normally.</p>
           <div class="keeper-operations-grid">
             <form id="keeper-assignment-form" class="keeper-operation-form">
               <div><p class="eyebrow">Keeper declaration</p><h4>Assign a keeper</h4></div>
@@ -851,6 +853,20 @@
       </form>
     </dialog>
 
+    <dialog id="keeper-sandbox-publish-dialog" class="confirm-dialog" aria-labelledby="keeper-sandbox-publish-title">
+      <form method="dialog">
+        <p class="eyebrow">Protected keeper publication</p>
+        <h2 id="keeper-sandbox-publish-title">Sync this prediction to the official ledger?</h2>
+        <p id="keeper-sandbox-publish-summary">Review the pending keeper setup actions.</p>
+        <ol id="keeper-sandbox-publish-list" class="keeper-publish-review"></ol>
+        <p id="keeper-sandbox-publish-status" class="form-status" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button id="cancel-keeper-sandbox-publish" class="button button-secondary" type="button">Keep private</button>
+          <button id="confirm-keeper-sandbox-publish" class="button button-primary" type="button">Publish reviewed actions</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="emergency-board-dialog" class="emergency-board-dialog" aria-labelledby="emergency-board-title">
       <header>
         <div><p class="eyebrow">Local catastrophe fallback</p><h2 id="emergency-board-title">Printable roster &amp; budget board</h2></div>
@@ -984,6 +1000,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260821c"></script>
+  <script type="module" src="./app.mjs?v=20260822a"></script>
 </body>
 </html>

@@ -513,7 +513,7 @@ test("keeper declarations and cap trades use the offline-first audited ledger", 
   assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[pass\]/);
   assert.match(appSource, /commitKeeperWorkspaceEvents\(\s*\[transfer\]/);
   assert.match(appSource, /lastUndoableEvent\(keeperWorkspaceEventList\(\), KEEPER_SETUP_EVENT_TYPES\)/);
-  assert.match(indexHtml, /Prediction-sandbox actions stay private on this laptop; only actions deliberately entered in Official ledger mode can sync to the public board/);
+  assert.match(indexHtml, /Prediction-sandbox actions stay private on this laptop unless you deliberately approve the complete Review &amp; sync sandbox preview/);
   assert.match(indexHtml, /Official 1–12 \/ 1–12 order/);
   assert.match(indexHtml, /Cap dollars Team A pays Team B/);
   assert.match(indexHtml, /min="0" max="200"/);
@@ -552,8 +552,13 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
   for (const id of [
     "keeper-mode-sandbox",
     "keeper-mode-official",
+    "keeper-load-current-cloud",
+    "keeper-sandbox-publish",
     "keeper-sandbox-copy-official",
     "keeper-sandbox-reset",
+    "keeper-sandbox-publish-dialog",
+    "keeper-sandbox-publish-list",
+    "confirm-keeper-sandbox-publish",
     "keeper-scenario-impact",
     "keeper-fbg-coverage",
   ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
@@ -561,6 +566,10 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
   assert.match(appSource, /keeperWorkspaceMode === "sandbox"/);
   assert.match(appSource, /keeperPredictionSandboxEvents/);
   assert.match(appSource, /Private prediction only; public board unchanged/);
+  assert.match(appSource, /buildKeeperSandboxPromotion\(\{ officialEvents: events, sandboxEvents: keeperSandboxEvents \}\)/);
+  assert.match(appSource, /replayDraft\(\[\.\.\.events, \.\.\.refreshedPlan\.pendingEvents\]\)/);
+  assert.match(appSource, /await commitLocalEvents\(\s*refreshedPlan\.pendingEvents/);
+  assert.match(appSource, /your local keeper sandbox will be preserved/i);
   assert.match(appSource, /row\.addEventListener\("dblclick"/);
   assert.match(appSource, /FBG comparison loaded/);
   assert.match(indexHtml, /Estimated price if this player were available in the current auction pool/);
@@ -568,6 +577,7 @@ test("keeper prediction sandbox recalculates scarcity without leaking into the o
   assert.match(serviceWorker, /keeper-scenario\.mjs\?v=/);
   assert.match(serviceWorker, /auction-demand\.mjs\?v=/);
   assert.match(serviceWorker, /fbg-configuration\.mjs\?v=/);
+  assert.match(serviceWorker, /keeper-sandbox-promotion\.mjs\?v=/);
   assert.match(appSource, /marketValue: demandValue \?\? player\.marketValue/);
   assert.match(appSource, /maxBid: liveMarket\.bidCeilingsByPlayerId\[player\.id\] \?\? player\.maxBid/);
   assert.match(fbgConfigurationSource, /status: "incompatible_with_thunder_bowl"/);

@@ -77,6 +77,7 @@ import {
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
 import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260817a";
+import { buildKeeperSandboxPromotion } from "./keeper-sandbox-promotion.mjs?v=20260822a";
 import {
   EMERGENCY_PDF_SORT_ORDERS,
   createEmergencyAuctionPdf,
@@ -215,6 +216,7 @@ let selectedKeeperMarketTeamId = "dogs-of-war";
 let keeperWorkspaceMode = "sandbox";
 let keeperSandboxEvents = [];
 let keeperSandboxState = replayDraft([]);
+let keeperPromotionPlan = null;
 let keeperScenario = null;
 let teamASendsPlayerIds = new Set();
 let teamBSendsPlayerIds = new Set();
@@ -2729,8 +2731,16 @@ function renderKeeperWorkspace() {
   byId("keeper-mode-official").className = `button ${sandbox ? "button-secondary" : "button-primary"}`;
   byId("keeper-sandbox-copy-official").disabled = !sandbox;
   byId("keeper-sandbox-reset").disabled = !sandbox || keeperSandboxEvents.length === 0;
+  const officialIds = new Set(events.map((event) => event.id));
+  const pendingSandboxCount = keeperSandboxEvents.filter((event) => !officialIds.has(event.id)).length;
+  const publishButton = byId("keeper-sandbox-publish");
+  publishButton.disabled = !sandbox || pendingSandboxCount === 0;
+  publishButton.textContent = pendingSandboxCount
+    ? `Review & sync ${pendingSandboxCount} action${pendingSandboxCount === 1 ? "" : "s"}`
+    : "Sandbox matches official";
+  byId("keeper-load-current-cloud").hidden = LOCAL_ONLY || !ledgerStale;
   byId("keeper-workspace-description").textContent = sandbox
-    ? "Private sandbox changes stay on this laptop and never reach the public board. Every keeper or trade recalculates forecast auction values."
+    ? "Private sandbox changes stay on this laptop until you explicitly review and sync them. Every keeper or trade recalculates forecast auction values."
     : "Official ledger actions sync to the auctioneer and public board. Use this mode only for confirmed keeper decisions and trades.";
   byId("keeper-operations-eyebrow").textContent = sandbox ? "Private prediction ledger" : "Official synced setup ledger";
   byId("keeper-operations-title").textContent = sandbox
@@ -3899,7 +3909,7 @@ async function commitLocalEvents(newEvents, message, statusElement = saleStatus)
   if (ledgerStale) {
     throw new RuleViolation(
       "LEDGER_GENERATION_MISMATCH",
-      "This tab belongs to an archived rehearsal. Use Load current cloud rehearsal in Data & Setup before recording another draft action.",
+      "This tab belongs to an archived rehearsal. Use Load current cloud ledger on the Keeper strategy page or Load current cloud rehearsal in Admin & data before recording another draft action.",
     );
   }
   const previous = events;
@@ -3969,6 +3979,98 @@ async function copyOfficialKeeperSetupToSandbox() {
   await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
   renderAll();
   setStatus(keeperOperationStatus, `Prediction sandbox now starts from ${keeperSandboxEvents.length} active official setup action${keeperSandboxEvents.length === 1 ? "" : "s"}. Public board was not changed.`);
+}
+
+function keeperPromotionActionText(event) {
+  if (event.type === EVENT_TYPES.KEEPER_ASSIGNED) {
+    return `${teamName(event.payload.teamId)} keeps ${event.payload.playerName} for ${currency(event.payload.salary)} (${keeperContractTenure(event.payload.keeperYear).yearLabel})`;
+  }
+  if (event.type === EVENT_TYPES.KEEPER_PASSED) {
+    return `${teamName(event.payload.teamId)} passes its Round ${event.payload.round} keeper turn`;
+  }
+  if (event.type === EVENT_TYPES.KEEPER_RIGHTS_TRADED) {
+    const teamA = teamName(event.payload.teamAId);
+    const teamB = teamName(event.payload.teamBId);
+    const teamASends = event.payload.teamASends.map((player) => player.playerName).join(" + ") || "no players";
+    const teamBSends = event.payload.teamBSends.map((player) => player.playerName).join(" + ") || "no players";
+    const cash = event.payload.amountFromAToB ? ` + ${currency(event.payload.amountFromAToB)}` : "";
+    return `${teamA} sends ${teamASends}${cash}; ${teamB} sends ${teamBSends}`;
+  }
+  return `${teamName(event.payload.fromTeamId)} pays ${teamName(event.payload.toTeamId)} ${currency(event.payload.amount)} - ${event.payload.reason}`;
+}
+
+function closeKeeperPromotionDialog() {
+  keeperPromotionPlan = null;
+  byId("keeper-sandbox-publish-dialog").close();
+  setStatus(byId("keeper-sandbox-publish-status"), "");
+}
+
+function openKeeperPromotionDialog() {
+  try {
+    if (LOCAL_ONLY) throw new RuleViolation("LOCAL_ONLY", "Practice and replay sandboxes cannot publish to the live official ledger.");
+    if (ledgerStale) throw new RuleViolation("LEDGER_GENERATION_MISMATCH", "This tab is attached to an archived rehearsal. Select Load current cloud ledger here first; your local keeper sandbox will be preserved.");
+    keeperPromotionPlan = buildKeeperSandboxPromotion({ officialEvents: events, sandboxEvents: keeperSandboxEvents });
+    if (!keeperPromotionPlan.pendingEvents.length) {
+      setStatus(keeperOperationStatus, "The prediction sandbox already matches the official keeper ledger.");
+      return;
+    }
+    replayDraft([...events, ...keeperPromotionPlan.pendingEvents]);
+    const { counts } = keeperPromotionPlan;
+    byId("keeper-sandbox-publish-summary").textContent = `${counts.ledgerEvents} append-only ledger action${counts.ledgerEvents === 1 ? "" : "s"}: ${counts.keepers} keeper${counts.keepers === 1 ? "" : "s"}, ${counts.trades} trade${counts.trades === 1 ? "" : "s"}, ${counts.passes} pass${counts.passes === 1 ? "" : "es"}${counts.removals ? `, and ${counts.removals} correction${counts.removals === 1 ? "" : "s"}` : ""}.`;
+    const list = byId("keeper-sandbox-publish-list");
+    list.replaceChildren();
+    if (!keeperPromotionPlan.reviewItems.length) {
+      const item = document.createElement("li");
+      item.textContent = "The pending history contains corrections only; the official active setup will not gain a keeper or trade.";
+      list.append(item);
+    } else {
+      for (const item of keeperPromotionPlan.reviewItems) {
+        const row = document.createElement("li");
+        row.textContent = item.kind === "remove"
+          ? `REMOVE: ${keeperPromotionActionText(item.target)}`
+          : keeperPromotionActionText(item.event);
+        list.append(row);
+      }
+    }
+    setStatus(byId("keeper-sandbox-publish-status"), "Review every line. Publishing updates the shared official ledger and public board; your private sandbox remains as a backup.");
+    byId("keeper-sandbox-publish-dialog").showModal();
+    byId("confirm-keeper-sandbox-publish").focus();
+  } catch (error) {
+    keeperPromotionPlan = null;
+    setStatus(keeperOperationStatus, errorMessage(error), true);
+    showToast(errorMessage(error), true);
+  }
+}
+
+async function publishKeeperSandbox() {
+  const status = byId("keeper-sandbox-publish-status");
+  try {
+    if (!keeperPromotionPlan?.pendingEvents?.length) throw new Error("No reviewed keeper sandbox publication is ready.");
+    if (ledgerStale) throw new RuleViolation("LEDGER_GENERATION_MISMATCH", "Load the current cloud ledger before publishing. Your private sandbox is still preserved.");
+    const refreshedPlan = buildKeeperSandboxPromotion({ officialEvents: events, sandboxEvents: keeperSandboxEvents });
+    if (JSON.stringify(refreshedPlan.pendingEvents.map((event) => event.id)) !== JSON.stringify(keeperPromotionPlan.pendingEvents.map((event) => event.id))) {
+      throw new RuleViolation("KEEPER_PROMOTION_CHANGED", "The sandbox or official ledger changed after review. Close this window and review the updated publication again.");
+    }
+    replayDraft([...events, ...refreshedPlan.pendingEvents]);
+    byId("confirm-keeper-sandbox-publish").disabled = true;
+    setStatus(status, "Saving the reviewed actions to the official append-only ledger…");
+    await commitLocalEvents(
+      refreshedPlan.pendingEvents,
+      `Published ${refreshedPlan.pendingEvents.length} reviewed keeper setup action${refreshedPlan.pendingEvents.length === 1 ? "" : "s"} to the official ledger.`,
+      keeperOperationStatus,
+    );
+    keeperWorkspaceMode = "official";
+    await setMeta("keeperWorkspaceMode", keeperWorkspaceMode);
+    closeKeeperPromotionDialog();
+    renderAll();
+    clearTimeout(syncTimer);
+    await syncNow();
+    showToast(cloudReachable ? "Keeper sandbox published and cloud synced." : "Keeper sandbox published locally; cloud sync is pending.");
+  } catch (error) {
+    setStatus(status, errorMessage(error), true);
+  } finally {
+    byId("confirm-keeper-sandbox-publish").disabled = false;
+  }
 }
 
 async function recordSale(event) {
@@ -5383,6 +5485,10 @@ function bindInteractions() {
   byId("keeper-mode-official").addEventListener("click", () => void setKeeperWorkspaceMode("official"));
   byId("keeper-sandbox-reset").addEventListener("click", () => void resetKeeperSandbox());
   byId("keeper-sandbox-copy-official").addEventListener("click", () => void copyOfficialKeeperSetupToSandbox());
+  byId("keeper-sandbox-publish").addEventListener("click", openKeeperPromotionDialog);
+  byId("keeper-load-current-cloud").addEventListener("click", () => void loadCurrentCloudLedger());
+  byId("cancel-keeper-sandbox-publish").addEventListener("click", closeKeeperPromotionDialog);
+  byId("confirm-keeper-sandbox-publish").addEventListener("click", () => void publishKeeperSandbox());
   byId("keeper-evidence-details").addEventListener("toggle", (event) => {
     renderKeeperEvidenceDisclosure();
     void setMeta("keeperEvidenceExpanded", event.currentTarget.open);
