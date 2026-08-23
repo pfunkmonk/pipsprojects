@@ -182,5 +182,5 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 ## Startup-speed release — August 23, 2026
 
 - Startup work is now organized around the draft-day critical path: authenticate, restore the cached governed pack and append-only ledger, compute current auction authority, and show the Draft room. Pack freshness, status, news, and research refresh immediately afterward without blocking the first decision.
-- IndexedDB metadata uses one batch transaction, event and access reads run concurrently, a valid cached pack avoids a blocking 2 MB download, hidden Keeper/Admin views render on demand, and the 716-player pool uses a tested fixed-window virtual table.
+- Critical IndexedDB metadata uses one batch transaction, event and access reads run concurrently, large value-neutral intelligence archives hydrate after first paint, a valid cached pack avoids a blocking 2 MB download, hidden Keeper/Admin views render on demand, and the 716-player pool uses a tested fixed-window virtual table.
 - Mission-gate result: no projection, VBD, Market, Max, rival-WTP, legal-roster, public allowlist, correction-history, offline, or recovery authority changed. Browser QA measured a 531 ms warm authenticated reload, 1,713 initial DOM nodes, 14 rendered player rows, equal-height auction columns, and no horizontal overflow.

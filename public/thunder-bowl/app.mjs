@@ -240,6 +240,8 @@ let liveResearchSnapshot = null;
 let liveResearchError = null;
 let morningIntelligenceSnapshot = null;
 let morningIntelligenceInFlight = false;
+let cachedIntelligenceHydrated = false;
+let intelligenceHydrationTimer = null;
 let toastTimer = null;
 let currentView = "draft";
 let selectedKeeperScenarioLabel = "Keep nobody";
@@ -4419,6 +4421,61 @@ function loadTopNominationPlay() {
   button.click();
 }
 
+async function hydrateCachedIntelligence() {
+  if (cachedIntelligenceHydrated) return;
+  cachedIntelligenceHydrated = true;
+  try {
+    const cached = await getMetaBatch({
+      liveStatusSnapshot: null,
+      liveNewsSnapshot: null,
+      liveResearchSnapshot: null,
+      morningIntelligenceSnapshot: null,
+    });
+    if (cached.liveStatusSnapshot?.packId === draftPack.packId) {
+      try {
+        const snapshot = validateLiveStatusSnapshot(cached.liveStatusSnapshot);
+        if (!liveStatusSnapshot || Date.parse(snapshot.capturedAt) > Date.parse(liveStatusSnapshot.capturedAt)) applyLiveStatusSnapshot(snapshot);
+      } catch {
+        void setMeta("liveStatusSnapshot", null);
+      }
+    }
+    if (!REPLAY_2025 && cached.liveNewsSnapshot) {
+      try {
+        const snapshot = validateLiveNewsSnapshot(cached.liveNewsSnapshot);
+        if (!liveNewsSnapshot || Date.parse(snapshot.capturedAt) > Date.parse(liveNewsSnapshot.capturedAt)) applyLiveNewsSnapshot(snapshot);
+      } catch {
+        void setMeta("liveNewsSnapshot", null);
+      }
+    }
+    if (!REPLAY_2025 && cached.liveResearchSnapshot) {
+      try {
+        const snapshot = validateResearchSnapshot(cached.liveResearchSnapshot);
+        if (!liveResearchSnapshot || Date.parse(snapshot.capturedAt) > Date.parse(liveResearchSnapshot.capturedAt)) applyLiveResearchSnapshot(snapshot);
+      } catch {
+        void setMeta("liveResearchSnapshot", null);
+      }
+    }
+    if (!REPLAY_2025 && cached.morningIntelligenceSnapshot) {
+      try {
+        morningIntelligenceSnapshot = validateMorningIntelligenceSnapshot(cached.morningIntelligenceSnapshot);
+        if (!liveStatusSnapshot) applyLiveStatusSnapshot(morningIntelligenceSnapshot.sourceSnapshots.status);
+        if (!liveNewsSnapshot) applyLiveNewsSnapshot(morningIntelligenceSnapshot.sourceSnapshots.rotowire);
+        if (!liveResearchSnapshot) applyLiveResearchSnapshot(morningIntelligenceSnapshot.sourceSnapshots.research);
+      } catch {
+        morningIntelligenceSnapshot = null;
+        void setMeta("morningIntelligenceSnapshot", null);
+      }
+    }
+  } catch {
+    cachedIntelligenceHydrated = false;
+  }
+}
+
+function scheduleCachedIntelligenceHydration(delay = 350) {
+  clearTimeout(intelligenceHydrationTimer);
+  intelligenceHydrationTimer = setTimeout(() => void hydrateCachedIntelligence(), delay);
+}
+
 function showApp() {
   sessionStorage.setItem(UNLOCK_SESSION_KEY, "true");
   loginView.hidden = true;
@@ -4427,10 +4484,11 @@ function showApp() {
   playerSearch.focus();
   startPracticeClock();
   startPolling();
-  schedulePackRefresh(250);
-  scheduleStatusRefresh(50);
-  scheduleNewsRefresh(80);
-  scheduleResearchRefresh(110);
+  scheduleCachedIntelligenceHydration();
+  schedulePackRefresh(1200);
+  scheduleStatusRefresh(900);
+  scheduleNewsRefresh(1500);
+  scheduleResearchRefresh(2200);
   void runDraftReadinessCheck({ announce: false });
 }
 
@@ -5879,10 +5937,6 @@ async function bootstrap() {
         priorityWeightScenario: DEFAULT_PRIORITY_SCENARIO,
         cbsRosterSnapshot: null,
         personalBoardBackupEvidence: null,
-        liveStatusSnapshot: null,
-        liveNewsSnapshot: null,
-        liveResearchSnapshot: null,
-        morningIntelligenceSnapshot: null,
         [AUCTION_TELEMETRY_META_KEY]: null,
         salesEntryMode: SALES_ENTRY_MODES.AUCTIONEER,
         keeperWorkspaceMode: "sandbox",
@@ -5948,46 +6002,6 @@ async function bootstrap() {
       } catch {
         personalBoardBackupEvidence = null;
         await setMeta("personalBoardBackupEvidence", null);
-      }
-    }
-    const savedStatus = startupMeta.liveStatusSnapshot;
-    if (savedStatus?.packId === draftPack.packId) {
-      try {
-        applyLiveStatusSnapshot(validateLiveStatusSnapshot(savedStatus));
-      } catch {
-        liveStatusSnapshot = null;
-        liveStatusByPlayerId = new Map();
-      }
-    }
-    if (!REPLAY_2025) {
-      const savedNews = startupMeta.liveNewsSnapshot;
-      if (savedNews) {
-        try {
-          applyLiveNewsSnapshot(validateLiveNewsSnapshot(savedNews));
-        } catch {
-          liveNewsSnapshot = null;
-        }
-      }
-      const savedResearch = startupMeta.liveResearchSnapshot;
-      if (savedResearch) {
-        try {
-          applyLiveResearchSnapshot(validateResearchSnapshot(savedResearch));
-        } catch {
-          liveResearchSnapshot = null;
-          await setMeta("liveResearchSnapshot", null);
-        }
-      }
-      const savedMorningIntelligence = startupMeta.morningIntelligenceSnapshot;
-      if (savedMorningIntelligence) {
-        try {
-          morningIntelligenceSnapshot = validateMorningIntelligenceSnapshot(savedMorningIntelligence);
-          if (!liveStatusSnapshot) applyLiveStatusSnapshot(morningIntelligenceSnapshot.sourceSnapshots.status);
-          if (!liveNewsSnapshot) applyLiveNewsSnapshot(morningIntelligenceSnapshot.sourceSnapshots.rotowire);
-          if (!liveResearchSnapshot) applyLiveResearchSnapshot(morningIntelligenceSnapshot.sourceSnapshots.research);
-        } catch {
-          morningIntelligenceSnapshot = null;
-          await setMeta("morningIntelligenceSnapshot", null);
-        }
       }
     }
     auctionTelemetry = reconcileAuctionTelemetryStore(startupMeta[AUCTION_TELEMETRY_META_KEY], {

@@ -14,6 +14,11 @@ test("startup reads cached metadata and the event ledger concurrently", () => {
   assert.match(appSource, /Promise\.all\(\[\s*getOrCreateDeviceId\(\),[\s\S]*getMetaBatch\(\{[\s\S]*readEvents\(\),/);
   assert.match(appSource, /loadPack\(Boolean\(session\?\.authenticated\), startupMeta\.draftPack\)/);
   assert.match(appSource, /if \(cachedPack\) \{[\s\S]*return validateDraftPack\(cachedPack\);[\s\S]*setMeta\("draftPack", null\)/);
+  const bootstrapSource = appSource.slice(appSource.indexOf("async function bootstrap()"));
+  const criticalBatch = bootstrapSource.slice(bootstrapSource.indexOf("getMetaBatch({"), bootstrapSource.indexOf("readEvents(),"));
+  assert.doesNotMatch(criticalBatch, /liveStatusSnapshot|liveNewsSnapshot|liveResearchSnapshot|morningIntelligenceSnapshot/);
+  assert.match(appSource, /function scheduleCachedIntelligenceHydration/);
+  assert.match(appSource, /renderAll\(\);[\s\S]*scheduleCachedIntelligenceHydration\(\);/);
 });
 
 test("only the active command-center tab is rendered", () => {

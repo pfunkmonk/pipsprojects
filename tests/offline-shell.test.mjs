@@ -406,7 +406,7 @@ test("draft morning can force, scan, seal, restore, and export every-player inte
   assert.match(appSource, /force: true/);
   assert.match(appSource, /setMeta\("morningIntelligenceSnapshot", morningIntelligenceSnapshot\)/);
   assert.match(appSource, /morningIntelligenceSnapshot: null/);
-  assert.match(appSource, /startupMeta\.morningIntelligenceSnapshot/);
+  assert.match(appSource, /cached\.morningIntelligenceSnapshot/);
   assert.match(appSource, /playersScanned: rows\.length/);
   assert.match(appSource, /sourceSnapshots:/);
   assert.match(indexHtml, /Download intelligence backup/);
