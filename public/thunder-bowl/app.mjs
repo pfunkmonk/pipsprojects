@@ -20,6 +20,7 @@ import {
 import {
   appendEvents,
   getMeta,
+  getMetaBatch,
   getOrCreateDeviceId,
   hasOfflineVerifier,
   readEvents,
@@ -28,7 +29,11 @@ import {
   saveOfflineVerifier,
   setMeta,
   verifyOfflineCode,
-} from "./storage.mjs?v=20260805g";
+} from "./storage.mjs?v=20260823a";
+import {
+  DEFAULT_PLAYER_ROW_HEIGHT,
+  calculatePlayerWindow,
+} from "./player-virtual-window.mjs?v=20260823a";
 import {
   PRACTICE_TICK_MS,
   USER_TEAM_ID,
@@ -158,6 +163,7 @@ const loginForm = byId("login-form");
 const loginStatus = byId("login-status");
 const accessCode = byId("access-code");
 const playerRows = byId("player-rows");
+const playerTableWrap = playerRows.closest(".player-table-wrap");
 const playerSearch = byId("player-search");
 const positionFilter = byId("position-filter");
 const saleForm = byId("sale-form");
@@ -197,6 +203,9 @@ let draftState = replayDraft([]);
 let selectedPlayerId = null;
 let decisionCurrentBid = 0;
 let visiblePlayerIds = [];
+let virtualPlayerList = [];
+let virtualPlayerWindowKey = "";
+let playerScrollFrame = null;
 let displayBoardUrl = null;
 let syncInFlight = false;
 let syncTimer = null;
@@ -366,21 +375,21 @@ async function fetchProtectedDraftPack(conditional = true) {
   return pack;
 }
 
-async function loadPack(authenticated = false) {
-  const localPack = await getMeta("draftPack");
-  if (authenticated) {
+async function loadPack(authenticated = false, cachedPack = null) {
+  if (cachedPack) {
     try {
-      const currentPack = await fetchProtectedDraftPack(Boolean(localPack));
-      if (currentPack) {
-        await setMeta("draftPack", currentPack);
-        return currentPack;
-      }
-      if (localPack) return validateDraftPack(localPack);
-    } catch (error) {
-      if (!localPack) throw error;
+      return validateDraftPack(cachedPack);
+    } catch {
+      void setMeta("draftPack", null);
     }
   }
-  if (localPack) return validateDraftPack(localPack);
+  if (authenticated) {
+    const currentPack = await fetchProtectedDraftPack(false);
+    if (currentPack) {
+      await setMeta("draftPack", currentPack);
+      return currentPack;
+    }
+  }
   const response = await fetch(SAMPLE_PACK_URL, { cache: "no-cache" });
   if (!response.ok) throw new Error("The offline interface sample could not be loaded.");
   const pack = validateDraftPack(await response.json());
@@ -984,8 +993,69 @@ function numberCell(text, className = "") {
   return cell;
 }
 
-function renderPlayerPool() {
+function playerSpacerRow(height) {
+  const row = document.createElement("tr");
+  row.className = "player-pool-spacer";
+  row.setAttribute("aria-hidden", "true");
+  const cell = document.createElement("td");
+  cell.colSpan = 4;
+  cell.style.height = `${height}px`;
+  row.append(cell);
+  return row;
+}
+
+function makePlayerRow(player) {
+  const live = livePlayerValues(player);
+  const row = document.createElement("tr");
+  const annotation = annotationFor(player.id);
+  const heat = surplusHeatForPlayer(player);
+  row.className = `player-row heat-${heat.level}${player.id === selectedPlayerId ? " is-selected" : ""}${annotation?.tag === "target" ? " is-target" : annotation?.tag === "avoid" ? " is-avoid" : ""}`;
+  row.title = `Surplus heat: ${heat.label}. Private display only.`;
+  row.dataset.playerId = player.id;
+  row.append(
+    makePlayerCell(player),
+    numberCell(signed(priorityVbdFor(player).adjustedVbd), priorityVbdFor(player).adjustedVbd > 0 ? "positive" : ""),
+    numberCell(currency(live.marketValue), "gold"),
+    numberCell(
+      annotation?.tag === "avoid" ? "AVOID" : currency(effectivePlayerBidLimit(player)),
+      annotation?.tag === "avoid" ? "avoid-price" : annotation?.personalMax !== null && annotation?.personalMax !== undefined ? "personal-price" : "",
+    ),
+  );
+  return row;
+}
+
+function renderPlayerPoolWindow(force = false) {
+  const windowState = calculatePlayerWindow({
+    itemCount: virtualPlayerList.length,
+    scrollTop: playerTableWrap.scrollTop,
+    viewportHeight: playerTableWrap.clientHeight,
+  });
+  const key = `${windowState.start}:${windowState.end}:${selectedPlayerId || ""}`;
+  if (!force && key === virtualPlayerWindowKey) return;
+  virtualPlayerWindowKey = key;
+  const fragment = document.createDocumentFragment();
+  if (windowState.topSpacerHeight) fragment.append(playerSpacerRow(windowState.topSpacerHeight));
+  for (const player of virtualPlayerList.slice(windowState.start, windowState.end)) fragment.append(makePlayerRow(player));
+  if (windowState.bottomSpacerHeight) fragment.append(playerSpacerRow(windowState.bottomSpacerHeight));
+  playerRows.replaceChildren(fragment);
+  playerRows.dataset.renderedPlayers = String(windowState.renderedCount);
+}
+
+function ensureSelectedPlayerVisible() {
+  const index = visiblePlayerIds.indexOf(selectedPlayerId);
+  if (index < 0) return;
+  const rowTop = index * DEFAULT_PLAYER_ROW_HEIGHT;
+  const rowBottom = rowTop + DEFAULT_PLAYER_ROW_HEIGHT;
+  const viewportTop = playerTableWrap.scrollTop;
+  const viewportBottom = viewportTop + playerTableWrap.clientHeight;
+  if (rowTop < viewportTop) playerTableWrap.scrollTop = rowTop;
+  else if (rowBottom > viewportBottom) playerTableWrap.scrollTop = Math.max(0, rowBottom - playerTableWrap.clientHeight);
+  renderPlayerPoolWindow(true);
+}
+
+function renderPlayerPool({ resetScroll = false } = {}) {
   const players = filteredPlayers();
+  virtualPlayerList = players;
   visiblePlayerIds = players.map((player) => player.id);
   const previousSelection = selectedPlayerId;
   if (!players.some((player) => player.id === selectedPlayerId)) {
@@ -995,26 +1065,9 @@ function renderPlayerPool() {
     salePrice.value = "";
     decisionCurrentBid = 0;
   }
-  playerRows.replaceChildren();
-  for (const player of players) {
-    const live = livePlayerValues(player);
-    const row = document.createElement("tr");
-    const annotation = annotationFor(player.id);
-    const heat = surplusHeatForPlayer(player);
-    row.className = `player-row heat-${heat.level}${player.id === selectedPlayerId ? " is-selected" : ""}${annotation?.tag === "target" ? " is-target" : annotation?.tag === "avoid" ? " is-avoid" : ""}`;
-    row.title = `Surplus heat: ${heat.label}. Private display only.`;
-    row.dataset.playerId = player.id;
-    row.append(
-      makePlayerCell(player),
-      numberCell(signed(priorityVbdFor(player).adjustedVbd), priorityVbdFor(player).adjustedVbd > 0 ? "positive" : ""),
-      numberCell(currency(live.marketValue), "gold"),
-      numberCell(
-        annotation?.tag === "avoid" ? "AVOID" : currency(effectivePlayerBidLimit(player)),
-        annotation?.tag === "avoid" ? "avoid-price" : annotation?.personalMax !== null && annotation?.personalMax !== undefined ? "personal-price" : "",
-      ),
-    );
-    playerRows.append(row);
-  }
+  if (resetScroll) playerTableWrap.scrollTop = 0;
+  virtualPlayerWindowKey = "";
+  renderPlayerPoolWindow(true);
   byId("player-count").textContent = `${players.length} shown`;
   byId("empty-pool").hidden = players.length > 0;
 }
@@ -3779,6 +3832,34 @@ function startPracticeClock() {
   if (PRACTICE_AUCTION) practiceTimer = setInterval(() => void practiceTick(), PRACTICE_TICK_MS);
 }
 
+function renderCurrentView() {
+  if (currentView === "keepers") {
+    teamOptions();
+    renderKeeperWorkspace();
+    keeperRows();
+    renderKeeperScenarios(keeperCandidatesForTeam("dogs-of-war"));
+    renderKeeperOperations();
+    renderKeeperTradeMarket();
+    renderLeagueKeeperPressure();
+    requestAnimationFrame(sizeKeeperTradeResultWindows);
+    return null;
+  }
+  if (currentView === "settings") {
+    renderPlacementResetSummary();
+    renderPersonalBoardPortability();
+    renderAuctionTelemetryLog();
+    return null;
+  }
+  renderMetrics();
+  renderPlayerPool();
+  renderSelectedPlayer();
+  renderNominationCoach();
+  const rosterSafety = renderNeeds();
+  teamOptions();
+  renderPracticeConsole();
+  return rosterSafety;
+}
+
 function renderAll() {
   draftState = replayDraft(events);
   reconcileAuctionTelemetry();
@@ -3787,23 +3868,8 @@ function renderAll() {
   liveMarket = computeLiveMarket();
   keeperScenario = calculateKeeperScenarioValues(valuationPack || draftPack, keeperWorkspaceState());
   keeperBoardRows = buildKeeperBoard(keeperScenarioPack(), { declaredKeeperIds: activeDeclaredKeeperIds() });
-  renderMetrics();
-  renderPlayerPool();
-  renderSelectedPlayer();
-  renderNominationCoach();
-  const rosterSafety = renderNeeds();
-  teamOptions();
   renderPackStatus();
-  renderPlacementResetSummary();
-  renderKeeperWorkspace();
-  keeperRows();
-  renderKeeperScenarios(keeperCandidatesForTeam("dogs-of-war"));
-  renderKeeperOperations();
-  renderKeeperTradeMarket();
-  renderLeagueKeeperPressure();
-  renderPracticeConsole();
-  renderPersonalBoardPortability();
-  renderAuctionTelemetryLog();
+  const rosterSafety = renderCurrentView();
   const undoable = lastUndoableSale(events);
   renderSalesEntryMode();
   undoSaleButton.disabled = salesEntryMode !== SALES_ENTRY_MODES.MANUAL || !undoable;
@@ -3813,7 +3879,7 @@ function renderAll() {
   undoSaleButton.title = undoable
     ? `${draftState.teams[undoable.payload.teamId]?.name || undoable.payload.teamId} received ${undoable.payload.playerName} for ${currency(undoable.payload.amount)}. Correction appends a void event; history is preserved.`
     : "Every correction remains in the append-only ledger.";
-  announceRosterGuardrails(rosterSafety);
+  if (rosterSafety) announceRosterGuardrails(rosterSafety);
   const snapshot = toPublicSnapshot(draftState, { updatedAt: new Date().toISOString() });
   draftChannel?.postMessage({ type: "PUBLIC_SNAPSHOT", snapshot });
 }
@@ -3887,6 +3953,7 @@ function selectPlayer(playerId, focusPrice = false) {
   selectedPlayerId = playerId;
   salePrice.value = "";
   renderPlayerPool();
+  ensureSelectedPlayerVisible();
   renderSelectedPlayer();
   if (changedPlayer) {
     const decisionPanel = document.querySelector(".decision-panel");
@@ -4283,6 +4350,7 @@ function showView(view) {
   document.querySelectorAll(".page-view").forEach((page) => {
     page.hidden = page.id !== `view-${view}`;
   });
+  if (draftPack && !appView.hidden) renderCurrentView();
   if (view === "draft") playerSearch.focus();
   if (view === "keepers") requestAnimationFrame(sizeKeeperTradeResultWindows);
   if (view === "settings") void runDraftReadinessCheck({ announce: false });
@@ -4359,7 +4427,7 @@ function showApp() {
   playerSearch.focus();
   startPracticeClock();
   startPolling();
-  schedulePackRefresh();
+  schedulePackRefresh(250);
   scheduleStatusRefresh(50);
   scheduleNewsRefresh(80);
   scheduleResearchRefresh(110);
@@ -5528,13 +5596,20 @@ function bindInteractions() {
   capReturnPlayer.addEventListener("change", updateCapTransferSummary);
   capTransferAmount.addEventListener("input", updateCapTransferSummary);
   playerSearch.addEventListener("input", () => {
-    renderPlayerPool();
+    renderPlayerPool({ resetScroll: true });
     renderSelectedPlayer();
   });
   positionFilter.addEventListener("change", () => {
-    renderPlayerPool();
+    renderPlayerPool({ resetScroll: true });
     renderSelectedPlayer();
   });
+  playerTableWrap.addEventListener("scroll", () => {
+    if (playerScrollFrame !== null) return;
+    playerScrollFrame = requestAnimationFrame(() => {
+      playerScrollFrame = null;
+      renderPlayerPoolWindow();
+    });
+  }, { passive: true });
   playerRows.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-player-id]");
     if (button) selectPlayer(button.dataset.playerId, !PRACTICE_AUCTION);
@@ -5790,11 +5865,40 @@ async function bootstrap() {
   updateNetworkStatus();
   try {
     registerOfflineShell().catch(() => null);
-    deviceId = await getOrCreateDeviceId();
-    const session = await fetchSession().catch(() => null);
-    draftPack = await loadPack(Boolean(session?.authenticated));
+    const [resolvedDeviceId, session, startupMeta, storedEvents] = await Promise.all([
+      getOrCreateDeviceId(),
+      fetchSession().catch(() => null),
+      getMetaBatch({
+        draftPack: null,
+        leagueSetup: null,
+        keeperEvidenceTeamId: "dogs-of-war",
+        humanRehearsalEvidence: null,
+        keeperEvidenceExpanded: false,
+        proMode: false,
+        priorityPolicyVersion: 0,
+        priorityWeightScenario: DEFAULT_PRIORITY_SCENARIO,
+        cbsRosterSnapshot: null,
+        personalBoardBackupEvidence: null,
+        liveStatusSnapshot: null,
+        liveNewsSnapshot: null,
+        liveResearchSnapshot: null,
+        morningIntelligenceSnapshot: null,
+        [AUCTION_TELEMETRY_META_KEY]: null,
+        salesEntryMode: SALES_ENTRY_MODES.AUCTIONEER,
+        keeperWorkspaceMode: "sandbox",
+        keeperPredictionSandboxEvents: [],
+        ledgerGeneration: null,
+        practiceAuctionSession: null,
+        displayBoardUrl: null,
+        lastRecoveryExportAt: null,
+      }),
+      readEvents(),
+    ]);
+    deviceId = resolvedDeviceId;
+    events = storedEvents;
+    draftPack = await loadPack(Boolean(session?.authenticated), startupMeta.draftPack);
     if (!REPLAY_2025 && draftPack.season === 2026) {
-      const savedLeagueSetup = await getMeta("leagueSetup");
+      const savedLeagueSetup = startupMeta.leagueSetup;
       try {
         leagueSetup = validateLeagueSetup(savedLeagueSetup || cloneDefaultLeagueSetup2026(), leagueSetupOptions());
       } catch {
@@ -5802,19 +5906,19 @@ async function bootstrap() {
       }
       await setMeta("leagueSetup", leagueSetup);
     }
-    const savedKeeperEvidenceTeamId = await getMeta("keeperEvidenceTeamId", "dogs-of-war");
+    const savedKeeperEvidenceTeamId = startupMeta.keeperEvidenceTeamId;
     selectedKeeperEvidenceTeamId = draftPack.leagueConfig.teams.some((team) => team.id === savedKeeperEvidenceTeamId)
       ? savedKeeperEvidenceTeamId
       : "dogs-of-war";
-    if (!LOCAL_ONLY) humanRehearsalEvidence = await getMeta("humanRehearsalEvidence");
-    byId("keeper-evidence-details").open = await getMeta("keeperEvidenceExpanded", false) === true;
+    if (!LOCAL_ONLY) humanRehearsalEvidence = startupMeta.humanRehearsalEvidence;
+    byId("keeper-evidence-details").open = startupMeta.keeperEvidenceExpanded === true;
     renderKeeperEvidenceDisclosure();
-    proMode = await getMeta("proMode", false) === true;
+    proMode = startupMeta.proMode === true;
     renderProMode();
     try {
-      const policyVersion = await getMeta("priorityPolicyVersion", 0);
+      const policyVersion = startupMeta.priorityPolicyVersion;
       priorityScenario = policyVersion === PRIORITY_POLICY_VERSION
-        ? validatePriorityScenario(await getMeta("priorityWeightScenario", DEFAULT_PRIORITY_SCENARIO))
+        ? validatePriorityScenario(startupMeta.priorityWeightScenario)
         : validatePriorityScenario(DEFAULT_PRIORITY_SCENARIO);
       await setMeta("priorityWeightScenario", priorityScenario);
       await setMeta("priorityPolicyVersion", PRIORITY_POLICY_VERSION);
@@ -5824,7 +5928,7 @@ async function bootstrap() {
     }
     if (!draftPack.weeklyContext) priorityScenario = BASELINE_PRIORITY_SCENARIO;
     if (!REPLAY_2025) {
-      const savedCbsSnapshot = await getMeta("cbsRosterSnapshot");
+      const savedCbsSnapshot = startupMeta.cbsRosterSnapshot;
       if (savedCbsSnapshot) {
         try {
           cbsRosterSnapshot = validateCbsRosterSnapshot(savedCbsSnapshot);
@@ -5837,7 +5941,7 @@ async function bootstrap() {
       }
     }
     loadPlayerAnnotations();
-    const savedPersonalBoardEvidence = await getMeta("personalBoardBackupEvidence");
+    const savedPersonalBoardEvidence = startupMeta.personalBoardBackupEvidence;
     if (savedPersonalBoardEvidence) {
       try {
         personalBoardBackupEvidence = validatePersonalBoardEvidence(savedPersonalBoardEvidence, { season: ROOM_SEASON });
@@ -5846,7 +5950,7 @@ async function bootstrap() {
         await setMeta("personalBoardBackupEvidence", null);
       }
     }
-    const savedStatus = await getMeta("liveStatusSnapshot");
+    const savedStatus = startupMeta.liveStatusSnapshot;
     if (savedStatus?.packId === draftPack.packId) {
       try {
         applyLiveStatusSnapshot(validateLiveStatusSnapshot(savedStatus));
@@ -5856,7 +5960,7 @@ async function bootstrap() {
       }
     }
     if (!REPLAY_2025) {
-      const savedNews = await getMeta("liveNewsSnapshot");
+      const savedNews = startupMeta.liveNewsSnapshot;
       if (savedNews) {
         try {
           applyLiveNewsSnapshot(validateLiveNewsSnapshot(savedNews));
@@ -5864,7 +5968,7 @@ async function bootstrap() {
           liveNewsSnapshot = null;
         }
       }
-      const savedResearch = await getMeta("liveResearchSnapshot");
+      const savedResearch = startupMeta.liveResearchSnapshot;
       if (savedResearch) {
         try {
           applyLiveResearchSnapshot(validateResearchSnapshot(savedResearch));
@@ -5873,7 +5977,7 @@ async function bootstrap() {
           await setMeta("liveResearchSnapshot", null);
         }
       }
-      const savedMorningIntelligence = await getMeta("morningIntelligenceSnapshot");
+      const savedMorningIntelligence = startupMeta.morningIntelligenceSnapshot;
       if (savedMorningIntelligence) {
         try {
           morningIntelligenceSnapshot = validateMorningIntelligenceSnapshot(savedMorningIntelligence);
@@ -5886,17 +5990,16 @@ async function bootstrap() {
         }
       }
     }
-    events = await readEvents();
-    auctionTelemetry = reconcileAuctionTelemetryStore(await getMeta(AUCTION_TELEMETRY_META_KEY), {
+    auctionTelemetry = reconcileAuctionTelemetryStore(startupMeta[AUCTION_TELEMETRY_META_KEY], {
       events,
       teamIds: draftPack.leagueConfig.teams.map((team) => team.id),
     });
     markAllPendingTelemetryUnknown();
     await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
-    salesEntryMode = normalizeSalesEntryMode(await getMeta("salesEntryMode", SALES_ENTRY_MODES.AUCTIONEER), { localOnly: LOCAL_ONLY });
-    const savedKeeperWorkspaceMode = await getMeta("keeperWorkspaceMode", "sandbox");
+    salesEntryMode = normalizeSalesEntryMode(startupMeta.salesEntryMode, { localOnly: LOCAL_ONLY });
+    const savedKeeperWorkspaceMode = startupMeta.keeperWorkspaceMode;
     keeperWorkspaceMode = savedKeeperWorkspaceMode === "official" ? "official" : "sandbox";
-    const savedKeeperSandboxEvents = await getMeta("keeperPredictionSandboxEvents", []);
+    const savedKeeperSandboxEvents = startupMeta.keeperPredictionSandboxEvents;
     try {
       keeperSandboxEvents = Array.isArray(savedKeeperSandboxEvents) ? savedKeeperSandboxEvents : [];
       replayKeeperSandbox();
@@ -5905,11 +6008,11 @@ async function bootstrap() {
       await setMeta("keeperPredictionSandboxEvents", keeperSandboxEvents);
       replayKeeperSandbox();
     }
-    ledgerGeneration = await getMeta("ledgerGeneration");
+    ledgerGeneration = startupMeta.ledgerGeneration;
     await ensureConfigurationEvent();
     await ensureReplayFirstRoundKeepers();
     if (PRACTICE_AUCTION) {
-      const savedPracticeSession = await getMeta("practiceAuctionSession");
+      const savedPracticeSession = startupMeta.practiceAuctionSession;
       if (savedPracticeSession) {
         try {
           practiceSession = validatePracticeSession(savedPracticeSession);
@@ -5919,9 +6022,8 @@ async function bootstrap() {
         }
       }
     }
-    displayBoardUrl = await getMeta("displayBoardUrl");
-    lastRecoveryExportAt = await getMeta("lastRecoveryExportAt");
-    renderAll();
+    displayBoardUrl = startupMeta.displayBoardUrl;
+    lastRecoveryExportAt = startupMeta.lastRecoveryExportAt;
     window.setInterval(renderIntelAgeStatus, 60_000);
 
     if (session?.authenticated) {

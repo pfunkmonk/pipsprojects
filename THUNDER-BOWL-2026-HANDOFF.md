@@ -140,6 +140,14 @@ npm.cmd audit
 git diff --check
 ```
 
+## Startup-performance checkpoint — August 23, 2026
+
+- The private command center now authenticates while reading its cached pack, metadata, and append-only event ledger in parallel. A valid cached 716-player pack becomes usable immediately and the same authenticated endpoint performs its ETag refresh in the background.
+- `renderAll()` still recomputes the complete authoritative auction state, but only the visible Draft room, Keeper strategy, or Admin & data surface is rendered. Opening a tab builds it from the current state, so no hidden view can become stale.
+- The player pool retains all 716 IDs for search, keyboard order, tiers, and calculations while rendering only the visible window plus overscan. The fixed-height spacer system preserves native scrolling and bounds the initial pool DOM to roughly 13–20 player rows.
+- Isolated browser QA reduced the initial command-center DOM from 11,256 to 1,713 nodes and 727 to 14 rendered player rows. A warm authenticated reload reached the visible app in 531 ms on the Windows test machine, with zero horizontal overflow and all three auction columns ending inside the viewport.
+- The release gate passes 390/390 automated tests, the 168-sale full-auction rehearsal, the 24-keeper/144-sale catastrophe recovery rehearsal, and the foolproof roster Monte Carlo. The QA server is intentionally persistent and must be stopped after browser checks; it is not itself a finite test command.
+
 The projection challenger entrypoint selects a Python runtime containing NumPy and pandas. Set `THUNDER_BOWL_PYTHON` when needed, or install the optional packages with `python -m pip install -r requirements-backtests.txt`. The command remains an audit only and cannot promote a live pack.
 
 Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×1920 MacBook display at 2× scaling). Verify private, auctioneer, and Draft Board sign-ins; player search/right-click intelligence; keeper/undo; atomic trade/undo; manual-backup visibility; illegal-bid rejection; public-field isolation; status stability; and clean console diagnostics. Do not leave test sales in the live ledger.

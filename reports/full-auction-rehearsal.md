@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 — Automated Full-Auction Rehearsal
 
-Generated: 2026-08-21T14:54:03.871Z
+Generated: 2026-08-23T06:52:18.536Z
 
 Result: **PASS**
 
@@ -11,10 +11,10 @@ This accepted deterministic technical rehearsal exercises 168 active purchases, 
 - 168 players
 - 12 teams × 14 roster spots
 - 171 physical audit events; 169 active events
-- Incremental replay p95: 0.4913 ms; maximum: 0.7465 ms
-- Search p95: 0.0318 ms; maximum: 0.06 ms
-- Offline reconnect merge: 1.0649 ms
-- Public snapshot generation: 0.192 ms
+- Incremental replay p95: 0.4767 ms; maximum: 0.6794 ms
+- Search p95: 0.0372 ms; maximum: 0.1897 ms
+- Offline reconnect merge: 1.1418 ms
+- Public snapshot generation: 0.2337 ms
 
 ## Gate checks
 

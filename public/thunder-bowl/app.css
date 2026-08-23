@@ -226,7 +226,8 @@ input[readonly] { color: var(--muted); }
 .data-table th { padding: 0.6rem 0.65rem; background: var(--navy-950); color: var(--quiet); font-size: 0.66rem; letter-spacing: 0.04em; text-align: left; text-transform: uppercase; }
 .data-table td { padding: 0.65rem; border-top: 1px solid var(--line); vertical-align: middle; }
 .data-table .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.player-row { cursor: pointer; }
+.player-row { height: 92px; cursor: pointer; }
+.player-pool-spacer td { height: 0; border: 0; padding: 0; pointer-events: none; }
 .player-row:hover, .player-row.is-selected { background: #16456e; }
 .player-row.is-target { background: rgba(239, 194, 87, 0.08); box-shadow: inset 4px 0 0 var(--gold); }
 .player-row.is-target:hover, .player-row.is-target.is-selected { background: rgba(239, 194, 87, 0.19); }

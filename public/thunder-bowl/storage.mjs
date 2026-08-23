@@ -55,6 +55,21 @@ export async function getMeta(key, fallback = null) {
   return record ? record.value : fallback;
 }
 
+export async function getMetaBatch(defaults = {}) {
+  if (!defaults || typeof defaults !== "object" || Array.isArray(defaults)) {
+    throw new TypeError("Metadata defaults must be an object keyed by storage name.");
+  }
+  const entries = Object.entries(defaults);
+  if (!entries.length) return {};
+  const database = await openDatabase();
+  const transaction = database.transaction(META_STORE, "readonly");
+  const done = transactionDone(transaction);
+  const store = transaction.objectStore(META_STORE);
+  const records = await Promise.all(entries.map(([key]) => requestResult(store.get(key))));
+  await done;
+  return Object.fromEntries(entries.map(([key, fallback], index) => [key, records[index] ? records[index].value : fallback]));
+}
+
 export async function setMeta(key, value) {
   const database = await openDatabase();
   const transaction = database.transaction(META_STORE, "readwrite");

@@ -89,7 +89,8 @@ test("the private draft room can safely switch between auctioneer feed and manua
   assert.match(indexHtml, /Manual backup/);
   assert.match(indexHtml, /<div class="app-navigation">[\s\S]*<nav class="app-tabs"[\s\S]*<section id="sales-entry-control"/);
   assert.doesNotMatch(indexHtml, /<form id="sale-form"[^>]*>[\s\S]{0,200}id="sales-entry-control"/);
-  assert.match(appSource, /normalizeSalesEntryMode\(await getMeta\("salesEntryMode"/);
+  assert.match(appSource, /salesEntryMode: SALES_ENTRY_MODES\.AUCTIONEER/);
+  assert.match(appSource, /normalizeSalesEntryMode\(startupMeta\.salesEntryMode/);
   assert.match(appSource, /setMeta\("salesEntryMode", salesEntryMode\)/);
   assert.match(appSource, /salesEntryMode !== SALES_ENTRY_MODES\.MANUAL/);
   assert.match(appSource, /Pulling the latest confirmed auctioneer sale before manual takeover/);
@@ -404,7 +405,8 @@ test("draft morning can force, scan, seal, restore, and export every-player inte
   assert.match(appSource, /morningPlayerCoverage/);
   assert.match(appSource, /force: true/);
   assert.match(appSource, /setMeta\("morningIntelligenceSnapshot", morningIntelligenceSnapshot\)/);
-  assert.match(appSource, /getMeta\("morningIntelligenceSnapshot"\)/);
+  assert.match(appSource, /morningIntelligenceSnapshot: null/);
+  assert.match(appSource, /startupMeta\.morningIntelligenceSnapshot/);
   assert.match(appSource, /playersScanned: rows\.length/);
   assert.match(appSource, /sourceSnapshots:/);
   assert.match(indexHtml, /Download intelligence backup/);
@@ -534,13 +536,15 @@ test("league-wide candidate evidence has a remembered team selector and accessib
   }
   assert.match(indexHtml, /<details id="keeper-evidence-details">[\s\S]*<summary class="panel-header keeper-evidence-summary">/);
   assert.doesNotMatch(indexHtml, /<details id="keeper-evidence-details" open>/);
-  assert.match(appSource, /getMeta\("keeperEvidenceExpanded", false\)/);
+  assert.match(appSource, /keeperEvidenceExpanded: false/);
+  assert.match(appSource, /startupMeta\.keeperEvidenceExpanded/);
   assert.match(appSource, /setMeta\("keeperEvidenceExpanded", event\.currentTarget\.open\)/);
   assert.match(appSource, /details\.open \? "Hide table" : "Show table"/);
   assert.match(appSource, /keeperCandidatesForTeam\(selectedKeeperEvidenceTeamId\)/);
   assert.match(appSource, /dynamicKeeperSurplus\(right\) - dynamicKeeperSurplus\(left\)/);
   assert.match(indexHtml, /aria-sort="descending">Surplus ↓<\/th>/);
-  assert.match(appSource, /getMeta\("keeperEvidenceTeamId", "dogs-of-war"\)/);
+  assert.match(appSource, /keeperEvidenceTeamId: "dogs-of-war"/);
+  assert.match(appSource, /startupMeta\.keeperEvidenceTeamId/);
   assert.match(appSource, /setMeta\("keeperEvidenceTeamId", teamId\)/);
   assert.match(appSource, /renderKeeperScenarios\(keeperCandidatesForTeam\("dogs-of-war"\)\)/);
   assert.match(appCss, /\.keeper-evidence-summary:focus-visible/);
