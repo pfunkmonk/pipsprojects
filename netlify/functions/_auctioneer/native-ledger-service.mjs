@@ -18,7 +18,15 @@ function requireText(value, label) {
 }
 
 function publicPlayer(player) {
-  return { id: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam };
+  return {
+    id: player.id,
+    name: player.name,
+    position: player.position,
+    nflTeam: player.nflTeam,
+    byeWeek: Number.isInteger(player?.weeklyProjection?.byeWeek)
+      ? player.weeklyProjection.byeWeek
+      : (Number.isInteger(player?.byeWeek) ? player.byeWeek : null),
+  };
 }
 
 function voidedEventIds(events, eventTypes) {
@@ -76,14 +84,16 @@ function operation(type, fields = {}, actorLabel = "Auctioneer") {
   return { id: globalThis.crypto?.randomUUID?.() || `operation-${Date.now()}-${Math.random()}`, type, ...fields, createdAt: new Date().toISOString(), actorLabel };
 }
 
-function assignmentFromEvent(event, status, actorLabel = null) {
+function assignmentFromEvent(event, status, actorLabel = null, draftPlayer = null) {
   const keeper = event.type === "KEEPER_ASSIGNED";
+  const player = draftPlayer ? publicPlayer(draftPlayer) : null;
   return {
     id: event.id,
     playerId: event.payload.playerId,
     playerName: event.payload.playerName,
     position: event.payload.position,
     nflTeam: event.payload.nflTeam,
+    byeWeek: Number.isInteger(event.payload.byeWeek) ? event.payload.byeWeek : player?.byeWeek ?? null,
     teamId: event.payload.teamId,
     price: keeper ? event.payload.salary : event.payload.amount,
     acquisitionType: keeper ? "keeper" : "auction",
@@ -163,7 +173,12 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       availablePlayers: context.draftPack.players.map(publicPlayer),
       assignments: context.events
         .filter((event) => ACQUISITION_TYPES.has(event.type))
-        .map((event) => assignmentFromEvent(event, voided.has(event.id) ? "voided" : "active", context.actorLabels?.[event.id])),
+        .map((event) => assignmentFromEvent(
+          event,
+          voided.has(event.id) ? "voided" : "active",
+          context.actorLabels?.[event.id],
+          context.draftPack.players.find((player) => player.id === event.payload.playerId),
+        )),
     };
   }
 

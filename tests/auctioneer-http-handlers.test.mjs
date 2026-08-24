@@ -10,8 +10,8 @@ const env = {
 };
 const publicSnapshot = {
   season: 2026, revision: 1, updatedAt: "2026-08-07T18:00:00.000Z", rosterSize: 14, keeperSlots: 2,
-  teams: [], assignments: [], availablePlayers: [{ id: "p", name: "Player", position: "QB", nflTeam: "DEN", vbd: 99, privateNote: "never return" }],
-  finishedTeamIds: [], stagedNomination: { id: "p", name: "Player", position: "QB", nflTeam: "DEN", updatedAt: "2026-08-07T18:00:00.000Z", vbd: 99 },
+  teams: [], assignments: [], availablePlayers: [{ id: "p", name: "Player", position: "QB", nflTeam: "DEN", byeWeek: 10, vbd: 99, privateNote: "never return" }],
+  finishedTeamIds: [], stagedNomination: { id: "p", name: "Player", position: "QB", nflTeam: "DEN", byeWeek: 10, updatedAt: "2026-08-07T18:00:00.000Z", vbd: 99 },
   auditEvents: [{ id: "audit-1", action: "Nominated", playerName: "Player", createdAt: "2026-08-07T18:00:00.000Z", actorLabel: "Auctioneer", privateNote: "never return" }],
   privateStrategy: { targets: ["p"] },
 };
@@ -41,6 +41,7 @@ test("authenticates the auctioneer and permits public-only board access", async 
   assert.equal("privateStrategy" in body, false);
   assert.equal("auditEvents" in body, false);
   assert.equal(body.stagedNomination.vbd, undefined);
+  assert.equal(body.stagedNomination.byeWeek, 10);
 });
 
 test("the HTTP boundary strips private fields even if an internal service regresses", async () => {
@@ -58,7 +59,8 @@ test("the HTTP boundary strips private fields even if an internal service regres
   assert.equal(body.availablePlayers[0].privateNote, undefined);
   assert.equal(body.privateStrategy, undefined);
   assert.equal(body.auditEvents[0].privateNote, undefined);
-  assert.deepEqual(Object.keys(body.availablePlayers[0]), ["id", "name", "position", "nflTeam"]);
+  assert.deepEqual(Object.keys(body.availablePlayers[0]), ["id", "name", "position", "nflTeam", "byeWeek"]);
+  assert.equal(body.availablePlayers[0].byeWeek, 10);
 });
 
 test("rejects an unauthenticated auctioneer snapshot", async () => {

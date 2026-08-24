@@ -2,6 +2,7 @@ import { createDataSource } from "../shared/data-source.mjs";
 import { assertPublicSnapshot, downloadBoardCsv, orderedTeamAssignments, teamSummary } from "../shared/public-core.mjs";
 import { PROJECTOR_STALE_AFTER_MS, writeProjectorPresence } from "../shared/projector-presence.mjs";
 import { clockFromSnapshot, formatNominationClock } from "../shared/nomination-clock.mjs?v=20260808-cloud";
+import { calculateBoardGeometry } from "./board-layout.mjs";
 
 const source = createDataSource("board");
 const OFFLINE_SNAPSHOT_KEY = "thunder-bowl-public-board-snapshot-v1";
@@ -25,15 +26,16 @@ function splitName(name) {
 
 function sticker(assignment, isNew = false) {
   const [first, last] = splitName(assignment.playerName);
+  const byeLabel = Number.isInteger(assignment.byeWeek) ? `BYE ${assignment.byeWeek}` : "BYE —";
   const element = document.createElement("article");
   element.className = `player-sticker${assignment.acquisitionType === "keeper" ? " is-keeper" : ""}${isNew ? " is-new-sale" : ""}`;
   element.dataset.assignmentId = assignment.id;
   element.dataset.pos = assignment.position;
-  element.setAttribute("aria-label", `${assignment.playerName}, ${assignment.position}, $${assignment.price}${assignment.contractYear ? `, keeper year ${assignment.contractYear}` : ""}`);
+  element.setAttribute("aria-label", `${assignment.playerName}, ${assignment.position}, ${assignment.nflTeam}, ${byeLabel.toLowerCase()}, $${assignment.price}${assignment.contractYear ? `, keeper year ${assignment.contractYear}` : ""}`);
   const meta = document.createElement("span");
   meta.className = "sticker-meta";
   const playerMeta = document.createElement("span");
-  playerMeta.textContent = `${assignment.position}  ${assignment.nflTeam}`;
+  playerMeta.textContent = `${assignment.position} · ${assignment.nflTeam} · ${byeLabel}`;
   const price = document.createElement("b");
   price.textContent = `$${assignment.price}`;
   meta.append(playerMeta, price);
@@ -58,9 +60,17 @@ function sizeBoard() {
   const footer = document.getElementById("board-status");
   const lastSale = document.getElementById("last-sale-strip");
   const fullBoardHeight = app.clientHeight - topbar.offsetHeight - lastSale.offsetHeight - footer.offsetHeight;
-  const fullGridUnits = snapshot.rosterSize + 1.42;
-  const visibleGridUnits = visibleRosterRows + 1.42;
-  board.style.height = `${Math.min(fullBoardHeight, fullBoardHeight * visibleGridUnits / fullGridUnits)}px`;
+  const geometry = calculateBoardGeometry({
+    availableHeight: fullBoardHeight,
+    boardWidth: board.clientWidth,
+    teamCount: snapshot.teams.length,
+    totalRosterRows: snapshot.rosterSize,
+    visibleRosterRows,
+  });
+  board.style.height = `${geometry.boardHeight}px`;
+  board.style.setProperty("--team-column-width", `${geometry.teamColumnWidth}px`);
+  board.style.setProperty("--roster-row-height", `${geometry.rosterRowHeight}px`);
+  board.style.setProperty("--header-row-height", `${geometry.headerRowHeight}px`);
 }
 
 function activeAuctionSales() {

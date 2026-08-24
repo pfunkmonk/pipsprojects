@@ -72,6 +72,10 @@ test("rejects malformed shared catalog and league-rule state before any feature 
   invalidCatalog.availablePlayers = [{ id: "candidate", name: "Candidate", position: "PUNTER", nflTeam: "DEN" }];
   assert.throws(() => assertPublicSnapshot(invalidCatalog), /available-player record/);
 
+  const invalidBye = fixture();
+  invalidBye.assignments[0].byeWeek = 19;
+  assert.throws(() => assertPublicSnapshot(invalidBye), /bye week/);
+
   const invalidRequirements = fixture();
   invalidRequirements.starterRequirements.PUNTER = 1;
   assert.throws(() => assertPublicSnapshot(invalidRequirements), /Starter requirement/);

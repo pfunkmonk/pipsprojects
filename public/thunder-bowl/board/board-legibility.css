@@ -1,0 +1,138 @@
+/*
+ * Projection-first typography. Values are fed by board-layout.mjs so text grows
+ * into early-draft space and contracts safely as roster rows are added.
+ */
+#board-app {
+  --team-column-width: 150px;
+  --roster-row-height: 48px;
+  --header-row-height: 68px;
+  grid-template-rows: clamp(54px, 8vh, 116px) auto 1fr clamp(24px, 3vh, 40px);
+}
+
+.board-topbar {
+  gap: clamp(8px, .75cqw, 24px);
+  padding: clamp(5px, .45cqw, 14px) clamp(8px, .8cqw, 24px);
+}
+
+.board-title { gap: clamp(7px, .65cqw, 18px); }
+.board-title > span {
+  width: clamp(34px, 3.8vh, 58px);
+  height: clamp(34px, 3.8vh, 58px);
+  font-size: clamp(11px, min(.9cqw, 1.9vh), 18px);
+}
+.board-title strong {
+  font-size: clamp(16px, min(1.25cqw, 3.6vh), 30px);
+  line-height: .95;
+}
+.board-title small {
+  margin-top: clamp(2px, .18cqw, 5px);
+  font-size: clamp(8px, min(.65cqw, 1.55vh), 14px);
+}
+
+.board-clock { min-width: clamp(92px, 8cqw, 180px); }
+.board-clock small { font-size: clamp(8px, min(.55cqw, 1.45vh), 13px); }
+.board-clock strong { font-size: clamp(20px, min(1.75cqw, 4.6vh), 40px); }
+.board-clock span { font-size: clamp(8px, min(.5cqw, 1.35vh), 12px); }
+
+.position-key { gap: clamp(3px, .28cqw, 8px); }
+.position-key i {
+  min-width: clamp(28px, 2.15cqw, 54px);
+  padding: clamp(3px, .24cqw, 7px) clamp(4px, .34cqw, 9px);
+  font-size: clamp(8px, min(.6cqw, 1.5vh), 13px);
+}
+
+.board-actions { gap: clamp(5px, .45cqw, 12px); }
+.board-actions em { font-size: clamp(8px, min(.6cqw, 1.45vh), 13px); }
+.board-actions button {
+  padding: clamp(5px, .42cqw, 11px) clamp(7px, .68cqw, 17px);
+  font-size: clamp(9px, min(.68cqw, 1.7vh), 15px);
+}
+
+.last-sale-strip {
+  min-height: clamp(72px, 9.5vh, 118px);
+  padding: clamp(7px, .6cqw, 16px) clamp(9px, 1cqw, 28px);
+}
+.last-sale-strip > strong { font-size: clamp(12px, min(.9cqw, 2.4vh), 20px); }
+.last-sale-strip li {
+  padding: clamp(7px, .62cqw, 16px) clamp(9px, .8cqw, 20px);
+  font-size: clamp(12px, min(1.08cqw, 3vh), 23px);
+}
+
+.team-header {
+  padding: clamp(4px, calc(var(--header-row-height) * .045), 14px)
+    clamp(2px, calc(var(--team-column-width) * .025), 9px);
+}
+.team-header h2 {
+  font-size: clamp(
+    9px,
+    min(calc(var(--team-column-width) * .095), calc(var(--header-row-height) * .43)),
+    31px
+  );
+  line-height: .94;
+  overflow-wrap: anywhere;
+}
+.cap-left {
+  margin-top: clamp(2px, calc(var(--header-row-height) * .035), 10px);
+  font-size: clamp(
+    8px,
+    min(calc(var(--team-column-width) * .075), calc(var(--header-row-height) * .31)),
+    25px
+  );
+}
+.team-meta {
+  margin-top: clamp(2px, calc(var(--header-row-height) * .025), 8px);
+  font-size: clamp(
+    6px,
+    min(calc(var(--team-column-width) * .052), calc(var(--header-row-height) * .15)),
+    16px
+  );
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-sticker {
+  padding: clamp(2px, calc(var(--roster-row-height) * .04), 12px)
+    clamp(4px, calc(var(--team-column-width) * .035), 12px);
+}
+.player-sticker.is-keeper {
+  padding: clamp(2px, calc(var(--roster-row-height) * .035), 10px)
+    clamp(3px, calc(var(--team-column-width) * .028), 10px);
+}
+.sticker-meta {
+  font-size: clamp(
+    7px,
+    min(calc(var(--team-column-width) * .055), calc(var(--roster-row-height) * .27)),
+    18px
+  );
+}
+.sticker-meta b { font-size: 1.18em; }
+.player-name {
+  margin-top: clamp(1px, calc(var(--roster-row-height) * .025), 7px);
+  font-size: clamp(
+    9px,
+    min(calc(var(--team-column-width) * .09), calc(var(--roster-row-height) * .58)),
+    32px
+  );
+  line-height: .93;
+}
+.keeper-tag {
+  right: clamp(2px, calc(var(--team-column-width) * .018), 7px);
+  bottom: clamp(2px, calc(var(--roster-row-height) * .025), 7px);
+  padding: clamp(2px, calc(var(--roster-row-height) * .018), 5px)
+    clamp(3px, calc(var(--team-column-width) * .015), 6px);
+  font-size: clamp(
+    6px,
+    min(calc(var(--team-column-width) * .04), calc(var(--roster-row-height) * .15)),
+    12px
+  );
+}
+
+#board-status { font-size: clamp(8px, min(.62cqw, 1.75vh), 14px); }
+
+@media (max-width: 1200px) {
+  .board-title small,
+  .board-clock small,
+  .board-clock span,
+  .board-actions em { display: none; }
+  .last-sale-strip { min-height: 54px; }
+}

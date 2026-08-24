@@ -14,6 +14,15 @@ const teams = [
   ["the-bungles", "The Bungles", 100], ["big-head", "Big Head", 100], ["three-amigos", "Three Amigos", 100],
 ].map(([id, name, startingCap]) => ({ id, name, startingCap, capAdjustment: 0 }));
 
+// The demo board mirrors the official 2026 schedule so its sticker preview is
+// representative without coupling the live public board to a second data feed.
+const DEMO_BYE_WEEKS = Object.freeze({
+  ARI: 14, ATL: 11, BAL: 13, BUF: 7, CAR: 5, CHI: 10, CIN: 6, CLE: 11,
+  DAL: 14, DEN: 10, DET: 6, GB: 11, HOU: 8, IND: 13, JAX: 7, KC: 5,
+  LAC: 7, LAR: 11, LV: 13, MIA: 6, MIN: 6, NE: 11, NO: 8, NYG: 8,
+  NYJ: 13, PHI: 10, PIT: 9, SEA: 11, SF: 8, TB: 10, TEN: 9, WAS: 7,
+});
+
 const playerRows = [
   ["justin-herbert", "Justin Herbert", "QB", "LAC"], ["nico-collins", "Nico Collins", "WR", "HOU"], ["jahmyr-gibbs", "Jahmyr Gibbs", "RB", "DET"],
   ["sam-laporta", "Sam LaPorta", "TE", "DET"], ["justin-jefferson", "Justin Jefferson", "WR", "MIN"], ["brock-bowers", "Brock Bowers", "TE", "LV"],
@@ -37,7 +46,7 @@ const playerRows = [
   ["alvin-kamara", "Alvin Kamara", "RB", "NO"], ["david-njoku", "David Njoku", "TE", "CLE"], ["tony-pollard", "Tony Pollard", "RB", "TEN"],
   ["chris-boswell", "Chris Boswell", "K", "PIT"], ["49ers-dst", "49ers", "DST", "SF"], ["eagles-dst", "Eagles", "DST", "PHI"],
   ["ravens-dst", "Ravens", "DST", "BAL"], ["jake-bates", "Jake Bates", "K", "DET"], ["steelers-dst", "Steelers", "DST", "PIT"],
-].map(([id, name, position, nflTeam]) => ({ id, name, position, nflTeam }));
+].map(([id, name, position, nflTeam]) => ({ id, name, position, nflTeam, byeWeek: DEMO_BYE_WEEKS[nflTeam] ?? null }));
 
 const seedAssignments = [
   ["jahmyr-gibbs", "orange-crush", 24, 2], ["sam-laporta", "orange-crush", 8, 1], ["justin-jefferson", "the-hobbits", 31, 3], ["brock-bowers", "the-hobbits", 11, 2],
@@ -61,6 +70,7 @@ function assignment(playerId, teamId, price, contractYear, index) {
     playerName: player.name,
     position: player.position,
     nflTeam: player.nflTeam,
+    byeWeek: player.byeWeek,
     teamId,
     price,
     acquisitionType: "keeper",
@@ -104,10 +114,11 @@ function fullQaSnapshot() {
       position,
       nflTeam: ["DEN", "MIN", "BUF", "PHI"][slotIndex % 4],
     };
+    player.byeWeek = DEMO_BYE_WEEKS[player.nflTeam];
     players.push(player);
     assignments.push({
       id: `qa-assignment-${teamIndex + 1}-${slotIndex + 1}`,
-      playerId: player.id, playerName: player.name, position: player.position, nflTeam: player.nflTeam,
+      playerId: player.id, playerName: player.name, position: player.position, nflTeam: player.nflTeam, byeWeek: player.byeWeek,
       teamId: team.id, price: 1, acquisitionType: slotIndex < 2 ? "keeper" : "auction",
       contractYear: slotIndex < 2 ? slotIndex + 1 : null, status: "active",
       createdAt: new Date(Date.UTC(2026, 7, 7, 18, teamIndex, slotIndex)).toISOString(),

@@ -118,6 +118,37 @@ test("an idempotency retry cannot create a second sale", async () => {
   assert.equal(retried.assignments.filter((assignment) => assignment.status === "active").length, 1);
 });
 
+test("public assignments derive bye weeks from the current draft pack, including legacy events", async () => {
+  const players = [{
+    id: "bye-player",
+    name: "Bye Player",
+    position: "WR",
+    nflTeam: "BUF",
+    weeklyProjection: { byeWeek: 7 },
+  }];
+  const sale = stateEngine.createEvent(EVENT_TYPES.PLAYER_SOLD, {
+    playerId: "bye-player",
+    playerName: "Bye Player",
+    position: "WR",
+    nflTeam: "BUF",
+    teamId: "alpha",
+    amount: 6,
+    nominatorTeamId: "alpha",
+  });
+  const context = { events: [sale], generation: 1, draftPack: { players } };
+  const service = createNativeLedgerService({
+    stateEngine,
+    adapter: {
+      async load() { return structuredClone(context); },
+      async commitCanonical() { throw new Error("Read-only fixture"); },
+    },
+  });
+
+  const snapshot = await service.snapshot();
+  assert.equal(snapshot.assignments[0].byeWeek, 7);
+  assert.equal(snapshot.availablePlayers[0].byeWeek, 7);
+});
+
 test("finished teams are audited and skipped until explicitly reopened", async () => {
   const players = [
     { id: "beta-keeper", name: "Beta Keeper", position: "RB", nflTeam: "MIN" },

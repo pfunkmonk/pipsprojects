@@ -33,19 +33,19 @@ function sanitizePublicSnapshot(snapshot, includeAvailablePlayers = true, includ
     currentNominatorTeamId: snapshot.currentNominatorTeamId ?? null,
     nextNominatorTeamId: snapshot.nextNominatorTeamId ?? null,
     finishedTeamIds: Array.isArray(snapshot.finishedTeamIds) ? [...snapshot.finishedTeamIds] : [],
-    stagedNomination: snapshot.stagedNomination ? { id: snapshot.stagedNomination.id, name: snapshot.stagedNomination.name, position: snapshot.stagedNomination.position, nflTeam: snapshot.stagedNomination.nflTeam, updatedAt: snapshot.stagedNomination.updatedAt } : null,
+    stagedNomination: snapshot.stagedNomination ? { id: snapshot.stagedNomination.id, name: snapshot.stagedNomination.name, position: snapshot.stagedNomination.position, nflTeam: snapshot.stagedNomination.nflTeam, byeWeek: snapshot.stagedNomination.byeWeek ?? null, updatedAt: snapshot.stagedNomination.updatedAt } : null,
     clock: snapshot.clock ? { status: snapshot.clock.status, durationMs: snapshot.clock.durationMs, remainingMs: snapshot.clock.remainingMs, deadline: snapshot.clock.deadline, serverNow: snapshot.clock.serverNow } : undefined,
     teams: (snapshot.teams || []).map((team) => ({ id: team.id, name: team.name, startingCap: team.startingCap, capAdjustment: Number(team.capAdjustment) || 0, ...(typeof team.logoUrl === "string" && team.logoUrl ? { logoUrl: team.logoUrl } : {}) })),
     assignments: (snapshot.assignments || []).map((assignment) => ({
       id: assignment.id, playerId: assignment.playerId, playerName: assignment.playerName,
-      position: assignment.position, nflTeam: assignment.nflTeam, teamId: assignment.teamId,
+      position: assignment.position, nflTeam: assignment.nflTeam, byeWeek: assignment.byeWeek ?? null, teamId: assignment.teamId,
       price: assignment.price, acquisitionType: assignment.acquisitionType,
       contractYear: assignment.contractYear, status: assignment.status,
       createdAt: assignment.createdAt, updatedAt: assignment.updatedAt, actorLabel: assignment.actorLabel,
     })),
   };
   if (includeAvailablePlayers) {
-    clean.availablePlayers = (snapshot.availablePlayers || []).map((player) => ({ id: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam }));
+    clean.availablePlayers = (snapshot.availablePlayers || []).map((player) => ({ id: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam, byeWeek: player.byeWeek ?? null }));
   }
   if (includeAudit) {
     clean.auditEvents = (snapshot.auditEvents || []).map((event) => ({ id: event.id, action: event.action, teamId: event.teamId || null, playerName: event.playerName || null, price: Number.isInteger(event.price) ? event.price : null, status: event.status || null, createdAt: event.createdAt, actorLabel: event.actorLabel || "Auctioneer" }));

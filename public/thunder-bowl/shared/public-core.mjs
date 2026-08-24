@@ -53,6 +53,7 @@ export function assertPublicSnapshot(snapshot) {
     if (assignmentIds.has(assignment.id)) throw new Error(`Duplicate assignment: ${assignment.id}`);
     assignmentIds.add(assignment.id);
     if (!ALLOWED_POSITIONS.has(assignment.position)) throw new Error(`Invalid position: ${assignment.position}`);
+    if (assignment.byeWeek !== undefined && assignment.byeWeek !== null && (!Number.isInteger(assignment.byeWeek) || assignment.byeWeek < 1 || assignment.byeWeek > 18)) throw new Error("Assignment bye week is invalid.");
     if (!Number.isInteger(assignment.price) || assignment.price < 1) throw new Error("Assignment price must be a positive whole dollar.");
     if (!ALLOWED_ACQUISITION_TYPES.has(assignment.acquisitionType)) throw new Error("Assignment acquisition type is invalid.");
     if (!ALLOWED_STATUSES.has(assignment.status)) throw new Error("Assignment status is invalid.");
@@ -74,12 +75,14 @@ export function assertPublicSnapshot(snapshot) {
   const playerIds = new Set();
   for (const player of snapshot.availablePlayers || []) {
     if (!validPublicText(player?.id, 100) || !validPublicText(player.name) || !ALLOWED_POSITIONS.has(player.position) || !validPublicText(player.nflTeam, 20)) throw new Error("An available-player record is invalid.");
+    if (player.byeWeek !== undefined && player.byeWeek !== null && (!Number.isInteger(player.byeWeek) || player.byeWeek < 1 || player.byeWeek > 18)) throw new Error("An available-player bye week is invalid.");
     if (playerIds.has(player.id)) throw new Error(`Duplicate available player: ${player.id}`);
     playerIds.add(player.id);
   }
   if (snapshot.stagedNomination !== undefined && snapshot.stagedNomination !== null) {
     const player = snapshot.stagedNomination;
     if (!validPublicText(player.id, 100) || !validPublicText(player.name) || !ALLOWED_POSITIONS.has(player.position) || !validPublicText(player.nflTeam, 20)) throw new Error("Staged nomination is invalid.");
+    if (player.byeWeek !== undefined && player.byeWeek !== null && (!Number.isInteger(player.byeWeek) || player.byeWeek < 1 || player.byeWeek > 18)) throw new Error("Staged nomination bye week is invalid.");
   }
   return snapshot;
 }
