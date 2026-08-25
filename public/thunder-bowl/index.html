@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260823b" />
+  <link rel="stylesheet" href="./app.css?v=20260825c" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -108,23 +108,56 @@
               </div>
               <span id="player-count" class="count-label">0 shown</span>
             </header>
-            <div class="pool-controls">
-              <label class="search-field" for="player-search">
-                <span>Fast search</span>
-                <input id="player-search" type="search" placeholder="Player, NFL team, or position…" autocomplete="off" />
-              </label>
-              <label for="position-filter">
-                <span>Position</span>
-                <select id="position-filter">
-                  <option value="ALL">All</option>
-                  <option value="QB">QB</option>
-                  <option value="RB">RB</option>
-                  <option value="WR">WR</option>
-                  <option value="TE">TE</option>
-                  <option value="K">K</option>
-                  <option value="DST">DST</option>
-                </select>
-              </label>
+            <div class="player-pool-tools">
+              <div class="pool-controls">
+                <label class="search-field" for="player-search">
+                  <span>Fast search</span>
+                  <input id="player-search" type="search" placeholder="Player, NFL team, or position…" autocomplete="off" />
+                </label>
+                <label for="position-filter">
+                  <span>Position</span>
+                  <select id="position-filter">
+                    <option value="ALL">All</option>
+                    <option value="QB">QB</option>
+                    <option value="RB">RB</option>
+                    <option value="WR">WR</option>
+                    <option value="TE">TE</option>
+                    <option value="K">K</option>
+                    <option value="DST">DST</option>
+                  </select>
+                </label>
+                <label for="player-sort">
+                  <span>Sort</span>
+                  <select id="player-sort">
+                    <option value="RECOMMENDED">Draft advice</option>
+                    <option value="VBD_DESC">VBD: high first</option>
+                    <option value="MARKET_DESC">Market: high first</option>
+                    <option value="MAX_BID_DESC">Max bid: high first</option>
+                    <option value="PROJECTED_DESC">Projected points</option>
+                    <option value="TIER_ASC">Tier: best first</option>
+                    <option value="POSITION_ASC">Position, then value</option>
+                    <option value="BYE_ASC">Bye week</option>
+                    <option value="ROOKIE_FIRST">Rookies first</option>
+                    <option value="AGE_ASC">Age: youngest first</option>
+                    <option value="AGE_DESC">Age: oldest first</option>
+                    <option value="NAME_ASC">Name A–Z</option>
+                  </select>
+                </label>
+                <button id="toggle-player-filters" class="button button-secondary pool-filter-toggle" type="button" aria-expanded="false" aria-controls="advanced-player-filters">
+                  Filters <span id="player-filter-count" class="pool-filter-count">0</span>
+                </button>
+              </div>
+              <div id="advanced-player-filters" class="advanced-player-filters" hidden>
+                <label for="bye-filter"><span>Bye week</span><select id="bye-filter"><option value="ALL">All byes</option></select></label>
+                <label for="experience-filter"><span>Experience</span><select id="experience-filter"><option value="ALL">All players</option><option value="ROOKIE">Rookies</option><option value="VETERAN">Veterans</option><option value="UNKNOWN">Unknown</option></select></label>
+                <label for="tier-filter"><span>Tier</span><select id="tier-filter"><option value="ALL">All tiers</option></select></label>
+                <label for="tag-filter"><span>My board</span><select id="tag-filter"><option value="ALL">All tags</option><option value="TARGET">Targets</option><option value="AVOID">Avoids</option><option value="UNTAGGED">Untagged</option></select></label>
+                <label for="attention-filter"><span>Attention</span><select id="attention-filter"><option value="ALL">All players</option><option value="ALERT">News / injury</option></select></label>
+              </div>
+              <div id="player-filter-summary" class="player-filter-summary" hidden>
+                <span id="player-filter-summary-text">All available players</span>
+                <button id="clear-player-filters" type="button">Clear filters</button>
+              </div>
             </div>
             <p class="pool-help"><strong>Typos are okay.</strong> Right-click any player for news, injury/role evidence, Target/Avoid tags, personal prices, and notes.</p>
             <div class="table-wrap player-table-wrap">
@@ -133,7 +166,7 @@
                 <tbody id="player-rows"></tbody>
               </table>
             </div>
-            <p id="empty-pool" class="empty-state" hidden>No available player matches that search.</p>
+            <p id="empty-pool" class="empty-state" hidden>No available player matches that search and filter set.</p>
           </section>
 
           <section class="product-panel decision-panel" aria-labelledby="selected-player-name">
@@ -155,6 +188,10 @@
                 <span id="selected-availability" class="availability-badge">Available</span>
               </div>
             </div>
+            <section id="decision-teammate-ownership" class="decision-teammate-ownership" role="status" aria-live="polite" hidden>
+              <strong id="decision-teammate-ownership-title">HANDCUFF WATCH</strong>
+              <span id="decision-teammate-ownership-detail"></span>
+            </section>
             <section id="decision-coach" class="decision-coach coach-neutral" aria-labelledby="decision-coach-verdict" aria-live="polite">
               <div class="decision-coach-verdict">
                 <div class="decision-action-labels">
@@ -279,6 +316,16 @@
               </dl>
               <p id="auction-forecast-note" class="auction-forecast-note" hidden></p>
               <ol id="selected-opponent-pressure" class="opponent-pressure-list"></ol>
+              <div class="room-team-dashboard-section" aria-labelledby="room-team-dashboard-title">
+                <div class="room-team-dashboard-heading">
+                  <div>
+                    <p class="eyebrow" id="room-team-dashboard-title">All 12 teams</p>
+                    <p id="room-team-dashboard-context" class="muted">Cash, legal max, and roster counts</p>
+                  </div>
+                  <small>Click a team</small>
+                </div>
+                <div id="room-team-dashboard" class="room-team-dashboard" aria-label="League team budgets and rosters"></div>
+              </div>
             </section>
             <section class="nomination-section">
               <p class="eyebrow">Next nomination</p>
@@ -896,6 +943,39 @@
       </form>
     </dialog>
 
+    <dialog id="team-roster-dialog" class="room-roster-dialog" aria-labelledby="team-roster-dialog-title">
+      <button id="team-roster-backdrop" class="room-popout-backdrop" type="button" tabindex="-1" aria-label="Close team roster"></button>
+      <article class="room-popout-card">
+        <header>
+          <div>
+            <p class="eyebrow">Live team roster</p>
+            <h2 id="team-roster-dialog-title">Team</h2>
+            <p id="team-roster-dialog-summary" class="muted">Cash and roster update from the official ledger.</p>
+          </div>
+          <button id="close-team-roster-dialog" class="intel-close" type="button" aria-label="Close team roster">×</button>
+        </header>
+        <div id="team-roster-dialog-counts" class="room-roster-counts" aria-label="Position counts"></div>
+        <div id="team-roster-dialog-players" class="room-roster-player-list"></div>
+        <p class="room-popout-hint">Select a player for the saved Footballguys depth chart. Click outside this popout to close it.</p>
+      </article>
+    </dialog>
+
+    <dialog id="team-depth-dialog" class="room-depth-dialog" aria-labelledby="team-depth-dialog-title">
+      <button id="team-depth-backdrop" class="room-popout-backdrop" type="button" tabindex="-1" aria-label="Close depth chart"></button>
+      <article class="room-popout-card room-depth-card">
+        <header>
+          <div>
+            <p class="eyebrow">Saved Footballguys depth chart</p>
+            <h2 id="team-depth-dialog-title">NFL team · position</h2>
+            <p id="team-depth-dialog-summary" class="muted">Saved for offline draft-day use · no value effect</p>
+          </div>
+          <button id="close-team-depth-dialog" class="intel-close" type="button" aria-label="Close depth chart">×</button>
+        </header>
+        <ol id="team-depth-dialog-players" class="room-depth-player-list"></ol>
+        <p id="team-depth-dialog-status" class="room-popout-hint">Click outside this popout to return to the team roster.</p>
+      </article>
+    </dialog>
+
     <dialog id="player-intel-dialog" class="player-intel-dialog" aria-labelledby="player-intel-name">
       <button id="player-intel-backdrop" class="player-intel-backdrop" type="button" tabindex="-1" aria-label="Close player intelligence"><span id="player-intel-backdrop-hitbox" aria-hidden="true"></span></button>
       <form id="player-intel-form">
@@ -1000,6 +1080,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260823b"></script>
+  <script type="module" src="./app.mjs?v=20260825d"></script>
 </body>
 </html>

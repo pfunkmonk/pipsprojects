@@ -48,7 +48,6 @@ import {
   createPlayerAnnotation,
   isEmptyAnnotation,
   personalBidLimit,
-  playerTagSort,
   priceSignal,
   validatePlayerAnnotations,
 } from "./player-annotations.mjs?v=20260805g";
@@ -64,6 +63,19 @@ import {
 } from "./personal-board-exchange.mjs?v=20260805g";
 import { buildDraftReadinessReport, buildEmergencyBoardHtml } from "./draft-readiness.mjs?v=20260813a";
 import { normalizePlayerSearch, playerSearchScore } from "./player-search.mjs?v=20260811h";
+import {
+  DEFAULT_PLAYER_POOL_CONTROLS,
+  activePlayerPoolFilters,
+  filterAndSortPlayerPool,
+  playerByeWeek,
+} from "./player-pool-controls.mjs?v=20260825a";
+import { PLAYER_DEMOGRAPHICS_2026 } from "./player-demographics-2026.mjs?v=20260825a";
+import {
+  DISPLAY_POSITIONS,
+  buildRoomTeamCards,
+  orderedRoster,
+  savedDepthChartForPlayer,
+} from "./room-team-dashboard.mjs?v=20260825a";
 import { buildKeeperBoard, buildKeeperTradeMarket, keeperBoardCsv, keeperContractTenure, keeperTradeScenario } from "./keeper-board.mjs?v=20260808k";
 import { calculateKeeperScenarioValues } from "./keeper-scenario.mjs?v=20260808i";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260816a";
@@ -97,7 +109,9 @@ import {
   byeWeekConflicts,
   cashLeverage,
   playerSurplusHeat,
-} from "./decision-context.mjs?v=20260816a";
+  sameTeamStackOwnership,
+  sameTeamPositionOwnership,
+} from "./decision-context.mjs?v=20260825c";
 import { buildNominationAssistant, NOMINATION_PLAYS } from "./nomination-assistant.mjs?v=20260810a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 import { buildProjectionLabPreview, projectionSourceWeights } from "./projection-lab.mjs?v=20260821a";
@@ -166,6 +180,15 @@ const playerRows = byId("player-rows");
 const playerTableWrap = playerRows.closest(".player-table-wrap");
 const playerSearch = byId("player-search");
 const positionFilter = byId("position-filter");
+const playerSort = byId("player-sort");
+const byeFilter = byId("bye-filter");
+const experienceFilter = byId("experience-filter");
+const tierFilter = byId("tier-filter");
+const tagFilter = byId("tag-filter");
+const attentionFilter = byId("attention-filter");
+const playerFiltersToggle = byId("toggle-player-filters");
+const advancedPlayerFilters = byId("advanced-player-filters");
+const clearPlayerFiltersButton = byId("clear-player-filters");
 const saleForm = byId("sale-form");
 const salePrice = byId("sale-price");
 const saleTeam = byId("sale-team");
@@ -192,6 +215,8 @@ const practicePauseButton = byId("practice-pause");
 const practiceStatus = byId("practice-status");
 const playerIntelDialog = byId("player-intel-dialog");
 const playerIntelForm = byId("player-intel-form");
+const teamRosterDialog = byId("team-roster-dialog");
+const teamDepthDialog = byId("team-depth-dialog");
 const runnerUpPrompt = byId("runner-up-prompt");
 const runnerUpTeam = byId("runner-up-team");
 const PLAYER_ANNOTATIONS_KEY = `thunder-bowl-${ROOM_SEASON}-player-annotations-v1`;
@@ -206,6 +231,7 @@ let visiblePlayerIds = [];
 let virtualPlayerList = [];
 let virtualPlayerWindowKey = "";
 let playerScrollFrame = null;
+let playerPoolFacetKey = "";
 let displayBoardUrl = null;
 let syncInFlight = false;
 let syncTimer = null;
@@ -262,6 +288,9 @@ let practiceTickInFlight = false;
 let practiceAutoStartTimer = null;
 let playerAnnotations = {};
 let intelPlayerId = null;
+let roomRosterTeamId = null;
+let roomDepthPlayerId = null;
+let preserveRosterTeamForDepth = false;
 let priorityScenario = DEFAULT_PRIORITY_SCENARIO;
 let priorityControlsDirty = false;
 let leagueSetup = null;
@@ -890,19 +919,85 @@ function liveDepthRoleEvidence(player) {
   return `Tier ${player.tier}, ${player.position}${player.sourceRank}; no numeric depth-chart slot is available in the saved evidence`;
 }
 
+function playerDemographics(player) {
+  return player ? PLAYER_DEMOGRAPHICS_2026[player.id] || null : null;
+}
+
+function playerNeedsAttention(player) {
+  if (playerNewsSignal(player)) return true;
+  const live = player ? liveStatusByPlayerId.get(player.id) : null;
+  if (["critical", "high", "moderate"].includes(live?.severity)) return true;
+  const injury = String(player?.injury || "");
+  return !/^no\b/i.test(injury) && /questionable|doubtful|injured reserve|\bIR\b|\bPUP\b|suspend|non-football injury|\bout\b/i.test(injury);
+}
+
+function currentPlayerPoolControls() {
+  return {
+    position: positionFilter.value,
+    byeWeek: byeFilter.value,
+    experience: experienceFilter.value,
+    tier: tierFilter.value,
+    tag: tagFilter.value,
+    attention: attentionFilter.value,
+    sort: playerSort.value,
+  };
+}
+
+function replaceNumericFilterOptions(select, firstLabel, values) {
+  const selected = select.value;
+  select.replaceChildren();
+  const all = document.createElement("option");
+  all.value = "ALL";
+  all.textContent = firstLabel;
+  select.append(all);
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = String(value);
+    option.textContent = String(value);
+    select.append(option);
+  }
+  select.value = [...select.options].some((option) => option.value === selected) ? selected : "ALL";
+}
+
+function populatePlayerPoolFacetOptions() {
+  if (!draftPack) return;
+  const byeWeeks = [...new Set(draftPack.players.map(playerByeWeek).filter(Number.isFinite))].sort((left, right) => left - right);
+  const tiers = [...new Set(draftPack.players.map((player) => Number(player.tier)).filter(Number.isFinite))].sort((left, right) => left - right);
+  const facetKey = `${draftPack.packId}:${byeWeeks.join(",")}:${tiers.join(",")}`;
+  if (facetKey === playerPoolFacetKey) return;
+  playerPoolFacetKey = facetKey;
+  replaceNumericFilterOptions(byeFilter, "All byes", byeWeeks);
+  replaceNumericFilterOptions(tierFilter, "All tiers", tiers);
+}
+
+function resetPlayerPoolControls({ clearSearch = true, closeDrawer = true } = {}) {
+  if (clearSearch) playerSearch.value = "";
+  positionFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.position;
+  byeFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.byeWeek;
+  experienceFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.experience;
+  tierFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.tier;
+  tagFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.tag;
+  attentionFilter.value = DEFAULT_PLAYER_POOL_CONTROLS.attention;
+  playerSort.value = DEFAULT_PLAYER_POOL_CONTROLS.sort;
+  if (closeDrawer) {
+    advancedPlayerFilters.hidden = true;
+    playerFiltersToggle.setAttribute("aria-expanded", "false");
+  }
+}
+
 function filteredPlayers() {
   const query = normalizePlayerSearch(playerSearch.value);
-  const position = positionFilter.value;
-  return availablePlayers()
-    .filter((player) => position === "ALL" || player.position === position)
-    .map((player) => ({ player, searchScore: playerSearchScore(player, query) }))
-    .filter(({ searchScore }) => searchScore !== null)
-    .sort((left, right) => {
-      const searchDifference = query ? right.searchScore - left.searchScore : 0;
-      const tagDifference = playerTagSort(annotationFor(left.player.id)?.tag) - playerTagSort(annotationFor(right.player.id)?.tag);
-      return searchDifference || tagDifference || livePlayerValues(right.player).maxBid - livePlayerValues(left.player).maxBid || right.player.vbd - left.player.vbd || left.player.name.localeCompare(right.player.name);
-    })
-    .map(({ player }) => player);
+  return filterAndSortPlayerPool({
+    players: availablePlayers(),
+    query,
+    controls: currentPlayerPoolControls(),
+    searchScoreFor: playerSearchScore,
+    tagFor: (player) => annotationFor(player.id)?.tag || "neutral",
+    valuesFor: livePlayerValues,
+    adjustedVbdFor: (player) => priorityVbdFor(player).adjustedVbd,
+    demographicsFor: playerDemographics,
+    hasAttention: playerNeedsAttention,
+  });
 }
 
 function latestIntelCapturedAt() {
@@ -940,7 +1035,14 @@ function makePlayerCell(player) {
   if (newsAlert) nameLine.append(newsAlert);
   const meta = document.createElement("span");
   meta.className = "player-meta";
-  meta.textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier} · ${shortIntelAge()}`;
+  const demographics = playerDemographics(player);
+  const byeWeek = playerByeWeek(player);
+  const demographicText = demographics?.rookie
+    ? ` · Rookie${Number.isFinite(demographics.age) ? ` · Age ${demographics.age}` : ""}`
+    : Number.isFinite(demographics?.age)
+      ? ` · Age ${demographics.age}`
+      : "";
+  meta.textContent = `${player.position} · ${player.nflTeam} · Tier ${player.tier} · Bye ${byeWeek || "—"}${demographicText} · ${shortIntelAge()}`;
   const personal = document.createElement("span");
   personal.className = "player-personal-line";
   const annotation = annotationFor(player.id);
@@ -1056,6 +1158,7 @@ function ensureSelectedPlayerVisible() {
 }
 
 function renderPlayerPool({ resetScroll = false } = {}) {
+  populatePlayerPoolFacetOptions();
   const players = filteredPlayers();
   virtualPlayerList = players;
   visiblePlayerIds = players.map((player) => player.id);
@@ -1070,7 +1173,14 @@ function renderPlayerPool({ resetScroll = false } = {}) {
   if (resetScroll) playerTableWrap.scrollTop = 0;
   virtualPlayerWindowKey = "";
   renderPlayerPoolWindow(true);
-  byId("player-count").textContent = `${players.length} shown`;
+  const availableCount = availablePlayers().length;
+  const activeFilters = activePlayerPoolFilters(currentPlayerPoolControls());
+  const searchActive = Boolean(normalizePlayerSearch(playerSearch.value));
+  const activeCount = activeFilters.length + (searchActive ? 1 : 0);
+  byId("player-count").textContent = players.length === availableCount ? `${players.length} shown` : `${players.length} of ${availableCount}`;
+  byId("player-filter-count").textContent = String(activeCount);
+  byId("player-filter-summary").hidden = activeCount === 0;
+  byId("player-filter-summary-text").textContent = [searchActive ? `Search “${playerSearch.value.trim()}”` : "", ...activeFilters].filter(Boolean).join(" · ");
   byId("empty-pool").hidden = players.length > 0;
 }
 
@@ -2178,6 +2288,46 @@ function renderDecisionCoach(player, { available, live, context, annotation, per
     element.className = positionRun ? `run-${runStatus.toLowerCase()}` : "";
   }
 
+  const teammateOwnership = sameTeamPositionOwnership({
+    selectedPlayer: player,
+    players: draftPack.players,
+    state: draftState,
+    userTeamId: USER_TEAM_ID,
+  });
+  const stackOwnership = sameTeamStackOwnership({
+    selectedPlayer: player,
+    players: draftPack.players,
+    state: draftState,
+    userTeamId: USER_TEAM_ID,
+  });
+  const teammateWarning = byId("decision-teammate-ownership");
+  teammateWarning.hidden = !teammateOwnership.active && !stackOwnership.active;
+  if (teammateOwnership.active || stackOwnership.active) {
+    const ownershipParts = [];
+    if (teammateOwnership.active) {
+      const rows = teammateOwnership.matches.map((row) => `${row.playerName} → ${row.isUserTeam ? "Dogs of War" : row.teamName}`);
+      ownershipParts.push(`${teammateOwnership.nflTeam} ${teammateOwnership.position}: ${rows.join(" · ")}`);
+    }
+    if (stackOwnership.active) {
+      const rows = stackOwnership.matches.map((row) => `${row.playerName} (${row.position}) → ${row.isUserTeam ? "Dogs of War" : row.teamName}`);
+      ownershipParts.push(`${stackOwnership.nflTeam} stack: ${rows.join(" · ")}`);
+    }
+    const includesUser = teammateOwnership.includesUser || stackOwnership.includesUser;
+    const hasRival = teammateOwnership.rivalTeamCount > 0 || stackOwnership.rivalTeamCount > 0;
+    byId("decision-teammate-ownership-title").textContent = teammateOwnership.active && stackOwnership.active
+      ? "HANDCUFF + STACK WATCH"
+      : stackOwnership.active
+        ? hasRival && !includesUser ? "STACK WATCH" : hasRival ? "STACK / YOUR PAIR" : "YOUR STACK"
+        : hasRival && !includesUser ? "HANDCUFF WATCH" : hasRival ? "HANDCUFF / YOUR PAIR" : "YOUR HANDCUFF";
+    const ownershipText = ownershipParts.join(" | ");
+    byId("decision-teammate-ownership-detail").textContent = ownershipText;
+    teammateWarning.title = `${ownershipText}. Same-team handcuff or stack ownership can create extra bidding demand; no automatic value adjustment.`;
+  } else {
+    byId("decision-teammate-ownership-title").textContent = "";
+    byId("decision-teammate-ownership-detail").textContent = "";
+    teammateWarning.removeAttribute("title");
+  }
+
   const bye = player ? byeWeekConflicts({ selectedPlayer: player, players: draftPack.players, state: draftState, userTeamId: USER_TEAM_ID }) : { byeWeek: null, conflicts: [] };
   const warning = byId("selected-bye-warning");
   warning.hidden = bye.conflicts.length === 0;
@@ -2422,7 +2572,199 @@ function renderNeeds() {
     row.append(position, detail, budget);
     lanes.append(row);
   }
+  renderRoomTeamDashboard();
   return safety;
+}
+
+function roomDashboardCandidatePosition() {
+  const player = selectedPlayer();
+  return player && !draftState.draftedPlayers[player.id] ? player.position : null;
+}
+
+function renderRoomTeamDashboard() {
+  const container = byId("room-team-dashboard");
+  if (!container || !draftState?.config) return;
+  const candidatePosition = roomDashboardCandidatePosition();
+  const cards = buildRoomTeamCards({
+    state: draftState,
+    candidatePosition,
+    legalMaximumFor: (team, position) => legalMaximumBid(team, draftState.config, position),
+  });
+  byId("room-team-dashboard-context").textContent = candidatePosition
+    ? `Cash, ${candidatePosition} legal max, and roster counts`
+    : "Cash, roster-safe legal max, and roster counts";
+  container.replaceChildren();
+  for (const team of cards) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `room-team-card${team.id === USER_TEAM_ID ? " is-dogs" : ""}${team.isCurrentNominator ? " is-nominator" : ""}`;
+    button.dataset.roomTeamId = team.id;
+    const name = document.createElement("strong");
+    name.textContent = team.name;
+    const money = document.createElement("span");
+    money.className = "room-team-card-money";
+    const cash = document.createElement("b");
+    cash.textContent = `${currency(team.cash)} left`;
+    const maximum = document.createElement("b");
+    maximum.textContent = `Max ${currency(team.legalMaximum)}`;
+    money.append(cash, maximum);
+    const counts = document.createElement("small");
+    counts.className = "room-team-card-counts";
+    counts.textContent = DISPLAY_POSITIONS.map((position) => `${position}${team.positionCounts[position]}`).join(" · ");
+    button.title = `${team.name}: ${currency(team.cash)} left; ${candidatePosition ? `${candidatePosition} ` : ""}legal max ${currency(team.legalMaximum)}; ${team.rosterCount} players. Open the live roster.`;
+    button.setAttribute("aria-label", button.title);
+    button.append(name, money, counts);
+    container.append(button);
+  }
+  if (teamRosterDialog.open) renderTeamRosterDialog();
+  if (teamDepthDialog.open) renderTeamDepthDialog();
+}
+
+function rosterPlayerById(playerId) {
+  for (const team of Object.values(draftState.teams || {})) {
+    const player = team.roster.find((entry) => entry.playerId === playerId);
+    if (player) return { player, team };
+  }
+  return null;
+}
+
+function renderTeamRosterDialog() {
+  const team = draftState.teams?.[roomRosterTeamId];
+  if (!team) {
+    closeTeamRosterDialog();
+    return;
+  }
+  const candidatePosition = roomDashboardCandidatePosition();
+  const dashboardTeam = buildRoomTeamCards({
+    state: draftState,
+    candidatePosition,
+    legalMaximumFor: (candidateTeam, position) => legalMaximumBid(candidateTeam, draftState.config, position),
+  }).find((entry) => entry.id === team.id);
+  const maximum = dashboardTeam?.legalMaximum ?? 0;
+  byId("team-roster-dialog-title").textContent = team.name;
+  byId("team-roster-dialog-summary").textContent = `${currency(team.cash)} left · ${candidatePosition ? `${candidatePosition} ` : ""}legal max ${currency(maximum)} · ${team.roster.length}/${draftState.config.rosterSize} players`;
+  const counts = byId("team-roster-dialog-counts");
+  counts.replaceChildren();
+  for (const position of DISPLAY_POSITIONS) {
+    const chip = document.createElement("span");
+    chip.textContent = `${position} ${team.positionCounts[position]}`;
+    counts.append(chip);
+  }
+  const list = byId("team-roster-dialog-players");
+  list.replaceChildren();
+  const roster = orderedRoster(team);
+  if (!roster.length) {
+    const empty = document.createElement("p");
+    empty.className = "room-roster-empty";
+    empty.textContent = "No keepers or auction purchases are recorded for this team yet.";
+    list.append(empty);
+    return;
+  }
+  for (const player of roster) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "room-roster-player";
+    button.dataset.roomRosterPlayerId = player.playerId;
+    const name = document.createElement("strong");
+    name.textContent = player.playerName;
+    const detail = document.createElement("span");
+    detail.textContent = `${player.position} · ${player.nflTeam} · ${player.acquisitionType === "keeper" ? `Keeper${player.keeperYear ? ` Y${player.keeperYear}` : ""}` : "Auction"}`;
+    const price = document.createElement("b");
+    price.textContent = currency(player.price);
+    const action = document.createElement("small");
+    action.textContent = player.position === "DST" ? "Team defense · depth chart not applicable" : "View saved depth chart";
+    button.append(name, detail, price, action);
+    list.append(button);
+  }
+}
+
+function openTeamRosterDialog(teamId) {
+  if (!draftState.teams?.[teamId]) return;
+  roomRosterTeamId = teamId;
+  roomDepthPlayerId = null;
+  renderTeamRosterDialog();
+  if (!teamRosterDialog.open) teamRosterDialog.showModal();
+}
+
+function closeTeamRosterDialog() {
+  if (teamDepthDialog.open) teamDepthDialog.close();
+  if (teamRosterDialog.open) teamRosterDialog.close();
+  roomDepthPlayerId = null;
+  roomRosterTeamId = null;
+}
+
+function renderTeamDepthDialog() {
+  const match = rosterPlayerById(roomDepthPlayerId);
+  if (!match) {
+    if (teamDepthDialog.open) teamDepthDialog.close();
+    roomDepthPlayerId = null;
+    return;
+  }
+  const { player } = match;
+  const depth = savedDepthChartForPlayer(player, liveResearchSnapshot);
+  byId("team-depth-dialog-title").textContent = `${depth.team || player.nflTeam} ${depth.position || player.position} depth chart`;
+  byId("team-depth-dialog-summary").textContent = `${player.playerName} selected · ${liveResearchSnapshot?.depthChart?.updatedText || (liveResearchSnapshot ? `saved ${dateTime(liveResearchSnapshot.capturedAt)}` : "no saved Footballguys snapshot")}`;
+  const list = byId("team-depth-dialog-players");
+  list.replaceChildren();
+  const status = byId("team-depth-dialog-status");
+  if (player.position === "DST") {
+    const empty = document.createElement("li");
+    empty.className = "room-depth-empty";
+    empty.textContent = "Individual-player depth charts do not apply to team defenses.";
+    list.append(empty);
+    status.textContent = "Return to the roster by clicking outside this popout.";
+    return;
+  }
+  if (!depth.available) {
+    const empty = document.createElement("li");
+    empty.className = "room-depth-empty";
+    empty.textContent = liveResearchSnapshot
+      ? `The saved Footballguys snapshot has no ${depth.team} ${depth.position} group.`
+      : "No Footballguys depth chart is stored on this device yet. Capture draft-morning player intelligence in Admin & data.";
+    list.append(empty);
+    status.textContent = "No web page was opened; saved internal evidence remains the only source here.";
+    return;
+  }
+  for (const entry of depth.entries.slice(0, 12)) {
+    const item = document.createElement("li");
+    item.className = entry === depth.selected ? "is-selected" : "";
+    const order = document.createElement("b");
+    order.textContent = `${entry.position}${entry.depthOrder}`;
+    const name = document.createElement("strong");
+    name.textContent = entry.playerName;
+    const detail = document.createElement("span");
+    detail.textContent = `${entry.starter ? "Listed starter" : "Depth"}${entry.status ? ` · ${entry.status}` : ""}`;
+    item.append(order, name, detail);
+    list.append(item);
+  }
+  status.textContent = depth.selected
+    ? `${player.playerName} is highlighted. Saved Footballguys order is advisory only and has no value effect.`
+    : `${player.playerName} is not name-matched in this saved group; the complete ${depth.team} ${depth.position} order is shown.`;
+}
+
+function openTeamDepthDialog(playerId) {
+  if (!rosterPlayerById(playerId)) return;
+  const returnTeamId = roomRosterTeamId;
+  if (teamRosterDialog.open) {
+    preserveRosterTeamForDepth = true;
+    teamRosterDialog.close();
+  }
+  roomRosterTeamId = returnTeamId;
+  roomDepthPlayerId = playerId;
+  renderTeamDepthDialog();
+  if (!teamDepthDialog.open) teamDepthDialog.showModal();
+}
+
+function closeTeamDepthDialog() {
+  if (teamDepthDialog.open) teamDepthDialog.close();
+  roomDepthPlayerId = null;
+}
+
+function closeRoomPopoutFromOutside(event, dialog, card, close) {
+  if (!dialog.open || card.contains(event.target)) return;
+  const bounds = card.getBoundingClientRect();
+  const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+  if (event.target === dialog || outside) close();
 }
 
 function renderMetrics() {
@@ -3957,6 +4299,7 @@ function selectPlayer(playerId, focusPrice = false) {
   renderPlayerPool();
   ensureSelectedPlayerVisible();
   renderSelectedPlayer();
+  renderRoomTeamDashboard();
   if (changedPlayer) {
     const decisionPanel = document.querySelector(".decision-panel");
     if (decisionPanel) decisionPanel.scrollTop = 0;
@@ -5661,6 +6004,23 @@ function bindInteractions() {
     renderPlayerPool({ resetScroll: true });
     renderSelectedPlayer();
   });
+  for (const control of [playerSort, byeFilter, experienceFilter, tierFilter, tagFilter, attentionFilter]) {
+    control.addEventListener("change", () => {
+      renderPlayerPool({ resetScroll: true });
+      renderSelectedPlayer();
+    });
+  }
+  playerFiltersToggle.addEventListener("click", () => {
+    advancedPlayerFilters.hidden = !advancedPlayerFilters.hidden;
+    playerFiltersToggle.setAttribute("aria-expanded", String(!advancedPlayerFilters.hidden));
+    if (!advancedPlayerFilters.hidden) byeFilter.focus();
+  });
+  clearPlayerFiltersButton.addEventListener("click", () => {
+    resetPlayerPoolControls();
+    renderPlayerPool({ resetScroll: true });
+    renderSelectedPlayer();
+    playerSearch.focus();
+  });
   playerTableWrap.addEventListener("scroll", () => {
     if (playerScrollFrame !== null) return;
     playerScrollFrame = requestAnimationFrame(() => {
@@ -5677,6 +6037,46 @@ function bindInteractions() {
     if (!target) return;
     event.preventDefault();
     openPlayerIntel(target.dataset.playerId);
+  });
+  byId("room-team-dashboard").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-room-team-id]");
+    if (button) openTeamRosterDialog(button.dataset.roomTeamId);
+  });
+  byId("team-roster-dialog-players").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-room-roster-player-id]");
+    if (button) openTeamDepthDialog(button.dataset.roomRosterPlayerId);
+  });
+  byId("close-team-roster-dialog").addEventListener("click", closeTeamRosterDialog);
+  byId("close-team-depth-dialog").addEventListener("click", closeTeamDepthDialog);
+  byId("team-roster-backdrop").addEventListener("click", closeTeamRosterDialog);
+  byId("team-depth-backdrop").addEventListener("click", closeTeamDepthDialog);
+  teamRosterDialog.addEventListener("click", (event) => closeRoomPopoutFromOutside(
+    event,
+    teamRosterDialog,
+    teamRosterDialog.querySelector(".room-popout-card"),
+    closeTeamRosterDialog,
+  ));
+  teamDepthDialog.addEventListener("click", (event) => closeRoomPopoutFromOutside(
+    event,
+    teamDepthDialog,
+    teamDepthDialog.querySelector(".room-popout-card"),
+    closeTeamDepthDialog,
+  ));
+  teamRosterDialog.addEventListener("close", () => {
+    if (preserveRosterTeamForDepth) {
+      preserveRosterTeamForDepth = false;
+      return;
+    }
+    roomRosterTeamId = null;
+    roomDepthPlayerId = null;
+  });
+  teamDepthDialog.addEventListener("close", () => {
+    const returnTeamId = roomRosterTeamId;
+    roomDepthPlayerId = null;
+    if (!returnTeamId || !draftState.teams?.[returnTeamId]) return;
+    roomRosterTeamId = returnTeamId;
+    renderTeamRosterDialog();
+    if (!teamRosterDialog.open) teamRosterDialog.showModal();
   });
   byId("open-tier-dialog").addEventListener("click", openTierDialog);
   byId("decision-tier-warning").addEventListener("click", openTierDialog);
@@ -5841,9 +6241,8 @@ function bindInteractions() {
       event.preventDefault();
       if (!PRACTICE_AUCTION || !practiceSession) void undoLastSale();
     } else if (event.key === "Escape" && currentView === "draft") {
-      playerSearch.value = "";
-      positionFilter.value = "ALL";
-      renderPlayerPool();
+      resetPlayerPoolControls();
+      renderPlayerPool({ resetScroll: true });
       renderSelectedPlayer();
       playerSearch.focus();
     } else if (currentView === "draft" && !typing && event.key === "Enter") {

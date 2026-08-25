@@ -181,6 +181,103 @@ export function byeWeekConflicts({ selectedPlayer, players, state, userTeamId = 
   return { byeWeek, conflicts };
 }
 
+function canonicalNflTeam(value) {
+  const team = String(value || "").trim().toUpperCase();
+  return { ARZ: "ARI", JAC: "JAX", LA: "LAR" }[team] || team;
+}
+
+export function sameTeamPositionOwnership({ selectedPlayer, players, state, userTeamId = "dogs-of-war" } = {}) {
+  const nflTeam = canonicalNflTeam(selectedPlayer?.nflTeam);
+  const position = String(selectedPlayer?.position || "").trim().toUpperCase();
+  if (!selectedPlayer || !nflTeam || !position || position === "DST") {
+    return { active: false, nflTeam, position, matches: [], includesUser: false, rivalTeamCount: 0, modelEffect: "none" };
+  }
+  if (!Array.isArray(players)) throw new TypeError("Teammate ownership requires the complete player pool.");
+
+  const assignments = state?.draftedPlayers || {};
+  const teams = state?.teams || {};
+  const matches = players
+    .filter((player) => (
+      player?.id !== selectedPlayer.id
+      && canonicalNflTeam(player?.nflTeam) === nflTeam
+      && String(player?.position || "").trim().toUpperCase() === position
+      && assignments[player.id]?.teamId
+    ))
+    .map((player) => {
+      const teamId = assignments[player.id].teamId;
+      return {
+        playerId: player.id,
+        playerName: player.name,
+        teamId,
+        teamName: teams[teamId]?.name || teamId,
+        isUserTeam: teamId === userTeamId,
+        sourceRank: rankNumber(player),
+      };
+    })
+    .sort((left, right) => left.sourceRank - right.sourceRank
+      || left.playerName.localeCompare(right.playerName)
+      || left.teamName.localeCompare(right.teamName));
+  const rivalTeamCount = new Set(matches.filter((row) => !row.isUserTeam).map((row) => row.teamId)).size;
+  return {
+    active: matches.length > 0,
+    nflTeam,
+    position,
+    matches,
+    includesUser: matches.some((row) => row.isUserTeam),
+    rivalTeamCount,
+    modelEffect: "none",
+  };
+}
+
+export function sameTeamStackOwnership({ selectedPlayer, players, state, userTeamId = "dogs-of-war" } = {}) {
+  const nflTeam = canonicalNflTeam(selectedPlayer?.nflTeam);
+  const position = String(selectedPlayer?.position || "").trim().toUpperCase();
+  const compatiblePositions = position === "QB"
+    ? new Set(["WR", "TE"])
+    : ["WR", "TE"].includes(position)
+      ? new Set(["QB"])
+      : new Set();
+  if (!selectedPlayer || !nflTeam || compatiblePositions.size === 0) {
+    return { active: false, nflTeam, position, matches: [], includesUser: false, rivalTeamCount: 0, modelEffect: "none" };
+  }
+  if (!Array.isArray(players)) throw new TypeError("Stack ownership requires the complete player pool.");
+
+  const assignments = state?.draftedPlayers || {};
+  const teams = state?.teams || {};
+  const matches = players
+    .filter((player) => (
+      player?.id !== selectedPlayer.id
+      && canonicalNflTeam(player?.nflTeam) === nflTeam
+      && compatiblePositions.has(String(player?.position || "").trim().toUpperCase())
+      && assignments[player.id]?.teamId
+    ))
+    .map((player) => {
+      const teamId = assignments[player.id].teamId;
+      return {
+        playerId: player.id,
+        playerName: player.name,
+        position: String(player.position || "").toUpperCase(),
+        teamId,
+        teamName: teams[teamId]?.name || teamId,
+        isUserTeam: teamId === userTeamId,
+        sourceRank: rankNumber(player),
+      };
+    })
+    .sort((left, right) => left.sourceRank - right.sourceRank
+      || left.playerName.localeCompare(right.playerName)
+      || left.teamName.localeCompare(right.teamName));
+  const rivalTeamCount = new Set(matches.filter((row) => !row.isUserTeam).map((row) => row.teamId)).size;
+  return {
+    active: matches.length > 0,
+    nflTeam,
+    position,
+    matches,
+    includesUser: matches.some((row) => row.isUserTeam),
+    rivalTeamCount,
+    modelEffect: "none",
+  };
+}
+
 export function cashLeverage({ state, position, userTeamId = "dogs-of-war", legalMaximumFor } = {}) {
   if (!state?.teams) return { available: false, userMaximum: 0, topOpponentMaximum: 0, delta: 0, label: "--" };
   const maximumFor = typeof legalMaximumFor === "function"

@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node scripts/build-draft-day-player-pool.mjs && node scripts/validate-build.mjs",
     "build:draft-day-player-pool": "node scripts/build-draft-day-player-pool.mjs",
+    "build:thunder-demographics": "node scripts/build-player-demographics.mjs",
     "audit:draft-day-live": "node scripts/run-draft-day-live-audit.mjs",
     "dev": "npx --yes netlify-cli@27.0.2 dev",
     "qa:thunder": "node scripts/run-thunder-bowl-local-qa.mjs",

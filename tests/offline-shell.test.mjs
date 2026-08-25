@@ -24,6 +24,33 @@ test("release assets are versioned across private, public, and offline shells", 
   assert.match(indexHtml, /app\.css\?v=\d{8}[a-z]/);
   assert.match(publicHtml, /public-board\.mjs\?v=\d{8}[a-z]/);
   assert.match(serviceWorker, /app\.mjs\?v=\d{8}[a-z]/);
+  assert.match(serviceWorker, /player-pool-controls\.mjs\?v=\d{8}[a-z]/);
+  assert.match(serviceWorker, /player-demographics-2026\.mjs\?v=\d{8}[a-z]/);
+  assert.match(serviceWorker, /room-team-dashboard\.mjs\?v=\d{8}[a-z]/);
+});
+
+test("the draft-room player pool exposes compact, reversible filters and explicit sorting", () => {
+  for (const id of [
+    "player-search",
+    "position-filter",
+    "player-sort",
+    "toggle-player-filters",
+    "advanced-player-filters",
+    "bye-filter",
+    "experience-filter",
+    "tier-filter",
+    "tag-filter",
+    "attention-filter",
+    "clear-player-filters",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(indexHtml, /Age: youngest first/);
+  assert.match(indexHtml, /Rookies first/);
+  assert.match(appSource, /filterAndSortPlayerPool\(\{/);
+  assert.match(appSource, /activePlayerPoolFilters\(currentPlayerPoolControls\(\)\)/);
+  assert.match(appSource, /resetPlayerPoolControls\(\)/);
+  assert.match(appCss, /\.advanced-player-filters/);
+  assert.match(appCss, /\.player-pool-panel \{ container-type: inline-size; \}/);
+  assert.match(appCss, /@container \(max-width: 575px\)/);
 });
 
 test("every Thunder Bowl surface uses the blue and silver-white number 20 favicon", () => {
@@ -143,6 +170,9 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
     "decision-budget-runway",
     "decision-best-alternative",
     "decision-position-run",
+    "decision-teammate-ownership",
+    "decision-teammate-ownership-title",
+    "decision-teammate-ownership-detail",
     "selected-bye-warning",
     "open-tier-dialog",
     "tier-dialog",
@@ -163,11 +193,36 @@ test("draft-pressure helpers share the live player, roster, legal-max, and nomin
   assert.match(appSource, /rosterSafetyForState\(\{ hypotheticalPurchase:/);
   assert.match(appSource, /analyzeRosterSafety\(\{/);
   assert.match(appSource, /byeWeekConflicts\(\{/);
+  assert.match(appSource, /sameTeamPositionOwnership\(\{/);
+  assert.match(appSource, /sameTeamStackOwnership\(\{/);
   assert.match(appSource, /buildTierSnapshot\(\{/);
   assert.match(appSource, /buildNominationAssistant\(\{/);
   assert.match(appSource, /draftState\.currentNominatorTeamId === USER_TEAM_ID/);
   assert.match(appSource, /legalMaximumBid\(team, draftState\.config, position\)/);
   assert.doesNotMatch(publicBoardSource, /decision-coach|nomination-recommendations|personalMaximum/i);
+});
+
+test("the private draft column exposes all-team cash, roster, and saved-depth popouts", () => {
+  for (const id of [
+    "room-team-dashboard",
+    "room-team-dashboard-context",
+    "team-roster-dialog",
+    "team-roster-backdrop",
+    "team-roster-dialog-players",
+    "team-depth-dialog",
+    "team-depth-backdrop",
+    "team-depth-dialog-players",
+  ]) assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
+  assert.match(indexHtml, /All 12 teams/);
+  assert.match(indexHtml, /Click a team/);
+  assert.match(appSource, /buildRoomTeamCards\(\{/);
+  assert.match(appSource, /legalMaximumBid\(team, draftState\.config, position\)/);
+  assert.match(appSource, /savedDepthChartForPlayer\(player, liveResearchSnapshot\)/);
+  assert.match(appSource, /closeRoomPopoutFromOutside/);
+  assert.match(appCss, /\.room-team-dashboard \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(appCss, /\.room-roster-dialog::backdrop/);
+  assert.match(appCss, /\.room-depth-dialog::backdrop/);
+  assert.doesNotMatch(publicBoardSource, /team-roster-dialog|team-depth-dialog|room-team-dashboard/);
 });
 
 test("the Thunder projection exposes its live consensus and rejected corrections", () => {

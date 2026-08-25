@@ -12,6 +12,8 @@ import {
   cashLeverage,
   playerSurplusHeat,
   projectionDisagreement,
+  sameTeamStackOwnership,
+  sameTeamPositionOwnership,
 } from "../public/thunder-bowl/decision-context.mjs";
 
 const players = [
@@ -126,6 +128,92 @@ test("bye warning finds every current Dogs player with the same week", () => {
   });
   assert.equal(result.byeWeek, 7);
   assert.deepEqual(result.conflicts.map((row) => row.playerName), ["Beta"]);
+});
+
+test("same-team position ownership exposes rival handcuff interest without changing value authority", () => {
+  const selected = { id: "slayton", name: "Darius Slayton", nflTeam: "NYG", position: "WR", sourceRank: 80 };
+  const nabers = { id: "nabers", name: "Malik Nabers", nflTeam: "NYG", position: "WR", sourceRank: 5 };
+  const runningBack = { id: "tracy", name: "Tyrone Tracy Jr.", nflTeam: "NYG", position: "RB", sourceRank: 40 };
+  const otherTeam = { id: "lamb", name: "CeeDee Lamb", nflTeam: "DAL", position: "WR", sourceRank: 3 };
+  const result = sameTeamPositionOwnership({
+    selectedPlayer: selected,
+    players: [selected, nabers, runningBack, otherTeam],
+    state: {
+      draftedPlayers: {
+        nabers: { teamId: "three-amigos" },
+        tracy: { teamId: "big-head" },
+        lamb: { teamId: "dogs-of-war" },
+      },
+      teams: {
+        "three-amigos": { id: "three-amigos", name: "Three Amigos" },
+        "big-head": { id: "big-head", name: "Big Head" },
+        "dogs-of-war": { id: "dogs-of-war", name: "Dogs of War" },
+      },
+    },
+  });
+  assert.equal(result.active, true);
+  assert.equal(result.rivalTeamCount, 1);
+  assert.equal(result.includesUser, false);
+  assert.deepEqual(result.matches.map((row) => [row.playerName, row.teamName]), [["Malik Nabers", "Three Amigos"]]);
+  assert.equal(result.modelEffect, "none");
+});
+
+test("same-team position ownership hides when no matching player has been assigned", () => {
+  const selected = { id: "slayton", name: "Darius Slayton", nflTeam: "NYG", position: "WR" };
+  const result = sameTeamPositionOwnership({
+    selectedPlayer: selected,
+    players: [selected, { id: "nabers", name: "Malik Nabers", nflTeam: "NYG", position: "WR" }],
+    state: { draftedPlayers: {}, teams: {} },
+  });
+  assert.equal(result.active, false);
+  assert.deepEqual(result.matches, []);
+});
+
+test("same-team stack ownership warns when a rival quarterback can pair with the selected receiver", () => {
+  const selected = { id: "brown", name: "A.J. Brown", nflTeam: "NE", position: "WR", sourceRank: 18 };
+  const quarterback = { id: "maye", name: "Drake Maye", nflTeam: "NE", position: "QB", sourceRank: 4 };
+  const tightEnd = { id: "henry", name: "Hunter Henry", nflTeam: "NE", position: "TE", sourceRank: 12 };
+  const result = sameTeamStackOwnership({
+    selectedPlayer: selected,
+    players: [selected, quarterback, tightEnd],
+    state: {
+      draftedPlayers: { maye: { teamId: "goon-skwad" }, henry: { teamId: "three-amigos" } },
+      teams: {
+        "goon-skwad": { id: "goon-skwad", name: "Goon Skwad" },
+        "three-amigos": { id: "three-amigos", name: "Three Amigos" },
+      },
+    },
+  });
+  assert.equal(result.active, true);
+  assert.equal(result.rivalTeamCount, 1);
+  assert.deepEqual(result.matches.map((row) => [row.playerName, row.position, row.teamName]), [["Drake Maye", "QB", "Goon Skwad"]]);
+  assert.equal(result.modelEffect, "none");
+});
+
+test("stack ownership works in reverse for a selected quarterback and ignores running backs", () => {
+  const quarterback = { id: "maye", name: "Drake Maye", nflTeam: "NE", position: "QB", sourceRank: 4 };
+  const receiver = { id: "brown", name: "A.J. Brown", nflTeam: "NE", position: "WR", sourceRank: 18 };
+  const tightEnd = { id: "henry", name: "Hunter Henry", nflTeam: "NE", position: "TE", sourceRank: 12 };
+  const runningBack = { id: "henderson", name: "TreVeyon Henderson", nflTeam: "NE", position: "RB", sourceRank: 14 };
+  const result = sameTeamStackOwnership({
+    selectedPlayer: quarterback,
+    players: [quarterback, receiver, tightEnd, runningBack],
+    state: {
+      draftedPlayers: {
+        brown: { teamId: "goon-skwad" },
+        henry: { teamId: "dogs-of-war" },
+        henderson: { teamId: "three-amigos" },
+      },
+      teams: {
+        "goon-skwad": { id: "goon-skwad", name: "Goon Skwad" },
+        "dogs-of-war": { id: "dogs-of-war", name: "Dogs of War" },
+        "three-amigos": { id: "three-amigos", name: "Three Amigos" },
+      },
+    },
+  });
+  assert.equal(result.includesUser, true);
+  assert.deepEqual(result.matches.map((row) => row.playerName), ["Hunter Henry", "A.J. Brown"]);
+  assert.equal(result.matches.some((row) => row.playerName === "TreVeyon Henderson"), false);
 });
 
 test("bid strip distinguishes bid, hold, and pass without overriding hard stops", () => {

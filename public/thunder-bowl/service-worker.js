@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v107";
+const CACHE_VERSION = "thunder-bowl-shell-v111";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -40,8 +40,8 @@ const APP_SHELL = [
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
-  "/thunder-bowl/app.css?v=20260823b",
-  "/thunder-bowl/app.mjs?v=20260823b",
+  "/thunder-bowl/app.css?v=20260825c",
+  "/thunder-bowl/app.mjs?v=20260825d",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260810e",
   "/thunder-bowl/storage.mjs?v=20260823a",
@@ -52,6 +52,9 @@ const APP_SHELL = [
   "/thunder-bowl/draft-readiness.mjs?v=20260813a",
   "/thunder-bowl/automated-rehearsal-evidence.mjs?v=20260813a",
   "/thunder-bowl/player-search.mjs?v=20260811h",
+  "/thunder-bowl/player-pool-controls.mjs?v=20260825a",
+  "/thunder-bowl/player-demographics-2026.mjs?v=20260825a",
+  "/thunder-bowl/room-team-dashboard.mjs?v=20260825a",
   "/thunder-bowl/keeper-board.mjs?v=20260808k",
   "/thunder-bowl/keeper-scenario.mjs?v=20260808i",
   "/thunder-bowl/auction-price-profile.mjs?v=20260816a",
@@ -63,7 +66,7 @@ const APP_SHELL = [
   "/thunder-bowl/cbs-auction-export.mjs?v=20260817a",
   "/thunder-bowl/keeper-sandbox-promotion.mjs?v=20260822a",
   "/thunder-bowl/emergency-auction-pdf.mjs?v=20260821b",
-  "/thunder-bowl/decision-context.mjs?v=20260816a",
+  "/thunder-bowl/decision-context.mjs?v=20260825c",
   "/thunder-bowl/roster-safety.mjs?v=20260816a",
   "/thunder-bowl/nomination-assistant.mjs?v=20260810a",
   "/thunder-bowl/position-run.mjs?v=20260810a",
