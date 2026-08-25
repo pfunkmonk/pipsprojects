@@ -29,3 +29,14 @@ test("runner-up capture stays in-bounds without blocking the auction", () => {
   assert.match(appCss, /@media \(max-width: 760px\) \{[\s\S]*\.runner-up-prompt \{[\s\S]*right: 0\.75rem;[\s\S]*bottom: 0\.75rem;[\s\S]*left: 0\.75rem;[\s\S]*grid-template-columns: 1fr auto;/);
   assert.match(appCss, /\.runner-up-prompt\[hidden\] \{ display: none; \}/);
 });
+
+test("draft-pool identity metadata stays readable inside the fixed virtualized row", () => {
+  assert.match(appCss, /\.player-row \{ height: 92px; cursor: pointer; \}/);
+  assert.match(appCss, /\.player-row td \{ padding-block: 0\.45rem; \}/);
+
+  const metadataRule = appCss.slice(appCss.indexOf(".player-meta {"), appCss.indexOf(".player-personal-line", appCss.indexOf(".player-meta {")));
+  assert.match(metadataRule, /font-size: 1rem;/);
+  assert.match(metadataRule, /line-height: 1\.15;/);
+  assert.match(metadataRule, /white-space: nowrap;/);
+  assert.match(metadataRule, /@container \(min-width: 700px\) \{[\s\S]*font-size: 1\.05rem;/);
+});
