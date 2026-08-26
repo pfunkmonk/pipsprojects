@@ -162,6 +162,16 @@ Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×19
 6. Run the departure check and clear every blocker.
 7. Leave Auctioneer feed selected. If the auctioneer loses cloud access, switch Pip's already-unlocked command center to Manual backup; switch back only after all three screens agree.
 
+## Access-boundary security checkpoint — August 26, 2026
+
+- The private Command Center, Auctioneer console, and Draft Board use three cryptographically signed role-specific cookies. All are `HttpOnly`, `Secure` in production, `SameSite=Strict`, high priority, and independently validated on every request. A role token remains invalid if copied into another role's cookie name.
+- The Auctioneer receives an explicit server-side operational allowlist. The Draft Board receives a smaller read-only allowlist with no available-player catalog or audit history. Neither role cookie is accepted by the private pack, ledger, news, research, status, replay, promotion, or reset endpoints.
+- All three sign-in functions have Netlify per-IP/domain rate limits on both friendly API routes and direct function routes. Authentication accepts only one small JSON `code` field; Auctioneer commands are authenticated before parsing and have a 64 KB ceiling.
+- JSON responses fail closed with `no-store`, `nosniff`, `default-src 'none'`, `frame-ancestors 'none'`, same-origin resource policy, and no referrer. The site adds HSTS, same-origin opener/resource policy, and no cross-domain policy files.
+- `tests/thunder-security-boundary.test.mjs` is a fail-closed endpoint inventory. Adding a Thunder Bowl function requires explicit classification, and the suite proves role-token substitution cannot elevate access. The August 26 gate passed 421/421 tests, the Netlify production bundle, and `npm audit --omit=dev` with zero known vulnerabilities.
+- The real 716-player pack remains function-bundled and authenticated. The public fallback is a distinct 12-player illustrative pack. The service worker never handles `/api/` requests, so private API responses cannot enter its shared shell cache.
+- Residual disclosure boundary: browser-side calculation modules are static assets and their formulas can be inspected. Current projections, private evidence, manager data, targets, notes, prices, and ledger are not embedded in those modules. Moving formulas themselves behind a server API is a post-draft architectural option, not a prerequisite for protecting the live analytics data.
+
 ## Known dependency advisory
 
 `npm audit --omit=dev` reports zero known production vulnerabilities as of August 17, 2026. Recheck before every deployment; do not force a breaking dependency downgrade solely to silence a future transitive development-only advisory.

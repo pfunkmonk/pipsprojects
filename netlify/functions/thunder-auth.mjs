@@ -8,6 +8,7 @@ import {
   verifyAccessCode,
   verifySession,
 } from "./_lib/auth.mjs";
+import { hasExactKeys, isJsonRequest, requestBodyExceeds } from "./_lib/http-security.mjs";
 
 export default async function handler(request) {
   try {
@@ -24,10 +25,10 @@ export default async function handler(request) {
 
     if (request.method === "POST") {
       assertSameOrigin(request);
-      const contentLength = Number(request.headers.get("content-length") || 0);
-      if (contentLength > 4096) return json({ error: "Request is too large." }, 413);
+      if (requestBodyExceeds(request, 4096)) return json({ error: "Request is too large." }, 413);
+      if (!isJsonRequest(request)) return json({ error: "Authentication requires JSON." }, 415);
       const body = await request.json().catch(() => null);
-      if (!body || typeof body.code !== "string" || Object.keys(body).length !== 1) {
+      if (!hasExactKeys(body, ["code"]) || typeof body.code !== "string") {
         return json({ error: "A single access code is required." }, 400);
       }
       if (!verifyAccessCode(body.code)) return json({ error: "Access denied." }, 401);
@@ -51,3 +52,12 @@ export default async function handler(request) {
     return json({ error: "Access service failed safely." }, 500);
   }
 }
+
+export const config = {
+  path: ["/api/thunder-bowl/auth", "/.netlify/functions/thunder-auth"],
+  rateLimit: {
+    windowLimit: 8,
+    windowSize: 180,
+    aggregateBy: ["ip", "domain"],
+  },
+};

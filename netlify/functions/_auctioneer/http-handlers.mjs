@@ -6,9 +6,25 @@ import {
   verifyDraftBoardCode,
   verifyDraftBoardSession,
 } from "./session.mjs";
+import {
+  hasExactKeys,
+  isJsonRequest,
+  requestBodyExceeds,
+  secureResponseHeaders,
+} from "../_lib/http-security.mjs";
+
+const AUTH_BODY_LIMIT = 4 * 1024;
+const COMMAND_BODY_LIMIT = 64 * 1024;
 
 function json(value, status = 200, headers = {}) {
-  return new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers } });
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: secureResponseHeaders({ "Content-Type": "application/json; charset=utf-8", ...headers }),
+  });
+}
+
+function empty(status = 204, headers = {}) {
+  return new Response(null, { status, headers: secureResponseHeaders(headers) });
 }
 
 function errorResponse(error) {
@@ -73,10 +89,13 @@ export function createHttpHandlers({ service, env = process.env, authorizeDispla
       }
       if (request.method !== "POST" || !corsSafe(request)) return json({ error: "Method not allowed" }, 405);
       try {
-        const body = await request.json();
+        if (requestBodyExceeds(request, AUTH_BODY_LIMIT)) return json({ error: "Authentication request is too large." }, 413);
+        if (!isJsonRequest(request)) return json({ error: "Authentication requires JSON." }, 415);
+        const body = await request.json().catch(() => null);
+        if (!hasExactKeys(body, ["code"]) || typeof body.code !== "string") return json({ error: "A single access code is required." }, 400);
         if (!verifyAuctioneerCode(body?.code, env.THUNDER_BOWL_AUCTIONEER_ACCESS_CODE)) return json({ error: "That access number is not correct." }, 401);
         const cookie = createAuctioneerCookie(env.THUNDER_BOWL_SESSION_SECRET, { path: "/", secure: new URL(request.url).protocol === "https:" });
-        return new Response(null, { status: 204, headers: { "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+        return empty(204, { "Set-Cookie": cookie });
       } catch (error) {
         return errorResponse(error);
       }
@@ -90,10 +109,13 @@ export function createHttpHandlers({ service, env = process.env, authorizeDispla
       }
       if (request.method !== "POST" || !corsSafe(request)) return json({ error: "Method not allowed" }, 405);
       try {
-        const body = await request.json();
+        if (requestBodyExceeds(request, AUTH_BODY_LIMIT)) return json({ error: "Authentication request is too large." }, 413);
+        if (!isJsonRequest(request)) return json({ error: "Authentication requires JSON." }, 415);
+        const body = await request.json().catch(() => null);
+        if (!hasExactKeys(body, ["code"]) || typeof body.code !== "string") return json({ error: "A single access code is required." }, 400);
         if (!verifyDraftBoardCode(body?.code, env.THUNDER_BOWL_DRAFT_BOARD_ACCESS_CODE)) return json({ error: "That Draft Board code is not correct." }, 401);
         const cookie = createDraftBoardCookie(env.THUNDER_BOWL_SESSION_SECRET, { path: "/", secure: new URL(request.url).protocol === "https:" });
-        return new Response(null, { status: 204, headers: { "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+        return empty(204, { "Set-Cookie": cookie });
       } catch (error) {
         return errorResponse(error);
       }
@@ -113,7 +135,11 @@ export function createHttpHandlers({ service, env = process.env, authorizeDispla
       if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
       if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
       try {
-        const snapshot = sanitizePublicSnapshot(await service.command(await request.json()));
+        if (requestBodyExceeds(request, COMMAND_BODY_LIMIT)) return json({ error: "Auctioneer command is too large." }, 413);
+        if (!isJsonRequest(request)) return json({ error: "Auctioneer commands require JSON." }, 415);
+        const body = await request.json().catch(() => null);
+        if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "A valid auctioneer command is required." }, 400);
+        const snapshot = sanitizePublicSnapshot(await service.command(body));
         if (displayBoardUrl) snapshot.displayBoardUrl = await displayBoardUrl(request);
         return json(snapshot);
       } catch (error) { return errorResponse(error); }

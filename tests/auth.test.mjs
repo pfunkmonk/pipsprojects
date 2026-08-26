@@ -30,11 +30,28 @@ test("issued session round-trips through the HttpOnly cookie", () => {
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /SameSite=Strict/);
   assert.match(cookie, /Secure/);
+  assert.match(cookie, /Priority=High/);
   assert.match(cookie, new RegExp(`Max-Age=${PERSISTENT_SESSION_SECONDS}`));
   const request = new Request("https://pipsprojects.com/api/thunder-bowl/ledger", {
     headers: { cookie: cookie.split(";")[0] },
   });
   assert.equal(verifySession(request)?.sub, "dogs-of-war");
+});
+
+test("private authentication rejects non-JSON and oversized requests before code comparison", async () => {
+  const nonJson = await thunderAuthHandler(new Request("https://pipsprojects.com/api/thunder-bowl/auth", {
+    method: "POST",
+    headers: { Origin: "https://pipsprojects.com", "Content-Type": "text/plain" },
+    body: "test-access-code",
+  }));
+  assert.equal(nonJson.status, 415);
+
+  const oversized = await thunderAuthHandler(new Request("https://pipsprojects.com/api/thunder-bowl/auth", {
+    method: "POST",
+    headers: { Origin: "https://pipsprojects.com", "Content-Type": "application/json", "Content-Length": "4097" },
+    body: JSON.stringify({ code: "test-access-code" }),
+  }));
+  assert.equal(oversized.status, 413);
 });
 
 test("refresh silently renews the private command-center session", async () => {

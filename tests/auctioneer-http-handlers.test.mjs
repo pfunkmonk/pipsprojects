@@ -29,6 +29,10 @@ test("authenticates the auctioneer and permits public-only board access", async 
   const cookie = auth.headers.get("set-cookie");
   assert.match(cookie, /tb_auctioneer_session=/);
   assert.match(cookie, /Path=\//);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Strict/);
+  assert.match(cookie, /Priority=High/);
 
   const refreshed = await handlers.auth(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/auth", { headers: { Cookie: cookie } }));
   assert.equal(refreshed.status, 200);
@@ -117,4 +121,36 @@ test("Draft Board sign-in rejects an incorrect code", async () => {
   }));
   assert.equal(response.status, 401);
   assert.equal(response.headers.get("set-cookie"), null);
+});
+
+test("role authentication and commands reject ambiguous or oversized request bodies", async () => {
+  let commandCalls = 0;
+  const handlers = createHttpHandlers({
+    env,
+    service: {
+      async snapshot() { return structuredClone(publicSnapshot); },
+      async command() { commandCalls += 1; return structuredClone(publicSnapshot); },
+    },
+  });
+  const wrongType = await handlers.auth(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/auth", {
+    method: "POST", headers: { Origin: "https://pipsprojects.com", "Content-Type": "text/plain" }, body: "123456",
+  }));
+  assert.equal(wrongType.status, 415);
+
+  const extraField = await handlers.draftBoardAuth(new Request("https://pipsprojects.com/api/thunder-bowl/draft-board/auth", {
+    method: "POST", headers: { Origin: "https://pipsprojects.com", "Content-Type": "application/json" }, body: JSON.stringify({ code: "shared-code", role: "auctioneer" }),
+  }));
+  assert.equal(extraField.status, 400);
+  assert.equal(extraField.headers.get("set-cookie"), null);
+
+  const auth = await handlers.auth(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/auth", {
+    method: "POST", headers: { Origin: "https://pipsprojects.com", "Content-Type": "application/json" }, body: JSON.stringify({ code: "123456" }),
+  }));
+  const oversized = await handlers.commands(new Request("https://pipsprojects.com/api/thunder-bowl/auctioneer/commands", {
+    method: "POST",
+    headers: { Cookie: auth.headers.get("set-cookie"), Origin: "https://pipsprojects.com", "Content-Type": "application/json", "Content-Length": String(64 * 1024 + 1) },
+    body: JSON.stringify({ type: "record-sale" }),
+  }));
+  assert.equal(oversized.status, 413);
+  assert.equal(commandCalls, 0);
 });

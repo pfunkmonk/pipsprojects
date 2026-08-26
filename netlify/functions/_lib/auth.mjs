@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { secureResponseHeaders } from "./http-security.mjs";
 import { PERSISTENT_SESSION_SECONDS } from "./session-policy.mjs";
 
 const COOKIE_NAME = "tb26_session";
@@ -28,8 +29,18 @@ function requiredEnvironment(name) {
   return value;
 }
 
+function sessionSecret() {
+  const value = requiredEnvironment("THUNDER_BOWL_SESSION_SECRET");
+  if (value.length < 32) {
+    const error = new Error("THUNDER_BOWL_SESSION_SECRET must contain at least 32 characters.");
+    error.code = "SERVER_NOT_CONFIGURED";
+    throw error;
+  }
+  return value;
+}
+
 function signPayload(encodedPayload) {
-  return createHmac("sha256", requiredEnvironment("THUNDER_BOWL_SESSION_SECRET")).update(encodedPayload).digest("base64url");
+  return createHmac("sha256", sessionSecret()).update(encodedPayload).digest("base64url");
 }
 
 function parseCookies(request) {
@@ -80,12 +91,12 @@ export function verifySession(request) {
 
 export function sessionCookie(request, token) {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  return `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${PERSISTENT_SESSION_SECONDS}${secure}`;
+  return `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${PERSISTENT_SESSION_SECONDS}${secure}; Priority=High`;
 }
 
 export function clearSessionCookie(request) {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}`;
+  return `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}; Priority=High`;
 }
 
 export function verifyDisplayToken(token) {
@@ -110,11 +121,10 @@ export function assertSameOrigin(request) {
 export function json(value, status = 200, headers = {}) {
   return Response.json(value, {
     status,
-    headers: {
-      "Cache-Control": "no-store",
+    headers: secureResponseHeaders({
       "Content-Type": "application/json; charset=utf-8",
       ...headers,
-    },
+    }),
   });
 }
 

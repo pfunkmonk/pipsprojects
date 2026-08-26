@@ -38,7 +38,7 @@ function createRoleCookie(cookieName, role, secret, options = {}) {
   const token = `${payload}.${signature(payload, secret)}`;
   const path = options.path || "/";
   const secure = options.secure === false ? "" : "; Secure";
-  return `${cookieName}=${token}; Path=${path}; Max-Age=${maxAgeSeconds}; HttpOnly${secure}; SameSite=Strict`;
+  return `${cookieName}=${token}; Path=${path}; Max-Age=${maxAgeSeconds}; HttpOnly${secure}; SameSite=Strict; Priority=High`;
 }
 
 export function createAuctioneerCookie(secret, options = {}) {

@@ -179,6 +179,14 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 6. Keeper selection and rights trading begin August 15. When the final projection export arrives, rebuild the accuracy-weighted consensus, apply league scoring, recompute weekly shapes and classic VBD, rerun keeper scarcity and the live auction market, rerank every keeper/trade board, run the valuation/outlier and Monte Carlo audits, and promote only the governed candidate. Every recorded keeper, pass, or trade must then recalculate the remaining auction pool immediately.
 7. Freeze the draft-morning release only after the complete automated gate passes and the user completes the fresh intelligence capture and recovery download.
 
+## Access-boundary hardening — August 26, 2026
+
+- Mission-gate outcome: shared Board and Auctioneer access cannot open or infer the private analytics pack. Authorization remains server-enforced, deny-by-default, and role-specific; no UI hiding is treated as security.
+- Private, Auctioneer, and Draft Board authentication now reject ambiguous/non-JSON/oversized requests, issue signed `HttpOnly`/`Secure`/`SameSite=Strict` cookies, and are protected by deploy-level per-IP/domain throttles. Auctioneer commands receive an authenticated 64 KB request ceiling.
+- A permanent endpoint inventory and token-substitution suite fails CI if a new Thunder Bowl function is not explicitly classified or if any shared role reaches the private pack, ledger, news, research, status, replay, promotion, or reset boundary.
+- Defense-in-depth headers now cover the full origin and JSON responses. The service worker continues to exclude `/api/`, and the real 716-player pack remains outside `public/`.
+- Honest limit: the browser-side model implementation is inspectable JavaScript. Its protected inputs and the resulting private analytics are not public. Server-side model execution would hide formulas but adds draft-day latency/offline complexity, so it remains deferred unless formula confidentiality becomes more important than the current speed and catastrophe path.
+
 ## Startup-speed release — August 23, 2026
 
 - Startup work is now organized around the draft-day critical path: authenticate, restore the cached governed pack and append-only ledger, compute current auction authority, and show the Draft room. Pack freshness, status, news, and research refresh immediately afterward without blocking the first decision.
