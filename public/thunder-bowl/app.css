@@ -294,13 +294,20 @@ input[readonly] { color: var(--muted); }
 .empty-state { padding: 1rem; color: var(--muted); }
 
 .decision-panel { padding: 1rem; }
-.decision-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
-.decision-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
-.decision-heading h2 { margin-top: 0.5rem; }
-.decision-teammate-ownership { display: flex; align-items: center; gap: 0.55rem; margin-top: 0.55rem; border: 1px solid var(--gold); border-left-width: 6px; border-radius: 9px; padding: 0.42rem 0.58rem; background: rgba(137, 99, 16, 0.24); color: var(--text); font-size: 0.72rem; line-height: 1.3; }
+.decision-identity-grid { display: grid; grid-template-columns: 1fr; gap: 0.55rem; align-items: stretch; }
+.decision-heading { min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 0.62rem 0.7rem; background: rgba(17, 52, 85, 0.58); }
+.decision-identity-copy { min-width: 0; }
+.decision-identity-topline { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.decision-badges { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 0.28rem; }
+.decision-heading h2 { margin: 0.38rem 0 0.1rem; }
+.decision-heading p { margin-bottom: 0; }
+.decision-teammate-ownership { display: grid; min-width: 0; align-content: center; gap: 0.3rem; margin: 0; border: 1px solid var(--gold); border-left-width: 6px; border-radius: 10px; padding: 0.62rem 0.7rem; background: rgba(137, 99, 16, 0.24); color: var(--text); font-size: 0.8rem; line-height: 1.32; }
 .decision-teammate-ownership[hidden] { display: none; }
-.decision-teammate-ownership strong { flex: 0 0 auto; color: var(--gold-light); font-size: 0.67rem; font-weight: 950; letter-spacing: 0.045em; white-space: nowrap; }
+.decision-teammate-ownership strong { color: var(--gold-light); font-size: 0.74rem; font-weight: 950; letter-spacing: 0.045em; white-space: nowrap; }
 .decision-teammate-ownership span { min-width: 0; font-weight: 750; }
+@media (min-width: 1251px) {
+  .decision-identity-grid:has(.decision-teammate-ownership:not([hidden])) { grid-template-columns: minmax(240px, 0.9fr) minmax(210px, 1.1fr); }
+}
 .position-badge, .availability-badge {
   display: inline-flex;
   border-radius: 8px;
@@ -542,9 +549,8 @@ input[readonly] { color: var(--muted); }
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
   }
-  #view-draft .decision-badges { flex-direction: row; }
   #view-draft .decision-heading h2 { margin-top: 0.25rem; }
-  #view-draft .decision-teammate-ownership { margin-top: 0.35rem; padding: 0.3rem 0.46rem; }
+  #view-draft .decision-teammate-ownership { margin: 0; padding: 0.5rem 0.58rem; }
   #view-draft .decision-coach {
     grid-template-columns: repeat(6, minmax(0, 1fr));
     grid-auto-flow: row dense;

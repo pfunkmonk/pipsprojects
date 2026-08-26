@@ -102,7 +102,8 @@ test("wide draft columns share one viewport height and keep secondary content in
   assert.match(balancedColumns, /\.decision-roster-safety span \{ display: none; \}/);
   assert.match(balancedColumns, /\.decision-roster-safety small \{ display: none; \}/);
   assert.match(balancedColumns, /\.decision-market-strip \{ grid-column: 4 \/ -1; grid-row: 2; border-top: 0; padding-top: 0; \}/);
-  assert.match(balancedColumns, /\.decision-badges \{ flex-direction: row; \}/);
+  assert.match(appCss, /\.decision-badges \{ display: flex; flex: 0 0 auto; align-items: center;/);
+  assert.match(balancedColumns, /\.decision-teammate-ownership \{ margin: 0; padding: 0\.5rem 0\.58rem; \}/);
   assert.match(balancedColumns, /\.opponent-pressure-section \{[\s\S]*overflow-y: auto/);
   assert.match(balancedColumns, /grid-template-rows: auto auto minmax\(0, 1fr\)/);
   assert.match(appSource, /classList\.toggle\("is-auctioneer-feed", policy\.auctioneer/);

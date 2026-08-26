@@ -40,3 +40,10 @@ test("draft-pool identity metadata stays readable inside the fixed virtualized r
   assert.match(metadataRule, /white-space: nowrap;/);
   assert.match(metadataRule, /@container \(min-width: 700px\) \{[\s\S]*font-size: 1\.05rem;/);
 });
+
+test("handcuff and stack intelligence shares the selected-player identity row", () => {
+  assert.match(indexHtml, /class="decision-identity-grid"[\s\S]*class="decision-heading"[\s\S]*id="decision-teammate-ownership"/);
+  assert.match(appCss, /\.decision-identity-grid \{ display: grid; grid-template-columns: 1fr;/);
+  assert.match(appCss, /@media \(min-width: 1251px\) \{[\s\S]*\.decision-identity-grid:has\(\.decision-teammate-ownership:not\(\[hidden\]\)\) \{ grid-template-columns: minmax\(240px, 0\.9fr\) minmax\(210px, 1\.1fr\); \}/);
+  assert.match(appCss, /\.decision-teammate-ownership\[hidden\] \{ display: none; \}/);
+});

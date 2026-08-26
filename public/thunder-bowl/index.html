@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260825d" />
+  <link rel="stylesheet" href="./app.css?v=20260825e" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to draft controls</a>
@@ -177,21 +177,25 @@
               </div>
               <button id="return-practice-player" class="button button-primary" type="button">Return to live player</button>
             </section>
-            <div class="decision-heading">
-              <div>
-                <span id="selected-position" class="position-badge">—</span>
-                <h2 id="selected-player-name" class="selected-player-name-line">Select a player</h2>
-                <p id="selected-team-line" class="muted">Search or use the arrow keys.</p>
+            <div class="decision-identity-grid">
+              <div class="decision-heading">
+                <div class="decision-identity-copy">
+                  <div class="decision-identity-topline">
+                    <span id="selected-position" class="position-badge">—</span>
+                    <div class="decision-badges">
+                      <span id="selected-personal-tag" class="personal-tag tag-neutral">Neutral</span>
+                      <span id="selected-availability" class="availability-badge">Available</span>
+                    </div>
+                  </div>
+                  <h2 id="selected-player-name" class="selected-player-name-line">Select a player</h2>
+                  <p id="selected-team-line" class="muted">Search or use the arrow keys.</p>
+                </div>
               </div>
-              <div class="decision-badges">
-                <span id="selected-personal-tag" class="personal-tag tag-neutral">Neutral</span>
-                <span id="selected-availability" class="availability-badge">Available</span>
-              </div>
+              <section id="decision-teammate-ownership" class="decision-teammate-ownership" role="status" aria-live="polite" hidden>
+                <strong id="decision-teammate-ownership-title">HANDCUFF WATCH</strong>
+                <span id="decision-teammate-ownership-detail"></span>
+              </section>
             </div>
-            <section id="decision-teammate-ownership" class="decision-teammate-ownership" role="status" aria-live="polite" hidden>
-              <strong id="decision-teammate-ownership-title">HANDCUFF WATCH</strong>
-              <span id="decision-teammate-ownership-detail"></span>
-            </section>
             <section id="decision-coach" class="decision-coach coach-neutral" aria-labelledby="decision-coach-verdict" aria-live="polite">
               <div class="decision-coach-verdict">
                 <div class="decision-action-labels">
