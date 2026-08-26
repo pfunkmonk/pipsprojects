@@ -3,6 +3,13 @@ import { playerSearchScore } from "../player-search.mjs?v=20260811h";
 const ALLOWED_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 const ALLOWED_ACQUISITION_TYPES = new Set(["keeper", "auction"]);
 const ALLOWED_STATUSES = new Set(["active", "voided"]);
+const ALLOWED_SALARY_LEDGER_KINDS = new Set(["opening", "bonus", "adjustment", "trade", "keeper", "auction"]);
+const STANDARD_STARTING_CAP = 100;
+const PRE_AUCTION_BONUS_LABELS = new Map([
+  [6, "1st Place Loser's Bracket"],
+  [4, "2nd Place Loser's Bracket"],
+  [2, "3rd Place Loser's Bracket"],
+]);
 
 function validPublicText(value, maximumLength = 200) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= maximumLength;
@@ -41,6 +48,20 @@ export function assertPublicSnapshot(snapshot) {
     if (!validPublicText(team?.id, 100) || !validPublicText(team?.name) || !Number.isInteger(team.startingCap) || team.startingCap < 0) throw new Error("A team record is invalid.");
     if (team.capAdjustment !== undefined && !Number.isInteger(team.capAdjustment)) throw new Error("A team cap adjustment is invalid.");
     if (team.logoUrl !== undefined && (typeof team.logoUrl !== "string" || (!team.logoUrl.startsWith("/") && !team.logoUrl.startsWith("https://")))) throw new Error("A team logo URL is invalid.");
+    if (team.salaryLedger !== undefined) {
+      if (!Array.isArray(team.salaryLedger) || !team.salaryLedger.length || team.salaryLedger.length > 100) throw new Error("A team salary ledger is invalid.");
+      const entryIds = new Set();
+      let priorBalance = 0;
+      team.salaryLedger.forEach((entry, index) => {
+        if (!validPublicText(entry?.id, 140) || !validPublicText(entry.label) || !ALLOWED_SALARY_LEDGER_KINDS.has(entry.kind)) throw new Error("A salary ledger entry is invalid.");
+        if (entryIds.has(entry.id)) throw new Error(`Duplicate salary ledger entry: ${entry.id}`);
+        if (!Number.isInteger(entry.delta) || entry.delta < -300 || entry.delta > 300 || !Number.isInteger(entry.balance) || entry.balance < 0 || entry.balance > 3600) throw new Error("Salary ledger dollars are invalid.");
+        if (entry.balance !== priorBalance + entry.delta) throw new Error("A salary ledger running balance does not reconcile.");
+        if (index === 0 && entry.kind !== "opening") throw new Error("A salary ledger must begin with its opening cap.");
+        entryIds.add(entry.id);
+        priorBalance = entry.balance;
+      });
+    }
     if (teamIds.has(team.id)) throw new Error(`Duplicate team: ${team.id}`);
     teamIds.add(team.id);
   }
@@ -68,6 +89,11 @@ export function assertPublicSnapshot(snapshot) {
 
   for (const [teamId, count] of activeTeamCounts) {
     if (count > snapshot.rosterSize) throw new Error(`${teamId} exceeds the roster limit.`);
+  }
+  for (const team of snapshot.teams) {
+    if (!team.salaryLedger) continue;
+    const finalBalance = team.salaryLedger.at(-1)?.balance;
+    if (finalBalance !== teamSummary(snapshot, team.id).remainingCap) throw new Error(`${team.name}'s salary ledger does not match its board balance.`);
   }
   for (const teamId of snapshot.finishedTeamIds || []) {
     if (!teamIds.has(teamId)) throw new Error(`Unknown finished team: ${teamId}`);
@@ -115,6 +141,41 @@ export function teamSummary(snapshot, teamId) {
   const minimumRequiredAfterBestPurchase = Math.max(0, minimumRequiredAdditions - 1);
   const legalMaxBid = openSlots > 0 ? Math.max(0, remainingCap - minimumRequiredAfterBestPurchase) : 0;
   return { team, assignments, spent, adjustedCap, remainingCap, openSlots, legalMaxBid, minimumPlayersNeeded, minimumRequiredAdditions, missingStarters, isFinished: (snapshot.finishedTeamIds || []).includes(teamId) };
+}
+
+export function teamSalaryLedger(snapshot, teamId) {
+  const summary = teamSummary(snapshot, teamId);
+  if (Array.isArray(summary.team.salaryLedger)) {
+    return { entries: summary.team.salaryLedger.map((entry) => ({ ...entry })), detailed: true };
+  }
+
+  const entries = [{
+    id: `opening:${teamId}`,
+    kind: "opening",
+    label: "Starting salary cap",
+    delta: STANDARD_STARTING_CAP,
+    balance: STANDARD_STARTING_CAP,
+  }];
+  const capAdjustment = summary.adjustedCap - STANDARD_STARTING_CAP;
+  if (capAdjustment) {
+    entries.push({
+      id: `current-adjustment:${teamId}`,
+      kind: capAdjustment > 0 ? "bonus" : "adjustment",
+      label: PRE_AUCTION_BONUS_LABELS.get(capAdjustment) || "Pre-auction cap and trade adjustments",
+      delta: capAdjustment,
+      balance: entries.at(-1).balance + capAdjustment,
+    });
+  }
+  [...summary.assignments]
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt) || left.playerName.localeCompare(right.playerName))
+    .forEach((assignment) => entries.push({
+      id: assignment.id,
+      kind: assignment.acquisitionType,
+      label: `${assignment.acquisitionType === "keeper" ? "Keep" : "Draft"} ${assignment.playerName}`,
+      delta: -assignment.price,
+      balance: entries.at(-1).balance - assignment.price,
+    }));
+  return { entries, detailed: false };
 }
 
 function starterRequirements(snapshot) {

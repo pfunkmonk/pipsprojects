@@ -51,7 +51,20 @@ function sanitizePublicSnapshot(snapshot, includeAvailablePlayers = true, includ
     finishedTeamIds: Array.isArray(snapshot.finishedTeamIds) ? [...snapshot.finishedTeamIds] : [],
     stagedNomination: snapshot.stagedNomination ? { id: snapshot.stagedNomination.id, name: snapshot.stagedNomination.name, position: snapshot.stagedNomination.position, nflTeam: snapshot.stagedNomination.nflTeam, byeWeek: snapshot.stagedNomination.byeWeek ?? null, updatedAt: snapshot.stagedNomination.updatedAt } : null,
     clock: snapshot.clock ? { status: snapshot.clock.status, durationMs: snapshot.clock.durationMs, remainingMs: snapshot.clock.remainingMs, deadline: snapshot.clock.deadline, serverNow: snapshot.clock.serverNow } : undefined,
-    teams: (snapshot.teams || []).map((team) => ({ id: team.id, name: team.name, startingCap: team.startingCap, capAdjustment: Number(team.capAdjustment) || 0, ...(typeof team.logoUrl === "string" && team.logoUrl ? { logoUrl: team.logoUrl } : {}) })),
+    teams: (snapshot.teams || []).map((team) => ({
+      id: team.id,
+      name: team.name,
+      startingCap: team.startingCap,
+      capAdjustment: Number(team.capAdjustment) || 0,
+      ...(Array.isArray(team.salaryLedger) ? { salaryLedger: team.salaryLedger.map((entry) => ({
+        id: entry.id,
+        kind: entry.kind,
+        label: entry.label,
+        delta: entry.delta,
+        balance: entry.balance,
+      })) } : {}),
+      ...(typeof team.logoUrl === "string" && team.logoUrl ? { logoUrl: team.logoUrl } : {}),
+    })),
     assignments: (snapshot.assignments || []).map((assignment) => ({
       id: assignment.id, playerId: assignment.playerId, playerName: assignment.playerName,
       position: assignment.position, nflTeam: assignment.nflTeam, byeWeek: assignment.byeWeek ?? null, teamId: assignment.teamId,

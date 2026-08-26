@@ -1,5 +1,5 @@
 import { createDataSource } from "../shared/data-source.mjs";
-import { assertPublicSnapshot, downloadBoardCsv, orderedTeamAssignments, teamSummary } from "../shared/public-core.mjs";
+import { assertPublicSnapshot, downloadBoardCsv, orderedTeamAssignments, teamSalaryLedger, teamSummary } from "../shared/public-core.mjs";
 import { PROJECTOR_STALE_AFTER_MS, writeProjectorPresence } from "../shared/projector-presence.mjs";
 import { clockFromSnapshot, formatNominationClock } from "../shared/nomination-clock.mjs?v=20260808-cloud";
 import { calculateBoardGeometry } from "./board-layout.mjs";
@@ -18,6 +18,120 @@ let lastRefreshError = null;
 let renderedRevision = null;
 const knownAuctionSaleIds = new Set();
 let spotlightTimer = null;
+let openSalaryLedgerTeamId = null;
+
+function createSalaryLedgerDialog() {
+  const backdrop = document.createElement("div");
+  backdrop.id = "salary-ledger-backdrop";
+  backdrop.className = "salary-ledger-backdrop";
+  backdrop.hidden = true;
+
+  const dialog = document.createElement("section");
+  dialog.className = "salary-ledger-dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "salary-ledger-title");
+
+  const top = document.createElement("header");
+  top.className = "salary-ledger-top";
+  const heading = document.createElement("div");
+  const eyebrow = document.createElement("small");
+  eyebrow.textContent = "PUBLIC SALARY LEDGER";
+  const title = document.createElement("h2");
+  title.id = "salary-ledger-title";
+  const subtitle = document.createElement("p");
+  subtitle.id = "salary-ledger-subtitle";
+  heading.append(eyebrow, title, subtitle);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "salary-ledger-close";
+  close.setAttribute("aria-label", "Close salary ledger");
+  close.textContent = "×";
+  top.append(heading, close);
+
+  const summary = document.createElement("div");
+  summary.className = "salary-ledger-summary";
+  const summaryLabel = document.createElement("span");
+  summaryLabel.textContent = "CURRENT BALANCE";
+  const summaryValue = document.createElement("strong");
+  summaryValue.id = "salary-ledger-current";
+  summary.append(summaryLabel, summaryValue);
+
+  const columns = document.createElement("div");
+  columns.className = "salary-ledger-columns";
+  ["CHANGE", "TRANSACTION", "RUNNING BALANCE"].forEach((label) => {
+    const column = document.createElement("span");
+    column.textContent = label;
+    columns.append(column);
+  });
+  const rows = document.createElement("ol");
+  rows.id = "salary-ledger-rows";
+  rows.className = "salary-ledger-rows";
+  const footer = document.createElement("p");
+  footer.id = "salary-ledger-footnote";
+  footer.className = "salary-ledger-footnote";
+
+  dialog.append(top, summary, columns, rows, footer);
+  backdrop.append(dialog);
+  document.body.append(backdrop);
+  return { backdrop, dialog, close, title, subtitle, summaryValue, rows, footer };
+}
+
+const salaryLedgerDialog = createSalaryLedgerDialog();
+
+function salaryChange(entry) {
+  if (entry.kind === "opening") return `$${entry.delta}`;
+  if (entry.delta > 0) return `+$${entry.delta}`;
+  return `−$${Math.abs(entry.delta)}`;
+}
+
+function renderSalaryLedger(teamId) {
+  const team = snapshot?.teams.find((candidate) => candidate.id === teamId);
+  if (!team) return;
+  const summary = teamSummary(snapshot, teamId);
+  const ledger = teamSalaryLedger(snapshot, teamId);
+  salaryLedgerDialog.title.textContent = team.name;
+  salaryLedgerDialog.subtitle.textContent = `${Math.max(0, ledger.entries.length - 1)} confirmed salary change${ledger.entries.length === 2 ? "" : "s"}`;
+  salaryLedgerDialog.summaryValue.textContent = `$${summary.remainingCap} LEFT`;
+  salaryLedgerDialog.rows.replaceChildren();
+  for (const entry of ledger.entries) {
+    const row = document.createElement("li");
+    row.className = `salary-ledger-row is-${entry.kind}`;
+    row.classList.toggle("is-credit", entry.kind !== "opening" && entry.delta > 0);
+    row.classList.toggle("is-debit", entry.delta < 0);
+    const change = document.createElement("strong");
+    change.textContent = salaryChange(entry);
+    const label = document.createElement("span");
+    label.textContent = entry.label;
+    const balance = document.createElement("b");
+    balance.textContent = `$${entry.balance}`;
+    row.append(change, label, balance);
+    salaryLedgerDialog.rows.append(row);
+  }
+  salaryLedgerDialog.footer.textContent = ledger.detailed
+    ? `Matches the live board balance · Revision ${snapshot.revision} · Read only`
+    : `Reconstructed from the current cap and active players · Revision ${snapshot.revision} · Read only`;
+}
+
+function openSalaryLedger(teamId) {
+  openSalaryLedgerTeamId = teamId;
+  renderSalaryLedger(teamId);
+  salaryLedgerDialog.backdrop.hidden = false;
+  app.inert = true;
+  document.body.classList.add("has-salary-ledger-open");
+  salaryLedgerDialog.close.focus();
+}
+
+function closeSalaryLedger() {
+  if (salaryLedgerDialog.backdrop.hidden) return;
+  const teamId = openSalaryLedgerTeamId;
+  openSalaryLedgerTeamId = null;
+  salaryLedgerDialog.backdrop.hidden = true;
+  app.inert = false;
+  document.body.classList.remove("has-salary-ledger-open");
+  const trigger = [...board.querySelectorAll(".team-header")].find((candidate) => candidate.dataset.teamId === teamId);
+  trigger?.focus();
+}
 
 function splitName(name) {
   const bits = name.trim().split(/\s+/);
@@ -81,7 +195,7 @@ function activeAuctionSales() {
 
 function renderLiveStatus(auctionSales = activeAuctionSales()) {
   const time = new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-  status.textContent = `Updated ${time} · ${auctionSales.length} sold · ${averageSalePace(auctionSales)} · Keepers pinned at the top`;
+  status.textContent = `Updated ${time} · ${auctionSales.length} sold · ${averageSalePace(auctionSales)} · Click any team header for its salary ledger`;
   connection.textContent = "LIVE";
   connection.classList.remove("is-error");
 }
@@ -111,8 +225,14 @@ function render() {
     column.classList.toggle("is-nominating", isNominating);
     if (isNominating) column.setAttribute("aria-label", `${team.name} is nominating now`);
     column.style.gridTemplateRows = `1.42fr repeat(${visibleRosterRows}, minmax(0, 1fr))`;
-    const header = document.createElement("header");
+    const header = document.createElement("button");
+    header.type = "button";
     header.className = "team-header";
+    header.dataset.teamId = team.id;
+    header.setAttribute("aria-haspopup", "dialog");
+    header.setAttribute("aria-label", `${team.name}: $${summary.remainingCap} left. Open salary ledger.`);
+    header.title = "Open public salary ledger";
+    header.addEventListener("click", () => openSalaryLedger(team.id));
     if (team.logoUrl) {
       const logo = document.createElement("img");
       logo.className = "team-logo";
@@ -122,7 +242,8 @@ function render() {
       logo.decoding = "async";
       header.append(logo);
     }
-    const teamName = document.createElement("h2");
+    const teamName = document.createElement("span");
+    teamName.className = "team-name";
     teamName.textContent = team.name;
     const capLeft = document.createElement("div");
     capLeft.className = "cap-left";
@@ -141,6 +262,7 @@ function render() {
     });
     board.append(column);
   }
+  if (openSalaryLedgerTeamId) renderSalaryLedger(openSalaryLedgerTeamId);
   sizeBoard();
   renderLiveStatus(auctionSales);
   const lastSaleItems = document.getElementById("last-sale-items");
@@ -267,6 +389,20 @@ document.getElementById("fullscreen-board").addEventListener("click", async () =
 document.addEventListener("fullscreenchange", updateReliability);
 document.getElementById("export-board").addEventListener("click", () => snapshot && downloadBoardCsv(snapshot));
 document.getElementById("print-board").addEventListener("click", () => window.print());
+salaryLedgerDialog.close.addEventListener("click", closeSalaryLedger);
+salaryLedgerDialog.backdrop.addEventListener("click", (event) => {
+  if (event.target === salaryLedgerDialog.backdrop) closeSalaryLedger();
+});
+document.addEventListener("keydown", (event) => {
+  if (salaryLedgerDialog.backdrop.hidden) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeSalaryLedger();
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    salaryLedgerDialog.close.focus();
+  }
+});
 source.subscribe(() => void refresh());
 window.addEventListener("resize", () => { sizeBoard(); updateReliability(); });
 window.setInterval(updateReliability, 1000);

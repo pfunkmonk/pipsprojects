@@ -62,7 +62,7 @@
   padding: clamp(4px, calc(var(--header-row-height) * .045), 14px)
     clamp(2px, calc(var(--team-column-width) * .025), 9px);
 }
-.team-header h2 {
+.team-header .team-name {
   font-size: clamp(
     9px,
     min(calc(var(--team-column-width) * .095), calc(var(--header-row-height) * .43)),

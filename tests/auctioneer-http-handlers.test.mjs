@@ -10,7 +10,12 @@ const env = {
 };
 const publicSnapshot = {
   season: 2026, revision: 1, updatedAt: "2026-08-07T18:00:00.000Z", rosterSize: 14, keeperSlots: 2,
-  teams: [], assignments: [], availablePlayers: [{ id: "p", name: "Player", position: "QB", nflTeam: "DEN", byeWeek: 10, vbd: 99, privateNote: "never return" }],
+  teams: [{
+    id: "dogs-of-war", name: "Dogs of War", startingCap: 104, capAdjustment: 0,
+    salaryLedger: [{ id: "opening:dogs", kind: "opening", label: "Starting salary cap", delta: 100, balance: 100, privateNote: "never return" }],
+    privateStrategy: "never return",
+  }],
+  assignments: [], availablePlayers: [{ id: "p", name: "Player", position: "QB", nflTeam: "DEN", byeWeek: 10, vbd: 99, privateNote: "never return" }],
   finishedTeamIds: [], stagedNomination: { id: "p", name: "Player", position: "QB", nflTeam: "DEN", byeWeek: 10, updatedAt: "2026-08-07T18:00:00.000Z", vbd: 99 },
   auditEvents: [{ id: "audit-1", action: "Nominated", playerName: "Player", createdAt: "2026-08-07T18:00:00.000Z", actorLabel: "Auctioneer", privateNote: "never return" }],
   privateStrategy: { targets: ["p"] },
@@ -46,6 +51,9 @@ test("authenticates the auctioneer and permits public-only board access", async 
   assert.equal("auditEvents" in body, false);
   assert.equal(body.stagedNomination.vbd, undefined);
   assert.equal(body.stagedNomination.byeWeek, 10);
+  assert.deepEqual(Object.keys(body.teams[0]).sort(), ["capAdjustment", "id", "name", "salaryLedger", "startingCap"]);
+  assert.deepEqual(Object.keys(body.teams[0].salaryLedger[0]), ["id", "kind", "label", "delta", "balance"]);
+  assert.equal(body.teams[0].salaryLedger[0].privateNote, undefined);
 });
 
 test("the HTTP boundary strips private fields even if an internal service regresses", async () => {

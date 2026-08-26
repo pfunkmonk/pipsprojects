@@ -1,13 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertPublicSnapshot, currentAuditCsv, currentBoardCsv, evaluateDraftCompletion, evaluatePurchase, orderedTeamAssignments, publicPlayerSearch, teamSummary } from "../public/thunder-bowl/shared/public-core.mjs";
+import { assertPublicSnapshot, currentAuditCsv, currentBoardCsv, evaluateDraftCompletion, evaluatePurchase, orderedTeamAssignments, publicPlayerSearch, teamSalaryLedger, teamSummary } from "../public/thunder-bowl/shared/public-core.mjs";
 
 function fixture() {
   return {
     season: 2026, revision: 1, updatedAt: "2026-08-07T18:00:00.000Z", rosterSize: 4, minimumRosterSize: 4, keeperSlots: 1,
     starterRequirements: { QB: 0, RB: 1, WR: 1, TE: 0, K: 0, DST: 0 },
     teams: [
-      { id: "first", name: "First Team", startingCap: 100, capAdjustment: 5 },
+      {
+        id: "first", name: "First Team", startingCap: 100, capAdjustment: 5,
+        salaryLedger: [
+          { id: "opening:first", kind: "opening", label: "Starting salary cap", delta: 100, balance: 100 },
+          { id: "bonus:first", kind: "bonus", label: "Pre-auction bonus", delta: 5, balance: 105 },
+          { id: "keeper:first", kind: "keeper", label: "Keep Keeper Player", delta: -10, balance: 95 },
+          { id: "sale:first", kind: "auction", label: "Draft Auction Player", delta: -20, balance: 75 },
+        ],
+      },
       { id: "second", name: "Second Team", startingCap: 100, capAdjustment: 0 },
     ],
     availablePlayers: [],
@@ -35,6 +43,13 @@ test("calculates cap, slots, and legal max from active corrected state", () => {
     adjustedCap: 105, remainingCap: 75, openSlots: 2, legalMaxBid: 74,
     minimumPlayersNeeded: 2, minimumRequiredAdditions: 2, missingStarters: [], isFinished: false,
   });
+});
+
+test("returns the authoritative public salary ledger without recomputing a second balance", () => {
+  const ledger = teamSalaryLedger(fixture(), "first");
+  assert.equal(ledger.detailed, true);
+  assert.equal(ledger.entries.at(-1).balance, 75);
+  assert.equal(ledger.entries.at(-1).label, "Draft Auction Player");
 });
 
 test("exports only active assignments with keeper contract year", () => {
@@ -79,6 +94,15 @@ test("rejects malformed shared catalog and league-rule state before any feature 
   const invalidRequirements = fixture();
   invalidRequirements.starterRequirements.PUNTER = 1;
   assert.throws(() => assertPublicSnapshot(invalidRequirements), /Starter requirement/);
+
+  const brokenRunningBalance = fixture();
+  brokenRunningBalance.teams[0].salaryLedger[2].balance = 96;
+  assert.throws(() => assertPublicSnapshot(brokenRunningBalance), /running balance/i);
+
+  const mismatchedFinalBalance = fixture();
+  mismatchedFinalBalance.teams[0].salaryLedger.at(-1).balance = 74;
+  mismatchedFinalBalance.teams[0].salaryLedger.at(-1).delta = -21;
+  assert.throws(() => assertPublicSnapshot(mismatchedFinalBalance), /does not match its board balance/i);
 });
 
 test("blocks a purchase that would violate the cap reserve", () => {

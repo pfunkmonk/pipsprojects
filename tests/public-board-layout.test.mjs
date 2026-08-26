@@ -64,3 +64,18 @@ test("public board loads the responsive legibility layer and prints bye weeks on
   assert.match(boardSource, /BYE \$\{assignment\.byeWeek\}/);
   assert.match(boardSource, /playerMeta\.textContent = `\$\{assignment\.position\} · \$\{assignment\.nflTeam\} · \$\{byeLabel\}`/);
 });
+
+test("manager headers open an accessible salary ledger that closes by X, backdrop, or Escape", async () => {
+  const [boardSource, styles] = await Promise.all([
+    readFile(new URL("../public/thunder-bowl/board/board.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/board/board-transactions.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(boardSource, /document\.createElement\("button"\)[\s\S]*header\.setAttribute\("aria-haspopup", "dialog"\)/);
+  assert.match(boardSource, /salaryLedgerDialog\.close\.addEventListener\("click", closeSalaryLedger\)/);
+  assert.match(boardSource, /event\.target === salaryLedgerDialog\.backdrop/);
+  assert.match(boardSource, /event\.key === "Escape"/);
+  assert.match(boardSource, /teamSalaryLedger\(snapshot, teamId\)/);
+  assert.match(styles, /\.salary-ledger-backdrop\{/);
+  assert.match(styles, /\.salary-ledger-dialog\{/);
+  assert.match(styles, /\.salary-ledger-rows\{[\s\S]*overflow-y:auto/);
+});

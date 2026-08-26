@@ -4,6 +4,12 @@ import { snakeTeamId } from "../../../public/thunder-bowl/shared/nomination-orde
 const ACQUISITION_TYPES = new Set(["KEEPER_ASSIGNED", "PLAYER_SOLD"]);
 const CLOCK_DURATIONS = new Set([120_000, 90_000, 60_000, 45_000, 30_000]);
 const DEFAULT_CLOCK = Object.freeze({ status: "paused", durationMs: 120_000, remainingMs: 120_000, deadline: null });
+const STANDARD_STARTING_CAP = 100;
+const PRE_AUCTION_BONUS_LABELS = new Map([
+  [6, "1st Place Loser's Bracket"],
+  [4, "2nd Place Loser's Bracket"],
+  [2, "3rd Place Loser's Bracket"],
+]);
 
 function requireInteger(value, label, minimum = 1) {
   const number = Number(value);
@@ -38,7 +44,7 @@ function activeConfiguration(events, stateEngine) {
   return { state, config: state.config };
 }
 
-function orderedTeams(config, state) {
+function orderedTeams(config, state, salaryLedgers) {
   return config.nominationOrder.map((teamId) => {
     const configured = config.teams.find((team) => team.id === teamId);
     const live = state.teams[teamId];
@@ -47,9 +53,105 @@ function orderedTeams(config, state) {
       name: configured.name,
       startingCap: live.startingCap,
       capAdjustment: 0,
+      salaryLedger: salaryLedgers[teamId] || [],
       ...(configured.logoUrl ? { logoUrl: configured.logoUrl } : {}),
     };
   });
+}
+
+function appendSalaryLedgerEntry(ledgers, teamId, entry) {
+  const ledger = ledgers[teamId];
+  if (!ledger) throw new Error(`Salary ledger references unknown team '${teamId}'.`);
+  const priorBalance = ledger.at(-1)?.balance ?? 0;
+  ledger.push({ ...entry, balance: priorBalance + entry.delta });
+}
+
+function teamNameById(config, teamId) {
+  return config.teams.find((team) => team.id === teamId)?.name || teamId;
+}
+
+function tradeAssetLabel(players = []) {
+  const names = players.map((player) => player.playerName).filter(Boolean);
+  if (!names.length) return "keeper rights";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+}
+
+function transactionReason(reason) {
+  const text = String(reason || "").trim();
+  if (!text) return "";
+  return /^for\b/i.test(text) ? ` ${text}` : ` for ${text}`;
+}
+
+export function buildSalaryLedgers({ events, eventTypes, config, state }) {
+  const ledgers = Object.fromEntries(config.teams.map((team) => [team.id, [{
+    id: `opening:${team.id}`,
+    kind: "opening",
+    label: "Starting salary cap",
+    delta: STANDARD_STARTING_CAP,
+    balance: STANDARD_STARTING_CAP,
+  }]]));
+
+  for (const team of config.teams) {
+    const adjustment = team.startingCap - STANDARD_STARTING_CAP;
+    if (!adjustment) continue;
+    appendSalaryLedgerEntry(ledgers, team.id, {
+      id: `pre-auction:${team.id}`,
+      kind: adjustment > 0 ? "bonus" : "adjustment",
+      label: PRE_AUCTION_BONUS_LABELS.get(adjustment) || "Pre-auction cap adjustment",
+      delta: adjustment,
+    });
+  }
+
+  const voided = voidedEventIds(events, eventTypes);
+  const operationalEvents = events.filter((event) => event.type !== eventTypes.EVENT_VOIDED && !voided.has(event.id));
+  for (const event of operationalEvents) {
+    if (event.type === eventTypes.CAP_TRANSFERRED) {
+      const fromName = teamNameById(config, event.payload.fromTeamId);
+      const toName = teamNameById(config, event.payload.toTeamId);
+      const reason = transactionReason(event.payload.reason);
+      appendSalaryLedgerEntry(ledgers, event.payload.fromTeamId, {
+        id: `${event.id}:out`, kind: "trade", label: `To ${toName}${reason}`, delta: -event.payload.amount,
+      });
+      appendSalaryLedgerEntry(ledgers, event.payload.toTeamId, {
+        id: `${event.id}:in`, kind: "trade", label: `From ${fromName}${reason}`, delta: event.payload.amount,
+      });
+      continue;
+    }
+    if (event.type === eventTypes.KEEPER_RIGHTS_TRADED && event.payload.amountFromAToB > 0) {
+      const teamAName = teamNameById(config, event.payload.teamAId);
+      const teamBName = teamNameById(config, event.payload.teamBId);
+      const asset = tradeAssetLabel(event.payload.teamBSends);
+      appendSalaryLedgerEntry(ledgers, event.payload.teamAId, {
+        id: `${event.id}:out`, kind: "trade", label: `To ${teamBName} for ${asset}`, delta: -event.payload.amountFromAToB,
+      });
+      appendSalaryLedgerEntry(ledgers, event.payload.teamBId, {
+        id: `${event.id}:in`, kind: "trade", label: `From ${teamAName} for ${asset}`, delta: event.payload.amountFromAToB,
+      });
+      continue;
+    }
+    if (event.type === eventTypes.KEEPER_ASSIGNED) {
+      appendSalaryLedgerEntry(ledgers, event.payload.teamId, {
+        id: event.id, kind: "keeper", label: `Keep ${event.payload.playerName}`, delta: -event.payload.salary,
+      });
+      continue;
+    }
+    if (event.type === eventTypes.PLAYER_SOLD) {
+      appendSalaryLedgerEntry(ledgers, event.payload.teamId, {
+        id: event.id, kind: "auction", label: `Draft ${event.payload.playerName}`, delta: -event.payload.amount,
+      });
+    }
+  }
+
+  for (const team of config.teams) {
+    const ledgerBalance = ledgers[team.id].at(-1)?.balance;
+    const authoritativeCash = state.teams[team.id]?.cash;
+    if (Number.isInteger(authoritativeCash) && ledgerBalance !== authoritativeCash) {
+      throw new Error(`${team.name}'s public salary ledger does not reconcile to its authoritative cash balance.`);
+    }
+  }
+  return ledgers;
 }
 
 function liveClock(clock, now = Date.now()) {
@@ -152,6 +254,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
   function snapshotFromContext(context) {
     const { state, config } = activeConfiguration(context.events, stateEngine);
     const voided = voidedEventIds(context.events, eventTypes);
+    const salaryLedgers = buildSalaryLedgers({ events: context.events, eventTypes, config, state });
     const operations = operationalState(context);
     const current = nominatorFromStep(state, operations.finishedTeamIds, state.nominationStep);
     const next = current.teamId ? nominatorFromStep(state, operations.finishedTeamIds, current.step + 1) : { teamId: null };
@@ -169,7 +272,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       stagedNomination: operations.stagedNomination,
       clock: operations.clock,
       auditEvents: (context.operationalEvents || []).filter((event) => !["NOMINATION_CLEARED", "CLOCK_UPDATED"].includes(event.type)).map((event) => ({ id: event.id, action: event.type === "TEAM_FINISHED" ? "Marked team finished" : event.type === "TEAM_REOPENED" ? (event.actorLabel === "System" ? "Automatically reopened after correction" : "Reopened team") : "Nominated", teamId: event.teamId || null, playerName: event.player?.name || null, createdAt: event.createdAt, actorLabel: event.actorLabel || "Auctioneer" })),
-      teams: orderedTeams(config, state),
+      teams: orderedTeams(config, state, salaryLedgers),
       availablePlayers: context.draftPack.players.map(publicPlayer),
       assignments: context.events
         .filter((event) => ACQUISITION_TYPES.has(event.type))

@@ -43,12 +43,199 @@
   color:#79afd0;
   font-size:.82em;
 }
-.team-header.is-finished{background:#123522!important;box-shadow:inset 0 -.25cqw #4bbf76}.team-header.is-finished h2{color:#b8f0ca}.team-header.is-finished .team-meta{color:#87d7a2}
-.team-column.is-nominating{position:relative;z-index:3;animation:nominating-column-pulse 1.15s ease-in-out infinite}.team-column.is-nominating .team-header{background:#5a3b08!important;box-shadow:inset 0 0 0 .22cqw #ffd25a}.team-column.is-nominating .team-header h2,.team-column.is-nominating .team-meta{color:#fff1ae}.team-column.is-nominating::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 .22cqw #ffd25a,0 0 1.1cqw #f2b93e99}
+.team-header.is-finished{background:#123522!important;box-shadow:inset 0 -.25cqw #4bbf76}.team-header.is-finished .team-name{color:#b8f0ca}.team-header.is-finished .team-meta{color:#87d7a2}
+.team-column.is-nominating{position:relative;z-index:3;animation:nominating-column-pulse 1.15s ease-in-out infinite}.team-column.is-nominating .team-header{background:#5a3b08!important;box-shadow:inset 0 0 0 .22cqw #ffd25a}.team-column.is-nominating .team-header .team-name,.team-column.is-nominating .team-meta{color:#fff1ae}.team-column.is-nominating::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 .22cqw #ffd25a,0 0 1.1cqw #f2b93e99}
 @keyframes nominating-column-pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
 @media(prefers-reduced-motion:reduce){.team-column.is-nominating{animation:none}.team-column.is-nominating::after{box-shadow:inset 0 0 0 .3cqw #ffd25a}}
 @media(prefers-reduced-motion:reduce){.nomination-spotlight{animation:none}}
 @media(max-width:900px){
   .last-sale-strip{justify-content:flex-start}
   .last-sale-strip ol{width:100%}
+}
+
+.team-header{
+  width:100%;
+  border-right:0;
+  border-bottom:0;
+  border-left:0;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.team-header .team-name{
+  display:block;
+  margin:0;
+  color:#fff1be;
+  font-family:Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif;
+  font-size:clamp(7px,1.04cqw,20px);
+  font-weight:900;
+  line-height:.9;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+  text-wrap:balance;
+}
+.team-header:hover{filter:brightness(1.13)}
+.team-header:focus-visible{
+  position:relative;
+  z-index:5;
+  outline:.22cqw solid #fff4b8;
+  outline-offset:-.22cqw;
+}
+
+.salary-ledger-backdrop{
+  position:fixed;
+  z-index:90;
+  inset:0;
+  display:grid;
+  place-items:center;
+  padding:clamp(12px,2.4vw,48px);
+  background:#020914d9;
+  backdrop-filter:blur(5px);
+}
+.salary-ledger-dialog{
+  width:min(780px,calc(100vw - 24px));
+  max-height:min(88vh,900px);
+  display:grid;
+  grid-template-rows:auto auto auto minmax(0,1fr) auto;
+  overflow:hidden;
+  border:clamp(2px,.18vw,4px) solid #f2be4b;
+  border-radius:clamp(12px,1vw,22px);
+  background:linear-gradient(180deg,#123453,#07192c 74%);
+  box-shadow:0 24px 90px #000e,inset .55cqw 0 #f2be4b;
+  color:#f4f8fb;
+}
+.salary-ledger-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+  padding:clamp(18px,2vw,32px);
+  border-bottom:1px solid #47708c;
+}
+.salary-ledger-top small{
+  display:block;
+  color:#8db5d0;
+  font-size:clamp(10px,.75vw,15px);
+  font-weight:950;
+  letter-spacing:.15em;
+}
+.salary-ledger-top h2{
+  margin:clamp(3px,.25vw,7px) 0 0;
+  color:#fff2bd;
+  font-family:Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif;
+  font-size:clamp(30px,3.1vw,58px);
+  font-weight:900;
+  line-height:.95;
+  text-transform:uppercase;
+}
+.salary-ledger-top p{
+  margin:clamp(5px,.4vw,10px) 0 0;
+  color:#b8ccda;
+  font-size:clamp(12px,.9vw,17px);
+}
+.salary-ledger-close{
+  flex:0 0 auto;
+  width:clamp(46px,3.5vw,64px);
+  height:clamp(46px,3.5vw,64px);
+  display:grid;
+  place-items:center;
+  border:2px solid #7099b4;
+  border-radius:50%;
+  background:#0d2c46;
+  color:#fff;
+  font-size:clamp(28px,2vw,40px);
+  line-height:1;
+  cursor:pointer;
+}
+.salary-ledger-close:hover,.salary-ledger-close:focus-visible{
+  border-color:#fff0a8;
+  background:#234d6c;
+  outline:3px solid #f2be4b;
+  outline-offset:3px;
+}
+.salary-ledger-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:clamp(12px,1.2vw,20px) clamp(18px,2vw,32px);
+  background:#f2be4b;
+  color:#07192c;
+}
+.salary-ledger-summary span{
+  font-size:clamp(11px,.8vw,16px);
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.salary-ledger-summary strong{
+  font-size:clamp(24px,2.4vw,44px);
+  line-height:1;
+}
+.salary-ledger-columns,.salary-ledger-row{
+  display:grid;
+  grid-template-columns:minmax(72px,.75fr) minmax(0,3fr) minmax(118px,1.15fr);
+  align-items:center;
+  gap:clamp(8px,1vw,18px);
+}
+.salary-ledger-columns{
+  padding:clamp(10px,.8vw,15px) clamp(18px,2vw,32px);
+  border-bottom:1px solid #315671;
+  color:#86aec8;
+  font-size:clamp(9px,.68vw,13px);
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.salary-ledger-columns span:last-child{text-align:right}
+.salary-ledger-rows{
+  min-height:0;
+  margin:0;
+  padding:0 clamp(18px,2vw,32px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  list-style:none;
+  scrollbar-color:#f2be4b #092038;
+}
+.salary-ledger-row{
+  min-height:clamp(48px,4.1vw,66px);
+  border-bottom:1px solid #274d68;
+  font-size:clamp(14px,1.05vw,20px);
+}
+.salary-ledger-row>strong{
+  color:#d9e8f1;
+  font-size:clamp(16px,1.25vw,23px);
+}
+.salary-ledger-row.is-credit>strong{color:#69e6a8}
+.salary-ledger-row.is-debit>strong{color:#ffb0ab}
+.salary-ledger-row>span{
+  min-width:0;
+  overflow-wrap:anywhere;
+  font-weight:800;
+}
+.salary-ledger-row>b{
+  color:#fff2bd;
+  font-size:clamp(18px,1.45vw,27px);
+  text-align:right;
+}
+.salary-ledger-row.is-opening{
+  background:#0e2b43;
+  box-shadow:-32px 0 #0e2b43,32px 0 #0e2b43;
+}
+.salary-ledger-footnote{
+  margin:0;
+  padding:clamp(11px,.9vw,16px) clamp(18px,2vw,32px);
+  border-top:1px solid #315671;
+  color:#91b2c7;
+  font-size:clamp(10px,.75vw,14px);
+  text-align:center;
+}
+@media(max-width:640px){
+  .salary-ledger-backdrop{padding:8px}
+  .salary-ledger-dialog{width:calc(100vw - 16px);max-height:94vh}
+  .salary-ledger-columns,.salary-ledger-row{grid-template-columns:64px minmax(0,1fr) 92px}
+  .salary-ledger-columns,.salary-ledger-rows{padding-left:12px;padding-right:12px}
+  .salary-ledger-columns span:last-child{font-size:0}
+  .salary-ledger-columns span:last-child::after{content:"BALANCE";font-size:10px}
+}
+@media print{
+  .salary-ledger-backdrop{display:none!important}
 }
