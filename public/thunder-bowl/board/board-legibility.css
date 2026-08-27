@@ -26,23 +26,24 @@
 }
 .board-title small {
   margin-top: clamp(2px, .18cqw, 5px);
-  font-size: clamp(8px, min(.65cqw, 1.55vh), 14px);
+  color: #95c8ea;
+  font-size: clamp(9px, min(.65cqw, 1.55vh), 14px);
 }
 
 .board-clock { min-width: clamp(92px, 8cqw, 180px); }
-.board-clock small { font-size: clamp(8px, min(.55cqw, 1.45vh), 13px); }
+.board-clock small { font-size: clamp(9px, min(.55cqw, 1.45vh), 13px); }
 .board-clock strong { font-size: clamp(20px, min(1.75cqw, 4.6vh), 40px); }
-.board-clock span { font-size: clamp(8px, min(.5cqw, 1.35vh), 12px); }
+.board-clock span { font-size: clamp(9px, min(.5cqw, 1.35vh), 12px); }
 
 .position-key { gap: clamp(3px, .28cqw, 8px); }
 .position-key i {
   min-width: clamp(28px, 2.15cqw, 54px);
   padding: clamp(3px, .24cqw, 7px) clamp(4px, .34cqw, 9px);
-  font-size: clamp(8px, min(.6cqw, 1.5vh), 13px);
+  font-size: clamp(9px, min(.6cqw, 1.5vh), 13px);
 }
 
 .board-actions { gap: clamp(5px, .45cqw, 12px); }
-.board-actions em { font-size: clamp(8px, min(.6cqw, 1.45vh), 13px); }
+.board-actions em { font-size: clamp(9px, min(.6cqw, 1.45vh), 13px); }
 .board-actions button {
   padding: clamp(5px, .42cqw, 11px) clamp(7px, .68cqw, 17px);
   font-size: clamp(9px, min(.68cqw, 1.7vh), 15px);
@@ -85,7 +86,7 @@
 .team-meta {
   margin-top: clamp(2px, calc(var(--header-row-height) * .025), 8px);
   font-size: clamp(
-    6px,
+    7px,
     min(calc(var(--team-column-width) * .052), calc(var(--header-row-height) * .15)),
     16px
   );
@@ -131,13 +132,13 @@
   padding: clamp(2px, calc(var(--roster-row-height) * .018), 5px)
     clamp(3px, calc(var(--team-column-width) * .015), 6px);
   font-size: clamp(
-    6px,
+    7px,
     min(calc(var(--team-column-width) * .04), calc(var(--roster-row-height) * .15)),
     12px
   );
 }
 
-#board-status { font-size: clamp(8px, min(.62cqw, 1.75vh), 14px); }
+#board-status { color: #91afc4; font-size: clamp(9px, min(.62cqw, 1.75vh), 14px); }
 
 @media (max-width: 1200px) {
   .board-title small,

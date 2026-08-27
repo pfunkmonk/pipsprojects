@@ -1,0 +1,71 @@
+/* Operator readability floor. Keep the sale workflow compact and above fold. */
+:root {
+  --operator-muted: #a9c0cf;
+  --operator-quiet: #91afc2;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.login-card small,
+.console-brand small,
+.form-status,
+.privacy-note span,
+.history-heading label,
+td small,
+#edit-form > p { color: var(--operator-muted); }
+.login-card small { font-size: 13px; }
+.console-brand small { font-size: 11px; }
+.header-actions em { font-size: 12px; }
+.header-actions a,
+.header-actions button { font-size: 13px; }
+
+.clock-console small,
+.clock-length { color: var(--operator-quiet) !important; font-size: 11px !important; }
+.clock-console span { color: var(--operator-muted); font-size: 12px; }
+.clock-console button,
+.clock-length select { font-size: 12px; }
+
+.player-result small,
+.player-result em,
+.quick-team-heading { font-size: 12px; }
+.quick-team-grid button { font-size: 11px; }
+.quick-team-grid button.is-finished::after,
+.quick-team-grid kbd { font-size: 10px; }
+.pending-sale-preview span,
+.position-completion span { color: var(--operator-muted); font-size: 10px !important; }
+
+.sale-confirmation small,
+.nomination-strip small,
+.selected-player-card small { font-size: 11px; }
+.nomination-strip strong { font-size: 14px; }
+.selected-player-card em { color: var(--operator-muted); font-size: 12px; }
+.price-entry button,
+.price-increments button,
+.history-tools > button { font-size: 12px; }
+
+.activity-feed li { font-size: 12px; }
+.activity-feed time { color: var(--operator-quiet); font-size: 10px; }
+.manual-checks label { font-size: 12px; }
+.readiness-results strong { font-size: 12px; }
+.readiness-results span { color: var(--operator-muted); font-size: 11px; }
+.team-finish-control,
+.advanced-corrections summary,
+.advanced-corrections p,
+.advanced-corrections button,
+.share-dialog output { font-size: 11px; }
+.recent-card button,
+.reconciliation-row label { font-size: 11px; }
+
+th { color: var(--operator-quiet); font-size: 11px; }
+td.actions button { font-size: 12px; }
+.primary-action:disabled,
+.team-finish-control:disabled,
+.reconciliation-toolbar button:disabled { opacity: 0.58; }
+
+@media (max-width: 880px) {
+  .quick-team-grid button { font-size: 12px; }
+  .activity-feed li { min-width: 220px; }
+}

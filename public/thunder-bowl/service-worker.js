@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v115";
+const CACHE_VERSION = "thunder-bowl-shell-v116";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -12,6 +12,7 @@ const APP_SHELL = [
   "/thunder-bowl/auctioneer/auctioneer-clear.css",
   "/thunder-bowl/auctioneer/auctioneer-mission.css",
   "/thunder-bowl/auctioneer/auctioneer-sticky-sale.css",
+  "/thunder-bowl/auctioneer/auctioneer-readability.css?v=20260827a",
   "/thunder-bowl/auctioneer/auctioneer.mjs?v=20260811a",
   "/thunder-bowl/draft-board/",
   "/thunder-bowl/draft-board/index.html",
@@ -41,6 +42,7 @@ const APP_SHELL = [
   "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
   "/thunder-bowl/app.css?v=20260825e",
+  "/thunder-bowl/readability.css?v=20260827a",
   "/thunder-bowl/app.mjs?v=20260825d",
   "/thunder-bowl/public-board.mjs?v=20260805g",
   "/thunder-bowl/state-engine.mjs?v=20260810e",

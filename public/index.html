@@ -8,17 +8,17 @@
   <meta name="theme-color" content="#2f4a6b" />
   <style>
     :root {
-      --bg: #f5f4f1; --card: #ffffff; --ink: #1f2933; --muted: #6b7580;
+      --bg: #f5f4f1; --card: #ffffff; --ink: #1f2933; --muted: #5d6873;
       --line: #e4e2dc; --accent: #2f4a6b; --accent-2: #c9782e;
       --shadow: 0 1px 3px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.05);
       --radius: 16px;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#9aa4b0;
+      :root { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#adb7c1;
         --line:#2a2f38; --accent:#6ea3d8; --accent-2:#e0a35c; --shadow:0 1px 3px rgba(0,0,0,.4); }
     }
-    :root[data-theme="dark"] { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#9aa4b0; --line:#2a2f38; --accent:#6ea3d8; --accent-2:#e0a35c; }
-    :root[data-theme="light"] { --bg:#f5f4f1; --card:#ffffff; --ink:#1f2933; --muted:#6b7580; --line:#e4e2dc; --accent:#2f4a6b; --accent-2:#c9782e; }
+    :root[data-theme="dark"] { --bg:#12151a; --card:#1b1f26; --ink:#eef1f4; --muted:#adb7c1; --line:#2a2f38; --accent:#77afe5; --accent-2:#e0a35c; }
+    :root[data-theme="light"] { --bg:#f5f4f1; --card:#ffffff; --ink:#1f2933; --muted:#5d6873; --line:#e4e2dc; --accent:#294667; --accent-2:#b8641d; }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--ink);
       font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -35,17 +35,17 @@
     a.card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
     .card .icon { font-size: 30px; }
     .card h2 { margin: 0; font-size: 19px; }
-    .card p { margin: 0; color: var(--muted); font-size: 14px; }
-    .card .go { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+    .card .go { margin-top: auto; font-size: 14px; font-weight: 700; color: var(--accent); }
     .card-actions { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: auto; padding-top: 4px; }
     .card-actions .go { margin-top: 0; text-decoration: none; }
     .card-actions .go:hover, .card-actions .go:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
     .card.soon { opacity: .72; }
-    .badge { position: absolute; top: 16px; right: 16px; font-size: 10px; font-weight: 700;
+    .badge { position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 750;
       text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; }
     .badge.live { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
     .badge.wip  { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); }
-    footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 52px; }
+    footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 52px; }
   </style>
 </head>
 <body>

@@ -1,0 +1,97 @@
+/*
+ * Shared readability floor for the private Command Center.
+ * This layer intentionally changes type and contrast only: auction-critical
+ * geometry, viewport-balanced columns, card counts, and fixed controls remain
+ * governed by app.css.
+ */
+:root {
+  --muted: #bfd0df;
+  --quiet: #9fb8cc;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.button:disabled { opacity: 0.58; }
+.eyebrow { font-size: 0.78rem; }
+.fine-print,
+.count-label,
+.status-chip { font-size: 0.8rem; }
+
+.metric span { font-size: 0.73rem; }
+.metric small { font-size: 0.74rem; }
+.pool-help,
+.player-filter-summary { font-size: 0.76rem; }
+.data-table th { font-size: 0.71rem; }
+.mini-personal-chip,
+.personal-tag { font-size: 0.68rem; }
+
+.position-badge,
+.availability-badge { font-size: 0.74rem; }
+.value-advice { font-size: 0.68rem; }
+.decision-win-chance span,
+.decision-win-chance small { font-size: 0.66rem; }
+.decision-tier-warning small { font-size: 0.74rem; }
+.decision-roster-safety span,
+.decision-coach-fact > span,
+.current-bid-control label { font-size: 0.69rem; }
+.decision-roster-safety small,
+.decision-coach-fact > small { font-size: 0.72rem; }
+.decision-market-strip b,
+#view-draft .decision-market-strip b { font-size: 0.66rem; }
+.decision-market-strip strong,
+#view-draft .decision-market-strip strong { font-size: 0.73rem; }
+.selected-full-card > summary small,
+.projection-evidence-heading span,
+.auction-forecast-note,
+.runner-up-prompt > small { font-size: 0.74rem; }
+.value-trio span,
+.decision-context-grid dt,
+.auction-forecast dt { font-size: 0.69rem; }
+.auction-forecast small { font-size: 0.72rem; }
+.opponent-pressure-badge { font-size: 0.68rem; }
+
+.room-team-dashboard-heading .muted { font-size: 0.72rem; }
+.room-team-dashboard-heading > small { font-size: 0.68rem; }
+.room-team-card > strong { font-size: 0.8rem; }
+.room-team-card-money { font-size: 0.7rem; }
+.room-team-card-counts { color: var(--muted); font-size: 0.65rem; }
+
+.roster-safety-summary small,
+.roster-budget-lane span { font-size: 0.7rem; }
+.roster-budget-lane strong,
+.roster-budget-lane b { font-size: 0.74rem; }
+.nomination-recommendation .nomination-play { font-size: 0.68rem; }
+.nomination-recommendation small { font-size: 0.74rem; }
+
+.keeper-turn-card .keeper-turn-number,
+.scenario-result span,
+.settings-facts dt { font-size: 0.76rem; }
+.keeper-turn-card small,
+.keeper-search-status,
+.keeper-trade-selected,
+.keeper-contract small,
+.keeper-market-calculator label,
+.league-setup-rules label,
+.league-setup-grid label { font-size: 0.8rem; }
+.keeper-market-facts span { font-size: 0.76rem; }
+
+.room-roster-player > span,
+.room-roster-player > small,
+.room-popout-hint,
+.room-depth-player-list li > span { font-size: 0.76rem; }
+.intel-metrics span,
+.intel-callout span,
+.intel-facts dt { font-size: 0.72rem; }
+.intel-news-list time,
+.intel-news-list small,
+.intel-source-caveat { font-size: 0.74rem; }
+
+@media (max-width: 900px) {
+  .eyebrow { font-size: 0.8rem; }
+  .pool-help,
+  .player-filter-summary,
+  .metric small { font-size: 0.78rem; }
+}
