@@ -79,3 +79,11 @@ test("manager headers open an accessible salary ledger that closes by X, backdro
   assert.match(styles, /\.salary-ledger-dialog\{/);
   assert.match(styles, /\.salary-ledger-rows\{[\s\S]*overflow-y:auto/);
 });
+
+test("small-screen board names use a readable system face and protected minimum sizes", async () => {
+  const styles = await readFile(new URL("../public/thunder-bowl/board/board-legibility.css", import.meta.url), "utf8");
+  assert.match(styles, /\.team-header \.team-name \{[\s\S]*font-family: "Segoe UI", Arial, sans-serif;[\s\S]*font-weight: 800;[\s\S]*11px/);
+  assert.match(styles, /\.sticker-meta \{[\s\S]*font-weight: 750;[\s\S]*8px/);
+  assert.match(styles, /\.player-name \{[\s\S]*font-family: "Segoe UI", Arial, sans-serif;[\s\S]*font-weight: 800;[\s\S]*11px/);
+  assert.match(styles, /\.player-name small \{ font-family: inherit; font-weight: 700; \}/);
+});

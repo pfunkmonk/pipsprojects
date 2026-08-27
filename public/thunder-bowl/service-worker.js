@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v114";
+const CACHE_VERSION = "thunder-bowl-shell-v115";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",

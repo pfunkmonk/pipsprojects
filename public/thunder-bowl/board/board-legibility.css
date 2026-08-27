@@ -63,12 +63,15 @@
     clamp(2px, calc(var(--team-column-width) * .025), 9px);
 }
 .team-header .team-name {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: -.01em;
   font-size: clamp(
-    9px,
-    min(calc(var(--team-column-width) * .095), calc(var(--header-row-height) * .43)),
+    11px,
+    min(calc(var(--team-column-width) * .092), calc(var(--header-row-height) * .4)),
     31px
   );
-  line-height: .94;
+  line-height: 1.05;
   overflow-wrap: anywhere;
 }
 .cap-left {
@@ -99,22 +102,29 @@
     clamp(3px, calc(var(--team-column-width) * .028), 10px);
 }
 .sticker-meta {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-weight: 750;
   font-size: clamp(
-    7px,
+    8px,
     min(calc(var(--team-column-width) * .055), calc(var(--roster-row-height) * .27)),
     18px
   );
 }
-.sticker-meta b { font-size: 1.18em; }
+.sticker-meta b { font-size: 1.18em; font-weight: 800; }
 .player-name {
   margin-top: clamp(1px, calc(var(--roster-row-height) * .025), 7px);
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: -.015em;
+  text-shadow: 0 1px 0 #000a;
   font-size: clamp(
-    9px,
-    min(calc(var(--team-column-width) * .09), calc(var(--roster-row-height) * .58)),
+    11px,
+    min(calc(var(--team-column-width) * .085), calc(var(--roster-row-height) * .46)),
     32px
   );
-  line-height: .93;
+  line-height: 1;
 }
+.player-name small { font-family: inherit; font-weight: 700; }
 .keeper-tag {
   right: clamp(2px, calc(var(--team-column-width) * .018), 7px);
   bottom: clamp(2px, calc(var(--roster-row-height) * .025), 7px);
