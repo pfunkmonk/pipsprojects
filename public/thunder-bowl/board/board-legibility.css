@@ -86,7 +86,7 @@
 .team-meta {
   margin-top: clamp(2px, calc(var(--header-row-height) * .025), 8px);
   font-size: clamp(
-    7px,
+    8px,
     min(calc(var(--team-column-width) * .052), calc(var(--header-row-height) * .15)),
     16px
   );
@@ -106,7 +106,7 @@
   font-family: "Segoe UI", Arial, sans-serif;
   font-weight: 750;
   font-size: clamp(
-    8px,
+    9px,
     min(calc(var(--team-column-width) * .055), calc(var(--roster-row-height) * .27)),
     18px
   );
