@@ -74,6 +74,15 @@ test("auctioneer disables an illegal pending sale before the server backstop", (
   assert.match(auctioneerSource, /if \(!legality\.legal\) \{[\s\S]*flashIllegal\(legality\.message\);[\s\S]*return;/);
 });
 
+test("auctioneer treats the final keeper set as view-only while preserving sale corrections", async () => {
+  const html = await readFile(auctioneerHtmlUrl, "utf8");
+  assert.match(html, /id="keeper-lock-notice"/);
+  assert.match(auctioneerSource, /function keeperAssignmentLocked/);
+  assert.match(auctioneerSource, /OWNER LOCKED/);
+  assert.match(auctioneerSource, /private Command Center for keeper corrections/);
+  assert.match(auctioneerSource, /assignment\.status === "active" && !keeperAssignmentLocked\(assignment\)/);
+});
+
 test("an unchanged successful projector refresh clears stale connection state", () => {
   assert.match(boardSource, /else if \(snapshot\) \{\s*renderLiveStatus\(\);\s*\}/);
 });

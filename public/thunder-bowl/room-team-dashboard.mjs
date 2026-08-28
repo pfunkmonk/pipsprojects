@@ -1,4 +1,4 @@
-import { POSITIONS } from "./state-engine.mjs?v=20260810e";
+import { POSITIONS } from "./state-engine.mjs?v=20260828a";
 
 const DISPLAY_POSITIONS = Object.freeze([...POSITIONS]);
 

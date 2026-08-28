@@ -152,6 +152,13 @@ export function buildDraftReadinessReport({
     ? result("ledger-legality", "Local ledger legality", "pass", `${state.totalPlayers} rostered players; every team can still complete a legal roster.`)
     : result("ledger-legality", "Local ledger legality", "block", illegalTeam ? `${illegalTeam.name} cannot complete a legal roster.` : "The ledger does not contain exactly 12 teams."));
 
+  const finalizedKeepers = state.keeperFinalization?.canonical === true;
+  checks.push(finalizedKeepers
+    ? result("keeper-finalization", "Final 2026 keeper authority", "pass", `${state.keeperFinalization.currentKeeperCount} active keepers are cloud-default and auctioneer read-only.`)
+    : result("keeper-finalization", "Final 2026 keeper authority", "block", state.keeperFinalization
+      ? "The keeper lock exists, but an organizer correction is incomplete. Restore the final active keeper count before draft day."
+      : "Finalize the official keeper set in Keeper strategy before draft day."));
+
   if (ledgerStale) {
     checks.push(result("cloud-generation", "Cloud ledger generation", "block", "This tab belongs to an archived generation. Load the current cloud rehearsal before recording."));
   } else if (mode === "draft-room" && (!Number.isSafeInteger(ledgerGeneration) || ledgerGeneration < 1)) {

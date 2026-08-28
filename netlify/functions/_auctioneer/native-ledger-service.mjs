@@ -265,6 +265,8 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       rosterSize: config.rosterSize,
       minimumRosterSize: config.minimumRosterSize ?? (Object.values(config.starterRequirements || {}).reduce((sum, count) => sum + Number(count || 0), 0) || config.rosterSize),
       keeperSlots: 2,
+      keepersFinalized: Boolean(state.keeperFinalization),
+      keeperFinalizedAt: state.keeperFinalization?.finalizedAt || null,
       starterRequirements: { ...config.starterRequirements },
       currentNominatorTeamId: current.teamId,
       nextNominatorTeamId: next.teamId,
@@ -327,6 +329,17 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       amount: price,
       nominatorTeamId: target.payload.nominatorTeamId,
     }, { deviceId, createdAt: target.createdAt });
+  }
+
+  function assertAuctioneerMayChangeAssignment(target, context) {
+    if (target.type !== eventTypes.KEEPER_ASSIGNED) return;
+    const state = stateEngine.replayDraft(context.events);
+    if (state.keeperFinalization) {
+      const error = new Error("The final 2026 keeper set is organizer-locked. Keeper corrections must be made in the private Command Center.");
+      error.code = "KEEPERS_FINALIZED";
+      error.status = 403;
+      throw error;
+    }
   }
 
   async function command(input) {
@@ -407,6 +420,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       nextOperationalEvents.push(operation("TEAM_REOPENED", { teamId }));
     } else if (type === "correct-assignment") {
       const { target, isVoided } = targetAcquisition(nextEvents, input.assignmentId, eventTypes);
+      assertAuctioneerMayChangeAssignment(target, context);
       if (isVoided) throw new Error("Restore this assignment before editing it.");
       const replacement = createReplacement(target, input, context.draftPack);
       nextEvents = insertAfterEvent(nextEvents, target.id, replacement);
@@ -418,6 +432,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
         if (targetIds.has(change.assignmentId)) throw new Error("An assignment can appear only once in a reconciliation.");
         targetIds.add(change.assignmentId);
         const { target, isVoided } = targetAcquisition(nextEvents, change.assignmentId, eventTypes);
+        assertAuctioneerMayChangeAssignment(target, context);
         if (isVoided) throw new Error("Every reconciled assignment must still be active.");
         return { target, replacement: createReplacement(target, change, context.draftPack) };
       });
@@ -432,6 +447,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       }
     } else if (type === "void-assignment") {
       const { target, isVoided } = targetAcquisition(nextEvents, input.assignmentId, eventTypes);
+      assertAuctioneerMayChangeAssignment(target, context);
       if (isVoided) throw new Error("That assignment is already undone.");
       const placeholder = target.type === eventTypes.PLAYER_SOLD
         ? stateEngine.createEvent(eventTypes.NOMINATION_SKIPPED, { teamId: target.payload.nominatorTeamId, reason: voidReason("voided", target.id) }, { deviceId, createdAt: target.createdAt })
@@ -440,6 +456,7 @@ export function createNativeLedgerService({ adapter, stateEngine, deviceId = "au
       nextEvents.push(stateEngine.createEvent(eventTypes.EVENT_VOIDED, { targetEventId: target.id, reason: voidReason("voided", target.id) }, { deviceId }));
     } else if (type === "restore-assignment") {
       const { target, isVoided } = targetAcquisition(nextEvents, input.assignmentId, eventTypes);
+      assertAuctioneerMayChangeAssignment(target, context);
       if (!isVoided) throw new Error("That assignment is already active.");
       const placeholderReason = voidReason("voided", target.id);
       const placeholder = nextEvents.find((event) => event.payload?.reason === placeholderReason && [eventTypes.NOMINATION_SKIPPED, eventTypes.KEEPER_PASSED].includes(event.type));

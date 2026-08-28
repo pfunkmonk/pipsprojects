@@ -1,4 +1,4 @@
-import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260810e";
+import { legalMaximumBid, requiredRosterAdditions, validateEvent, EVENT_TYPES } from "./state-engine.mjs?v=20260828a";
 import { expectedAdditionalPlayers, HISTORICAL_AUCTION_DEMAND } from "./auction-demand.mjs?v=20260816a";
 import { detectPositionRun } from "./position-run.mjs?v=20260810a";
 

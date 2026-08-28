@@ -31,6 +31,9 @@ export function evaluateDraftReadiness(snapshot, presence, options = {}) {
 
   const keeperOverflow = snapshot?.teams?.find((team) => snapshot.assignments.filter((assignment) => assignment.status === "active" && assignment.teamId === team.id && assignment.acquisitionType === "keeper").length > snapshot.keeperSlots);
   checks.push(check("keepers", "Keeper setup", !keeperOverflow, keeperOverflow ? `${keeperOverflow.name} exceeds the keeper-row limit.` : "Keeper assignments fit the reserved rows."));
+  const activeKeeperCount = snapshot?.assignments?.filter((assignment) => assignment.status === "active" && assignment.acquisitionType === "keeper").length || 0;
+  checks.push(check("keeper-finalization", "Final keeper authority", snapshot?.keepersFinalized === true,
+    snapshot?.keepersFinalized === true ? `${activeKeeperCount} active keepers are organizer-locked and auctioneer read-only.` : "Finalize the official keeper set in the private Command Center before draft day."));
   checks.push(check("players", "Public player search", Array.isArray(snapshot?.availablePlayers) && snapshot.availablePlayers.length > 0,
     `${snapshot?.availablePlayers?.length || 0} sanitized players available.`));
   checks.push(check("privacy", "Public-data privacy boundary", snapshot && !containsPrivateField(snapshot),

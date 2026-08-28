@@ -409,6 +409,60 @@ test("keeper selection rejects out-of-order turns and undo reopens the exact slo
   );
 });
 
+test("final keeper authority is auditable, cross-device safe, and remains organizer-correctable", () => {
+  const keeperEvents = [];
+  let eventIndex = 1;
+  for (const round of [1, 2]) {
+    for (const teamId of DEFAULT_CONFIG.nominationOrder) {
+      keeperEvents.push(make(
+        EVENT_TYPES.KEEPER_ASSIGNED,
+        {
+          playerId: `final-${round}-${teamId}`,
+          playerName: `Final ${round} ${teamId}`,
+          position: round === 1 ? "WR" : "RB",
+          nflTeam: "DEN",
+          teamId,
+          salary: 1,
+          keeperYear: 2,
+          selectionRound: round,
+          source: "authenticated final keeper test",
+        },
+        eventIndex,
+      ));
+      eventIndex += 1;
+    }
+  }
+  const finalization = make(
+    EVENT_TYPES.KEEPERS_FINALIZED,
+    { season: 2026, keeperCount: 24, reason: "League organizer approved final keepers" },
+    eventIndex,
+  );
+  const finalized = replayDraft([configEvent(), ...keeperEvents, finalization]);
+  assert.equal(finalized.keeperSelection.complete, true);
+  assert.deepEqual(finalized.keeperFinalization, {
+    eventId: finalization.id,
+    season: 2026,
+    keeperCount: 24,
+    reason: "League organizer approved final keepers",
+    finalizedAt: finalization.createdAt,
+    currentKeeperCount: 24,
+    selectionComplete: true,
+    canonical: true,
+  });
+  const publicSnapshot = toPublicSnapshot(finalized);
+  assert.equal(publicSnapshot.keepersFinalized, true);
+  assert.equal(publicSnapshot.keeperFinalizedAt, finalization.createdAt);
+
+  const correction = make(
+    EVENT_TYPES.EVENT_VOIDED,
+    { targetEventId: keeperEvents.at(-1).id, reason: "Organizer correction in progress" },
+    eventIndex + 1,
+  );
+  const correctionState = replayDraft([configEvent(), ...keeperEvents, finalization, correction]);
+  assert.equal(correctionState.keeperFinalization.currentKeeperCount, 23);
+  assert.equal(correctionState.keeperFinalization.canonical, false);
+});
+
 test("keeper setup undo targets the latest active setup action and restores exact state", () => {
   const transfer = make(
     EVENT_TYPES.CAP_TRANSFERRED,

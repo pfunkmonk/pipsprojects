@@ -1,4 +1,4 @@
-import { POSITIONS } from "./state-engine.mjs?v=20260810e";
+import { POSITIONS } from "./state-engine.mjs?v=20260828a";
 import { THUNDER_AUCTION_PRICE_PROFILE } from "./auction-price-profile.mjs?v=20260816a";
 
 export const HISTORICAL_AUCTION_DEMAND = Object.freeze({

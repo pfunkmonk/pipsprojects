@@ -4,7 +4,7 @@ import { createNativeLedgerService } from "../netlify/functions/_auctioneer/nati
 
 const EVENT_TYPES = {
   PLAYER_SOLD: "PLAYER_SOLD", KEEPER_ASSIGNED: "KEEPER_ASSIGNED", EVENT_VOIDED: "EVENT_VOIDED",
-  NOMINATION_SKIPPED: "NOMINATION_SKIPPED", KEEPER_PASSED: "KEEPER_PASSED",
+  NOMINATION_SKIPPED: "NOMINATION_SKIPPED", KEEPER_PASSED: "KEEPER_PASSED", KEEPERS_FINALIZED: "KEEPERS_FINALIZED",
 };
 let eventNumber = 10;
 const teams = [{ id: "alpha", name: "Alpha", startingCap: 100 }, { id: "beta", name: "Beta", startingCap: 100 }];
@@ -32,9 +32,44 @@ const stateEngine = {
       nominationStep: positions,
       currentNominatorTeamId: Math.floor(positions / 2) % 2 === 0 ? teams[positions % 2].id : teams[1 - (positions % 2)].id,
       updatedAt: events.at(-1)?.createdAt || null,
+      keeperFinalization: operational.some((event) => event.type === EVENT_TYPES.KEEPERS_FINALIZED)
+        ? { finalizedAt: operational.find((event) => event.type === EVENT_TYPES.KEEPERS_FINALIZED).createdAt }
+        : null,
     };
   },
 };
+
+test("auctioneer can view final keepers but cannot edit, undo, restore, or reconcile them", async () => {
+  const players = [{ id: "final-keeper", name: "Final Keeper", position: "RB", nflTeam: "DEN" }];
+  const keeper = stateEngine.createEvent(EVENT_TYPES.KEEPER_ASSIGNED, {
+    playerId: "final-keeper", playerName: "Final Keeper", position: "RB", nflTeam: "DEN",
+    teamId: "alpha", salary: 3, keeperYear: 2, selectionRound: 1,
+  });
+  const finalization = stateEngine.createEvent(EVENT_TYPES.KEEPERS_FINALIZED, { season: 2026, keeperCount: 1, reason: "Organizer approved" });
+  let commits = 0;
+  const context = { events: [keeper, finalization], generation: 1, draftPack: { players } };
+  const service = createNativeLedgerService({
+    stateEngine,
+    adapter: {
+      async load() { return structuredClone(context); },
+      async commitCanonical() { commits += 1; return structuredClone(context); },
+    },
+  });
+  const snapshot = await service.snapshot();
+  assert.equal(snapshot.keepersFinalized, true);
+  assert.equal(snapshot.assignments[0].acquisitionType, "keeper");
+  for (const command of [
+    { type: "correct-assignment", assignmentId: keeper.id, playerId: "final-keeper", teamId: "beta", price: 4, contractYear: 2 },
+    { type: "void-assignment", assignmentId: keeper.id },
+    { type: "restore-assignment", assignmentId: keeper.id },
+  ]) {
+    await assert.rejects(
+      service.command({ ...command, idempotencyKey: `locked-${command.type}` }),
+      /organizer-locked/i,
+    );
+  }
+  assert.equal(commits, 0);
+});
 
 test("reconciles multiple native assignments in one canonical commit", async () => {
   const players = [

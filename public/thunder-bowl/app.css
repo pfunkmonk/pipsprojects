@@ -756,6 +756,13 @@ input[readonly] { color: var(--muted); }
 .keeper-workspace-copy p:last-child { max-width: 760px; margin: 0; color: var(--muted); }
 .keeper-mode-switch, .keeper-workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.55rem; }
 .keeper-workspace-actions { display: grid; }
+.keeper-finalization { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--line-strong); border-left: 5px solid var(--gold); border-radius: 10px; padding: 0.75rem 0.85rem; background: var(--navy-950); }
+.keeper-finalization.is-final { border-color: rgba(93, 211, 158, 0.58); border-left-color: var(--good); background: rgba(28, 91, 72, 0.22); }
+.keeper-finalization.is-correcting { border-color: rgba(240, 186, 54, 0.78); border-left-color: var(--gold); background: rgba(240, 186, 54, 0.1); }
+.keeper-finalization strong, .keeper-finalization span { display: block; }
+.keeper-finalization strong { margin: 0.12rem 0 0.2rem; color: var(--text); font-size: 1rem; }
+.keeper-finalization > div > span:last-child { color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
+.keeper-finalization-actions { display: flex; flex: 0 0 auto; gap: 0.5rem; }
 .keeper-scenario-impact { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; border-top: 1px solid var(--line); padding-top: 0.75rem; color: var(--muted); }
 .keeper-scenario-impact > strong { color: var(--gold-light); white-space: nowrap; }
 .keeper-impact-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
@@ -1258,6 +1265,9 @@ input[readonly] { color: var(--muted); }
   .keeper-intro-actions .form-status { text-align: left; }
   .keeper-workspace-panel { grid-template-columns: 1fr; }
   .keeper-mode-switch, .keeper-workspace-actions { justify-content: flex-start; }
+  .keeper-finalization { align-items: stretch; flex-direction: column; }
+  .keeper-finalization-actions { flex-wrap: wrap; }
+  .keeper-finalization-actions .button { flex: 1 1 190px; }
   .keeper-scenario-impact { grid-column: 1; align-items: flex-start; flex-direction: column; }
   .keeper-impact-chips { justify-content: flex-start; }
   .keeper-pressure-grid { grid-template-columns: 1fr; }

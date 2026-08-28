@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="./auctioneer-mission.css">
   <link rel="stylesheet" href="./auctioneer-sticky-sale.css">
   <link rel="stylesheet" href="../shared/shell-safety.css">
-  <link rel="stylesheet" href="./auctioneer-readability.css?v=20260827a">
+  <link rel="stylesheet" href="./auctioneer-readability.css?v=20260828a">
 </head>
 <body>
   <main>
@@ -85,6 +85,7 @@
             <div><p class="eyebrow">PERMANENT CORRECTIONS</p><h2>Assignment history</h2></div>
             <div class="history-tools"><label>Find assignment<input id="history-search" type="search" placeholder="Player or team"></label></div>
           </div>
+          <p id="keeper-lock-notice" class="keeper-lock-notice" hidden><strong>FINAL 2026 KEEPERS · VIEW ONLY</strong><span>Keeper assignments are locked by the league organizer. Use this console only for auction sales; keeper corrections belong in the private Command Center.</span></p>
           <details class="advanced-corrections"><summary>Advanced corrections</summary><div><p>Use connected correction only when two or more players or teams were entered as one mix-up.</p><button id="toggle-reconciliation" type="button">Correct a connected mix-up</button><button id="export-audit" type="button">Export audit log</button></div></details>
           <div id="reconciliation-toolbar" class="reconciliation-toolbar" hidden><strong id="reconciliation-count">0 selected</strong><span>Select the connected mistakes. Every correction will be saved together—or none will.</span><button id="open-reconciliation" type="button" disabled>Fix selected</button><button id="cancel-reconciliation" type="button">Cancel</button></div>
           <div class="history-wrap"><table><thead><tr><th class="reconcile-cell"></th><th>Player</th><th>Team</th><th>Price</th><th>Type</th><th>Recorded</th><th></th></tr></thead><tbody id="history-rows"></tbody></table></div>
@@ -160,6 +161,6 @@
     </form>
   </dialog>
   <script src="../vendor/qrcode-generator.js"></script>
-  <script type="module" src="./auctioneer.mjs?v=20260811a"></script>
+  <script type="module" src="./auctioneer.mjs?v=20260828a"></script>
 </body>
 </html>

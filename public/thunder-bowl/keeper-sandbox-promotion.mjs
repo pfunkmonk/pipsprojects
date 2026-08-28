@@ -1,4 +1,4 @@
-import { EVENT_TYPES, validateEvent } from "./state-engine.mjs?v=20260810e";
+import { EVENT_TYPES, validateEvent } from "./state-engine.mjs?v=20260828a";
 
 export const KEEPER_PROMOTION_EVENT_TYPES = Object.freeze([
   EVENT_TYPES.CAP_TRANSFERRED,

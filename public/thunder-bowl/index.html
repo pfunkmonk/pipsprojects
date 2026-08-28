@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260808h" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260808h" />
-  <link rel="stylesheet" href="./app.css?v=20260825e" />
+  <link rel="stylesheet" href="./app.css?v=20260828a" />
   <link rel="stylesheet" href="./readability.css?v=20260827a" />
 </head>
 <body>
@@ -421,6 +421,17 @@
             <button id="keeper-sandbox-publish" class="button button-primary" type="button">Review &amp; sync sandbox</button>
             <button id="keeper-sandbox-copy-official" class="button button-secondary" type="button">Start from official ledger</button>
             <button id="keeper-sandbox-reset" class="button button-secondary" type="button">Reset prediction sandbox</button>
+          </div>
+          <div id="keeper-finalization" class="keeper-finalization" role="status" aria-live="polite">
+            <div>
+              <span class="eyebrow">2026 keeper authority</span>
+              <strong id="keeper-finalization-title">Final 2026 keeper set not locked</strong>
+              <span id="keeper-finalization-detail">Complete all 24 official turns before locking the shared keeper set.</span>
+            </div>
+            <div class="keeper-finalization-actions">
+              <button id="finalize-keepers" class="button button-primary" type="button">Lock current set as final</button>
+              <button id="keeper-owner-correction" class="button button-secondary" type="button" aria-pressed="false" hidden>Enable owner corrections</button>
+            </div>
           </div>
           <div id="keeper-scenario-impact" class="keeper-scenario-impact" aria-live="polite">No forecast keepers selected yet.</div>
         </section>
@@ -1085,6 +1096,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260825d"></script>
+  <script type="module" src="./app.mjs?v=20260828a"></script>
 </body>
 </html>

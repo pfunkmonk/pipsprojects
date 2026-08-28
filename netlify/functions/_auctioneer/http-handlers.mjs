@@ -45,6 +45,8 @@ function sanitizePublicSnapshot(snapshot, includeAvailablePlayers = true, includ
     rosterSize: snapshot.rosterSize,
     minimumRosterSize: snapshot.minimumRosterSize,
     keeperSlots: snapshot.keeperSlots,
+    keepersFinalized: snapshot.keepersFinalized === true,
+    keeperFinalizedAt: snapshot.keeperFinalizedAt || null,
     starterRequirements: snapshot.starterRequirements ? { ...snapshot.starterRequirements } : undefined,
     currentNominatorTeamId: snapshot.currentNominatorTeamId ?? null,
     nextNominatorTeamId: snapshot.nextNominatorTeamId ?? null,

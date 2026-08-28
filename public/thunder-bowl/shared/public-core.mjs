@@ -22,6 +22,8 @@ export function assertPublicSnapshot(snapshot) {
   if (!Number.isInteger(snapshot.rosterSize) || snapshot.rosterSize < 1) throw new Error("Roster size is invalid.");
   if (snapshot.minimumRosterSize !== undefined && (!Number.isInteger(snapshot.minimumRosterSize) || snapshot.minimumRosterSize < 1 || snapshot.minimumRosterSize > snapshot.rosterSize)) throw new Error("Minimum roster size is invalid.");
   if (!Number.isInteger(snapshot.keeperSlots) || snapshot.keeperSlots < 0 || snapshot.keeperSlots > snapshot.rosterSize) throw new Error("Keeper slot count is invalid.");
+  if (snapshot.keepersFinalized !== undefined && typeof snapshot.keepersFinalized !== "boolean") throw new Error("Keeper finalization state is invalid.");
+  if (snapshot.keeperFinalizedAt !== undefined && snapshot.keeperFinalizedAt !== null && !Number.isFinite(Date.parse(snapshot.keeperFinalizedAt))) throw new Error("Keeper finalization timestamp is invalid.");
   if (!Array.isArray(snapshot.teams) || snapshot.teams.length === 0) throw new Error("Ordered teams are required.");
   if (!Array.isArray(snapshot.assignments)) throw new Error("Assignments are required.");
   if (snapshot.finishedTeamIds !== undefined && !Array.isArray(snapshot.finishedTeamIds)) throw new Error("Finished-team state is invalid.");

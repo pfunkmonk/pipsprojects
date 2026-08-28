@@ -24,6 +24,7 @@ function completeDraft() {
   }
   return {
     season: 2026, revision: 168, updatedAt: new Date().toISOString(), rosterSize: 14, minimumRosterSize: 8, keeperSlots: 2,
+    keepersFinalized: true, keeperFinalizedAt: "2026-08-28T18:00:00.000Z",
     starterRequirements: { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 },
     currentNominatorTeamId: null, nextNominatorTeamId: null, teams, availablePlayers: players, assignments,
   };

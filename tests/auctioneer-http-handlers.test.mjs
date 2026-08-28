@@ -10,6 +10,7 @@ const env = {
 };
 const publicSnapshot = {
   season: 2026, revision: 1, updatedAt: "2026-08-07T18:00:00.000Z", rosterSize: 14, keeperSlots: 2,
+  keepersFinalized: true, keeperFinalizedAt: "2026-08-07T17:00:00.000Z",
   teams: [{
     id: "dogs-of-war", name: "Dogs of War", startingCap: 104, capAdjustment: 0,
     salaryLedger: [{ id: "opening:dogs", kind: "opening", label: "Starting salary cap", delta: 100, balance: 100, privateNote: "never return" }],
@@ -51,6 +52,8 @@ test("authenticates the auctioneer and permits public-only board access", async 
   assert.equal("auditEvents" in body, false);
   assert.equal(body.stagedNomination.vbd, undefined);
   assert.equal(body.stagedNomination.byeWeek, 10);
+  assert.equal(body.keepersFinalized, true);
+  assert.equal(body.keeperFinalizedAt, "2026-08-07T17:00:00.000Z");
   assert.deepEqual(Object.keys(body.teams[0]).sort(), ["capAdjustment", "id", "name", "salaryLedger", "startingCap"]);
   assert.deepEqual(Object.keys(body.teams[0].salaryLedger[0]), ["id", "kind", "label", "delta", "balance"]);
   assert.equal(body.teams[0].salaryLedger[0].privateNote, undefined);

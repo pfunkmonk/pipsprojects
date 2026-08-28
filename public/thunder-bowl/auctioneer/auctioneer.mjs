@@ -204,6 +204,10 @@ function assignmentTeamName(assignment) {
   return snapshot.teams.find((team) => team.id === assignment.teamId)?.name || assignment.teamId;
 }
 
+function keeperAssignmentLocked(assignment) {
+  return snapshot?.keepersFinalized === true && assignment?.acquisitionType === "keeper";
+}
+
 function richTeamLabel(team) {
   const summary = teamSummary(snapshot, team.id);
   return `${team.name}${summary.isFinished ? " — FINISHED" : ""} — $${summary.remainingCap} left · up to ${summary.openSlots} more · max $${summary.legalMaxBid}`;
@@ -444,6 +448,10 @@ function clearPendingUndo() {
 
 function requestUndo(assignment) {
   if (!assignment || assignment.status !== "active") return;
+  if (keeperAssignmentLocked(assignment)) {
+    flashIllegal("Final 2026 keepers are organizer-locked. Use the private Command Center for keeper corrections.");
+    return;
+  }
   if (pendingUndoAssignmentId === assignment.id) {
     clearPendingUndo();
     void runCommand({ type: "void-assignment", assignmentId: assignment.id }, { confirmation: assignment, action: "Undone" });
@@ -521,6 +529,13 @@ function updateReconciliationToolbar() {
 }
 
 function renderHistory() {
+  const keeperLockNotice = document.getElementById("keeper-lock-notice");
+  keeperLockNotice.hidden = snapshot.keepersFinalized !== true;
+  if (snapshot.keepersFinalized) {
+    for (const assignment of snapshot.assignments) {
+      if (assignment.acquisitionType === "keeper") stagedAssignmentIds.delete(assignment.id);
+    }
+  }
   historyRows.replaceChildren();
   for (const assignment of visibleHistory()) {
     const team = snapshot.teams.find((candidate) => candidate.id === assignment.teamId);
@@ -529,7 +544,7 @@ function renderHistory() {
     const recorded = new Date(assignment.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     const selection = document.createElement("td");
     selection.className = "reconcile-cell";
-    if (assignment.status === "active") {
+    if (assignment.status === "active" && !keeperAssignmentLocked(assignment)) {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = stagedAssignmentIds.has(assignment.id);
@@ -561,21 +576,29 @@ function renderHistory() {
     const actions = document.createElement("td");
     actions.className = "actions";
     row.append(selection, playerCell, teamCell, priceCell, typeCell, recordedCell, actions);
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.textContent = "Edit";
-    edit.disabled = assignment.status === "voided";
-    edit.addEventListener("click", () => openEdit(assignment));
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    if (assignment.status === "active") {
-      toggle.className = "danger";
-      configureUndoButton(toggle, assignment);
+    if (keeperAssignmentLocked(assignment)) {
+      const locked = document.createElement("span");
+      locked.className = "keeper-locked-label";
+      locked.textContent = "OWNER LOCKED";
+      locked.title = "The auctioneer can view final keepers but cannot change them.";
+      actions.append(locked);
     } else {
-      toggle.textContent = "Restore";
-      toggle.addEventListener("click", () => void runCommand({ type: "restore-assignment", assignmentId: assignment.id }, { confirmation: assignment }));
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.textContent = "Edit";
+      edit.disabled = assignment.status === "voided";
+      edit.addEventListener("click", () => openEdit(assignment));
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      if (assignment.status === "active") {
+        toggle.className = "danger";
+        configureUndoButton(toggle, assignment);
+      } else {
+        toggle.textContent = "Restore";
+        toggle.addEventListener("click", () => void runCommand({ type: "restore-assignment", assignmentId: assignment.id }, { confirmation: assignment }));
+      }
+      actions.append(edit, toggle);
     }
-    actions.append(edit, toggle);
     historyRows.append(row);
   }
   updateReconciliationToolbar();
@@ -695,6 +718,7 @@ function validateCorrections(changes) {
     const candidate = structuredClone(snapshot);
     for (const change of changes) {
       const target = candidate.assignments.find((assignment) => assignment.id === change.assignmentId && assignment.status === "active");
+      if (keeperAssignmentLocked(target)) throw new Error("Final 2026 keepers are organizer-locked. Use the private Command Center for keeper corrections.");
       const player = candidate.availablePlayers.find((item) => item.id === change.playerId);
       if (!target || !player) throw new Error("A selected assignment or player is no longer available.");
       Object.assign(target, {
@@ -902,6 +926,10 @@ function clearSaleForm({ clearNomination = true } = {}) {
 }
 
 function openEdit(assignment) {
+  if (keeperAssignmentLocked(assignment)) {
+    flashIllegal("Final 2026 keepers are organizer-locked. Use the private Command Center for keeper corrections.");
+    return;
+  }
   document.getElementById("edit-assignment-id").value = assignment.id;
   document.getElementById("edit-title").textContent = assignment.playerName;
   const editPlayer = document.getElementById("edit-player");
@@ -926,7 +954,7 @@ function setReconciliationMode(active) {
 function openReconciliationDialog() {
   const selected = [...stagedAssignmentIds]
     .map((id) => snapshot.assignments.find((assignment) => assignment.id === id))
-    .filter((assignment) => assignment?.status === "active");
+    .filter((assignment) => assignment?.status === "active" && !keeperAssignmentLocked(assignment));
   if (selected.length < 2) return;
   const container = document.getElementById("reconciliation-rows");
   container.replaceChildren();

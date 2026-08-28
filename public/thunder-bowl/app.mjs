@@ -16,7 +16,7 @@ import {
   toPublicSnapshot,
   validateDraftPack,
   validateRecoveryBundle,
-} from "./state-engine.mjs?v=20260810e";
+} from "./state-engine.mjs?v=20260828a";
 import {
   appendEvents,
   getMeta,
@@ -201,6 +201,8 @@ const keeperTeam = byId("keeper-team");
 const keeperOperationStatus = byId("keeper-operation-status");
 const undoKeeperActionButton = byId("undo-keeper-action");
 const passKeeperTurnButton = byId("pass-keeper-turn");
+const finalizeKeepersButton = byId("finalize-keepers");
+const keeperOwnerCorrectionButton = byId("keeper-owner-correction");
 const capTransferForm = byId("cap-transfer-form");
 const capFromTeam = byId("cap-from-team");
 const capToTeam = byId("cap-to-team");
@@ -250,6 +252,8 @@ let selectedKeeperEvidenceTeamId = "dogs-of-war";
 let selectedKeeperMarketTeamId = "dogs-of-war";
 let keeperWorkspaceMode = "sandbox";
 let keeperSandboxEvents = [];
+let keeperOwnerCorrectionMode = false;
+let keeperWorkspaceChosenThisSession = false;
 let keeperSandboxState = replayDraft([]);
 let keeperPromotionPlan = null;
 let keeperScenario = null;
@@ -3122,6 +3126,9 @@ function keeperCandidatesForTeam(teamId) {
 
 function renderKeeperWorkspace() {
   const sandbox = keeperWorkspaceMode === "sandbox";
+  const finalized = officialKeepersFinalized();
+  const finalization = draftState.keeperFinalization;
+  const currentOfficialKeeperCount = officialKeeperCount();
   byId("keeper-mode-sandbox").setAttribute("aria-pressed", String(sandbox));
   byId("keeper-mode-official").setAttribute("aria-pressed", String(!sandbox));
   byId("keeper-mode-sandbox").className = `button ${sandbox ? "button-primary" : "button-secondary"}`;
@@ -3131,18 +3138,49 @@ function renderKeeperWorkspace() {
   const officialIds = new Set(events.map((event) => event.id));
   const pendingSandboxCount = keeperSandboxEvents.filter((event) => !officialIds.has(event.id)).length;
   const publishButton = byId("keeper-sandbox-publish");
-  publishButton.disabled = !sandbox || pendingSandboxCount === 0;
+  publishButton.disabled = !sandbox || pendingSandboxCount === 0 || (finalized && !keeperOwnerCorrectionMode);
   publishButton.textContent = pendingSandboxCount
     ? `Review & sync ${pendingSandboxCount} action${pendingSandboxCount === 1 ? "" : "s"}`
     : "Sandbox matches official";
   byId("keeper-load-current-cloud").hidden = LOCAL_ONLY || !ledgerStale;
   byId("keeper-workspace-description").textContent = sandbox
     ? "Private sandbox changes stay on this laptop until you explicitly review and sync them. Every keeper or trade recalculates forecast auction values."
-    : "Official ledger actions sync to the auctioneer and public board. Use this mode only for confirmed keeper decisions and trades.";
-  byId("keeper-operations-eyebrow").textContent = sandbox ? "Private prediction ledger" : "Official synced setup ledger";
+    : finalized
+      ? "The shared 2026 keeper set is the cloud default on every device and is read-only until you deliberately enable an organizer correction."
+      : "Official ledger actions sync to the auctioneer and public board. Use this mode only for confirmed keeper decisions and trades.";
+  byId("keeper-operations-eyebrow").textContent = sandbox ? "Private prediction ledger" : finalized ? "Organizer-only final ledger" : "Official synced setup ledger";
   byId("keeper-operations-title").textContent = sandbox
     ? "Test keeper declarations and rights trades"
-    : "Record confirmed keeper declarations and rights trades";
+    : finalized
+      ? "Final 2026 keepers and salary effects"
+      : "Record confirmed keeper declarations and rights trades";
+
+  const finalizationPanel = byId("keeper-finalization");
+  finalizationPanel.classList.toggle("is-final", finalized && !keeperOwnerCorrectionMode);
+  finalizationPanel.classList.toggle("is-correcting", finalized && keeperOwnerCorrectionMode);
+  finalizeKeepersButton.hidden = finalized || sandbox || LOCAL_ONLY;
+  finalizeKeepersButton.disabled = !cloudReachable
+    || ledgerStale
+    || draftState.saleCount > 0
+    || !draftState.keeperSelection.complete
+    || currentOfficialKeeperCount !== 24;
+  keeperOwnerCorrectionButton.hidden = !finalized || sandbox || LOCAL_ONLY;
+  keeperOwnerCorrectionButton.setAttribute("aria-pressed", String(keeperOwnerCorrectionMode));
+  keeperOwnerCorrectionButton.textContent = keeperOwnerCorrectionMode ? "Finish owner corrections" : "Enable owner corrections";
+  if (finalized) {
+    const finalizedDate = new Date(finalization.finalizedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    byId("keeper-finalization-title").textContent = keeperOwnerCorrectionMode
+      ? `Owner correction mode · ${currentOfficialKeeperCount} active keepers`
+      : `Final ${finalization.season} keeper set · ${currentOfficialKeeperCount} active keepers`;
+    byId("keeper-finalization-detail").textContent = keeperOwnerCorrectionMode
+      ? "Private organizer controls are temporarily enabled. Every correction remains append-only; finish correction mode when done."
+      : `Locked ${finalizedDate}. This official cloud set loads on every computer. The auctioneer can view it but cannot edit, undo, restore, or reconcile it.`;
+  } else {
+    byId("keeper-finalization-title").textContent = `${currentOfficialKeeperCount} of 24 official keepers recorded`;
+    byId("keeper-finalization-detail").textContent = draftState.keeperSelection.complete
+      ? "The complete official set is ready to become the permanent cross-device 2026 default."
+      : "Complete all 24 official turns before locking the shared keeper set.";
+  }
 
   const impact = byId("keeper-scenario-impact");
   impact.replaceChildren();
@@ -3630,6 +3668,29 @@ function renderKeeperTradeMarket() {
 
 const KEEPER_SETUP_EVENT_TYPES = [EVENT_TYPES.CAP_TRANSFERRED, EVENT_TYPES.KEEPER_RIGHTS_TRADED, EVENT_TYPES.KEEPER_ASSIGNED, EVENT_TYPES.KEEPER_PASSED];
 
+function officialKeepersFinalized() {
+  return Boolean(draftState?.keeperFinalization);
+}
+
+function officialKeeperCount() {
+  return Object.values(draftState?.teams || {})
+    .flatMap((team) => team.roster)
+    .filter((player) => player.acquisitionType === "keeper").length;
+}
+
+function officialKeeperSetupLocked() {
+  return keeperWorkspaceMode === "official" && officialKeepersFinalized() && !keeperOwnerCorrectionMode;
+}
+
+function requireKeeperOwnerCorrectionMode(options = {}) {
+  if (officialKeepersFinalized() && !keeperOwnerCorrectionMode && (keeperWorkspaceMode === "official" || options.publishing)) {
+    throw new RuleViolation(
+      "KEEPERS_FINALIZED",
+      "The final 2026 keeper set is locked by default. Use Enable owner corrections in the private Keeper Strategy page before changing it.",
+    );
+  }
+}
+
 function teamName(teamId) {
   return draftState.teams[teamId]?.name || teamId;
 }
@@ -3756,7 +3817,7 @@ function renderKeeperSelectionTimeline() {
     byId("keeper-on-clock-team").textContent = "Keeper selection complete";
     byId("keeper-on-clock-detail").textContent = "All 24 keeper turns are recorded";
   }
-  passKeeperTurnButton.disabled = !next || state.saleCount > 0;
+  passKeeperTurnButton.disabled = !next || state.saleCount > 0 || officialKeeperSetupLocked();
 
   container.replaceChildren();
   for (const slot of selection.slots) {
@@ -3821,7 +3882,9 @@ function renderKeeperActionList() {
       list.append(item);
     }
   }
-  undoKeeperActionButton.disabled = !lastUndoableEvent(keeperWorkspaceEventList(), KEEPER_SETUP_EVENT_TYPES);
+  undoKeeperActionButton.disabled = officialKeeperSetupLocked()
+    || !lastUndoableEvent(keeperWorkspaceEventList(), KEEPER_SETUP_EVENT_TYPES);
+  undoKeeperActionButton.textContent = officialKeeperSetupLocked() ? "Owner correction required" : "Undo last setup action";
 }
 
 function renderSelectedTradeList(containerId, playerIds, destinationTeamId) {
@@ -3915,23 +3978,27 @@ function renderKeeperOperations() {
 
   const auctionStarted = state.saleCount > 0;
   const keeperSelectionComplete = state.keeperSelection.complete;
-  for (const form of [keeperAssignmentForm, capTransferForm]) form.setAttribute("aria-disabled", String(auctionStarted));
+  const ownerLocked = officialKeeperSetupLocked();
+  const setupLocked = auctionStarted || ownerLocked;
+  for (const form of [keeperAssignmentForm, capTransferForm]) form.setAttribute("aria-disabled", String(setupLocked));
   keeperTeam.disabled = true;
-  for (const control of [keeperPlayerSearch, keeperPlayer, byId("record-keeper")]) control.disabled = auctionStarted || keeperSelectionComplete || !keeperCandidates.length;
-  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferPlayer, capReturnPlayer, byId("add-cap-transfer-player"), byId("add-cap-return-player"), byId("record-cap-transfer")]) control.disabled = auctionStarted;
-  capFromTeam.disabled = auctionStarted;
-  capToTeam.disabled = auctionStarted;
-  capTransferPlayer.disabled = auctionStarted || !tradeMatches.length;
-  byId("add-cap-transfer-player").disabled = auctionStarted || !tradeMatches.length;
-  capReturnPlayer.disabled = auctionStarted || !returnMatches.length;
-  byId("add-cap-return-player").disabled = auctionStarted || !returnMatches.length;
+  for (const control of [keeperPlayerSearch, keeperPlayer, byId("record-keeper")]) control.disabled = setupLocked || keeperSelectionComplete || !keeperCandidates.length;
+  for (const control of [capFromTeam, capToTeam, capTransferAmount, capTransferPlayer, capReturnPlayer, byId("add-cap-transfer-player"), byId("add-cap-return-player"), byId("record-cap-transfer")]) control.disabled = setupLocked;
+  capFromTeam.disabled = setupLocked;
+  capToTeam.disabled = setupLocked;
+  capTransferPlayer.disabled = setupLocked || !tradeMatches.length;
+  byId("add-cap-transfer-player").disabled = setupLocked || !tradeMatches.length;
+  capReturnPlayer.disabled = setupLocked || !returnMatches.length;
+  byId("add-cap-return-player").disabled = setupLocked || !returnMatches.length;
   const evidencePass = byId("keeper-evidence-pass");
   const selectedTeamOnClock = state.keeperSelection.nextSlot?.teamId === selectedKeeperEvidenceTeamId;
-  evidencePass.disabled = auctionStarted || !selectedTeamOnClock;
+  evidencePass.disabled = setupLocked || !selectedTeamOnClock;
   evidencePass.textContent = selectedTeamOnClock
     ? `Pass ${teamName(selectedKeeperEvidenceTeamId)} — no keeper`
     : `${state.keeperSelection.nextSlot ? teamName(state.keeperSelection.nextSlot.teamId) : "Selection complete"} is on clock`;
-  if (auctionStarted) keeperOperationStatus.textContent = "Auction purchases have begun. New keepers and cap transfers are locked; append-only undo remains available for corrections.";
+  if (ownerLocked) keeperOperationStatus.textContent = "Final 2026 keeper set locked. Auctioneer edits are blocked; only this private organizer page can enter correction mode.";
+  else if (officialKeepersFinalized() && keeperOwnerCorrectionMode) keeperOperationStatus.textContent = "Owner correction mode is active. Changes sync to the official cloud ledger and remain in permanent history.";
+  else if (auctionStarted) keeperOperationStatus.textContent = "Auction purchases have begun. New keepers and cap transfers are locked; append-only undo remains available for organizer corrections.";
   else if (keeperSelectionComplete) keeperOperationStatus.textContent = "All 24 keeper turns are complete. Review the timeline and setup actions before the auction begins.";
 
   renderKeeperSelectionTimeline();
@@ -4366,8 +4433,64 @@ async function commitKeeperWorkspaceEvents(newEvents, message) {
   }
 }
 
+async function finalizeOfficialKeepers() {
+  try {
+    if (LOCAL_ONLY) throw new RuleViolation("LOCAL_ONLY", "Practice and replay ledgers cannot finalize the live 2026 keeper set.");
+    if (keeperWorkspaceMode !== "official") throw new RuleViolation("OFFICIAL_KEEPERS_REQUIRED", "Switch to Official ledger before finalizing keepers.");
+    if (officialKeepersFinalized()) throw new RuleViolation("KEEPERS_ALREADY_FINALIZED", "The 2026 keeper set is already final.");
+    if (!navigator.onLine || !cloudReachable || ledgerStale) throw new RuleViolation("CLOUD_REQUIRED", "Load and sync the current cloud ledger before finalizing keepers.");
+    if (draftState.saleCount > 0) throw new RuleViolation("LATE_KEEPER_FINALIZATION", "Keepers must be finalized before the auction begins.");
+    const keeperCount = officialKeeperCount();
+    if (!draftState.keeperSelection.complete || keeperCount !== 24) {
+      throw new RuleViolation("KEEPERS_NOT_READY_TO_FINALIZE", `All 24 official turns and 24 active keepers are required; ${keeperCount} active keepers are recorded.`);
+    }
+    const confirmed = window.confirm(
+      "Make the current 24-player keeper set the final 2026 cloud default?\n\nThe auctioneer will become read-only for keepers. Only this private Command Center can enable organizer corrections, and every correction remains in history.",
+    );
+    if (!confirmed) return;
+    finalizeKeepersButton.disabled = true;
+    const finalization = createEvent(
+      EVENT_TYPES.KEEPERS_FINALIZED,
+      { season: ROOM_SEASON, keeperCount, reason: "Final 2026 keeper set approved by league organizer" },
+      { deviceId },
+    );
+    await commitLocalEvents([finalization], "Final 2026 keeper set locked locally; confirming the cloud copy…", keeperOperationStatus);
+    clearTimeout(syncTimer);
+    await syncNow();
+    if (!cloudReachable || ledgerStale) {
+      throw new RuleViolation("FINALIZATION_SYNC_PENDING", "The keeper lock is safe on this laptop but cloud confirmation is pending. Reconnect before using another computer.");
+    }
+    keeperWorkspaceMode = "official";
+    keeperOwnerCorrectionMode = false;
+    await setMeta("keeperWorkspaceMode", keeperWorkspaceMode);
+    renderAll();
+    showToast("Final 2026 keeper set is locked and cloud synced.");
+  } catch (error) {
+    setStatus(keeperOperationStatus, errorMessage(error), true);
+    showToast(errorMessage(error), true);
+  } finally {
+    if (draftPack && !appView.hidden) renderAll();
+  }
+}
+
+function toggleKeeperOwnerCorrectionMode() {
+  if (!officialKeepersFinalized() || keeperWorkspaceMode !== "official") return;
+  if (!keeperOwnerCorrectionMode) {
+    const confirmed = window.confirm(
+      "Enable organizer-only corrections for the final 2026 keeper set?\n\nThe auctioneer remains blocked. Every change made here will stay in the permanent append-only history.",
+    );
+    if (!confirmed) return;
+  }
+  keeperOwnerCorrectionMode = !keeperOwnerCorrectionMode;
+  teamASendsPlayerIds = new Set();
+  teamBSendsPlayerIds = new Set();
+  renderAll();
+  showToast(keeperOwnerCorrectionMode ? "Owner correction mode enabled for this session." : "Final keeper set returned to locked mode.");
+}
+
 async function setKeeperWorkspaceMode(mode) {
   if (!['sandbox', 'official'].includes(mode)) return;
+  keeperWorkspaceChosenThisSession = true;
   keeperWorkspaceMode = mode;
   await setMeta("keeperWorkspaceMode", mode);
   renderAll();
@@ -4419,6 +4542,7 @@ function closeKeeperPromotionDialog() {
 
 function openKeeperPromotionDialog() {
   try {
+    requireKeeperOwnerCorrectionMode({ publishing: true });
     if (LOCAL_ONLY) throw new RuleViolation("LOCAL_ONLY", "Practice and replay sandboxes cannot publish to the live official ledger.");
     if (ledgerStale) throw new RuleViolation("LEDGER_GENERATION_MISMATCH", "This tab is attached to an archived rehearsal. Select Load current cloud ledger here first; your local keeper sandbox will be preserved.");
     keeperPromotionPlan = buildKeeperSandboxPromotion({ officialEvents: events, sandboxEvents: keeperSandboxEvents });
@@ -4457,6 +4581,7 @@ function openKeeperPromotionDialog() {
 async function publishKeeperSandbox() {
   const status = byId("keeper-sandbox-publish-status");
   try {
+    requireKeeperOwnerCorrectionMode({ publishing: true });
     if (!keeperPromotionPlan?.pendingEvents?.length) throw new Error("No reviewed keeper sandbox publication is ready.");
     if (ledgerStale) throw new RuleViolation("LEDGER_GENERATION_MISMATCH", "Load the current cloud ledger before publishing. Your private sandbox is still preserved.");
     const refreshedPlan = buildKeeperSandboxPromotion({ officialEvents: events, sandboxEvents: keeperSandboxEvents });
@@ -4553,6 +4678,7 @@ async function recordKeeper(event) {
 async function recordKeeperCandidate(candidate, teamId) {
   const state = keeperWorkspaceState();
   try {
+    requireKeeperOwnerCorrectionMode();
     if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER", "Keepers must be assigned before auction purchases begin.");
     const nextTurn = state.keeperSelection.nextSlot;
     if (!nextTurn) throw new RuleViolation("KEEPER_SELECTION_COMPLETE", "All 24 keeper turns are already complete.");
@@ -4592,6 +4718,7 @@ async function recordKeeperCandidate(candidate, teamId) {
 async function passKeeperTurn(expectedTeamId = null) {
   const state = keeperWorkspaceState();
   try {
+    requireKeeperOwnerCorrectionMode();
     if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER_PASS", "Keeper turns must be completed before auction purchases begin.");
     const nextTurn = state.keeperSelection.nextSlot;
     if (!nextTurn) throw new RuleViolation("KEEPER_SELECTION_COMPLETE", "All 24 keeper turns are already complete.");
@@ -4621,6 +4748,7 @@ async function recordCapTransfer(event) {
   const teamASends = selectedTradePlayers(teamASendsPlayerIds);
   const teamBSends = selectedTradePlayers(teamBSendsPlayerIds);
   try {
+    requireKeeperOwnerCorrectionMode();
     if (state.saleCount > 0) throw new RuleViolation("LATE_KEEPER_RIGHTS_TRADE", "Keeper-rights trades must be recorded before auction purchases begin.");
     if (!Number.isInteger(amount) || amount < 0) throw new RuleViolation("CAP_AMOUNT_REQUIRED", "Enter a whole-dollar cap amount, including $0 for a player swap.");
     if (buyerTeamId === sellerTeamId) throw new RuleViolation("SELF_TRANSFER", "Choose different buying and selling teams.");
@@ -4664,6 +4792,7 @@ async function undoLastKeeperAction() {
   const target = lastUndoableEvent(keeperWorkspaceEventList(), KEEPER_SETUP_EVENT_TYPES);
   if (!target) return;
   try {
+    requireKeeperOwnerCorrectionMode();
     const undo = createEvent(
       EVENT_TYPES.EVENT_VOIDED,
       { targetEventId: target.id, reason: "Immediate keeper setup correction" },
@@ -4932,6 +5061,9 @@ async function syncNow() {
     const merged = mergeEventStreams(data.events || [], events);
     const eventsChanged = !sameEventSequence(events, merged);
     const generationChanged = ledgerGeneration !== data.generation;
+    const keeperModeChanged = !keeperWorkspaceChosenThisSession
+      && Boolean(replayDraft(merged).keeperFinalization)
+      && keeperWorkspaceMode !== "official";
     const priorSaleIds = eventsChanged ? new Set(activeSaleEvents().map((sale) => sale.id)) : null;
     let newSaleIds = [];
     if (eventsChanged) {
@@ -4945,9 +5077,14 @@ async function syncNow() {
       writes.push(replaceEvents(events), setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry));
     }
     if (generationChanged) writes.push(setMeta("ledgerGeneration", ledgerGeneration));
+    if (keeperModeChanged) {
+      keeperWorkspaceMode = "official";
+      keeperOwnerCorrectionMode = false;
+      writes.push(setMeta("keeperWorkspaceMode", keeperWorkspaceMode));
+    }
     const displayUrlChanged = await rememberDisplayUrl(data.displayBoardUrl);
     await Promise.all(writes);
-    if (eventsChanged || generationChanged || displayUrlChanged) renderAll();
+    if (eventsChanged || generationChanged || displayUrlChanged || keeperModeChanged) renderAll();
     if (newSaleIds.length) await registerNewSaleTelemetry(newSaleIds);
     chip.textContent = salesEntryMode === SALES_ENTRY_MODES.AUCTIONEER ? "Auctioneer feed live" : "Cloud synced";
     chip.classList.add("status-good");
@@ -5950,6 +6087,8 @@ function bindInteractions() {
   passKeeperTurnButton.addEventListener("click", () => void passKeeperTurn());
   byId("keeper-evidence-pass").addEventListener("click", () => void passKeeperTurn(selectedKeeperEvidenceTeamId));
   undoKeeperActionButton.addEventListener("click", () => void undoLastKeeperAction());
+  finalizeKeepersButton.addEventListener("click", () => void finalizeOfficialKeepers());
+  keeperOwnerCorrectionButton.addEventListener("click", toggleKeeperOwnerCorrectionMode);
   byId("keeper-mode-sandbox").addEventListener("click", () => void setKeeperWorkspaceMode("sandbox"));
   byId("keeper-mode-official").addEventListener("click", () => void setKeeperWorkspaceMode("official"));
   byId("keeper-sandbox-reset").addEventListener("click", () => void resetKeeperSandbox());
@@ -6338,7 +6477,7 @@ async function bootstrap() {
         personalBoardBackupEvidence: null,
         [AUCTION_TELEMETRY_META_KEY]: null,
         salesEntryMode: SALES_ENTRY_MODES.AUCTIONEER,
-        keeperWorkspaceMode: "sandbox",
+        keeperWorkspaceMode: "official",
         keeperPredictionSandboxEvents: [],
         ledgerGeneration: null,
         practiceAuctionSession: null,
@@ -6411,7 +6550,7 @@ async function bootstrap() {
     await setMeta(AUCTION_TELEMETRY_META_KEY, auctionTelemetry);
     salesEntryMode = normalizeSalesEntryMode(startupMeta.salesEntryMode, { localOnly: LOCAL_ONLY });
     const savedKeeperWorkspaceMode = startupMeta.keeperWorkspaceMode;
-    keeperWorkspaceMode = savedKeeperWorkspaceMode === "official" ? "official" : "sandbox";
+    keeperWorkspaceMode = savedKeeperWorkspaceMode === "sandbox" ? "sandbox" : "official";
     const savedKeeperSandboxEvents = startupMeta.keeperPredictionSandboxEvents;
     try {
       keeperSandboxEvents = Array.isArray(savedKeeperSandboxEvents) ? savedKeeperSandboxEvents : [];
@@ -6424,6 +6563,10 @@ async function bootstrap() {
     ledgerGeneration = startupMeta.ledgerGeneration;
     await ensureConfigurationEvent();
     await ensureReplayFirstRoundKeepers();
+    if (!LOCAL_ONLY && replayDraft(events).keeperFinalization) {
+      keeperWorkspaceMode = "official";
+      await setMeta("keeperWorkspaceMode", keeperWorkspaceMode);
+    }
     if (PRACTICE_AUCTION) {
       const savedPracticeSession = startupMeta.practiceAuctionSession;
       if (savedPracticeSession) {

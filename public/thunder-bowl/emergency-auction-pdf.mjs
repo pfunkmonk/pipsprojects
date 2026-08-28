@@ -3,7 +3,7 @@ import {
   createEvent,
   replayDraft,
   validateDraftPack,
-} from "./state-engine.mjs?v=20260810e";
+} from "./state-engine.mjs?v=20260828a";
 import { calculateAuctionDemandMarket } from "./auction-demand.mjs?v=20260816a";
 import {
   applyPriorityVbdOverlay,

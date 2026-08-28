@@ -13,6 +13,7 @@ export const EVENT_TYPES = Object.freeze({
   KEEPER_RIGHTS_TRADED: "KEEPER_RIGHTS_TRADED",
   KEEPER_ASSIGNED: "KEEPER_ASSIGNED",
   KEEPER_PASSED: "KEEPER_PASSED",
+  KEEPERS_FINALIZED: "KEEPERS_FINALIZED",
   PLAYER_SOLD: "PLAYER_SOLD",
   NOMINATION_SKIPPED: "NOMINATION_SKIPPED",
   EVENT_VOIDED: "EVENT_VOIDED",
@@ -337,6 +338,14 @@ export function validateEvent(input) {
         teamId: assertIdentifier(input.payload.teamId, "keeper pass team"),
         round: assertInteger(input.payload.round, "keeper pass round", 1, 2),
         reason: assertString(input.payload.reason, "keeper pass reason", 3, 120),
+      };
+      break;
+    case EVENT_TYPES.KEEPERS_FINALIZED:
+      assertExactKeys(input.payload, ["season", "keeperCount", "reason"], [], "keeper finalization");
+      event.payload = {
+        season: assertInteger(input.payload.season, "keeper finalization season", 2025, 2026),
+        keeperCount: assertInteger(input.payload.keeperCount, "keeper finalization count", 0, 24),
+        reason: assertString(input.payload.reason, "keeper finalization reason", 3, 120),
       };
       break;
     case EVENT_TYPES.PLAYER_SOLD:
@@ -682,6 +691,7 @@ function baseState(config) {
     currentNominatorTeamId: null,
     lastSale: null,
     keeperRightsOwners: {},
+    keeperFinalization: null,
     activeEventCount: 0,
     updatedAt: null,
   };
@@ -724,6 +734,22 @@ export function replayDraft(rawEvents = []) {
   let nominationStep = 0;
   for (const event of operationalEvents) {
     if (event.type === EVENT_TYPES.DRAFT_CONFIGURED) continue;
+
+    if (event.type === EVENT_TYPES.KEEPERS_FINALIZED) {
+      if (event.payload.season !== config.season) {
+        fail("KEEPER_FINALIZATION_SEASON_MISMATCH", `Keeper finalization is for ${event.payload.season}, not ${config.season}.`);
+      }
+      if (state.keeperFinalization) fail("KEEPERS_ALREADY_FINALIZED", `${config.season} keepers are already finalized.`);
+      if (state.saleCount > 0) fail("LATE_KEEPER_FINALIZATION", "Keepers must be finalized before auction purchases begin.");
+      state.keeperFinalization = {
+        eventId: event.id,
+        season: event.payload.season,
+        keeperCount: event.payload.keeperCount,
+        reason: event.payload.reason,
+        finalizedAt: event.serverReceivedAt || event.createdAt,
+      };
+      continue;
+    }
 
     if (event.type === EVENT_TYPES.CAP_TRANSFERRED) {
       if (state.saleCount > 0) fail("LATE_CAP_TRANSFER", "Cap transfers must be recorded before the auction begins.");
@@ -830,6 +856,15 @@ export function replayDraft(rawEvents = []) {
   state.currentNominatorTeamId = next.teamId;
   state.activeEventCount = operationalEvents.length;
   state.updatedAt = events.length ? events[events.length - 1].serverReceivedAt || events[events.length - 1].createdAt : null;
+  if (state.keeperFinalization) {
+    const currentKeeperCount = Object.values(state.teams)
+      .flatMap((team) => team.roster)
+      .filter((player) => player.acquisitionType === "keeper").length;
+    state.keeperFinalization.currentKeeperCount = currentKeeperCount;
+    state.keeperFinalization.selectionComplete = state.keeperSelection.complete;
+    state.keeperFinalization.canonical = state.keeperSelection.complete
+      && currentKeeperCount === state.keeperFinalization.keeperCount;
+  }
   for (const team of Object.values(state.teams)) {
     team.openSlots = state.config.rosterSize - team.roster.length;
     team.minimumRosterSize = MINIMUM_ROSTER_SIZE;
@@ -932,6 +967,8 @@ export function toPublicSnapshot(state, options = {}) {
     updatedAt: options.updatedAt || state.updatedAt,
     revision: options.revision || null,
     nominationOrderStatus: state.config.nominationOrderStatus,
+    keepersFinalized: Boolean(state.keeperFinalization),
+    keeperFinalizedAt: state.keeperFinalization?.finalizedAt || null,
     currentNominator: currentNominator ? { id: currentNominator.id, name: currentNominator.name } : null,
     totalPlayers: state.totalPlayers,
     totalCash: state.totalCash,

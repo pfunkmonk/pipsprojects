@@ -1,4 +1,4 @@
-import { EVENT_TYPES, POSITIONS, replayDraft, validateEvent } from "./state-engine.mjs?v=20260810e";
+import { EVENT_TYPES, POSITIONS, replayDraft, validateEvent } from "./state-engine.mjs?v=20260828a";
 
 export const CBS_AUCTION_IMPORT_COLUMNS = Object.freeze([
   "player_name",

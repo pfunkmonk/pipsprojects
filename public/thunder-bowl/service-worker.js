@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v117";
+const CACHE_VERSION = "thunder-bowl-shell-v118";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -12,8 +12,8 @@ const APP_SHELL = [
   "/thunder-bowl/auctioneer/auctioneer-clear.css",
   "/thunder-bowl/auctioneer/auctioneer-mission.css",
   "/thunder-bowl/auctioneer/auctioneer-sticky-sale.css",
-  "/thunder-bowl/auctioneer/auctioneer-readability.css?v=20260827a",
-  "/thunder-bowl/auctioneer/auctioneer.mjs?v=20260811a",
+  "/thunder-bowl/auctioneer/auctioneer-readability.css?v=20260828a",
+  "/thunder-bowl/auctioneer/auctioneer.mjs?v=20260828a",
   "/thunder-bowl/draft-board/",
   "/thunder-bowl/draft-board/index.html",
   "/thunder-bowl/draft-board/draft-board.css",
@@ -41,11 +41,11 @@ const APP_SHELL = [
   "/thunder-bowl/shared/readiness.mjs",
   "/thunder-bowl/shared/shell-safety.css",
   "/thunder-bowl/vendor/qrcode-generator.js",
-  "/thunder-bowl/app.css?v=20260825e",
+  "/thunder-bowl/app.css?v=20260828a",
   "/thunder-bowl/readability.css?v=20260827a",
-  "/thunder-bowl/app.mjs?v=20260825d",
+  "/thunder-bowl/app.mjs?v=20260828a",
   "/thunder-bowl/public-board.mjs?v=20260805g",
-  "/thunder-bowl/state-engine.mjs?v=20260810e",
+  "/thunder-bowl/state-engine.mjs?v=20260828a",
   "/thunder-bowl/storage.mjs?v=20260823a",
   "/thunder-bowl/player-virtual-window.mjs?v=20260823a",
   "/thunder-bowl/practice-engine.mjs?v=20260805g",

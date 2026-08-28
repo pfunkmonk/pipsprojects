@@ -1,6 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { randomUUID } from "node:crypto";
 import {
+  EVENT_TYPES,
   SCHEMA_VERSION,
   SEASON,
   mergeEventStreams,
@@ -174,6 +175,49 @@ function conflict(message, currentRevision = null) {
   return error;
 }
 
+const FINAL_KEEPER_PROTECTED_TYPES = new Set([
+  EVENT_TYPES.DRAFT_CONFIGURED,
+  EVENT_TYPES.CAP_TRANSFERRED,
+  EVENT_TYPES.KEEPER_RIGHTS_TRADED,
+  EVENT_TYPES.KEEPER_ASSIGNED,
+  EVENT_TYPES.KEEPER_PASSED,
+  EVENT_TYPES.KEEPERS_FINALIZED,
+]);
+
+function finalKeeperProtectedStream(events) {
+  const protectedIds = new Set(events
+    .filter((event) => FINAL_KEEPER_PROTECTED_TYPES.has(event.type))
+    .map((event) => event.id));
+  return events.filter((event) => FINAL_KEEPER_PROTECTED_TYPES.has(event.type)
+    || (event.type === EVENT_TYPES.EVENT_VOIDED && protectedIds.has(event.payload.targetEventId)));
+}
+
+export function assertAuctioneerKeeperSetupUnchanged(currentEvents, candidateEvents) {
+  const currentState = replayDraft(currentEvents);
+  if (!currentState.keeperFinalization) return true;
+  const currentProtected = finalKeeperProtectedStream(currentEvents);
+  const candidateProtected = finalKeeperProtectedStream(candidateEvents);
+  if (JSON.stringify(currentProtected) !== JSON.stringify(candidateProtected)) {
+    const error = new Error("The final 2026 keeper set is organizer-locked. The auctioneer can view keepers but cannot edit, undo, restore, or reconcile them.");
+    error.code = "KEEPERS_FINALIZED";
+    error.status = 403;
+    throw error;
+  }
+  return true;
+}
+
+function assertKeeperFinalizationReady(currentEvents, mergedEvents) {
+  const currentState = replayDraft(currentEvents);
+  const mergedState = replayDraft(mergedEvents);
+  if (currentState.keeperFinalization || !mergedState.keeperFinalization) return;
+  const finalization = mergedState.keeperFinalization;
+  if (!finalization.selectionComplete || !finalization.canonical) {
+    const error = new Error(`Finalize keepers only after every keeper turn is complete and the ${finalization.keeperCount}-keeper count matches the active official ledger.`);
+    error.code = "KEEPERS_NOT_READY_TO_FINALIZE";
+    throw error;
+  }
+}
+
 export async function readLedger(options = {}) {
   const requestedEtag = options.etag || undefined;
   const entry = await store().getWithMetadata(LEDGER_KEY, {
@@ -197,6 +241,7 @@ export async function appendLedgerEvents(incomingEvents, expectedGeneration = nu
     const current = await readLedger();
     assertExpectedLedgerGeneration(current.document.generation, expectedGeneration);
     const mergedEvents = mergeEventStreams(current.document.events, validatedIncoming);
+    assertKeeperFinalizationReady(current.document.events, mergedEvents);
     if (mergedEvents.length === current.document.events.length) return { document: current.document, etag: current.etag, changed: false };
     const document = {
       ...current.document,
@@ -217,6 +262,7 @@ export async function commitAuctioneerLedger({ events, operationalEvents, expect
   replayDraft(candidateEvents);
   const candidateOperations = validateOperationalEvents(operationalEvents || []);
   const current = await readLedger();
+  if (actorRole === "auctioneer") assertAuctioneerKeeperSetupUnchanged(current.document.events, candidateEvents);
   if (current.document.completedIdempotencyKeys.includes(key)) return { document: current.document, etag: current.etag, changed: false };
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision !== current.document.auctioneerRevision) {
     throw conflict("Another draft action was saved first. The auctioneer has refreshed; retry this action.", current.document.auctioneerRevision);

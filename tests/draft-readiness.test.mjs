@@ -27,7 +27,18 @@ function configuredState(pack) {
     deviceId: "readiness-test-device",
     createdAt: "2026-08-04T03:00:00.000Z",
   });
-  return replayDraft([event]);
+  const state = replayDraft([event]);
+  state.keeperFinalization = {
+    eventId: "readiness-keeper-finalization",
+    season: 2026,
+    keeperCount: 24,
+    currentKeeperCount: 24,
+    selectionComplete: true,
+    canonical: true,
+    finalizedAt: "2026-08-04T03:10:00.000Z",
+    reason: "Readiness fixture",
+  };
+  return state;
 }
 
 function readyInputs() {
@@ -177,6 +188,19 @@ test("readiness blocks a saved ledger whose configuration differs from the valid
   const contract = report.checks.find((check) => check.id === "league-contract");
   assert.equal(contract?.status, "block");
   assert.match(contract?.detail || "", /saved ledger configuration differs/i);
+});
+
+test("readiness blocks an unfinalized or partially corrected keeper set", () => {
+  const inputs = readyInputs();
+  inputs.state = structuredClone(inputs.state);
+  inputs.state.keeperFinalization = null;
+  let report = buildDraftReadinessReport(inputs);
+  assert.equal(report.checks.find((check) => check.id === "keeper-finalization")?.status, "block");
+
+  inputs.state.keeperFinalization = { canonical: false, currentKeeperCount: 23 };
+  report = buildDraftReadinessReport(inputs);
+  assert.equal(report.checks.find((check) => check.id === "keeper-finalization")?.status, "block");
+  assert.match(report.checks.find((check) => check.id === "keeper-finalization")?.detail || "", /correction is incomplete/i);
 });
 
 test("printable emergency board contains exactly 12 public-safe 14-slot cards and escapes content", () => {

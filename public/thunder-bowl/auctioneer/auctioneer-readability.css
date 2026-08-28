@@ -69,3 +69,18 @@ td.actions button { font-size: 12px; }
   .quick-team-grid button { font-size: 12px; }
   .activity-feed li { min-width: 220px; }
 }
+.keeper-lock-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0;
+  border-bottom: 1px solid rgba(111, 221, 167, 0.45);
+  padding: 0.75rem 1rem;
+  background: rgba(35, 112, 85, 0.2);
+}
+
+.keeper-lock-notice[hidden] { display: none; }
+.keeper-lock-notice strong { flex: 0 0 auto; color: #7af0b7; font-size: 0.82rem; letter-spacing: 0.04em; }
+.keeper-lock-notice span { color: #d5e7df; font-size: 0.84rem; line-height: 1.35; }
+
+td.actions .keeper-locked-label { color: #7af0b7; font-size: 0.75rem; font-weight: 850; white-space: nowrap; }

@@ -1,4 +1,4 @@
-import { POSITIONS } from "./state-engine.mjs?v=20260810e";
+import { POSITIONS } from "./state-engine.mjs?v=20260828a";
 
 export const PRACTICE_SCHEMA_VERSION = 1;
 export const USER_TEAM_ID = "dogs-of-war";
