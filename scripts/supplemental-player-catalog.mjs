@@ -1,9 +1,32 @@
-import { readFileSync } from "node:fs";
 import { canonicalPlayerIdentity, validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
 import { recomputeClassicValues } from "./projection-refresh-core.mjs";
 
-const CATALOG_URL = new URL("./data/supplemental-player-catalog-2026.json", import.meta.url);
-const RAW_CATALOG = JSON.parse(readFileSync(CATALOG_URL, "utf8"));
+// Keep this authority-bearing manifest inside the module. The release gate is
+// bundled into Netlify functions, where a sibling runtime JSON file is not a
+// guaranteed deployment artifact. Exact-key validation below remains the
+// fail-closed schema boundary for every catalog entry.
+const RAW_CATALOG = {
+  schemaVersion: 1,
+  season: 2026,
+  players: [
+    {
+      id: "fbg:SmitJo02",
+      name: "Jonnu Smith",
+      position: "TE",
+      nflTeam: "GB",
+      byeWeek: 11,
+      tier: 4,
+      sourceRank: 40,
+      projectedPoints: 71.2,
+      projectionSource: "FantasyPros",
+      projectionAsOf: "2026-08-29T12:46:24.953Z",
+      receptions: 28,
+      recYds: 252,
+      recTd: 3,
+      reason: "Late roster addition present in the final FantasyPros and CBS source evidence but absent from the original protected identity spine.",
+    },
+  ],
+};
 const POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 
 function fail(message) {

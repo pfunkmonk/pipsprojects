@@ -14,6 +14,11 @@ current.asOf = new Date(Date.parse(active.asOf) - 60_000).toISOString();
 current.players = current.players.filter((player) => player.id !== "fbg:SmitJo02");
 current.weeklyContext.coveredPlayers = current.players.filter((player) => player.weeklyProjection).length;
 
+test("the server-bundled release gate has no supplemental runtime file dependency", () => {
+  const source = readFileSync(new URL("../scripts/supplemental-player-catalog.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /readFileSync|supplemental-player-catalog-2026\.json/);
+});
+
 test("the approved supplemental catalog adds a complete searchable and assignable player identity", () => {
   const { candidate, added } = addApprovedSupplementalPlayers(current, { exportedAt: "2026-08-29T13:30:00.000Z" });
   assert.deepEqual(added, ["fbg:SmitJo02"]);
