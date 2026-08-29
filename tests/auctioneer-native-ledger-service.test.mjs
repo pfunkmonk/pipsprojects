@@ -216,8 +216,8 @@ test("finished teams are audited and skipped until explicitly reopened", async (
 
 test("staged nominations can be replaced and cleared without creating ledger assignments", async () => {
   const players = [
-    { id: "nominee-one", name: "Nominee <One>", position: "QB", nflTeam: "DEN" },
-    { id: "nominee-two", name: "Nominee Two", position: "RB", nflTeam: "MIN" },
+    { id: "nominee-one", name: "Nominee <One>", position: "QB", nflTeam: "DEN", weeklyProjection: { byeWeek: 12 } },
+    { id: "nominee-two", name: "Nominee Two", position: "RB", nflTeam: "MIN", weeklyProjection: { byeWeek: 6 } },
   ];
   let context = { events: [], operationalEvents: [], generation: 1, draftPack: { players } };
   const service = createNativeLedgerService({
@@ -240,8 +240,10 @@ test("staged nominations can be replaced and cleared without creating ledger ass
 
   let snapshot = await service.command({ type: "stage-nomination", playerId: "nominee-one", idempotencyKey: "stage-one" });
   assert.equal(snapshot.stagedNomination.name, "Nominee <One>");
+  assert.equal(snapshot.stagedNomination.byeWeek, 12);
   snapshot = await service.command({ type: "stage-nomination", playerId: "nominee-two", idempotencyKey: "stage-two" });
   assert.equal(snapshot.stagedNomination.id, "nominee-two");
+  assert.equal(snapshot.stagedNomination.byeWeek, 6);
   snapshot = await service.command({ type: "clear-nomination", idempotencyKey: "clear-stage" });
   assert.equal(snapshot.stagedNomination, null);
   assert.equal(snapshot.assignments.length, 0);

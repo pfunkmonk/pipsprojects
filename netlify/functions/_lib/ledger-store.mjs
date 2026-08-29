@@ -83,13 +83,18 @@ function validateOperationalEvent(value) {
     event.teamId = publicText(value.teamId, "Operational team id", 120);
   } else if (event.type === "NOMINATION_STAGED") {
     if (value.teamId !== undefined || value.clock !== undefined) throw new Error("Nomination operation contains unrelated data.");
-    exactKeys(value.player, ["id", "name", "position", "nflTeam"], [], "Staged player");
+    exactKeys(value.player, ["id", "name", "position", "nflTeam"], ["byeWeek"], "Staged player");
     if (!POSITIONS.has(value.player.position)) throw new Error("Staged player position is invalid.");
+    if (value.player.byeWeek !== undefined && value.player.byeWeek !== null
+      && (!Number.isInteger(value.player.byeWeek) || value.player.byeWeek < 1 || value.player.byeWeek > 18)) {
+      throw new Error("Staged player bye week is invalid.");
+    }
     event.player = {
       id: publicText(value.player.id, "Staged player id", 120),
       name: publicText(value.player.name, "Staged player name"),
       position: value.player.position,
       nflTeam: publicText(value.player.nflTeam, "Staged player NFL team", 20),
+      ...(Number.isInteger(value.player.byeWeek) ? { byeWeek: value.player.byeWeek } : {}),
     };
   } else if (event.type === "CLOCK_UPDATED") {
     if (value.teamId !== undefined || value.player !== undefined) throw new Error("Clock operation contains unrelated data.");
@@ -109,6 +114,10 @@ function validateOperationalEvents(values) {
     ids.add(event.id);
     return event;
   });
+}
+
+export function validateAuctioneerOperationalEvents(values) {
+  return validateOperationalEvents(values);
 }
 
 function validateIdempotencyKeys(values) {

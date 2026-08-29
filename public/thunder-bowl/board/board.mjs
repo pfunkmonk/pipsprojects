@@ -286,7 +286,8 @@ function render() {
   nominationBanner.hidden = !snapshot.stagedNomination;
   if (snapshot.stagedNomination) {
     nominatedText.textContent = snapshot.stagedNomination.name;
-    document.getElementById("nominated-player-detail").textContent = `${snapshot.stagedNomination.position} · ${snapshot.stagedNomination.nflTeam}`;
+    const bye = Number.isInteger(snapshot.stagedNomination.byeWeek) ? ` · BYE ${snapshot.stagedNomination.byeWeek}` : "";
+    document.getElementById("nominated-player-detail").textContent = `${snapshot.stagedNomination.position} · ${snapshot.stagedNomination.nflTeam}${bye}`;
   }
   if (newSale) showSaleSpotlight(newSale);
   auctionSales.forEach((sale) => knownAuctionSaleIds.add(sale.id));
