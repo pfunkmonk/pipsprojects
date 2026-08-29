@@ -713,5 +713,6 @@ test("Admin exports a strict seven-column CBS roster automation handoff", () => 
   assert.match(indexHtml, /player_name,nfl_team,position,fantasy_team,auction_price,player_id,contract_year/);
   assert.match(indexHtml, /Keepers are included with contract year 1–3/i);
   assert.match(indexHtml, /Voided records, totals, metadata, and private strategy are excluded/i);
+  assert.match(indexHtml, /any active roster assignment has missing, duplicate, illegal, or pack-mismatched data/i);
   assert.match(appSource, /rows\.filter\(\(row\) => Number\.isInteger\(row\.contract_year\)\)/);
 });
