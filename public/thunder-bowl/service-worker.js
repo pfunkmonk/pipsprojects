@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v119";
+const CACHE_VERSION = "thunder-bowl-shell-v120";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -13,7 +13,7 @@ const APP_SHELL = [
   "/thunder-bowl/auctioneer/auctioneer-mission.css",
   "/thunder-bowl/auctioneer/auctioneer-sticky-sale.css",
   "/thunder-bowl/auctioneer/auctioneer-readability.css?v=20260828a",
-  "/thunder-bowl/auctioneer/auctioneer.mjs?v=20260828a",
+  "/thunder-bowl/auctioneer/auctioneer.mjs?v=20260829b",
   "/thunder-bowl/draft-board/",
   "/thunder-bowl/draft-board/index.html",
   "/thunder-bowl/draft-board/draft-board.css",

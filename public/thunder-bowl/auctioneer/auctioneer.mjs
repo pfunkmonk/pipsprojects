@@ -1038,6 +1038,25 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
   }
 });
 
+async function restorePersistentAuctioneerSession() {
+  if (isDemo) return;
+  setStatus(loginStatus, "Restoring auctioneer access…");
+  try {
+    snapshot = await source.snapshot();
+    cloudReady = true;
+    loginPanel.hidden = true;
+    consoleView.hidden = false;
+    render();
+    playerSearch.focus();
+  } catch (error) {
+    if (error.status === 401) {
+      setStatus(loginStatus, "Enter the Auctioneer access number.");
+      return;
+    }
+    setStatus(loginStatus, `Auctioneer access could not be restored: ${error.message}`, true);
+  }
+}
+
 document.getElementById("sale-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const player = selectedPlayer();
@@ -1245,3 +1264,4 @@ renderClockSoundButton();
 renderClock();
 
 if (isDemo) setStatus(loginStatus, "Demo access number: 2026 · public data only.");
+else void restorePersistentAuctioneerSession();

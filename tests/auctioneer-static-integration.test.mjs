@@ -67,6 +67,14 @@ test("an unchanged successful auctioneer refresh clears stale offline or rejecti
   assert.match(auctioneerSource, /else\s*\{\s*renderCloudStatus\(\);\s*updateRecordAvailability\(\);\s*\}/);
 });
 
+test("a persistent auctioneer session resumes automatically after a page refresh", async () => {
+  const html = await readFile(auctioneerHtmlUrl, "utf8");
+  assert.match(html, /auctioneer\.mjs\?v=20260829b/);
+  assert.match(auctioneerSource, /async function restorePersistentAuctioneerSession\(\)/);
+  assert.match(auctioneerSource, /snapshot = await source\.snapshot\(\);[\s\S]*loginPanel\.hidden = true;[\s\S]*consoleView\.hidden = false;[\s\S]*render\(\);/);
+  assert.match(auctioneerSource, /else void restorePersistentAuctioneerSession\(\);/);
+});
+
 test("auctioneer disables an illegal pending sale before the server backstop", () => {
   assert.match(auctioneerSource, /function pendingSaleState\(\)/);
   assert.match(auctioneerSource, /pending\.inputReady && pending\.legality\?\.legal/);
