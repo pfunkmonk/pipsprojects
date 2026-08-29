@@ -37,10 +37,10 @@ const DISPLAY_ASSETS = {
   dstPtsAllowed: "dst_pts_allowed",
 };
 const SOURCE_CONFIG = Object.freeze({
-  Footballguys: Object.freeze({ csvSource: "FBG", assetSource: "FBG", statuses: new Set(["season_curve"]), weeks: 18, role: "cross-check" }),
+  Footballguys: Object.freeze({ csvSource: "FBG", assetSource: "FBG", statuses: new Set(["season_curve", "bye"]), weeks: 18, role: "cross-check" }),
   CBS: Object.freeze({ csvSource: "CBS", assetSource: "CBS", statuses: new Set(["native", "missing", "bye"]), weeks: 17, role: "cross-check" }),
-  FantasyPros: Object.freeze({ csvSource: "FantasyPros", assetSource: "FP", statuses: new Set(["season_curve"]), weeks: 18, role: "supplemental" }),
-  PFF: Object.freeze({ csvSource: "PFF", assetSource: "PFF", statuses: new Set(["season_curve"]), weeks: 18, role: "supplemental" }),
+  FantasyPros: Object.freeze({ csvSource: "FantasyPros", assetSource: "FP", statuses: new Set(["season_curve", "bye"]), weeks: 18, role: "supplemental" }),
+  PFF: Object.freeze({ csvSource: "PFF", assetSource: "PFF", statuses: new Set(["season_curve", "bye"]), weeks: 18, role: "supplemental" }),
 });
 const DEFAULT_COVERAGE_THRESHOLDS = Object.freeze({
   Footballguys: Object.freeze({ players: 500, usableRows: 8500 }),
@@ -217,8 +217,8 @@ function resolveRows(files, pack, coverageThresholds) {
       if (["missing", "bye"].includes(parsed.data_status) && hasAssets) {
         fail("SOURCE_ASSET_EMPTY_STATUS", `${source} ${player.name} week ${week} has assets despite '${parsed.data_status}' status.`);
       }
-      if (parsed.is_bye && parsed.data_status !== "bye" && source === "CBS") {
-        fail("SOURCE_ASSET_BYE", `CBS ${player.name} week ${week} has a mismatched bye status.`);
+      if (Boolean(parsed.is_bye) !== (parsed.data_status === "bye")) {
+        fail("SOURCE_ASSET_BYE", `${source} ${player.name} week ${week} has a mismatched bye status.`);
       }
       const usable = ["native", "season_curve"].includes(parsed.data_status) && !parsed.is_bye;
       if (usable) usableRows += 1;

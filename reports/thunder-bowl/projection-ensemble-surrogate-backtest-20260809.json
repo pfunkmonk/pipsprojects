@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-projection-ensemble-surrogate-backtest",
-  "generatedAt": "2026-08-17T22:28:02.965974+00:00",
+  "generatedAt": "2026-08-29T12:51:41.432728+00:00",
   "authority": "challenger_only",
   "scope": {
     "sources": [

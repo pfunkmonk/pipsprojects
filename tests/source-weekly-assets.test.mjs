@@ -32,7 +32,7 @@ function sourceRows(source, player, byeWeek) {
       source: csvSource,
       week,
       is_bye: Number(bye),
-      data_status: source === "CBS" ? bye ? "bye" : deliberatelyMissing ? "missing" : "native" : "season_curve",
+      data_status: bye ? "bye" : source === "CBS" ? deliberatelyMissing ? "missing" : "native" : "season_curve",
       ...Object.fromEntries(SOURCE_WEEKLY_ASSET_COLUMNS.slice(8).map((column) => [column, ""])),
     };
     if (!bye && !deliberatelyMissing) {
@@ -79,5 +79,18 @@ test("missing or bye source rows cannot smuggle nonzero assets into the consensu
   assert.throws(
     () => createSourceWeeklyAssetsCandidate(pack, files, options),
     (error) => error.code === "SOURCE_ASSET_EMPTY_STATUS",
+  );
+});
+
+test("every source must label authoritative bye rows explicitly", () => {
+  const { player, files } = bundle();
+  const rows = sourceRows("Footballguys", player, player.weeklyProjection.byeWeek);
+  const bye = rows.find((row) => row.is_bye === 1);
+  bye.data_status = "season_curve";
+  bye.rush_yds = 10;
+  files.Footballguys = csv(rows);
+  assert.throws(
+    () => createSourceWeeklyAssetsCandidate(pack, files, options),
+    (error) => error.code === "SOURCE_ASSET_BYE",
   );
 });

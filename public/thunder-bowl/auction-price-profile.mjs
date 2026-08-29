@@ -2,7 +2,7 @@
 const profile = {
   "schemaVersion": 1,
   "modelVersion": "thunder-auction-price-curve-v1",
-  "generatedAt": "2026-08-17T22:31:10.480Z",
+  "generatedAt": "2026-08-29T12:51:38.915Z",
   "authority": "historical league market estimate only; intrinsic VBD remains unchanged",
   "seasons": [
     2012,

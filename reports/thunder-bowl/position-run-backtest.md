@@ -1,6 +1,6 @@
 # Position-run detector backtest
 
-Generated: 2026-08-17T22:31:10.615Z
+Generated: 2026-08-29T12:51:38.873Z
 
 - Authority: advisory only
 - Complete chronological seasons: 2012, 2015, 2017, 2018, 2023 (563 auction sales)

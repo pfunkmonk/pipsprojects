@@ -1,10 +1,10 @@
 # Thunder Bowl pack refresh audit
 
-- Audited: 2026-08-21T14:46:08.626Z
-- Candidate: `tb26-tb-weekly-source-consensus-20260821-v1-20260821144515` (716 players, 177 keeper rows)
+- Audited: 2026-08-29T12:49:51.219Z
+- Candidate: `tb26-tb-weekly-source-consensus-20260829-v1-20260829124635` (716 players, 177 keeper rows)
 - Decision: **PASS**
 - Market allocation: $1212 / $1212
-- Changes: 0 added, 0 removed, 66 material
+- Changes: 0 added, 0 removed, 27 material
 
 ## Blocking issues
 
@@ -16,53 +16,30 @@
 
 ## Largest material player changes
 
-- Drake Maye (QB): projection -17.3, market $-5, max $-5
-- Breece Hall (RB): projection -15.6, market $-5, max $-5
-- Ashton Jeanty (RB): projection -5.5, market $-5, max $-5
-- Nico Collins (WR): projection +5.2, market +$5, max +$5
-- Chase Brown (RB): projection -2.6, market +$5, max +$5
-- Cam Skattebo (RB): projection -23.7, market $-4, max $-4
-- Justin Jefferson (WR): projection +3.6, market +$4, max +$4
-- A.J. Brown (WR): projection -11.5, market $-3, max $-3
-- Rashee Rice (WR): projection -10.4, market $-3, max $-3
-- George Pickens (WR): projection -8.2, market $-3, max $-3
-- Lamar Jackson (QB): projection -6.8, market +$3, max +$3
-- Tetairoa McMillan (WR): projection +6.6, market +$3, max +$3
-- Tucker Kraft (TE): projection +6.1, market +$3, max +$3
-- Travis Kelce (TE): projection -2.6, market $-3, max $-3
-- Philadelphia Eagles (DST): projection -23.7, market $-2, max $-2
-- Los Angeles Rams (DST): projection -27.8, market $-1, max $-1
-- Keenan Allen (WR): projection +111.8, market +$0, max +$0
-- John Metchie III (WR): projection -97.3, market +$0, max +$0
-- Zane Gonzalez (K): projection -88.2, market +$0, max +$0
-- Kevin Austin Jr. (WR): projection -84.3, market +$0, max +$0
-- Jake Moody (K): projection -76.4, market +$0, max +$0
-- Darren Waller (TE): projection +76.1, market +$0, max +$0
-- Drew Stevens (K): projection +62, market +$0, max +$0
-- Ben Sauls (K): projection -61.6, market +$0, max +$0
-- Jordyn Tyson (WR): projection -53.2, market +$0, max +$0
-- Dominic Zvada (K): projection +48, market +$0, max +$0
-- Malik Benson (WR): projection +46.9, market +$0, max +$0
-- Blake Grupe (K): projection -45.6, market +$0, max +$0
-- Deshaun Watson (QB): projection +44.4, market +$0, max +$0
-- Bub Means (WR): projection -42.1, market +$0, max +$0
-- Michael Penix Jr. (QB): projection +37.2, market +$0, max +$0
-- Xavier Hutchinson (WR): projection +37.1, market +$0, max +$0
-- Darnell Mooney (WR): projection -36.7, market +$0, max +$0
-- Nick Westbrook-Ikhine (WR): projection -33.3, market +$0, max +$0
-- Xavier Weaver (WR): projection -32.1, market +$0, max +$0
-- Brandon McManus (K): projection -30.2, market +$0, max +$0
-- Najee Harris (RB): projection +29.1, market +$0, max +$0
-- Jonah Coleman (RB): projection +28.8, market +$0, max +$0
-- Daniel Carlson (K): projection -28.6, market +$0, max +$0
-- Caleb Douglas (WR): projection +28.4, market +$0, max +$0
-- Johnny Wilson (WR): projection -27.6, market +$0, max +$0
-- Ja'Tavion Sanders (TE): projection -27.5, market +$0, max +$0
-- Tyrell Shavers (WR): projection -27.5, market +$0, max +$0
-- Jacksonville Jaguars (DST): projection +27.3, market +$0, max +$0
-- Omar Cooper Jr. (WR): projection -27.1, market +$0, max +$0
-- Jake Bobo (WR): projection -26.9, market +$0, max +$0
-- Matt Gay (K): projection +26.4, market +$0, max +$0
-- Trey Smack (K): projection +26.2, market +$0, max +$0
-- Kirk Cousins (QB): projection +26, market +$0, max +$0
-- Shedeur Sanders (QB): projection -25.8, market +$0, max +$0
+- Ashton Jeanty (RB): projection -32.3, market $-9, max $-9
+- Nico Collins (WR): projection -7.6, market $-5, max $-5
+- Harold Fannin Jr. (TE): projection +6.9, market +$5, max +$5
+- Saquon Barkley (RB): projection +0.7, market +$4, max +$4
+- Tyler Warren (TE): projection +0, market $-4, max $-4
+- Tucker Kraft (TE): projection -3.6, market $-3, max $-3
+- George Pickens (WR): projection +2.3, market +$3, max +$3
+- Theo Wease Jr. (WR): projection -97.9, market +$0, max +$0
+- Tua Tagovailoa (QB): projection -68.5, market +$0, max +$0
+- Daniel Carlson (K): projection +57.8, market +$0, max +$0
+- Tylan Wallace (WR): projection -57.7, market +$0, max +$0
+- Charlie Smyth (K): projection -57.5, market +$0, max +$0
+- Calvin Austin III (WR): projection -56.8, market +$0, max +$0
+- MarShawn Lloyd (RB): projection +43.4, market +$0, max +$0
+- Michael Penix Jr. (QB): projection +38.3, market +$0, max +$0
+- Mike Washington Jr. (RB): projection +32.5, market +$0, max +$0
+- Dominic Lovett (WR): projection -31.8, market +$0, max +$0
+- Cedrick Wilson Jr. (WR): projection -27.7, market +$0, max +$0
+- Kayshon Boutte (WR): projection +27.6, market +$0, max +$0
+- Kyle Williams (WR): projection +26.5, market +$0, max +$0
+- Cedric Tillman (WR): projection -26, market +$0, max +$0
+- Olamide Zaccheaus (WR): projection -24.8, market +$0, max +$0
+- Najee Harris (RB): projection +23.3, market +$0, max +$0
+- Mack Hollins (WR): projection +22.9, market +$0, max +$0
+- Carlos Washington Jr. (RB): projection -22.5, market +$0, max +$0
+- DeMario Douglas (WR): projection +20.6, market +$0, max +$0
+- Tyrone Tracy Jr. (RB): projection -20.2, market +$0, max +$0

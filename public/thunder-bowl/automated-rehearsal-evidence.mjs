@@ -1,9 +1,9 @@
 export const AUTOMATED_REHEARSAL_EVIDENCE = Object.freeze({
   "schemaVersion": 1,
   "kind": "thunder-bowl-automated-rehearsal-certificate",
-  "completedAt": "2026-08-28T16:47:36.571Z",
-  "packId": "tb26-tb-weekly-source-consensus-20260821-v1-20260821144515",
-  "packSha256": "9d22470e92699a6669c9156b5176c5c3296f132c26933d512cbb62999e54848d",
+  "completedAt": "2026-08-29T12:51:05.538Z",
+  "packId": "tb26-tb-weekly-source-consensus-20260829-v1-20260829124635",
+  "packSha256": "96e5eaf3fdd1e0f17381eddbff182aaa3c1ea3d4ff8deffa4bbf421d42a437f8",
   "engineSha256": "68cafa980974e28c8295587a95a9688b05e09fcd6594eed51e077bee88a5f8b1",
   "runnerSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667",
   "configSignature": "{\"season\":2026,\"rulesVersion\":\"thunder-bowl-2026-v1\",\"rosterSize\":14,\"minimumBid\":1,\"starterRequirements\":{\"DST\":1,\"K\":1,\"QB\":1,\"RB\":2,\"TE\":1,\"WR\":2},\"teams\":[{\"id\":\"goon-skwad\",\"startingCap\":106},{\"id\":\"dogs-of-war\",\"startingCap\":104},{\"id\":\"el-guapo\",\"startingCap\":102},{\"id\":\"angry-face\",\"startingCap\":100},{\"id\":\"big-head\",\"startingCap\":100},{\"id\":\"crime-and-punishment\",\"startingCap\":100},{\"id\":\"orange-crush\",\"startingCap\":100},{\"id\":\"super-suckers\",\"startingCap\":100},{\"id\":\"t-dogs\",\"startingCap\":100},{\"id\":\"the-bungles\",\"startingCap\":100},{\"id\":\"the-hobbits\",\"startingCap\":100},{\"id\":\"three-amigos\",\"startingCap\":100}],\"nominationOrder\":[\"orange-crush\",\"the-hobbits\",\"crime-and-punishment\",\"t-dogs\",\"super-suckers\",\"angry-face\",\"goon-skwad\",\"dogs-of-war\",\"el-guapo\",\"the-bungles\",\"big-head\",\"three-amigos\"],\"nominationOrderStatus\":\"verified\",\"verifiedPrefixCount\":12}",

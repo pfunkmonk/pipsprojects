@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "kind": "thunder-bowl-keeper-auction-catastrophe-rehearsal",
-  "generatedAt": "2026-08-28T16:47:36.571Z",
+  "generatedAt": "2026-08-29T12:51:05.538Z",
   "scope": "Accepted deterministic full-system keeper, cap-trade, auction, failover, outage merge, recovery, public-boundary, and latency gate; it does not claim physical speaking, projector, or venue-network evidence.",
   "passed": true,
   "pins": {
-    "packSha256": "9d22470e92699a6669c9156b5176c5c3296f132c26933d512cbb62999e54848d",
+    "packSha256": "96e5eaf3fdd1e0f17381eddbff182aaa3c1ea3d4ff8deffa4bbf421d42a437f8",
     "engineSha256": "68cafa980974e28c8295587a95a9688b05e09fcd6594eed51e077bee88a5f8b1",
     "scriptSha256": "bf3f31b613ebd846fcb82310a9a39e07c4f7ce0a31fb2280385693b030dee667"
   },
   "pack": {
-    "id": "tb26-tb-weekly-source-consensus-20260821-v1-20260821144515",
+    "id": "tb26-tb-weekly-source-consensus-20260829-v1-20260829124635",
     "players": 716,
     "keeperCandidates": 177,
     "teams": 12
@@ -37,34 +37,34 @@
       "teamId": "el-guapo",
       "rejectedAmount": 61
     },
-    "sha256": "58a00d68798d72447e1456cbb78ed08dff46269c88321fcf19b272ed6d102709"
+    "sha256": "4267b72cf6f86a8d6edc2ef8dd4f579664470847ef94ca3e99d60a724092cae7"
   },
   "outage": {
     "disconnectAtActiveSales": 72,
     "canonicalPhysicalEvents": 100,
     "offlinePhysicalEvents": 74,
     "mergedPhysicalEvents": 174,
-    "reconnectMs": 1.2015,
+    "reconnectMs": 1.1474,
     "exact": true,
     "idempotent": true
   },
   "recovery": {
-    "durationMs": 33.2997,
+    "durationMs": 26.5788,
     "eventCount": 174,
     "exact": true
   },
   "performance": {
     "eventReplay": {
       "samples": 173,
-      "medianMs": 0.2525,
-      "p95Ms": 0.5669,
-      "maximumMs": 0.7918
+      "medianMs": 0.2071,
+      "p95Ms": 0.4047,
+      "maximumMs": 0.5388
     },
     "publicSnapshot": {
       "samples": 8,
-      "medianMs": 0.2088,
-      "p95Ms": 0.4289,
-      "maximumMs": 0.4289
+      "medianMs": 0.136,
+      "p95Ms": 0.2649,
+      "maximumMs": 0.2649
     }
   },
   "finalState": {

@@ -128,7 +128,7 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 - The active weekly-asset pack is `tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1`. The released market model improves matched historical auction-price MAE from 5.887 to 4.191 (28.8%) with 79.4% held-out 80% interval coverage. Final automated counts and rehearsal evidence are refreshed after every authority-bearing release.
 - The draft-speed review is implemented: collapsed Live Bid HUD, adjacent chance-at-cap, whole-roster Monte Carlo safety, historical position budget lanes, roster-after-likely-win analysis, explicit hard-stop language, exact last-sale correction preview, one-key full evidence, surplus heat, three-play nomination assistant, private asset lines, Pro mode, keyboard controls, intel age, evidence-only news warning badges, equal-height viewport columns with internal secondary scrolling, static Safety rails moved to Admin & data, and an exact-byte one-click final-pack promotion gate. Position-run pressure failed its authority threshold and is therefore a visible warning only.
 - The August 16 league-price promotion uses all 1,252 validated purchases across ten seasons with an eight-season half-life. Five-season time-forward player matching selected a conservative 60% historical price-curve blend and improved overall sale-price MAE from `$3.690` to `$2.822` and premium-player MAE from `$5.114` to `$3.941`. The compact BARGAIN / FAIR / WAIT / TIER SAVE verdict is an advisory translation of intrinsic value, live Market, tier deadline, hard stop, and roster Monte Carlo safety; it cannot alter VBD, Market, Max, or ledger state.
-- The command center is rehearsal-ready. The only authority-bearing data change still planned is promotion of next week's final governed projection pack; draft morning then requires a fresh all-player intelligence seal and recovery download on the MacBook.
+- The command center and the August 29 final governed projection pack are technically release-ready. The remaining owner/device operations are a fresh all-player intelligence seal and recovery download on the MacBook after the exact deployed pack is locked in production.
 
 ## Release-candidate wrap — August 11, 2026
 
@@ -172,13 +172,15 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 
 ## Near-term sequence
 
-1. Complete the separate projection-upgrade application's exact 716-player candidate export through the validated handoff boundary.
-2. Review source omissions, source disagreement, uncertainty, durability, and availability exceptions before any promotion decision.
+Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, and PFF asset bundle has been league-scored, availability-weighted, audited, promoted into the repository pack, and exercised through the complete automated release gate. Its immutable ID is `tb26-tb-weekly-source-consensus-20260829-v1-20260829124635`; the server release overlay must pin this exact deployed ID and SHA before the pack is called production.
+
+1. Preserve the exact 716-player August 29 pack and its source/audit hashes; do not rerun or hand-edit values after the production lock.
+2. Keep the nine large source disagreements visible as uncertainty and the 80 fallback deep players explicit; do not reinterpret missing evidence as zero.
 3. Accumulate every 2026 timestamped source forecast, modified forecast, sale outcome, runner-up, and nomination position.
 4. Re-run the projection and price challengers after each rehearsal; publish error and interval-calibration reports.
 5. Run the deterministic full-system and catastrophe rehearsals after every authority-bearing pack change. They must cover the complete auction, keeper/cap trades, auctioneer/manual failover, offline divergence, reconnect, recovery restore, latency, and public/private isolation. A physical speaking/projector exercise remains useful but optional and is never falsely certified as automated evidence.
-6. Keeper selection and rights trading begin August 15. When the final projection export arrives, rebuild the accuracy-weighted consensus, apply league scoring, recompute weekly shapes and classic VBD, rerun keeper scarcity and the live auction market, rerank every keeper/trade board, run the valuation/outlier and Monte Carlo audits, and promote only the governed candidate. Every recorded keeper, pass, or trade must then recalculate the remaining auction pool immediately.
-7. Freeze the draft-morning release only after the complete automated gate passes and the user completes the fresh intelligence capture and recovery download.
+6. Keep the finalized 24-keeper official ledger separate from projection authority; every recorded auction sale must continue to recalculate the remaining pool immediately.
+7. Finish the draft-morning freeze with the production pack lock, fresh intelligence capture, and MacBook recovery download.
 
 ## Access-boundary hardening — August 26, 2026
 

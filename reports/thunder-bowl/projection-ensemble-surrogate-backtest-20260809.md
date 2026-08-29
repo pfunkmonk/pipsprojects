@@ -1,6 +1,6 @@
 # Thunder Bowl projection ensemble surrogate backtest
 
-Generated: 2026-08-17T22:28:02.965974+00:00
+Generated: 2026-08-29T12:51:41.432728+00:00
 
 Decision: **SURROGATE GATE PASSED — LIVE PROMOTION STILL BLOCKED**
 

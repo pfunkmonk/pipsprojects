@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-08-21T14:45:15.572Z",
+  "auditedAt": "2026-08-29T12:46:35.907Z",
   "approved": true,
   "candidate": {
-    "packId": "tb26-tb-weekly-source-consensus-20260821-v1-20260821144515",
-    "asOf": "2026-08-21T14:45:15.162Z",
-    "sha256": "775445b1b708024ea38630655de8764d5abcc95416e0d8b6226ab31c70b04d65",
+    "packId": "tb26-tb-weekly-source-consensus-20260829-v1-20260829124635",
+    "asOf": "2026-08-29T12:46:35.477Z",
+    "sha256": "e0752274ce1b7eec91d01d8b8101ee9012226e832d8e2a230ade5b5ec57e1f40",
     "players": 716,
     "keeperCandidates": 177,
     "keeperTeams": 12,
     "sources": 13,
-    "supplementalProjectionRows": 583,
+    "supplementalProjectionRows": 582,
     "managerProfiles": 12,
     "scheduleContext": "loaded_value_neutral",
     "weeklyContext": "loaded_validated_schedule_weighting",
@@ -22,9 +22,9 @@
     "allocatedMarketDollars": 1212
   },
   "current": {
-    "packId": "tb26-tb-cbs-fbg-refresh-20260812-20260812225551-m-weekly-assets-20260816234243-priority-v1-assets-v1",
-    "asOf": "2026-08-16T23:42:43.000Z",
-    "sha256": "f9bce74f7583f58708d90cb96eb98a26220eea82d431e2b3dddc4dec0070f793",
+    "packId": "tb26-tb-weekly-source-consensus-20260821-v1-20260821144515",
+    "asOf": "2026-08-21T14:45:15.162Z",
+    "sha256": "775445b1b708024ea38630655de8764d5abcc95416e0d8b6226ab31c70b04d65",
     "players": 716
   },
   "contentChanged": true,
@@ -35,80 +35,56 @@
   "changes": {
     "addedCount": 0,
     "removedCount": 0,
-    "materialCount": 66,
-    "exactStrategyValueChangeCount": 716,
+    "materialCount": 27,
+    "exactStrategyValueChangeCount": 677,
     "addedPlayerIds": [],
     "removedPlayerIds": [],
     "largestMaterialChanges": [
       {
-        "playerId": "fbg:MayeDr00",
-        "name": "Drake Maye",
-        "position": "QB",
-        "projectionDelta": -17.3,
-        "marketDelta": -5,
-        "maxBidDelta": -5
-      },
-      {
-        "playerId": "fbg:HallBr01",
-        "name": "Breece Hall",
-        "position": "RB",
-        "projectionDelta": -15.6,
-        "marketDelta": -5,
-        "maxBidDelta": -5
-      },
-      {
         "playerId": "fbg:JeanAs00",
         "name": "Ashton Jeanty",
         "position": "RB",
-        "projectionDelta": -5.5,
-        "marketDelta": -5,
-        "maxBidDelta": -5
+        "projectionDelta": -32.3,
+        "marketDelta": -9,
+        "maxBidDelta": -9
       },
       {
         "playerId": "fbg:CollNi00",
         "name": "Nico Collins",
         "position": "WR",
-        "projectionDelta": 5.2,
+        "projectionDelta": -7.6,
+        "marketDelta": -5,
+        "maxBidDelta": -5
+      },
+      {
+        "playerId": "fbg:FannHa00",
+        "name": "Harold Fannin Jr.",
+        "position": "TE",
+        "projectionDelta": 6.9,
         "marketDelta": 5,
         "maxBidDelta": 5
       },
       {
-        "playerId": "fbg:BrowCh06",
-        "name": "Chase Brown",
+        "playerId": "fbg:BarkSa00",
+        "name": "Saquon Barkley",
         "position": "RB",
-        "projectionDelta": -2.6,
-        "marketDelta": 5,
-        "maxBidDelta": 5
-      },
-      {
-        "playerId": "fbg:SkatCa00",
-        "name": "Cam Skattebo",
-        "position": "RB",
-        "projectionDelta": -23.7,
-        "marketDelta": -4,
-        "maxBidDelta": -4
-      },
-      {
-        "playerId": "fbg:JeffJu00",
-        "name": "Justin Jefferson",
-        "position": "WR",
-        "projectionDelta": 3.6,
+        "projectionDelta": 0.7,
         "marketDelta": 4,
         "maxBidDelta": 4
       },
       {
-        "playerId": "fbg:BrowAJ00",
-        "name": "A.J. Brown",
-        "position": "WR",
-        "projectionDelta": -11.5,
-        "marketDelta": -3,
-        "maxBidDelta": -3
+        "playerId": "fbg:WarrTy00",
+        "name": "Tyler Warren",
+        "position": "TE",
+        "projectionDelta": 0,
+        "marketDelta": -4,
+        "maxBidDelta": -4
       },
       {
-        "playerId": "fbg:RiceRa01",
-        "name": "Rashee Rice",
-        "position": "WR",
-        "projectionDelta": -10.4,
+        "playerId": "fbg:KrafTu00",
+        "name": "Tucker Kraft",
+        "position": "TE",
+        "projectionDelta": -3.6,
         "marketDelta": -3,
         "maxBidDelta": -3
       },
@@ -116,231 +92,23 @@
         "playerId": "fbg:PickGe00",
         "name": "George Pickens",
         "position": "WR",
-        "projectionDelta": -8.2,
-        "marketDelta": -3,
-        "maxBidDelta": -3
-      },
-      {
-        "playerId": "fbg:JackLa00",
-        "name": "Lamar Jackson",
-        "position": "QB",
-        "projectionDelta": -6.8,
+        "projectionDelta": 2.3,
         "marketDelta": 3,
         "maxBidDelta": 3
       },
       {
-        "playerId": "fbg:McMiTe00",
-        "name": "Tetairoa McMillan",
+        "playerId": "cbs:3124276",
+        "name": "Theo Wease Jr.",
         "position": "WR",
-        "projectionDelta": 6.6,
-        "marketDelta": 3,
-        "maxBidDelta": 3
-      },
-      {
-        "playerId": "fbg:KrafTu00",
-        "name": "Tucker Kraft",
-        "position": "TE",
-        "projectionDelta": 6.1,
-        "marketDelta": 3,
-        "maxBidDelta": 3
-      },
-      {
-        "playerId": "fbg:KelcTr00",
-        "name": "Travis Kelce",
-        "position": "TE",
-        "projectionDelta": -2.6,
-        "marketDelta": -3,
-        "maxBidDelta": -3
-      },
-      {
-        "playerId": "fbg:phixxx99",
-        "name": "Philadelphia Eagles",
-        "position": "DST",
-        "projectionDelta": -23.7,
-        "marketDelta": -2,
-        "maxBidDelta": -2
-      },
-      {
-        "playerId": "fbg:ramxxx99",
-        "name": "Los Angeles Rams",
-        "position": "DST",
-        "projectionDelta": -27.8,
-        "marketDelta": -1,
-        "maxBidDelta": -1
-      },
-      {
-        "playerId": "fbg:AlleKe00",
-        "name": "Keenan Allen",
-        "position": "WR",
-        "projectionDelta": 111.8,
+        "projectionDelta": -97.9,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:MetcJo00",
-        "name": "John Metchie III",
-        "position": "WR",
-        "projectionDelta": -97.3,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:GonzZa99",
-        "name": "Zane Gonzalez",
-        "position": "K",
-        "projectionDelta": -88.2,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "cbs:2969073",
-        "name": "Kevin Austin Jr.",
-        "position": "WR",
-        "projectionDelta": -84.3,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:MoodJa44",
-        "name": "Jake Moody",
-        "position": "K",
-        "projectionDelta": -76.4,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "cbs:1850793",
-        "name": "Darren Waller",
-        "position": "TE",
-        "projectionDelta": 76.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:StevDr01",
-        "name": "Drew Stevens",
-        "position": "K",
-        "projectionDelta": 62,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:SaulBe00",
-        "name": "Ben Sauls",
-        "position": "K",
-        "projectionDelta": -61.6,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:TysoJo00",
-        "name": "Jordyn Tyson",
-        "position": "WR",
-        "projectionDelta": -53.2,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:ZvadDo00",
-        "name": "Dominic Zvada",
-        "position": "K",
-        "projectionDelta": 48,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:BensMa00",
-        "name": "Malik Benson",
-        "position": "WR",
-        "projectionDelta": 46.9,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:GrupBl00",
-        "name": "Blake Grupe",
-        "position": "K",
-        "projectionDelta": -45.6,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:WatsDe00",
-        "name": "Deshaun Watson",
+        "playerId": "fbg:TagoTu00",
+        "name": "Tua Tagovailoa",
         "position": "QB",
-        "projectionDelta": 44.4,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "cbs:3123413",
-        "name": "Bub Means",
-        "position": "WR",
-        "projectionDelta": -42.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:PeniMi00",
-        "name": "Michael Penix Jr.",
-        "position": "QB",
-        "projectionDelta": 37.2,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:HutcXa00",
-        "name": "Xavier Hutchinson",
-        "position": "WR",
-        "projectionDelta": 37.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:MoonDa00",
-        "name": "Darnell Mooney",
-        "position": "WR",
-        "projectionDelta": -36.7,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:WestNi00",
-        "name": "Nick Westbrook-Ikhine",
-        "position": "WR",
-        "projectionDelta": -33.3,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:WeavXa00",
-        "name": "Xavier Weaver",
-        "position": "WR",
-        "projectionDelta": -32.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:McMaBr44",
-        "name": "Brandon McManus",
-        "position": "K",
-        "projectionDelta": -30.2,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:HarrNa00",
-        "name": "Najee Harris",
-        "position": "RB",
-        "projectionDelta": 29.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:ColeJo00",
-        "name": "Jonah Coleman",
-        "position": "RB",
-        "projectionDelta": 28.8,
+        "projectionDelta": -68.5,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
@@ -348,95 +116,143 @@
         "playerId": "fbg:CarlDa44",
         "name": "Daniel Carlson",
         "position": "K",
-        "projectionDelta": -28.6,
+        "projectionDelta": 57.8,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:DougCa00",
-        "name": "Caleb Douglas",
+        "playerId": "cbs:2866424",
+        "name": "Tylan Wallace",
         "position": "WR",
-        "projectionDelta": 28.4,
+        "projectionDelta": -57.7,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:WilsJo02",
-        "name": "Johnny Wilson",
-        "position": "WR",
-        "projectionDelta": -27.6,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:SandJa00",
-        "name": "Ja'Tavion Sanders",
-        "position": "TE",
-        "projectionDelta": -27.5,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "cbs:2741208",
-        "name": "Tyrell Shavers",
-        "position": "WR",
-        "projectionDelta": -27.5,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:jaxxxx99",
-        "name": "Jacksonville Jaguars",
-        "position": "DST",
-        "projectionDelta": 27.3,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:CoopOm00",
-        "name": "Omar Cooper Jr.",
-        "position": "WR",
-        "projectionDelta": -27.1,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:BoboJa00",
-        "name": "Jake Bobo",
-        "position": "WR",
-        "projectionDelta": -26.9,
-        "marketDelta": 0,
-        "maxBidDelta": 0
-      },
-      {
-        "playerId": "fbg:GayxMa44",
-        "name": "Matt Gay",
+        "playerId": "fbg:SmytCh00",
+        "name": "Charlie Smyth",
         "position": "K",
-        "projectionDelta": 26.4,
+        "projectionDelta": -57.5,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:SmacTr00",
-        "name": "Trey Smack",
-        "position": "K",
-        "projectionDelta": 26.2,
+        "playerId": "fbg:AustCa00",
+        "name": "Calvin Austin III",
+        "position": "WR",
+        "projectionDelta": -56.8,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:CousKi00",
-        "name": "Kirk Cousins",
+        "playerId": "fbg:LloyMa00",
+        "name": "MarShawn Lloyd",
+        "position": "RB",
+        "projectionDelta": 43.4,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:PeniMi00",
+        "name": "Michael Penix Jr.",
         "position": "QB",
-        "projectionDelta": 26,
+        "projectionDelta": 38.3,
         "marketDelta": 0,
         "maxBidDelta": 0
       },
       {
-        "playerId": "fbg:SandSh00",
-        "name": "Shedeur Sanders",
-        "position": "QB",
-        "projectionDelta": -25.8,
+        "playerId": "fbg:WashMi00",
+        "name": "Mike Washington Jr.",
+        "position": "RB",
+        "projectionDelta": 32.5,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "cbs:26696063",
+        "name": "Dominic Lovett",
+        "position": "WR",
+        "projectionDelta": -31.8,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "cbs:2240685",
+        "name": "Cedrick Wilson Jr.",
+        "position": "WR",
+        "projectionDelta": -27.7,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:BoutKa00",
+        "name": "Kayshon Boutte",
+        "position": "WR",
+        "projectionDelta": 27.6,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:WillKy01",
+        "name": "Kyle Williams",
+        "position": "WR",
+        "projectionDelta": 26.5,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:TillCe00",
+        "name": "Cedric Tillman",
+        "position": "WR",
+        "projectionDelta": -26,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:ZaccOl00",
+        "name": "Olamide Zaccheaus",
+        "position": "WR",
+        "projectionDelta": -24.8,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:HarrNa00",
+        "name": "Najee Harris",
+        "position": "RB",
+        "projectionDelta": 23.3,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:HollMa00",
+        "name": "Mack Hollins",
+        "position": "WR",
+        "projectionDelta": 22.9,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "cbs:2867377",
+        "name": "Carlos Washington Jr.",
+        "position": "RB",
+        "projectionDelta": -22.5,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:DougDe00",
+        "name": "DeMario Douglas",
+        "position": "WR",
+        "projectionDelta": 20.6,
+        "marketDelta": 0,
+        "maxBidDelta": 0
+      },
+      {
+        "playerId": "fbg:TracTy00",
+        "name": "Tyrone Tracy Jr.",
+        "position": "RB",
+        "projectionDelta": -20.2,
         "marketDelta": 0,
         "maxBidDelta": 0
       }
@@ -448,9 +264,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -459,9 +273,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -478,8 +290,7 @@
         "name": "Christian McCaffrey",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue"
+          "vbd"
         ]
       },
       {
@@ -525,8 +336,7 @@
         "name": "De'Von Achane",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue"
+          "vbd"
         ]
       },
       {
@@ -551,11 +361,7 @@
         "playerId": "fbg:BrowAJ00",
         "name": "A.J. Brown",
         "changedFields": [
-          "projectedPoints",
-          "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "projectedPoints"
         ]
       },
       {
@@ -564,7 +370,6 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
           "marketValue",
           "maxBid"
         ]
@@ -574,7 +379,8 @@
         "name": "CeeDee Lamb",
         "changedFields": [
           "projectedPoints",
-          "vbd"
+          "vbd",
+          "intrinsicValue"
         ]
       },
       {
@@ -583,9 +389,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -622,8 +426,7 @@
         "name": "Trey McBride",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue"
+          "vbd"
         ]
       },
       {
@@ -632,9 +435,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -643,7 +444,9 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue"
+          "intrinsicValue",
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -674,7 +477,6 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
           "marketValue",
           "maxBid"
         ]
@@ -714,9 +516,7 @@
         "playerId": "fbg:HenrDe00",
         "name": "Derrick Henry",
         "changedFields": [
-          "projectedPoints",
           "vbd",
-          "intrinsicValue",
           "marketValue",
           "maxBid"
         ]
@@ -725,9 +525,9 @@
         "playerId": "fbg:WarrTy00",
         "name": "Tyler Warren",
         "changedFields": [
-          "projectedPoints",
           "vbd",
-          "intrinsicValue"
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -736,7 +536,9 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue"
+          "intrinsicValue",
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -764,9 +566,7 @@
         "name": "DeVonta Smith",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -775,9 +575,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -786,6 +584,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
+          "intrinsicValue",
           "marketValue",
           "maxBid"
         ]
@@ -796,9 +595,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -815,10 +612,7 @@
         "name": "Cam Skattebo",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -827,9 +621,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -837,9 +629,7 @@
         "name": "Ladd McConkey",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -848,9 +638,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -859,7 +647,9 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue"
+          "intrinsicValue",
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -867,10 +657,7 @@
         "name": "Zay Flowers",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -878,10 +665,7 @@
         "name": "Tetairoa McMillan",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -889,10 +673,7 @@
         "name": "Quinshon Judkins",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "vbd"
         ]
       },
       {
@@ -900,7 +681,10 @@
         "name": "Kyle Pitts Sr.",
         "changedFields": [
           "projectedPoints",
-          "vbd"
+          "vbd",
+          "intrinsicValue",
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -909,9 +693,7 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue",
-          "marketValue",
-          "maxBid"
+          "intrinsicValue"
         ]
       },
       {
@@ -919,8 +701,6 @@
         "name": "Bucky Irving",
         "changedFields": [
           "projectedPoints",
-          "vbd",
-          "intrinsicValue",
           "marketValue",
           "maxBid"
         ]
@@ -931,7 +711,9 @@
         "changedFields": [
           "projectedPoints",
           "vbd",
-          "intrinsicValue"
+          "intrinsicValue",
+          "marketValue",
+          "maxBid"
         ]
       },
       {
@@ -945,131 +727,113 @@
     ]
   },
   "sourceWeeklyAssets": {
-    "modelId": "tb-weekly-source-consensus-20260821-v1",
-    "sourceAsOf": "2026-08-21T14:45:07.709Z",
-    "exportedAt": "2026-08-21T14:45:15.162Z",
-    "combinedSha256": "e7a2cb6cc7085dc7d7ea2815784df9f92d5ad5ce87c04b793697c8f2fbb4e7e8",
+    "modelId": "tb-weekly-source-consensus-20260829-v1",
+    "sourceAsOf": "2026-08-29T12:46:24.953Z",
+    "exportedAt": "2026-08-29T12:46:35.477Z",
+    "combinedSha256": "1087b66bc3023a642db02a0f7951033ea311038ea810c404f94f1f56e45ae39d",
     "sourceCoverage": {
       "Footballguys": {
-        "rows": 10710,
-        "players": 595,
-        "usableRows": 10132,
+        "rows": 10980,
+        "players": 610,
+        "usableRows": 10389,
         "missingRows": 0,
-        "byeRows": 578,
-        "sha256": "f88963b3f609663fe9fb463c3b4596bf87ec49fd7ee6fcfc244a3d4c83c73ce0"
+        "byeRows": 591,
+        "sha256": "d54a8ae5b249c751fa8375acbd16b4af36c40b03f388a0925d212aeb6495c0f3"
       },
       "CBS": {
-        "rows": 4267,
-        "players": 251,
-        "usableRows": 3400,
-        "missingRows": 621,
-        "byeRows": 246,
-        "sha256": "67556ed0b5cef37030c26672528d09c8eafbd1fa075f2be964a99722ccfb741b"
+        "rows": 4233,
+        "players": 249,
+        "usableRows": 3394,
+        "missingRows": 592,
+        "byeRows": 247,
+        "sha256": "90350be08308715ab933b3359961fb08dd65ceacdf4038caa4752c53922ea757"
       },
       "FantasyPros": {
-        "rows": 8478,
-        "players": 471,
-        "usableRows": 8019,
+        "rows": 8442,
+        "players": 469,
+        "usableRows": 7986,
         "missingRows": 0,
-        "byeRows": 459,
-        "sha256": "5ed29f787cbbd3a0341b799024db976868018cc938ea7fb9a6ff3c2be812b3b3"
+        "byeRows": 456,
+        "sha256": "fe11c89785eb313a98b70898c4833204e570c5ff659b904c181882af3c4eb21b"
       },
       "PFF": {
-        "rows": 1764,
-        "players": 98,
-        "usableRows": 1666,
+        "rows": 1800,
+        "players": 100,
+        "usableRows": 1700,
         "missingRows": 0,
-        "byeRows": 98,
-        "sha256": "84f667bf63cf303e8724886aa63c24a8dc71a3e6fbc5e7c5d886187733654dd8"
+        "byeRows": 100,
+        "sha256": "6fe86d97ef1d2870e4f6a89a76de5b5b1415f9ac2825fee088c49dd6ab16248c"
       }
     },
     "players": 716,
-    "playersWithFreshRows": 627,
-    "fallbackPlayers": 89,
-    "changedPlayers": 624,
+    "playersWithFreshRows": 636,
+    "fallbackPlayers": 80,
+    "changedPlayers": 503,
     "scoringFingerprint": "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1",
     "missingRowsTreatedAsZero": 0,
     "automaticCorrectionDelta": 0,
     "pffWeightPolicy": "neutral midpoint pending comparable historical archive",
     "systematicCollapseSignals": {
-      "Footballguys": 1,
+      "Footballguys": 0,
       "CBS": 0,
       "FantasyPros": 0,
       "PFF": 0
     },
-    "sourceDisagreementCount75": 12,
+    "sourceDisagreementCount75": 9,
     "largestSourceDisagreements": [
       {
         "playerId": "fbg:MendFe00",
         "name": "Fernando Mendoza",
         "position": "QB",
-        "spread": 114.7
-      },
-      {
-        "playerId": "fbg:TagoTu00",
-        "name": "Tua Tagovailoa",
-        "position": "QB",
-        "spread": 104.7
+        "spread": 107.8
       },
       {
         "playerId": "cbs:3123413",
         "name": "Bub Means",
         "position": "WR",
-        "spread": 102.7
+        "spread": 101.1
       },
       {
         "playerId": "fbg:CousKi00",
         "name": "Kirk Cousins",
         "position": "QB",
-        "spread": 101
+        "spread": 98.2
       },
       {
         "playerId": "fbg:KirkCh00",
         "name": "Christian Kirk",
         "position": "WR",
-        "spread": 93.9
-      },
-      {
-        "playerId": "fbg:DillA.00",
-        "name": "AJ Dillon",
-        "position": "RB",
-        "spread": 90.8
-      },
-      {
-        "playerId": "fbg:FranTr00",
-        "name": "Troy Franklin",
-        "position": "WR",
-        "spread": 84.3
-      },
-      {
-        "playerId": "fbg:BensMa00",
-        "name": "Malik Benson",
-        "position": "WR",
-        "spread": 83.5
-      },
-      {
-        "playerId": "fbg:ConnJa00",
-        "name": "James Conner",
-        "position": "RB",
-        "spread": 82.3
-      },
-      {
-        "playerId": "fbg:DikeCh00",
-        "name": "Chimere Dike",
-        "position": "WR",
-        "spread": 79.6
+        "spread": 97.5
       },
       {
         "playerId": "fbg:WillAn02",
         "name": "Antonio Williams",
         "position": "WR",
-        "spread": 78.5
+        "spread": 95.1
       },
       {
-        "playerId": "fbg:RiceRa01",
-        "name": "Rashee Rice",
+        "playerId": "fbg:DillA.00",
+        "name": "AJ Dillon",
+        "position": "RB",
+        "spread": 90.6
+      },
+      {
+        "playerId": "fbg:FranTr00",
+        "name": "Troy Franklin",
         "position": "WR",
-        "spread": 77.2
+        "spread": 82.8
+      },
+      {
+        "playerId": "fbg:DikeCh00",
+        "name": "Chimere Dike",
+        "position": "WR",
+        "spread": 80.9
+      },
+      {
+        "playerId": "fbg:ConnJa00",
+        "name": "James Conner",
+        "position": "RB",
+        "spread": 75.3
       }
     ]
   }
