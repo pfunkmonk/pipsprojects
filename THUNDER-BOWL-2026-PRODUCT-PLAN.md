@@ -172,7 +172,7 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 
 ## Near-term sequence
 
-Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, and PFF asset bundle has been league-scored, availability-weighted, audited, promoted into the repository pack, and exercised through the complete automated release gate. Its immutable ID is `tb26-tb-weekly-source-consensus-20260829-v1-20260829124635`; the server release overlay must pin this exact deployed ID and SHA before the pack is called production.
+Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, and PFF asset bundle has been league-scored, availability-weighted, audited, promoted, deployed, and exercised through the complete automated release gate. Production now serves immutable ID `tb26-tb-weekly-source-consensus-20260829-v1-20260829124635`, pinned to SHA-256 `96e5eaf3fdd1e0f17381eddbff182aaa3c1ea3d4ff8deffa4bbf421d42a437f8`.
 
 1. Preserve the exact 716-player August 29 pack and its source/audit hashes; do not rerun or hand-edit values after the production lock.
 2. Keep the nine large source disagreements visible as uncertainty and the 80 fallback deep players explicit; do not reinterpret missing evidence as zero.
