@@ -55,22 +55,34 @@ function correctedSaleLedger() {
   return [configured, keeper, wrongSale, undo, correctedSale];
 }
 
-test("CBS auction import exports exactly one active row per sale and excludes keepers and voided prices", () => {
+test("CBS auction import exports every active keeper and sale while excluding voided prices", () => {
   const rows = buildCbsAuctionImportRows({ events: correctedSaleLedger(), pack });
-  assert.deepEqual(rows, [{
-    player_name: "Ja'Marr Chase",
-    nfl_team: "CIN",
-    position: "WR",
-    fantasy_team: "Dogs of War",
-    auction_price: 31,
-    player_id: "fbg:ChasJa00",
-  }]);
+  assert.deepEqual(rows, [
+    {
+      player_name: "Keeper Test",
+      nfl_team: "DET",
+      position: "TE",
+      fantasy_team: "Orange Crush",
+      auction_price: 4,
+      player_id: "fbg:KeepTe00",
+      contract_year: 2,
+    },
+    {
+      player_name: "Ja'Marr Chase",
+      nfl_team: "CIN",
+      position: "WR",
+      fantasy_team: "Dogs of War",
+      auction_price: 31,
+      player_id: "fbg:ChasJa00",
+      contract_year: "",
+    },
+  ]);
 
   const csv = cbsAuctionImportCsv(rows);
   assert.equal(csv.split("\r\n")[0], CBS_AUCTION_IMPORT_COLUMNS.join(","));
-  assert.equal(csv, "player_name,nfl_team,position,fantasy_team,auction_price,player_id\r\nJa'Marr Chase,CIN,WR,Dogs of War,31,fbg:ChasJa00\r\n");
-  assert.doesNotMatch(csv, /Keeper Test|,32,/);
-  assert.equal(csv.split("\r\n").filter(Boolean).length, 2);
+  assert.equal(csv, "player_name,nfl_team,position,fantasy_team,auction_price,player_id,contract_year\r\nKeeper Test,DET,TE,Orange Crush,4,fbg:KeepTe00,2\r\nJa'Marr Chase,CIN,WR,Dogs of War,31,fbg:ChasJa00,\r\n");
+  assert.doesNotMatch(csv, /,32,/);
+  assert.equal(csv.split("\r\n").filter(Boolean).length, 3);
 });
 
 test("CBS auction CSV applies standard quoting without changing raw values", () => {
@@ -81,16 +93,17 @@ test("CBS auction CSV applies standard quoting without changing raw values", () 
     fantasy_team: "Crime and Punishment",
     auction_price: 0,
     player_id: "internal:smith-cj",
+    contract_year: "",
   }]);
-  assert.match(csv, /^player_name,nfl_team,position,fantasy_team,auction_price,player_id\r\n/);
-  assert.match(csv, /"Smith, ""CJ"" Jr\.",FA,RB,Crime and Punishment,0,internal:smith-cj/);
+  assert.match(csv, /^player_name,nfl_team,position,fantasy_team,auction_price,player_id,contract_year\r\n/);
+  assert.match(csv, /"Smith, ""CJ"" Jr\.",FA,RB,Crime and Punishment,0,internal:smith-cj,/);
   assert.doesNotMatch(csv, /\$0/);
 });
 
 test("CBS auction CSV reports every invalid row and duplicate identifier instead of omitting data", () => {
   const rows = [
-    { player_name: "First Player", nfl_team: "", position: "WR/RB", fantasy_team: "Dogs of War", auction_price: 1.5, player_id: "duplicate-id" },
-    { player_name: "Second Player", nfl_team: "BUF", position: "QB", fantasy_team: "The Hobbits", auction_price: 2, player_id: "duplicate-id", notes: "not allowed" },
+    { player_name: "First Player", nfl_team: "", position: "WR/RB", fantasy_team: "Dogs of War", auction_price: 1.5, player_id: "duplicate-id", contract_year: 4 },
+    { player_name: "Second Player", nfl_team: "BUF", position: "QB", fantasy_team: "The Hobbits", auction_price: 2, player_id: "duplicate-id", contract_year: "", notes: "not allowed" },
   ];
   assert.throws(
     () => validateCbsAuctionImportRows(rows),
@@ -98,6 +111,7 @@ test("CBS auction CSV reports every invalid row and duplicate identifier instead
       assert.match(error.message, /row 2 \(First Player\): nfl_team is blank/);
       assert.match(error.message, /position 'WR\/RB'/);
       assert.match(error.message, /auction_price must be an integer/);
+      assert.match(error.message, /contract_year must be blank/);
       assert.match(error.message, /row 3 \(Second Player\): unsupported field\(s\): notes/);
       assert.match(error.message, /duplicates row 2/);
       assert.ok(error.issues.length >= 5);
@@ -111,7 +125,7 @@ test("CBS auction export fails closed on active-pack identity drift with the exa
   changedPack.players[1].nflTeam = "BUF";
   assert.throws(
     () => buildCbsAuctionImportRows({ events: correctedSaleLedger(), pack: changedPack }),
-    /sale 1 \(Ja'Marr Chase\): NFL team 'CIN' does not match active-pack team 'BUF'/,
+    /roster assignment 2 \(Ja'Marr Chase\): NFL team 'CIN' does not match active-pack team 'BUF'/,
   );
 });
 
@@ -119,6 +133,6 @@ test("CBS auction export blocks an empty handoff file", () => {
   const configured = event(EVENT_TYPES.DRAFT_CONFIGURED, DEFAULT_CONFIG, 0);
   assert.throws(
     () => buildCbsAuctionImportRows({ events: [configured], pack }),
-    /No active auction purchases are available/,
+    /No active roster assignments are available/,
   );
 });

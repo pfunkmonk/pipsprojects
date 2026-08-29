@@ -93,7 +93,7 @@ import {
 } from "./auction-telemetry.mjs?v=20260809a";
 import { fbgAuctionValueCompatibilityText } from "./fbg-configuration.mjs?v=20260808a";
 import { buildDraftHistoryRows, draftHistoryCsv } from "./draft-history.mjs?v=20260808g";
-import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260817a";
+import { buildCbsAuctionImportRows, cbsAuctionImportCsv } from "./cbs-auction-export.mjs?v=20260829c";
 import { buildKeeperSandboxPromotion } from "./keeper-sandbox-promotion.mjs?v=20260822a";
 import {
   EMERGENCY_PDF_SORT_ORDERS,
@@ -5989,7 +5989,9 @@ function exportCbsAuctionImport() {
       cbsAuctionImportCsv(rows),
       "text/csv;charset=utf-8",
     );
-    setStatus(status, `Exported ${rows.length} active auction purchase${rows.length === 1 ? "" : "s"} in the exact six-column CBS automation format. Keepers and voided sales were excluded.`);
+    const keeperCount = rows.filter((row) => Number.isInteger(row.contract_year)).length;
+    const auctionCount = rows.length - keeperCount;
+    setStatus(status, `Exported ${rows.length} active roster assignments: ${auctionCount} auction purchases + ${keeperCount} keepers. Contract year is blank for auction purchases and 1–3 for keepers; voided records were excluded.`);
   } catch (error) {
     setStatus(status, errorMessage(error), true);
   }

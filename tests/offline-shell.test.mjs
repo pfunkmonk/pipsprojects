@@ -704,12 +704,14 @@ test("data setup exports a clean chronological draft history for CBS entry and f
   assert.match(indexHtml, /active cap trade, keeper decision, nomination skip, and auction purchase/i);
 });
 
-test("Admin exports a strict six-column CBS auction automation handoff", () => {
+test("Admin exports a strict seven-column CBS roster automation handoff", () => {
   for (const id of ["export-cbs-auction-import", "cbs-auction-export-status"]) {
     assert.match(indexHtml, new RegExp(`id=["']${id}["']`));
   }
   assert.match(appSource, /buildCbsAuctionImportRows\(\{ events, pack: draftPack \}\)/);
   assert.match(appSource, /cbsAuctionImportCsv\(rows\)/);
-  assert.match(indexHtml, /player_name,nfl_team,position,fantasy_team,auction_price,player_id/);
-  assert.match(indexHtml, /no keepers, voided sales, totals, metadata, or private strategy/i);
+  assert.match(indexHtml, /player_name,nfl_team,position,fantasy_team,auction_price,player_id,contract_year/);
+  assert.match(indexHtml, /Keepers are included with contract year 1–3/i);
+  assert.match(indexHtml, /Voided records, totals, metadata, and private strategy are excluded/i);
+  assert.match(appSource, /rows\.filter\(\(row\) => Number\.isInteger\(row\.contract_year\)\)/);
 });

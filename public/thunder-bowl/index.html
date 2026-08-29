@@ -744,7 +744,7 @@
           <section class="product-panel settings-card" aria-labelledby="cbs-auction-export-title">
             <p class="eyebrow">CBS automation handoff</p>
             <h3 id="cbs-auction-export-title">CBS Auction Import CSV</h3>
-            <p>Download one strictly validated row per active auction purchase using exactly <code>player_name,nfl_team,position,fantasy_team,auction_price,player_id</code>. The file contains no keepers, voided sales, totals, metadata, or private strategy.</p>
+            <p>Download one strictly validated row per active rostered player using <code>player_name,nfl_team,position,fantasy_team,auction_price,player_id,contract_year</code>. Keepers are included with contract year 1–3; auction purchases leave contract year blank. Voided records, totals, metadata, and private strategy are excluded.</p>
             <div class="button-stack">
               <button id="export-cbs-auction-import" class="button button-primary" type="button">Download CBS Auction Import CSV</button>
             </div>
@@ -1096,6 +1096,6 @@
     <div id="global-status" class="global-status" role="status" aria-live="polite"></div>
   </div>
 
-  <script type="module" src="./app.mjs?v=20260828a"></script>
+  <script type="module" src="./app.mjs?v=20260829c"></script>
 </body>
 </html>
