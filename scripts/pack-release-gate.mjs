@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
 import { PREMIUM_PROJECTION_SOURCES, weightedProjectionConsensus } from "../public/thunder-bowl/projection-lab.mjs";
+import { isApprovedSupplementalTransition } from "./supplemental-player-catalog.mjs";
 
 const SEALED_HOLDOUT_PATTERN = /(?:2025.{0,24}(?:actual|outcome|final)|(?:actual|outcome|final).{0,24}2025)/i;
 const MUTABLE_PROJECTION_SOURCE_NAMES = new Set([
@@ -369,9 +370,10 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       );
     }
     if (primaryProjectionUpdate) {
-      if (changes.added.length || changes.removed.length) {
-        blockingIssues.push("A projection-only candidate changed the player universe.");
-      }
+      const approvedSupplementalIds = new Set(changes.added.filter((playerId) => isApprovedSupplementalTransition(current, candidate, playerId)));
+      const unapprovedAddedIds = changes.added.filter((playerId) => !approvedSupplementalIds.has(playerId));
+      if (unapprovedAddedIds.length || changes.removed.length) blockingIssues.push("A projection-only candidate changed the player universe outside the approved supplemental catalog.");
+      if (approvedSupplementalIds.size) warnings.push(`Accepted ${approvedSupplementalIds.size} source-backed supplemental player identity: ${[...approvedSupplementalIds].join(", ")}.`);
       if (stableText(candidate.managerProfiles) !== stableText(current.managerProfiles)) {
         blockingIssues.push("A primary projection update changed advisory manager profiles.");
       }
@@ -388,8 +390,8 @@ export function auditDraftPack(candidateInput, currentInput = null) {
       const currentPlayers = playerMap(current);
       if (candidate.players.some((player) => {
         const prior = currentPlayers.get(player.id);
-        return !prior
-          || evidenceFields.some((field) => player[field] !== prior[field])
+        if (!prior) return !approvedSupplementalIds.has(player.id);
+        return evidenceFields.some((field) => player[field] !== prior[field])
           || !projectionRefreshNoteIsGoverned(prior, player);
       })) {
         blockingIssues.push("A primary projection update changed player identity, injury, SOS, or notes evidence.");

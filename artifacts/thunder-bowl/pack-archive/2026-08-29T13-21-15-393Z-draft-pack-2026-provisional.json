@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "packId": "tb26-final-supplemental-catalog-20260829132049",
+  "packId": "tb26-tb-weekly-source-consensus-20260829-v1-20260829124635",
   "season": 2026,
   "status": "practice",
-  "asOf": "2026-08-29T13:20:49.394Z",
+  "asOf": "2026-08-29T12:46:35.477Z",
   "sources": [
     {
       "name": "User-confirmed prior-season league order and 2026 bonus caps",
@@ -68197,92 +68197,6 @@
         "dstSafety": 0,
         "dstPtsAllowed": 0
       }
-    },
-    {
-      "id": "fbg:SmitJo02",
-      "name": "Jonnu Smith",
-      "position": "TE",
-      "nflTeam": "GB",
-      "tier": 4,
-      "projectedPoints": 71.2,
-      "vbd": -102.4,
-      "intrinsicValue": 1,
-      "marketValue": 1,
-      "maxBid": 1,
-      "sourceRank": 40,
-      "injury": "No current injury flag in the final source snapshot",
-      "sos": "2026 league schedule loaded; supplemental catalog identity",
-      "notes": "FantasyPros 71.2. Thunder Bowl consensus 71.2 drives VBD; availability-aware weekly weighting and QA-approved automatic correction +0.0.",
-      "projectionSources": [
-        {
-          "source": "FantasyPros",
-          "points": 71.2,
-          "asOf": "2026-08-29T12:46:24.953Z",
-          "role": "supplemental",
-          "modelEffect": "none",
-          "note": "Source-backed late identity addition; final catalog valuation is display-safe"
-        },
-        {
-          "source": "Thunder Bowl Consensus",
-          "points": 71.2,
-          "asOf": "2026-08-29T12:46:24.953Z",
-          "role": "primary",
-          "modelEffect": "primary_projection",
-          "note": "Governed supplemental catalog identity; no invented projection uplift"
-        }
-      ],
-      "weeklyProjection": {
-        "source": "Thunder Bowl weekly assets v1",
-        "asOf": "2026-08-29T12:46:24.953Z",
-        "modelEffect": "none",
-        "games": 17,
-        "byeWeek": 11,
-        "points": [
-          4.3,
-          4.6,
-          4.2,
-          4.7,
-          4.7,
-          4.9,
-          4.5,
-          4.5,
-          4.5,
-          4.2,
-          null,
-          4.1,
-          4.3,
-          3.7,
-          5.3,
-          4.6,
-          4.1,
-          0
-        ],
-        "sourceSeasonTotal": 71.2
-      },
-      "assetProjection": {
-        "source": "Thunder Bowl weekly assets v1",
-        "asOf": "2026-08-29T12:46:24.953Z",
-        "modelEffect": "none",
-        "seasonSource": "FP",
-        "shapeSource": "TEAM",
-        "passYds": 0,
-        "passTd": 0,
-        "passInt": 0,
-        "rushYds": 0,
-        "rushTd": 0,
-        "receptions": 28,
-        "recYds": 252,
-        "recTd": 3,
-        "fumblesLost": 0,
-        "fgMade": 0,
-        "xpMade": 0,
-        "dstSacks": 0,
-        "dstInt": 0,
-        "dstFumRec": 0,
-        "dstTd": 0,
-        "dstSafety": 0,
-        "dstPtsAllowed": 0
-      }
     }
   ],
   "keeperCandidates": [
@@ -70730,7 +70644,7 @@
       16,
       17
     ],
-    "coveredPlayers": 717,
+    "coveredPlayers": 716,
     "top168Coverage": 1,
     "contextFactors": [
       "source_weekly_shape",

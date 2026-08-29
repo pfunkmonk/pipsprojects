@@ -13,7 +13,8 @@ test("the active private practice pack clears every release invariant", () => {
   const audit = auditDraftPack(current, current);
   assert.equal(audit.approved, true);
   assert.equal(audit.contentChanged, false);
-  assert.equal(audit.candidate.players, 716);
+  assert.equal(audit.candidate.players, current.players.length);
+  assert.ok(current.players.some((player) => player.name === "Jonnu Smith" && player.nflTeam === "GB" && player.position === "TE"));
   assert.equal(audit.candidate.keeperTeams, 12);
   assert.equal(audit.candidate.allocatedMarketDollars, 1212);
   assert.equal(audit.candidate.expectedCap, 1212);

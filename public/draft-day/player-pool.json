@@ -3402,6 +3402,15 @@
     "byeWeek": 5
   },
   {
+    "id": "fbg-smitjo02",
+    "name": "Jonnu Smith",
+    "position": "TE",
+    "nflTeam": "GB",
+    "nflTeamName": "Green Bay Packers",
+    "nflTeamShortName": "Packers",
+    "byeWeek": 11
+  },
+  {
     "id": "fbg-addijo00",
     "name": "Jordan Addison",
     "position": "WR",

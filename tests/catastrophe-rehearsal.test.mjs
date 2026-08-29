@@ -22,7 +22,8 @@ test("catastrophe rehearsal is pinned to the current pack, engine, and runner", 
   assert.equal(report.pins.engineSha256, sha256(engineBytes));
   assert.equal(report.pins.scriptSha256, sha256(scriptBytes));
   assert.equal(report.pack.id, activePack.packId);
-  assert.equal(report.pack.players, 716);
+  assert.equal(report.pack.players, activePack.players.length);
+  assert.ok(activePack.players.some((player) => player.id === "fbg:SmitJo02" && player.name === "Jonnu Smith"));
   assert.equal(report.pack.keeperCandidates, 177);
 });
 

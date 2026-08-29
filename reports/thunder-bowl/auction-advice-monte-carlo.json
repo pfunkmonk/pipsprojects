@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "modelVersion": "auction-value-advice-v1",
-  "generatedAt": "2026-08-29T12:52:00.976Z",
-  "packId": "tb26-tb-weekly-source-consensus-20260829-v1-20260829124635",
+  "generatedAt": "2026-08-29T13:26:37.112Z",
+  "packId": "tb26-final-supplemental-catalog-20260829132049",
   "playersTested": 36,
   "forecastSamplesPerPlayer": 384,
   "remainingAuctionRolloutsPerPlayer": 96,
@@ -13,9 +13,9 @@
     "WAIT": 1
   },
   "timingMs": {
-    "median": 73.702,
-    "p95": 81.124,
-    "maximum": 106.305
+    "median": 68.342,
+    "p95": 81.678,
+    "maximum": 96.438
   },
   "rows": [
     {
@@ -28,7 +28,7 @@
       "winChanceAtMaximum": 21.9,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 91.4,
+      "strongPathProbability": 93,
       "advice": "BARGAIN"
     },
     {
@@ -41,7 +41,7 @@
       "winChanceAtMaximum": 12.5,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 70.3,
+      "strongPathProbability": 64.8,
       "advice": "BARGAIN"
     },
     {
@@ -54,7 +54,7 @@
       "winChanceAtMaximum": 29.2,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 85.9,
+      "strongPathProbability": 86.7,
       "advice": "BARGAIN"
     },
     {
@@ -67,7 +67,7 @@
       "winChanceAtMaximum": 4.2,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 89.1,
+      "strongPathProbability": 87.5,
       "advice": "BARGAIN"
     },
     {
@@ -80,7 +80,7 @@
       "winChanceAtMaximum": 52.1,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 91.4,
+      "strongPathProbability": 89.1,
       "advice": "BARGAIN"
     },
     {
@@ -93,7 +93,7 @@
       "winChanceAtMaximum": 55.2,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 89.1,
+      "strongPathProbability": 96.9,
       "advice": "BARGAIN"
     },
     {
@@ -106,7 +106,7 @@
       "winChanceAtMaximum": 6.3,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 93.8,
+      "strongPathProbability": 89.8,
       "advice": "BARGAIN"
     },
     {
@@ -119,7 +119,7 @@
       "winChanceAtMaximum": 69.8,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 96.1,
+      "strongPathProbability": 93.8,
       "advice": "BARGAIN"
     },
     {
@@ -132,7 +132,7 @@
       "winChanceAtMaximum": 7.3,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 93,
+      "strongPathProbability": 96.9,
       "advice": "BARGAIN"
     },
     {
@@ -145,7 +145,7 @@
       "winChanceAtMaximum": 72.9,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 96.9,
+      "strongPathProbability": 98.4,
       "advice": "BARGAIN"
     },
     {
@@ -184,7 +184,7 @@
       "winChanceAtMaximum": 71.9,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 41.4,
+      "strongPathProbability": 44.5,
       "advice": "BARGAIN"
     },
     {
@@ -197,7 +197,7 @@
       "winChanceAtMaximum": 42.7,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 99.2,
+      "strongPathProbability": 100,
       "advice": "FAIR"
     },
     {
@@ -210,7 +210,7 @@
       "winChanceAtMaximum": 38.5,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 96.1,
+      "strongPathProbability": 98.4,
       "advice": "FAIR"
     },
     {
@@ -223,7 +223,7 @@
       "winChanceAtMaximum": 15.6,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 86.7,
+      "strongPathProbability": 85.2,
       "advice": "FAIR"
     },
     {
@@ -249,7 +249,7 @@
       "winChanceAtMaximum": 58.3,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 100,
+      "strongPathProbability": 99.2,
       "advice": "FAIR"
     },
     {
@@ -275,7 +275,7 @@
       "winChanceAtMaximum": 6.3,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 100,
+      "strongPathProbability": 99.2,
       "advice": "FAIR"
     },
     {
@@ -314,7 +314,7 @@
       "winChanceAtMaximum": 10.4,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 100,
+      "strongPathProbability": 99.2,
       "advice": "FAIR"
     },
     {
@@ -340,7 +340,7 @@
       "winChanceAtMaximum": 18.8,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 93.8,
+      "strongPathProbability": 92.2,
       "advice": "WAIT"
     },
     {
@@ -353,7 +353,7 @@
       "winChanceAtMaximum": 9.4,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 99.2,
+      "strongPathProbability": 100,
       "advice": "FAIR"
     },
     {
@@ -392,7 +392,7 @@
       "winChanceAtMaximum": 18.8,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 95.3,
+      "strongPathProbability": 93.8,
       "advice": "FAIR"
     },
     {
@@ -405,7 +405,7 @@
       "winChanceAtMaximum": 21.9,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 100,
+      "strongPathProbability": 98.4,
       "advice": "BARGAIN"
     },
     {
@@ -418,7 +418,7 @@
       "winChanceAtMaximum": 20.8,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 99.2,
+      "strongPathProbability": 100,
       "advice": "FAIR"
     },
     {
@@ -457,7 +457,7 @@
       "winChanceAtMaximum": 16.7,
       "tierSupply": 12,
       "legalCompletionProbability": 100,
-      "strongPathProbability": 98.4,
+      "strongPathProbability": 96.9,
       "advice": "FAIR"
     },
     {

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "season": 2026,
+  "players": [
+    {
+      "id": "fbg:SmitJo02",
+      "name": "Jonnu Smith",
+      "position": "TE",
+      "nflTeam": "GB",
+      "byeWeek": 11,
+      "tier": 4,
+      "sourceRank": 40,
+      "projectedPoints": 71.2,
+      "projectionSource": "FantasyPros",
+      "projectionAsOf": "2026-08-29T12:46:24.953Z",
+      "receptions": 28,
+      "recYds": 252,
+      "recTd": 3,
+      "reason": "Late roster addition present in the final FantasyPros and CBS source evidence but absent from the original protected identity spine."
+    }
+  ]
+}

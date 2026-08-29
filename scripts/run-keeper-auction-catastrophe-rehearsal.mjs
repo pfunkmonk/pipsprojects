@@ -308,7 +308,9 @@ assert.equal(finalPublic.totalCash, state.totalCash);
 const replayPerformance = timingSummary([...setupReplayTimings, ...saleReplayTimings]);
 const publicPerformance = timingSummary(publicSnapshotTimings);
 const checks = {
-  realValidated2026PackUsed: pack.status === "practice" && pack.players.length === 716,
+  realValidated2026PackUsed: pack.status === "practice"
+    && pack.players.length === 717
+    && pack.players.some((player) => player.id === "fbg:SmitJo02" && player.name === "Jonnu Smith" && player.position === "TE" && player.nflTeam === "GB"),
   capTransferDirectionCorrect: state.teams["goon-skwad"].startingCap === 104 && state.teams["dogs-of-war"].startingCap === 106,
   tradedKeeperPreservesSalaryAndYear: finalHerbert.price === 4 && finalHerbert.keeperYear === 2,
   keeperCorrectionIsAppendOnly: events.some((event) => event.type === EVENT_TYPES.EVENT_VOIDED && event.payload.targetEventId === mistakenKeeper.id),
@@ -417,7 +419,7 @@ Generated: ${report.generatedAt}
 
 Result: **${passed ? "PASS" : "FAIL"}**
 
-This accepted deterministic gate uses the active validated 716-player practice pack. It records the Herbert cap trade, corrects a mistaken keeper destination with an append-only void, assigns 24 legal keepers, completes the other 144 purchases, rejects an illegal maximum bid, corrects an offline price, merges a 72-sale outage exactly and idempotently, round-trips the full private recovery bundle, and tests the public/private boundary throughout. It satisfies the technical rehearsal gate; it does not claim physical speaking, projector, or venue-network evidence.
+This accepted deterministic gate uses the active validated 717-player practice pack, including the governed Jonnu Smith supplemental identity. It records the Herbert cap trade, corrects a mistaken keeper destination with an append-only void, assigns 24 legal keepers, completes the other 144 purchases, rejects an illegal maximum bid, corrects an offline price, merges a 72-sale outage exactly and idempotently, round-trips the full private recovery bundle, and tests the public/private boundary throughout. It satisfies the technical rehearsal gate; it does not claim physical speaking, projector, or venue-network evidence.
 
 ## Workload
 

@@ -36,12 +36,12 @@ function completedRows() {
   });
 }
 
-test("the projection handoff is an exact strict 716-player contract", () => {
+test("the projection handoff is an exact strict active-player contract", () => {
   const rows = completedRows();
-  assert.equal(rows.length, 716);
+  assert.equal(rows.length, current.players.length);
   const csv = projectionRowsToCsv(rows);
   assert.equal(csv.split("\n")[0], PROJECTION_HANDOFF_COLUMNS.join(","));
-  assert.equal(parseProjectionHandoffCsv(csv).length, 716);
+  assert.equal(parseProjectionHandoffCsv(csv).length, current.players.length);
   assert.doesNotMatch(csv.split("\n")[0], /vbd|market|max_bid|keeper|auction/i);
   const fbgPlayer = rows.find((row) => row.pack_player_id.startsWith("fbg:"));
   const cbsPlayer = rows.find((row) => row.pack_player_id.startsWith("cbs:"));
@@ -117,7 +117,7 @@ test("a legitimate zero projection preserves weekly coverage and can later be re
 });
 
 test("missing rows, a forged consensus, or an unreconciled adjustment fail closed", () => {
-  assert.throws(() => createProjectionCandidatePack(current, completedRows().slice(1)), /not all 716/);
+  assert.throws(() => createProjectionCandidatePack(current, completedRows().slice(1)), new RegExp(`not all ${current.players.length}`));
   const consensus = completedRows();
   consensus[0].raw_consensus_points = Number(consensus[0].raw_consensus_points) + 10;
   assert.throws(() => createProjectionCandidatePack(current, consensus), /does not match the registered consensus source model/);
