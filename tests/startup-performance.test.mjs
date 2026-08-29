@@ -29,7 +29,7 @@ test("only the active command-center tab is rendered", () => {
   assert.match(appSource, /if \(draftPack && !appView\.hidden\) renderCurrentView\(\)/);
 });
 
-test("the player pool virtualizes 716-player packs without losing offline support", () => {
+test("the player pool virtualizes the 717-player pack without losing offline support", () => {
   assert.match(appSource, /calculatePlayerWindow\(/);
   assert.match(appSource, /virtualPlayerList\.slice\(windowState\.start, windowState\.end\)/);
   assert.match(appSource, /playerTableWrap\.addEventListener\("scroll"/);

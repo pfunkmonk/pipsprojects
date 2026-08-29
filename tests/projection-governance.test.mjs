@@ -40,7 +40,7 @@ test("rejected sauce layers remain documented and outside automatic value author
 
 test("the checked-in handoff template covers the exact pack and carries no downstream dollar authority", () => {
   const lines = handoff.trim().split(/\r?\n/);
-  assert.equal(lines.length - 1, 716);
+  assert.equal(lines.length - 1, 717);
   assert.match(lines[0], /pack_player_id,player_name,position,nfl_team,fbg_id,cbs_id,fantasypros_id,pff_id,gsis_id/);
   assert.doesNotMatch(lines[0], /vbd|market|max_bid|keeper|auction/i);
 });

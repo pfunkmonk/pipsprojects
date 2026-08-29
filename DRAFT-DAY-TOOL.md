@@ -38,7 +38,7 @@ Stage Two—the customizable VBD/ADP, scoring, imported provider rules, and hist
 - Remembered league selection and offline verifiers are centralized in `public/draft-day/session-storage.mjs`, so every role follows one persistence/logout contract.
 - The Draft Board snapshot excludes event history, custom-player management, entered salary-pool setup, and all credential fields.
 - Netlify Blobs stores one strongly consistent, revisioned document per league. Auction events are append-only; correction, undo, and restore add events rather than rewriting a sale.
-- The checked-in 716-player pool contains public sticker-ready identity fields only: id, name, position, NFL team code/name/short name, and bye week.
+- The checked-in 717-player pool contains public sticker-ready identity fields only: id, name, position, NFL team code/name/short name, and bye week.
 - Pending Auctioneer commands are idempotent, revision-checked, locally queued, and retained across connection or session interruption until confirmed or explicitly rejected by a valid server response.
 
 ## Stage One acceptance flow

@@ -98,7 +98,7 @@ A separate priority-week calibration then joined 48 archived Thunder Bowl team-s
 
 ### Projection updater handoff contract
 
-- exactly one row for every one of the 716 active pack players;
+- exactly one row for every one of the 717 active pack players;
 - exact pack ID plus available FBG, CBS, FantasyPros, PFF, and GSIS source IDs;
 - immutable model ID, timezone-bearing source/export timestamps, scoring fingerprint, and `candidate_only` authority;
 - all four raw source values, their registered accuracy-weighted consensus, every named adjustment, final modified projection, uncertainty bounds, fallback reason, and optional Weeks 1–18 values;
@@ -172,9 +172,9 @@ Novel ideas from medicine, engineering, finance, operations research, or other s
 
 ## Near-term sequence
 
-Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, and PFF asset bundle has been league-scored, availability-weighted, audited, promoted, deployed, and exercised through the complete automated release gate. Production now serves immutable ID `tb26-tb-weekly-source-consensus-20260829-v1-20260829124635`, pinned to SHA-256 `96e5eaf3fdd1e0f17381eddbff182aaa3c1ea3d4ff8deffa4bbf421d42a437f8`.
+Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, and PFF asset bundle has been league-scored, availability-weighted, audited, promoted, deployed, and exercised through the complete automated release gate. A governed supplemental catalog then added Jonnu Smith's source-backed identity without changing the other 716 player records. Production now serves immutable ID `tb26-final-supplemental-catalog-20260829132049`, pinned to SHA-256 `6214947472bdd20b16c27e62263525165a4c2a426b099bc09c9b8776ea9d4db5`.
 
-1. Preserve the exact 716-player August 29 pack and its source/audit hashes; do not rerun or hand-edit values after the production lock.
+1. Preserve the exact 717-player August 29 pack and its source/audit hashes; do not rerun or hand-edit values after the production lock.
 2. Keep the nine large source disagreements visible as uncertainty and the 80 fallback deep players explicit; do not reinterpret missing evidence as zero.
 3. Accumulate every 2026 timestamped source forecast, modified forecast, sale outcome, runner-up, and nomination position.
 4. Re-run the projection and price challengers after each rehearsal; publish error and interval-calibration reports.
@@ -187,11 +187,11 @@ Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, 
 - Mission-gate outcome: shared Board and Auctioneer access cannot open or infer the private analytics pack. Authorization remains server-enforced, deny-by-default, and role-specific; no UI hiding is treated as security.
 - Private, Auctioneer, and Draft Board authentication now reject ambiguous/non-JSON/oversized requests, issue signed `HttpOnly`/`Secure`/`SameSite=Strict` cookies, and are protected by deploy-level per-IP/domain throttles. Auctioneer commands receive an authenticated 64 KB request ceiling.
 - A permanent endpoint inventory and token-substitution suite fails CI if a new Thunder Bowl function is not explicitly classified or if any shared role reaches the private pack, ledger, news, research, status, replay, promotion, or reset boundary.
-- Defense-in-depth headers now cover the full origin and JSON responses. The service worker continues to exclude `/api/`, and the real 716-player pack remains outside `public/`.
+- Defense-in-depth headers now cover the full origin and JSON responses. The service worker continues to exclude `/api/`, and the real 717-player pack remains outside `public/`.
 - Honest limit: the browser-side model implementation is inspectable JavaScript. Its protected inputs and the resulting private analytics are not public. Server-side model execution would hide formulas but adds draft-day latency/offline complexity, so it remains deferred unless formula confidentiality becomes more important than the current speed and catastrophe path.
 
 ## Startup-speed release — August 23, 2026
 
 - Startup work is now organized around the draft-day critical path: authenticate, restore the cached governed pack and append-only ledger, compute current auction authority, and show the Draft room. Pack freshness, status, news, and research refresh immediately afterward without blocking the first decision.
-- Critical IndexedDB metadata uses one batch transaction, event and access reads run concurrently, large value-neutral intelligence archives hydrate after first paint, a valid cached pack avoids a blocking 2 MB download, hidden Keeper/Admin views render on demand, and the 716-player pool uses a tested fixed-window virtual table.
+- Critical IndexedDB metadata uses one batch transaction, event and access reads run concurrently, large value-neutral intelligence archives hydrate after first paint, a valid cached pack avoids a blocking 2 MB download, hidden Keeper/Admin views render on demand, and the 717-player pool uses a tested fixed-window virtual table.
 - Mission-gate result: no projection, VBD, Market, Max, rival-WTP, legal-roster, public allowlist, correction-history, offline, or recovery authority changed. Browser QA measured a 531 ms warm authenticated reload, 1,713 initial DOM nodes, 14 rendered player rows, equal-height auction columns, and no horizontal overflow.

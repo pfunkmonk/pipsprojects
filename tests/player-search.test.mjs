@@ -38,7 +38,7 @@ test("short fragments require a safe prefix or exact token instead of broad fuzz
   assert.equal(playerSearchScore(byName.get("Jahmyr Gibbs"), "zz"), null);
 });
 
-test("the complete 716-player fuzzy search remains comfortably below the 100 ms product gate", () => {
+test("the complete 717-player fuzzy search remains comfortably below the 100 ms product gate", () => {
   const queries = ["jahmir gibs", "amon ra", "det", "wr", "washngton", "mcaffrey", "laporta", "baltimore dst"];
   const durations = [];
   for (let iteration = 0; iteration < 20; iteration += 1) {
