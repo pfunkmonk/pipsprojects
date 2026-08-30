@@ -80,6 +80,22 @@ test("manager headers open an accessible salary ledger that closes by X, backdro
   assert.match(styles, /\.salary-ledger-rows\{[\s\S]*overflow-y:auto/);
 });
 
+test("nomination and sale spotlights stay below the measured manager-information row", async () => {
+  const [boardSource, styles, boardIndex, boardFallback] = await Promise.all([
+    readFile(new URL("../public/thunder-bowl/board/board.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/board/board-transactions.css", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/board/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/board.html", import.meta.url), "utf8"),
+  ]);
+  assert.match(boardSource, /teamHeader\.getBoundingClientRect\(\)\.bottom/);
+  assert.match(boardSource, /--board-spotlight-safe-top/);
+  assert.match(boardSource, /syncTransactionSpotlightSafeZone\(\)/);
+  assert.match(styles, /:is\(\.nomination-spotlight,\.sale-spotlight\)\{top:var\(--board-spotlight-safe-top/);
+  assert.match(styles, /max-height:calc\(100vh - var\(--board-spotlight-safe-top/);
+  assert.match(boardIndex, /board-transactions\.css\?v=20260830b/);
+  assert.match(boardFallback, /board-transactions\.css\?v=20260830b/);
+});
+
 test("small-screen board names use a readable system face and protected minimum sizes", async () => {
   const styles = await readFile(new URL("../public/thunder-bowl/board/board-legibility.css", import.meta.url), "utf8");
   assert.match(styles, /\.team-header \.team-name \{[\s\S]*font-family: "Segoe UI", Arial, sans-serif;[\s\S]*font-weight: 800;[\s\S]*11px/);

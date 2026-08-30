@@ -168,6 +168,16 @@ function sticker(assignment, isNew = false) {
   return element;
 }
 
+function syncTransactionSpotlightSafeZone() {
+  const teamHeader = board.querySelector(".team-header");
+  if (!teamHeader) return;
+  const headerBottom = teamHeader.getBoundingClientRect().bottom;
+  const footerTop = document.getElementById("board-status").getBoundingClientRect().top;
+  const gap = Math.max(8, Math.min(18, Math.round(window.innerHeight * 0.012)));
+  app.style.setProperty("--board-spotlight-safe-top", `${Math.ceil(headerBottom + gap)}px`);
+  app.style.setProperty("--board-spotlight-safe-bottom", `${Math.ceil(window.innerHeight - footerTop + gap)}px`);
+}
+
 function sizeBoard() {
   if (!snapshot || !visibleRosterRows) return;
   const topbar = app.querySelector(".board-topbar");
@@ -185,6 +195,7 @@ function sizeBoard() {
   board.style.setProperty("--team-column-width", `${geometry.teamColumnWidth}px`);
   board.style.setProperty("--roster-row-height", `${geometry.rosterRowHeight}px`);
   board.style.setProperty("--header-row-height", `${geometry.headerRowHeight}px`);
+  syncTransactionSpotlightSafeZone();
 }
 
 function activeAuctionSales() {
@@ -387,7 +398,7 @@ document.getElementById("fullscreen-board").addEventListener("click", async () =
   if (document.fullscreenElement) await document.exitFullscreen();
   else await app.requestFullscreen();
 });
-document.addEventListener("fullscreenchange", updateReliability);
+document.addEventListener("fullscreenchange", () => { sizeBoard(); updateReliability(); });
 document.getElementById("export-board").addEventListener("click", () => snapshot && downloadBoardCsv(snapshot));
 document.getElementById("print-board").addEventListener("click", () => window.print());
 salaryLedgerDialog.close.addEventListener("click", closeSalaryLedger);

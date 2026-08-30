@@ -121,7 +121,7 @@ test("offline shell caches both auctioneer and projector experiences", () => {
   assert.match(serviceWorker, /"\/thunder-bowl\/guides\/guides\.css"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/shared\/shell-safety\.css"/);
   assert.match(serviceWorker, /"\/thunder-bowl\/board\.html"/);
-  assert.match(serviceWorker, /"\/thunder-bowl\/board\/board\.mjs"/);
+  assert.match(serviceWorker, /"\/thunder-bowl\/board\/board\.mjs(?:\?v=[^"]+)?"/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/board"\)/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/auctioneer"\)/);
   assert.match(serviceWorker, /pathname\.startsWith\("\/thunder-bowl\/draft-board"\)/);
