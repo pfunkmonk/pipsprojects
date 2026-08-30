@@ -185,6 +185,7 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   for (const id of ["refresh-plan", "sync-cbs", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.match(source, /thunder-bowl-season-setup-required/);
+  assert.match(source, /Too many recent access checks/);
   assert.match(html, /maxlength="100"/);
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /clientX < rect\.left/);

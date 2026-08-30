@@ -287,8 +287,16 @@ async function attemptLogin(event) {
     if (navigator.onLine) {
       const auth = await fetch("/api/thunder-bowl/auth", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }), signal: AbortSignal.timeout(5_000) });
       if (!auth.ok) {
-        const authError = new Error(auth.status === 401 ? "That access code is not correct." : "Online access check is unavailable.");
+        const retrySeconds = Number(auth.headers.get("Retry-After"));
+        const retryMinutes = Number.isFinite(retrySeconds) && retrySeconds > 0 ? Math.max(1, Math.ceil(retrySeconds / 60)) : 3;
+        const message = auth.status === 401
+          ? "That access code is not correct."
+          : auth.status === 429
+            ? `Too many recent access checks. Wait ${retryMinutes} minute${retryMinutes === 1 ? "" : "s"}, then try again.`
+            : "The online access service had a temporary problem. Wait a moment, then try again.";
+        const authError = new Error(message);
         authError.badCode = auth.status === 401;
+        authError.status = auth.status;
         throw authError;
       }
       await saveOfflineVerifier(code);
