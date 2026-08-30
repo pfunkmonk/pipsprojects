@@ -177,9 +177,10 @@ dialog::backdrop { background: rgba(1,7,15,.76); }
 .board-topbar .console-actions { justify-self: end; }
 .draft-position-key { display: flex; align-items: center; justify-content: center; gap: .22rem; }
 .draft-position-key span { min-width: 1.8rem; padding: .16rem .28rem; border-radius: .3rem; color: #fff; text-align: center; font-size: clamp(.52rem, .75vw, .68rem); font-weight: 950; line-height: 1; }
-.nomination-overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: clamp(1rem, 4vw, 4rem); background: rgba(2,10,22,.82); backdrop-filter: blur(7px); }
+.board-stage { --manager-band-height: 3.5rem; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.nomination-overlay { position: absolute; inset: var(--manager-band-height) 0 0; z-index: 20; display: grid; place-items: center; overflow: hidden; padding: clamp(1rem, 4vw, 4rem); background: rgba(2,10,22,.82); backdrop-filter: blur(7px); }
 .nomination-overlay[hidden] { display: none; }
-.nomination-card { --position-color: #8c98a3; --position-start: #414a54; --position-end: #252d35; width: min(76rem, 92vw); min-height: min(70vh, 42rem); padding: clamp(1.5rem, 5vw, 4.5rem); display: grid; place-items: center; align-content: center; gap: clamp(.7rem, 2vh, 1.4rem); overflow: hidden; border: clamp(.25rem, .5vw, .55rem) solid var(--position-color); border-radius: clamp(1.25rem, 3vw, 3rem); color: #fff; text-align: center; background: radial-gradient(circle at 50% 0, rgba(255,255,255,.16), transparent 40%), linear-gradient(135deg, var(--position-start), var(--position-end)); box-shadow: 0 2rem 8rem rgba(0,0,0,.62), 0 0 4rem color-mix(in srgb, var(--position-color) 52%, transparent); }
+.nomination-card { --position-color: #8c98a3; --position-start: #414a54; --position-end: #252d35; width: min(76rem, 92vw); height: min(100%, 42rem); min-height: 0; padding: clamp(1.5rem, 5vw, 4.5rem); display: grid; place-items: center; align-content: center; gap: clamp(.7rem, 2vh, 1.4rem); overflow: hidden; border: clamp(.25rem, .5vw, .55rem) solid var(--position-color); border-radius: clamp(1.25rem, 3vw, 3rem); color: #fff; text-align: center; background: radial-gradient(circle at 50% 0, rgba(255,255,255,.16), transparent 40%), linear-gradient(135deg, var(--position-start), var(--position-end)); box-shadow: 0 2rem 8rem rgba(0,0,0,.62), 0 0 4rem color-mix(in srgb, var(--position-color) 52%, transparent); }
 .nomination-card.position-qb { --position-color: #d34150; --position-start: #a92331; --position-end: #701521; }
 .nomination-card.position-rb { --position-color: #2e8cc4; --position-start: #17689a; --position-end: #10466b; }
 .nomination-card.position-wr { --position-color: #8c98a3; --position-start: #414a54; --position-end: #252d35; }
@@ -191,7 +192,7 @@ dialog::backdrop { background: rgba(1,7,15,.76); }
 .nomination-card h2 { max-width: 100%; margin: 0; overflow-wrap: anywhere; font-size: clamp(3rem, 9vw, 8.5rem); line-height: .88; letter-spacing: -.045em; text-shadow: 0 .08em .2em rgba(0,0,0,.4); }
 .nomination-card > p:not(:first-child) { margin: 0; color: rgba(255,255,255,.9); font-size: clamp(1.1rem, 2.6vw, 2.2rem); font-weight: 800; }
 .nomination-card small { padding: .55em 1em; border-radius: 999px; color: var(--gold-2); background: rgba(3,12,24,.38); font-size: clamp(.78rem, 1.5vw, 1.2rem); font-weight: 850; }
-.board-grid { min-height: 0; display: grid; grid-template-columns: repeat(var(--team-columns, 4), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: .45rem; overflow: auto; }
+.board-grid { width: 100%; height: 100%; min-height: 0; display: grid; grid-template-columns: repeat(var(--team-columns, 4), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: .45rem; overflow: auto; }
 .board-team { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; border: 1px solid var(--line); border-radius: .75rem; overflow: hidden; background: rgba(10,31,57,.94); }
 .board-team.is-nominating { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 .board-team header { min-width: 0; overflow: hidden; padding: .55rem .6rem; background: rgba(255,255,255,.05); }

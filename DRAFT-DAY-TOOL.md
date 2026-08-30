@@ -8,7 +8,7 @@ Every change must make the tool easier, more intuitive, more desirable, and fast
 
 ## Current status — August 17, 2026
 
-Stage One is feature-complete and released. The current web-shell release is `20260818a`.
+Stage One is feature-complete and released. The current web-shell release is `20260830a`.
 
 - League-specific teams, starting pools, bid rules, roster minimum/maximum, optional keeper maximum, optional position maximums, and nomination mode are configurable.
 - Organizer, Auctioneer, and Draft Board use separate access codes and role sessions.

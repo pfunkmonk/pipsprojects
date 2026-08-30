@@ -163,6 +163,13 @@ test("selected auction player drives a large public nomination overlay", () => {
   assert.match(boardSource, /snapshot\.nominatedPlayer/);
   assert.match(appCss, /\.nomination-overlay/);
   assert.match(appCss, /font-size: clamp\(3rem, 9vw, 8\.5rem\)/);
+  assert.match(boardPage, /id="board-stage"[\s\S]*id="board-grid"[\s\S]*id="nomination-overlay"/);
+  assert.match(appCss, /\.board-stage \{ --manager-band-height:/);
+  assert.match(appCss, /inset: var\(--manager-band-height\) 0 0/);
+  assert.match(boardSource, /function syncNominationBoundary/);
+  assert.match(boardSource, /firstRowBottom - stageTop/);
+  assert.match(boardSource, /window\.addEventListener\("resize", syncNominationBoundary\)/);
+  assert.match(guidePage, /manager's team, cash, roster count, and maximum bid remain visible/i);
 });
 
 test("auction history stays with the compact winning-assignment column", () => {

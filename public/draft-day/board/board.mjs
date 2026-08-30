@@ -98,6 +98,8 @@ function render() {
     }
     card.append(header, roster); grid.append(card);
   }
+  syncNominationBoundary();
+  window.requestAnimationFrame(syncNominationBoundary);
   const sold = snapshot.assignments.filter((assignment) => assignment.acquisitionType === "auction").length;
   const time = new Date(snapshot.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
   byId("board-status").textContent = `Updated ${time} · ${sold} auction purchases · ${snapshot.assignments.filter((assignment) => assignment.acquisitionType === "keeper").length} keepers`;
@@ -155,6 +157,17 @@ async function openBoard(code) {
   attachChannel(); showBoard(usingCache);
 }
 
+function syncNominationBoundary() {
+  const stage = byId("board-stage");
+  const headers = [...byId("board-grid").querySelectorAll(".board-team > header")];
+  if (!headers.length) { stage.style.removeProperty("--manager-band-height"); return; }
+  const stageTop = stage.getBoundingClientRect().top;
+  const headerRects = headers.map((header) => header.getBoundingClientRect());
+  const firstRowTop = Math.min(...headerRects.map((rect) => rect.top));
+  const firstRowBottom = Math.max(...headerRects.filter((rect) => Math.abs(rect.top - firstRowTop) < 2).map((rect) => rect.bottom));
+  stage.style.setProperty("--manager-band-height", `${Math.max(0, Math.ceil(firstRowBottom - stageTop))}px`);
+}
+
 async function restoreBoardSession(value) {
   if (!value) return false;
   byId("login-panel").hidden = true;
@@ -199,6 +212,7 @@ async function logOut() {
 byId("logout").addEventListener("click", () => void logOut());
 window.addEventListener("offline", () => { byId("connection-state").textContent = "OFFLINE"; byId("connection-state").classList.add("is-error"); });
 window.addEventListener("online", () => void refresh());
+window.addEventListener("resize", syncNominationBoundary);
 const initialLeague = query.get("league") || rememberedLeague(localStorage, "board"); byId("league-code").value = initialLeague;
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("../service-worker.js").catch(() => {});
 void restoreBoardSession(initialLeague);
