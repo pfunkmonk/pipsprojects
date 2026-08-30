@@ -8,7 +8,7 @@
   <title>Thunder Bowl In-Season GM</title>
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and IR-stash command center." />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=20260808h" />
-  <link rel="stylesheet" href="./season.css?v=20260830a" />
+  <link rel="stylesheet" href="./season.css?v=20260830d" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to recommendations</a>
@@ -36,7 +36,7 @@
         <span id="generated-label">Plan not loaded</span>
       </div>
       <div class="header-actions">
-        <button id="refresh-plan" class="button primary" type="button">Refresh now</button>
+        <button id="refresh-plan" class="button primary" type="button">Update everything</button>
         <a class="button" href="../">Auction room</a>
       </div>
     </header>
@@ -46,12 +46,30 @@
     <section id="alerts" class="alerts" aria-live="polite"></section>
 
     <section class="sync-panel" aria-labelledby="sync-title">
-      <div><p class="eyebrow">Private league authority</p><h2 id="sync-title">Keep CBS rosters and weekly projections current</h2><p id="sync-copy">Sync all 12 CBS rosters before acting on availability, drops, or manager movement.</p></div>
-      <div class="sync-actions">
-        <button id="sync-cbs" class="button primary" type="button">Sync private league data</button>
-        <label class="button file-button">Import CBS JSON<input id="cbs-file" type="file" accept="application/json,.json" /></label>
-        <label class="button file-button">Import FBG weekly CSV<input id="fbg-file" type="file" accept="text/csv,.csv" /></label>
-        <button id="export-plan" class="button" type="button">Export plan JSON</button>
+      <div class="sync-intro"><p class="eyebrow">One-click weekly update</p><h2 id="sync-title">One button updates the whole week</h2><p id="sync-copy">Update everything captures all 12 CBS rosters, pulls this week’s Footballguys projections, and refreshes injuries, news, and IR targets.</p></div>
+      <div class="update-source-grid" aria-label="One-click update sources">
+        <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small></div></article>
+        <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>Weekly projections</strong><small id="update-fbg-state">Ready to download</small></div></article>
+        <article id="update-news-source" class="update-source"><span aria-hidden="true">3</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small></div></article>
+      </div>
+      <div class="setup-and-recovery">
+        <details id="helper-setup" class="setup-details">
+          <summary>First-time setup: connect your CBS login once</summary>
+          <div class="setup-copy">
+            <p>The helper reads the 12 Thunder Bowl roster pages only when you press <strong>Update everything</strong>. It uses your normal signed-in CBS tab and never receives or stores your password.</p>
+            <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong>, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into Thunder Bowl on CBS in the same Chrome profile. That is the only sign-in setup.</li></ol>
+            <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.2.0.zip" download>Download one-click helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS sign-in</a></div>
+          </div>
+        </details>
+        <details class="recovery-details">
+          <summary>Advanced recovery tools</summary>
+          <p>These file controls are emergency fallbacks. Normal weekly updates do not require JSON or CSV files.</p>
+          <div class="sync-actions">
+            <label class="button file-button">Import recovery CBS JSON<input id="cbs-file" type="file" accept="application/json,.json" /></label>
+            <label class="button file-button">Import recovery FBG CSV<input id="fbg-file" type="file" accept="text/csv,.csv" /></label>
+            <button id="export-plan" class="button" type="button">Export plan JSON</button>
+          </div>
+        </details>
       </div>
       <p id="action-status" class="status-line" role="status" aria-live="polite"></p>
     </section>
@@ -90,6 +108,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260830c"></script>
+  <script type="module" src="./season.mjs?v=20260830d"></script>
 </body>
 </html>

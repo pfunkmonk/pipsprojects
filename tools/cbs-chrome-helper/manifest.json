@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Thunder Bowl CBS Helper",
-  "version": "0.1.0",
-  "description": "User-triggered, read-only roster capture for the private Thunder Bowl draft tool.",
+  "name": "Thunder Bowl Data Helper",
+  "version": "0.2.0",
+  "description": "User-triggered, read-only CBS roster capture for the Thunder Bowl one-click weekly update.",
   "permissions": ["scripting", "tabs"],
   "host_permissions": [
     "https://berrymvp.football.cbssports.com/*"
@@ -22,7 +22,6 @@
     }
   ],
   "action": {
-    "default_title": "Thunder Bowl CBS Helper"
+    "default_title": "Thunder Bowl Data Helper"
   }
 }
-

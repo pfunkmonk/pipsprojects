@@ -125,7 +125,7 @@ export function requestCbsRosterCapture({ targetWindow = window, origin = window
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       targetWindow.removeEventListener("message", onMessage);
-      reject(new Error("CBS helper did not answer. Install or enable the Thunder Bowl CBS Helper, then try again."));
+      reject(new Error("The one-click helper did not answer. Install or enable the Thunder Bowl Data Helper, then try again."));
     }, timeoutMs);
     function onMessage(event) {
       const data = event.data;

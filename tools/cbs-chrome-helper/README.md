@@ -1,15 +1,24 @@
-# Thunder Bowl CBS Helper
+# Thunder Bowl Data Helper
 
-This unpacked Chrome extension performs one user-triggered, read-only capture of the 12 Thunder Bowl team pages. It does not read passwords, cookies, browsing history, or unrelated pages; it does not write to CBS. It opens one inactive CBS tab, visits the 12 known team pages, returns the structured roster/salary/contract snapshot to the Thunder Bowl Admin page, and closes the tab.
+This small Chrome helper provides the private CBS portion of the In-Season GM’s **Update everything** button. It reads all 12 Thunder Bowl roster pages only when that button is pressed. Footballguys projections and public injury/news sources are downloaded by the server in the same update.
 
-Installation is intentionally manual because Chrome requires the user to approve extension permissions:
+## One-time setup
 
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked** and select this folder.
-4. Sign in to the Thunder Bowl CBS league in the same Chrome profile.
-5. In Thunder Bowl, either open **Admin & data** and choose **Capture current CBS rosters**, or open **In-Season GM** and choose **Sync private league data**.
+1. Extract `thunder-bowl-data-helper-v0.2.0.zip` to a permanent folder.
+2. Open `chrome://extensions` in the Chrome profile used for Thunder Bowl.
+3. Turn on **Developer mode**.
+4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
+5. Sign into `https://berrymvp.football.cbssports.com/` in the same Chrome profile.
+6. Open the In-Season GM and choose **Update everything**.
 
-The helper is deliberately user-triggered. CBS has no stable league API used by this project, so the in-season service never stores CBS credentials, cookies, or session tokens and never pretends that the private league sync is unattended.
+After setup, the single button captures CBS rosters, additions/drops and current CBS player context; downloads and scores the current Footballguys weekly projection file; refreshes injuries, news and IR-return evidence; and rebuilds the weekly plan.
 
-Do not install until the helper has passed browser QA and the user has explicitly approved installation.
+## Privacy and authority boundary
+
+- No password, cookie, or browser-storage permission is requested.
+- The helper does not store CBS credentials or session data.
+- It opens CBS roster pages in an inactive tab only after the user presses the update button, extracts the roster table, then closes the tab.
+- It cannot change CBS rosters, lineups, waivers, trades, keepers, salaries, contracts, auction values, or ledger state.
+- The manifest is limited to the Thunder Bowl CBS host and the Thunder Bowl app origins.
+
+The JSON and CSV imports in **Advanced recovery tools** are fallbacks only; they are not part of the normal workflow.

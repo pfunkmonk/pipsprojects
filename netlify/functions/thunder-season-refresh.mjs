@@ -1,5 +1,5 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
-import { importCbsLeagueSnapshot, importFbgWeeklyCsv, refreshSeasonPlan } from "./_lib/season-service.mjs";
+import { importCbsLeagueSnapshot, importFbgWeeklyCsv, refreshSeasonPlan, updateSeasonEverything } from "./_lib/season-service.mjs";
 
 const MAX_BODY_BYTES = 2_100_000;
 
@@ -31,6 +31,10 @@ export default async function handler(request) {
     if (input.action === "refresh-public") {
       exactKeys(input, ["action"]);
       return json(await refreshSeasonPlan({ forcePublic: true }));
+    }
+    if (input.action === "update-everything") {
+      exactKeys(input, ["action", "snapshot"]);
+      return json(await updateSeasonEverything(input.snapshot));
     }
     if (input.action === "sync-cbs") {
       exactKeys(input, ["action", "snapshot"]);

@@ -5,6 +5,21 @@ export const FBG_WEEKLY_COLUMNS = Object.freeze([
   "player_id", "player_name", "nfl_team", "position", "week", "projected_points", "floor", "ceiling", "provider_as_of",
 ]);
 
+export const FBG_NATIVE_WEEKLY_COLUMNS = Object.freeze([
+  "id", "name", "pos", "team", "set-id", "set-userid", "set-name", "ssn-gms", "ssn-ssn",
+  "pass-2pt", "pass-att", "pass-cmp", "pass-1d", "pass-int", "pass-sck", "pass-td", "pass-yds",
+  "rush-2pt", "rush-car", "rush-1d", "rush-td", "rush-yds",
+  "rec-2pt", "rec-1d", "rec-rec", "rec-tgt", "rec-td", "rec-yds", "fum-lost",
+  "kck-xpa", "kck-xpc", "kck-xpm", "kck-fga", "kck-fgc", "kck-fgm",
+  "idp-2pr", "idp-ast", "idp-blk", "idp-fmr", "idp-fmf", "idp-int", "idp-pd", "idp-sck", "idp-saf", "idp-tac", "idp-tfl", "idp-td",
+  "tmd-2pr", "tmd-blk", "tmd-fmf", "tmd-fmr", "tmd-int", "tmd-pa", "tmd-sck", "tmd-saf", "tmd-td", "tmd-ya",
+  "pr-td", "pr-yds", "kr-td", "kr-yds",
+]);
+
+const FBG_DOWNLOAD_ORIGIN = "https://www.footballguys.com";
+const FBG_CONSENSUS_SET = "Projections Consensus";
+const FBG_POSITION = Object.freeze({ qb: "QB", rb: "RB", wr: "WR", te: "TE", pk: "K", td: "DST" });
+
 function csvRows(text) {
   if (typeof text !== "string" || text.length > 2_000_000) throw new Error("Footballguys import must be a CSV under 2 MB.");
   const rows = [];
@@ -36,6 +51,144 @@ function optionalNumber(value, label) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0 || number > 100) throw new Error(`${label} must be blank or from 0 through 100.`);
   return number;
+}
+
+function pointsAllowedScore(value) {
+  if (value <= 0) return 10;
+  if (value <= 6) return 8;
+  if (value <= 13) return 6;
+  if (value <= 20) return 4;
+  if (value <= 34) return 0;
+  if (value <= 44) return -4;
+  return -6;
+}
+
+function nativeNumber(row, key) {
+  const value = Number(row[key]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function thunderBowlPoints(row, position) {
+  const n = (key) => nativeNumber(row, key);
+  const offense = n("pass-yds") * 0.04 + n("pass-td") * 6 - n("pass-int") * 2 + n("pass-2pt") * 2
+    + n("rush-yds") * 0.1 + n("rush-td") * 6 + n("rush-2pt") * 2
+    + n("rec-rec") + n("rec-yds") * 0.1 + n("rec-td") * 6 + n("rec-2pt") * 2
+    - n("fum-lost") * 2;
+  const kicking = n("kck-fgc") * 3 + n("kck-xpc");
+  const hasDefenseGame = n("tmd-pa") > 0 || n("tmd-ya") > 0 || ["tmd-sck", "tmd-int", "tmd-fmr", "tmd-td", "tmd-saf"].some((key) => n(key) > 0);
+  const defense = n("tmd-sck") * 2 + n("tmd-int") * 2 + n("tmd-fmr") * 2
+    + n("tmd-td") * 6 + n("tmd-saf") * 2
+    + (position === "DST" && hasDefenseGame ? pointsAllowedScore(n("tmd-pa")) : 0);
+  const returns = (n("kr-td") + n("pr-td")) * 6;
+  return Math.max(0, Math.round((offense + kicking + defense + returns) * 10) / 10);
+}
+
+function normalizeTeam(value) {
+  const team = String(value || "").trim().toUpperCase();
+  return ({ ARZ: "ARI", JAC: "JAX", LA: "LAR" })[team] || team;
+}
+
+function fbgPackIndexes(pack) {
+  const byFbgId = new Map();
+  const byIdentity = new Map();
+  for (const player of pack.players) {
+    if (player.id.startsWith("fbg:")) byFbgId.set(player.id.slice(4), player);
+    byIdentity.set(canonicalPlayerIdentity(player.name, player.position, player.nflTeam), player);
+  }
+  return { byFbgId, byIdentity };
+}
+
+function providerTimestamp(value) {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed) || parsed > Date.now() + 24 * 60 * 60_000) throw new Error("Footballguys weekly download has an invalid provider timestamp.");
+  return new Date(parsed).toISOString();
+}
+
+export function parseFbgNativeWeeklyCsv(text, pack, {
+  week,
+  providerAsOf = new Date().toISOString(),
+  minimumRows = 200,
+} = {}) {
+  if (!Number.isSafeInteger(week) || week < 1 || week > 18) throw new Error("Footballguys weekly download requires a valid NFL week.");
+  const rows = csvRows(text);
+  const header = rows.shift()?.map((value) => value.toLowerCase()) || [];
+  if (header.join(",") !== FBG_NATIVE_WEEKLY_COLUMNS.join(",")) throw new Error("Footballguys changed its official weekly download columns; automatic projections stopped safely.");
+  const indexes = fbgPackIndexes(pack);
+  const candidates = new Map();
+  let consensusRows = 0;
+  let unmatchedRows = 0;
+  for (let index = 0; index < rows.length; index += 1) {
+    const cells = rows[index];
+    if (cells.length !== header.length) throw new Error(`Footballguys weekly row ${index + 2} has ${cells.length} columns, not ${header.length}.`);
+    const row = Object.fromEntries(header.map((column, columnIndex) => [column, cells[columnIndex]]));
+    const position = FBG_POSITION[row.pos.toLowerCase()];
+    if (row["set-name"] !== FBG_CONSENSUS_SET || !position) continue;
+    consensusRows += 1;
+    const nflTeam = normalizeTeam(row.team);
+    const player = indexes.byFbgId.get(row.id)
+      || indexes.byIdentity.get(canonicalPlayerIdentity(row.name, position, nflTeam));
+    if (!player || player.position !== position) {
+      unmatchedRows += 1;
+      continue;
+    }
+    const item = {
+      playerId: player.id,
+      playerName: player.name,
+      position: player.position,
+      nflTeam: player.nflTeam,
+      week,
+      points: thunderBowlPoints(row, position),
+      floor: null,
+      ceiling: null,
+      providerAsOf: providerTimestamp(providerAsOf),
+    };
+    const prior = candidates.get(player.id);
+    if (!prior || item.points > prior.points) candidates.set(player.id, item);
+  }
+  const items = [...candidates.values()].sort((left, right) => left.playerId.localeCompare(right.playerId));
+  if (items.length < minimumRows || items.length > pack.players.length) throw new Error(`Footballguys automatic projection coverage is unsafe (${items.length} matched rows from ${consensusRows} consensus rows).`);
+  const capturedAt = new Date().toISOString();
+  return {
+    schemaVersion: 1,
+    season: pack.season,
+    week,
+    source: "Footballguys official weekly projections download",
+    authority: "registered projection input; one-click official download",
+    capturedAt,
+    providerAsOf: providerTimestamp(providerAsOf),
+    rawSha256: createHash("sha256").update(text).digest("hex"),
+    itemCount: items.length,
+    consensusRowCount: consensusRows,
+    unmatchedRowCount: unmatchedRows,
+    scoringFingerprint: "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1",
+    items,
+  };
+}
+
+export async function downloadFbgWeeklySnapshot(pack, week, {
+  fetchImpl = fetch,
+  timeoutMs = 20_000,
+} = {}) {
+  const url = `${FBG_DOWNLOAD_ORIGIN}/projections/download/weekly/all/${pack.season}/${week}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, {
+      redirect: "follow",
+      headers: { Accept: "text/csv,application/octet-stream;q=0.9" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Footballguys weekly download returned HTTP ${response.status}.`);
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > 2_000_000) throw new Error("Footballguys weekly download exceeds 2 MB.");
+    const providerAsOf = response.headers.get("last-modified") || response.headers.get("date") || new Date().toISOString();
+    return parseFbgNativeWeeklyCsv(text, pack, { week, providerAsOf });
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("Footballguys weekly download timed out.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function parseFbgWeeklyCsv(text, pack, { minimumRows = 8 } = {}) {

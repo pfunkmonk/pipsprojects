@@ -52,7 +52,7 @@ function playerWeekEvidence(player, week, fbgRows = new Map()) {
       source: sourceName,
       points: round(points),
       asOf: sourceName === "Footballguys" && manualFbg ? manualFbg.providerAsOf : seasonSource.asOf,
-      input: sourceName === "Footballguys" && manualFbg ? "owner weekly export" : "governed weekly shape",
+      input: sourceName === "Footballguys" && manualFbg ? "official weekly download" : "governed weekly shape",
     });
   }
   if (!sourceRows.length) {
@@ -485,7 +485,7 @@ export function buildSeasonRecommendationSnapshot({
     generatedAt,
     state: freshness.state,
     alerts: freshness.alerts,
-    refreshBehavior: "Automatic refresh updates public injury, depth, and news evidence. Sync private league data updates all 12 CBS rosters/availability. A Footballguys weekly export updates current-week projection evidence. Archived Tuesday plans never change.",
+    refreshBehavior: "Update everything captures all 12 CBS rosters and availability, downloads current-week Footballguys projections, and refreshes injury, depth, news, and IR evidence. Archived Tuesday plans never change.",
     sources: [
       sourceChip("CBS league", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : null, generatedAt, true),
       sourceChip("CBS stats", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : pack.sources.find((source) => source.name.includes("CBS Thunder Bowl weekly"))?.asOf, generatedAt),

@@ -1,4 +1,4 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260805g";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260830d";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 
 const byId = (id) => document.getElementById(id);
@@ -106,10 +106,32 @@ function renderHeader(value, offline) {
   const setupRequired = value.kind === "thunder-bowl-season-setup-required";
   const isCbs = value.baseline.authority.startsWith("authenticated");
   byId("sync-copy").textContent = setupRequired
-    ? "Your access code worked. Sync all 12 CBS rosters now to create the private in-season baseline and unlock recommendations."
+    ? "Your access code worked. Choose Update everything once to capture CBS, download weekly projections, and unlock the complete plan."
     : isCbs
-    ? `CBS all-team authority last captured ${dateTime(value.baseline.asOf)}. Sync again after waivers, trades, or lineup-changing roster moves.`
-    : "CBS has not been synced for the season. Waivers are blocked and the final auction ledger is only a Week 1 roster baseline.";
+    ? `Last full CBS capture: ${dateTime(value.baseline.asOf)}. Choose Update everything after waivers, trades, news, or lineup-changing roster moves.`
+    : "CBS has not been captured for the season. Choose Update everything before trusting availability, manager moves, or weekly lineup advice.";
+}
+
+function renderUpdateSource(rowId, stateId, source, summary, emptyText) {
+  const row = byId(rowId);
+  const state = byId(stateId);
+  row.classList.remove("updated", "failed");
+  if (summary) {
+    row.classList.add(summary.ok ? "updated" : "failed");
+    state.textContent = summary.ok
+      ? `Updated ${dateTime(summary.asOf || summary.capturedAt)}`
+      : `Needs attention: ${summary.error || "update failed"}`;
+    return;
+  }
+  state.textContent = source?.asOf ? `Last updated ${dateTime(source.asOf)}` : emptyText;
+}
+
+function renderUpdateSources(value) {
+  const sources = new Map(value.sources.map((source) => [source.label, source]));
+  const summary = value.updateSummary || null;
+  renderUpdateSource("update-cbs-source", "update-cbs-state", sources.get("CBS league"), summary?.cbs, "Needs the one-time CBS helper");
+  renderUpdateSource("update-fbg-source", "update-fbg-state", sources.get("FBG projections"), summary?.footballguys, "Ready to download automatically");
+  renderUpdateSource("update-news-source", "update-news-state", sources.get("injury / news"), summary?.injuryNews, "Ready to refresh automatically");
 }
 
 function renderLineup(value) {
@@ -230,12 +252,16 @@ async function renderPlan(value, { offline = false } = {}) {
   renderWaivers(value);
   renderTrades(value);
   renderWatch(value);
-  byId("refresh-plan").disabled = offline || setupRequired;
-  byId("sync-cbs").disabled = offline;
+  renderUpdateSources(value);
+  byId("refresh-plan").disabled = offline;
   byId("cbs-file").disabled = offline;
   byId("fbg-file").disabled = offline || setupRequired;
   byId("export-plan").disabled = offline || setupRequired;
-  if (setupRequired && !offline) setStatus("Access accepted. Sync private CBS league data to finish the one-time in-season setup.");
+  if (setupRequired && !offline) {
+    byId("helper-setup").open = true;
+    setStatus("Access accepted. Complete the one-time helper setup, then choose Update everything.");
+  }
+  if (value.updateSummary?.cbs?.ok) byId("helper-setup").open = false;
   if (!offline && !setupRequired) await setMeta(PLAN_CACHE_KEY, value);
 }
 
@@ -259,7 +285,7 @@ async function postAction(payload) {
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(55_000),
+    signal: AbortSignal.timeout(90_000),
   }));
 }
 
@@ -269,7 +295,13 @@ async function runAction(button, message, task) {
   try {
     const value = await task();
     await renderPlan(value);
-    setStatus(`Updated ${dateTime(value.generatedAt)}.`);
+    const failed = value.updateSummary
+      ? Object.entries(value.updateSummary).filter(([key, result]) => key !== "capturedAt" && result?.ok === false).map(([key]) => key)
+      : [];
+    setStatus(failed.length
+      ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
+      : `Everything updated ${dateTime(value.generatedAt)}. CBS moves, weekly projections, injuries, news, and IR targets are current.`
+    , failed.length > 0);
   } catch (error) {
     setStatus(errorMessage(error), true);
   } finally {
@@ -335,8 +367,17 @@ function downloadPlan() {
 }
 
 byId("login-form").addEventListener("submit", attemptLogin);
-byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Refreshing public projections, injuries, depth, and news…", () => postAction({ action: "refresh-public" })));
-byId("sync-cbs").addEventListener("click", () => runAction(byId("sync-cbs"), "Asking the local CBS Helper to capture all 12 authenticated rosters…", async () => postAction({ action: "sync-cbs", snapshot: validateCbsRosterSnapshot(await requestCbsRosterCapture()) })));
+byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 3: capturing all 12 CBS rosters from your signed-in Chrome session…", async () => {
+  let snapshot;
+  try {
+    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 30_000 }));
+  } catch (error) {
+    byId("helper-setup").open = true;
+    throw new Error(`${errorMessage(error)} Open “First-time setup” below; after that, this same button updates everything.`);
+  }
+  setStatus("CBS captured. Steps 2 and 3: downloading Footballguys projections and refreshing injuries, news, and IR evidence…");
+  return postAction({ action: "update-everything", snapshot });
+}));
 byId("cbs-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;

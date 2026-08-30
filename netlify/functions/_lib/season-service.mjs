@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalizeCbsLeagueSnapshot, leagueStateFromFinalLedger } from "./cbs-season-source.mjs";
-import { parseFbgWeeklyCsv } from "./fbg-season-source.mjs";
+import { downloadFbgWeeklySnapshot, parseFbgWeeklyCsv } from "./fbg-season-source.mjs";
 import { readLedger } from "./ledger-store.mjs";
 import { currentResearchSnapshot } from "./research-store.mjs";
 import { buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
@@ -73,7 +73,14 @@ export async function refreshSeasonPlan({
   if (researchResult.error) plan.alerts.push(`Depth/news refresh failed; no current research snapshot is available (${researchResult.error.message}).`);
   if (statusResult.error || researchResult.error) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
-  return { ...saved, week };
+  return {
+    ...saved,
+    week,
+    sourceRefresh: {
+      status: { ok: !statusResult.error, asOf: statusSnapshot?.capturedAt || null, error: statusResult.error?.message || null },
+      research: { ok: !researchResult.error, asOf: researchSnapshot?.capturedAt || null, error: researchResult.error?.message || null },
+    },
+  };
 }
 
 export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
@@ -86,7 +93,7 @@ export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
 export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
-  const syncMessage = "The final auction ledger does not yet contain all 12 complete rosters. Sync private CBS league data to establish the in-season baseline.";
+  const syncMessage = "The final auction ledger does not yet contain all 12 complete rosters. Choose Update everything to capture CBS and establish the in-season baseline.";
   return {
     schemaVersion: 1,
     kind: "thunder-bowl-season-setup-required",
@@ -96,7 +103,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
     state: "PARTIAL",
     requiresLeagueSync: true,
     alerts: [syncMessage],
-    refreshBehavior: "CBS league sync is required before recommendations can be generated. Authentication remains active so the private source can be supplied safely.",
+    refreshBehavior: "Update everything captures the authenticated CBS league baseline, downloads weekly projections, and refreshes public injury/news evidence in one action.",
     sources: [
       { label: "CBS league", asOf: null, ageMinutes: null, required: true },
       { label: "CBS stats", asOf: null, ageMinutes: null, required: false },
@@ -139,4 +146,47 @@ export async function importFbgWeeklyCsv(text, { now = new Date() } = {}) {
   await saveFbgWeeklySnapshot(snapshot, pack);
   const refreshed = await refreshSeasonPlan({ now });
   return { plan: refreshed.plan, source: { week: snapshot.week, capturedAt: snapshot.capturedAt, rows: snapshot.itemCount } };
+}
+
+export async function updateSeasonEverything(input, { now = new Date() } = {}) {
+  const pack = await readSeasonPack();
+  const week = seasonWeekForDate(now);
+  const snapshot = canonicalizeCbsLeagueSnapshot(input, pack);
+  const cbsSaved = await saveCbsLeagueState(snapshot, pack, { week });
+  let fbgSnapshot = null;
+  let fbgError = null;
+  try {
+    fbgSnapshot = await downloadFbgWeeklySnapshot(pack, week);
+    await saveFbgWeeklySnapshot(fbgSnapshot, pack);
+  } catch (error) {
+    fbgError = error instanceof Error ? error.message : String(error);
+  }
+  const refreshed = await refreshSeasonPlan({ now, forcePublic: true });
+  const publicFailures = Object.entries(refreshed.sourceRefresh)
+    .filter(([, result]) => !result.ok)
+    .map(([source, result]) => `${source}: ${result.error}`);
+  const updateSummary = {
+    capturedAt: new Date(now).toISOString(),
+    cbs: {
+      ok: true,
+      changed: cbsSaved.changed,
+      asOf: snapshot.capturedAt,
+      moves: cbsSaved.leagueMoves.length,
+      rosteredPlayers: snapshot.rosteredPlayerCount,
+    },
+    footballguys: fbgSnapshot
+      ? { ok: true, asOf: fbgSnapshot.providerAsOf, rows: fbgSnapshot.itemCount, week }
+      : { ok: false, asOf: null, rows: 0, week, error: fbgError },
+    injuryNews: {
+      ok: publicFailures.length === 0,
+      asOf: [refreshed.sourceRefresh.status.asOf, refreshed.sourceRefresh.research.asOf].filter(Boolean).sort().at(-1) || null,
+      error: publicFailures.join("; ") || null,
+    },
+  };
+  const plan = { ...refreshed.plan, updateSummary };
+  if (fbgError) {
+    plan.alerts = [...plan.alerts, `Footballguys projections could not update; the last-known projection snapshot remains in use (${fbgError}).`];
+    if (plan.state === "READY") plan.state = "PARTIAL";
+  }
+  return { plan, updateSummary };
 }

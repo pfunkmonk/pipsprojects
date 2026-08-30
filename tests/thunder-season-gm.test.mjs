@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
+import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
 import { leagueStateFromFinalLedger } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
@@ -66,7 +66,7 @@ test("an incomplete auction ledger returns a safe authenticated setup state inst
   assert.equal(setup.kind, "thunder-bowl-season-setup-required");
   assert.equal(setup.requiresLeagueSync, true);
   assert.equal(setup.lineup.starters.length, 0);
-  assert.match(setup.waivers.blockedReason, /Sync private CBS/);
+  assert.match(setup.waivers.blockedReason, /Update everything/);
   assert.match(setup.sourceFingerprint, /^[a-f0-9]{64}$/);
 });
 
@@ -90,6 +90,46 @@ test("Footballguys weekly CSV is strict, traceable, and never turns missing into
   assert.throws(() => parseFbgWeeklyCsv(csv.replace(",22.4,", ",,"), pack, { minimumRows: 1 }), /missing projected points/);
   assert.throws(() => parseFbgWeeklyCsv(csv.replace("player_id", "id"), pack, { minimumRows: 1 }), /headers must be exactly/);
   assert.throws(() => parseFbgWeeklyCsv(csv.replace(/\d{4}-\d{2}-\d{2}T[^,\r\n]+/, "2099-01-01T00:00:00.000Z"), pack, { minimumRows: 1 }), /invalid provider timestamp/);
+});
+
+test("official Footballguys weekly downloads use consensus stat lines and exact Thunder Bowl scoring", () => {
+  const pack = { season: 2026, players: [player("fbg:GibbJa00", "RB", 20, { name: "Jahmyr Gibbs", nflTeam: "DET" })] };
+  const values = Object.fromEntries(FBG_NATIVE_WEEKLY_COLUMNS.map((column) => [column, "0"]));
+  Object.assign(values, {
+    id: "GibbJa00", name: "Jahmyr Gibbs", pos: "rb", team: "DET", "set-id": "1", "set-userid": "0", "set-name": "Projections Consensus",
+    "rush-2pt": "1", "rush-yds": "80", "rush-td": "1", "rec-rec": "4", "rec-yds": "40", "fum-lost": "0.5",
+  });
+  const zeroDuplicate = { ...values, "set-id": "2", "rush-2pt": "0", "rush-yds": "0", "rush-td": "0", "rec-rec": "0", "rec-yds": "0", "fum-lost": "0" };
+  const csv = `${FBG_NATIVE_WEEKLY_COLUMNS.join(",")}\n${FBG_NATIVE_WEEKLY_COLUMNS.map((column) => zeroDuplicate[column]).join(",")}\n${FBG_NATIVE_WEEKLY_COLUMNS.map((column) => values[column]).join(",")}\n`;
+  const snapshot = parseFbgNativeWeeklyCsv(csv, pack, { week: 1, providerAsOf: "2026-08-30T16:00:00.000Z", minimumRows: 1 });
+  assert.equal(snapshot.items.length, 1);
+  assert.equal(snapshot.items[0].points, 23);
+  assert.equal(snapshot.source, "Footballguys official weekly projections download");
+  assert.equal(snapshot.consensusRowCount, 2);
+});
+
+test("official kicker conversions and DST points-allowed columns map without turning a bye into ten points", () => {
+  const pack = { season: 2026, players: [
+    player("fbg:AubrBr00", "K", 8, { name: "Brandon Aubrey", nflTeam: "DAL" }),
+    player("fbg:pitxxx99", "DST", 8, { name: "Pittsburgh Steelers", nflTeam: "PIT" }),
+    player("fbg:denxxx99", "DST", 8, { name: "Denver Broncos", nflTeam: "DEN" }),
+  ] };
+  const row = (overrides) => ({
+    ...Object.fromEntries(FBG_NATIVE_WEEKLY_COLUMNS.map((column) => [column, "0"])),
+    "set-name": "Projections Consensus",
+    ...overrides,
+  });
+  const rows = [
+    row({ id: "AubrBr00", name: "Brandon Aubrey", pos: "pk", team: "DAL", "kck-xpc": "2", "kck-fgc": "1.5" }),
+    row({ id: "pitxxx99", name: "Pittsburgh Steelers", pos: "td", team: "PIT", "tmd-sck": "2", "tmd-int": "0.8", "tmd-fmr": "0.8", "tmd-td": "0.5", "tmd-saf": "0.04", "tmd-pa": "20", "tmd-ya": "333" }),
+    row({ id: "denxxx99", name: "Denver Broncos", pos: "td", team: "DEN" }),
+  ];
+  const csv = `${FBG_NATIVE_WEEKLY_COLUMNS.join(",")}\n${rows.map((values) => FBG_NATIVE_WEEKLY_COLUMNS.map((column) => values[column]).join(",")).join("\n")}\n`;
+  const snapshot = parseFbgNativeWeeklyCsv(csv, pack, { week: 1, providerAsOf: "2026-08-30T16:00:00.000Z", minimumRows: 3 });
+  const points = new Map(snapshot.items.map((item) => [item.playerId, item.points]));
+  assert.equal(points.get("fbg:AubrBr00"), 6.5);
+  assert.equal(points.get("fbg:pitxxx99"), 14.3);
+  assert.equal(points.get("fbg:denxxx99"), 0);
 });
 
 test("exact optimizer fills 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST without bench scoring", () => {
@@ -182,7 +222,10 @@ test("private season shell exposes the complete weekly workflow without unsafe H
     readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8"),
     readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
   ]);
-  for (const id of ["refresh-plan", "sync-cbs", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["refresh-plan", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, />Update everything</);
+  assert.match(html, /Advanced recovery tools/);
+  assert.match(source, /action: "update-everything"/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
