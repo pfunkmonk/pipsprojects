@@ -26,6 +26,9 @@ const required = [
   "public/thunder-bowl/cbs-roster-snapshot.mjs",
   "public/thunder-bowl/personal-board-exchange.mjs",
   "public/thunder-bowl/storage.mjs",
+  "public/thunder-bowl/season/index.html",
+  "public/thunder-bowl/season/season.css",
+  "public/thunder-bowl/season/season.mjs",
   "public/thunder-bowl/sample-draft-pack.json",
   "netlify/functions/_data/draft-pack-2026-provisional.json",
   "public/thunder-bowl/service-worker.js",
@@ -61,6 +64,10 @@ const required = [
   "netlify/functions/thunder-news.mjs",
   "netlify/functions/thunder-research.mjs",
   "netlify/functions/thunder-intelligence-collector.mjs",
+  "netlify/functions/thunder-season-snapshot.mjs",
+  "netlify/functions/thunder-season-refresh.mjs",
+  "netlify/functions/thunder-season-tuesday-collector.mjs",
+  "netlify/functions/thunder-season-watch-collector.mjs",
   "netlify/functions/thunder-public.mjs",
   "netlify/functions/_lib/auth.mjs",
   "netlify/functions/_lib/ledger-generation.mjs",
@@ -68,6 +75,13 @@ const required = [
   "netlify/functions/_lib/status-store.mjs",
   "netlify/functions/_lib/news-store.mjs",
   "netlify/functions/_lib/research-store.mjs",
+  "netlify/functions/_lib/cbs-season-source.mjs",
+  "netlify/functions/_lib/fbg-season-source.mjs",
+  "netlify/functions/_lib/season-pack.mjs",
+  "netlify/functions/_lib/season-recommendations.mjs",
+  "netlify/functions/_lib/season-service.mjs",
+  "netlify/functions/_lib/season-store.mjs",
+  "netlify/functions/_lib/season-time.mjs",
   "tools/cbs-chrome-helper/manifest.json",
   "tools/cbs-chrome-helper/page-bridge.js",
   "tools/cbs-chrome-helper/service-worker.mjs",
@@ -86,7 +100,7 @@ try {
 if (publicPackExists) throw new Error("The private Thunder Bowl evidence pack must never be published as a static asset.");
 
 const hub = await readFile(resolve(root, "public/index.html"), "utf8");
-if (!hub.includes('href="/thunder-bowl/"') || !hub.includes('href="/thunder-bowl/auctioneer/"') || !hub.includes("Thunder Bowl 2026")) {
+if (!hub.includes('href="/thunder-bowl/"') || !hub.includes('href="/thunder-bowl/auctioneer/"') || !hub.includes('href="/thunder-bowl/season/"') || !hub.includes("Thunder Bowl 2026")) {
   throw new Error("Pip's Projects hub is missing one or more Thunder Bowl access links.");
 }
 if (!hub.includes('href="/draft-day/"') || !hub.includes('href="/draft-day/auctioneer/"') || !hub.includes('href="/draft-day/board/"') || !hub.includes("Pip's Draft Day Tool")) {

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#071a31" />
+  <title>Thunder Bowl In-Season GM</title>
+  <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and IR-stash command center." />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=20260808h" />
+  <link rel="stylesheet" href="./season.css?v=20260830a" />
+</head>
+<body>
+  <a class="skip-link" href="#season-main">Skip to recommendations</a>
+
+  <main id="login-view" class="login-shell" aria-labelledby="login-title">
+    <section class="login-card">
+      <div class="brand"><span aria-hidden="true">TB</span><div><p class="eyebrow">Dogs of War</p><h1 id="login-title">In-Season GM</h1></div></div>
+      <p>Use the same private Thunder Bowl access code. A successful online login also enables unmistakably stale, read-only offline recovery on this device.</p>
+      <form id="login-form">
+        <label for="access-code">Access code</label>
+        <input id="access-code" type="password" autocomplete="current-password" minlength="6" maxlength="12" required />
+        <button class="button primary" type="submit">Open weekly plan</button>
+      </form>
+      <p id="login-status" class="status-line" role="status" aria-live="polite">Checking your session…</p>
+      <a class="quiet-link" href="../">Back to auction command center</a>
+    </section>
+  </main>
+
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <div class="brand"><span aria-hidden="true">TB</span><div><p class="eyebrow">Thunder Bowl 2026</p><h1>In-Season GM</h1></div></div>
+      <div class="week-state" aria-label="Plan status">
+        <strong id="week-label">Week —</strong>
+        <span id="freshness-state" class="state-chip">LOADING</span>
+        <span id="generated-label">Plan not loaded</span>
+      </div>
+      <div class="header-actions">
+        <button id="refresh-plan" class="button primary" type="button">Refresh now</button>
+        <a class="button" href="../">Auction room</a>
+      </div>
+    </header>
+
+    <section id="source-strip" class="source-strip" aria-label="Source freshness"></section>
+    <section id="offline-banner" class="alert danger" hidden><strong>OFFLINE — STALE RECOVERY SNAPSHOT</strong><span>Recommendations cannot update or verify availability until this device reconnects.</span></section>
+    <section id="alerts" class="alerts" aria-live="polite"></section>
+
+    <section class="sync-panel" aria-labelledby="sync-title">
+      <div><p class="eyebrow">Private league authority</p><h2 id="sync-title">Keep CBS rosters and weekly projections current</h2><p id="sync-copy">Sync all 12 CBS rosters before acting on availability, drops, or manager movement.</p></div>
+      <div class="sync-actions">
+        <button id="sync-cbs" class="button primary" type="button">Sync private league data</button>
+        <label class="button file-button">Import CBS JSON<input id="cbs-file" type="file" accept="application/json,.json" /></label>
+        <label class="button file-button">Import FBG weekly CSV<input id="fbg-file" type="file" accept="text/csv,.csv" /></label>
+        <button id="export-plan" class="button" type="button">Export plan JSON</button>
+      </div>
+      <p id="action-status" class="status-line" role="status" aria-live="polite"></p>
+    </section>
+
+    <main id="season-main" class="dashboard">
+      <section class="panel lineup-panel" aria-labelledby="lineup-title">
+        <header class="panel-head"><div><p class="eyebrow">Exact legal lineup</p><h2 id="lineup-title">Start / sit plan</h2></div><strong id="lineup-total">— pts</strong></header>
+        <div class="table-wrap"><table><thead><tr><th>Slot</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th></th></tr></thead><tbody id="starter-rows"></tbody></table></div>
+        <div id="swap-list" class="compact-list"></div>
+        <details><summary>Bench and contingency order</summary><div id="bench-list" class="compact-list"></div></details>
+      </section>
+
+      <section class="panel waiver-panel" aria-labelledby="waiver-title">
+        <header class="panel-head"><div><p class="eyebrow">CBS-confirmed availability only</p><h2 id="waiver-title">Waiver priorities</h2></div><span>Up to 5</span></header>
+        <div id="waiver-list" class="card-list"></div>
+      </section>
+
+      <section class="panel trade-panel" aria-labelledby="trade-title">
+        <header class="panel-head"><div><p class="eyebrow">Two-sided and contract-aware</p><h2 id="trade-title">Trade ideas</h2></div><span>Explore, don’t assume</span></header>
+        <div id="trade-list" class="card-list"></div>
+      </section>
+
+      <section class="panel watch-panel" aria-labelledby="watch-title">
+        <header class="panel-head"><div><p class="eyebrow">Updates as the week changes</p><h2 id="watch-title">Week watch</h2></div><span>Moves · injuries · IR</span></header>
+        <div class="watch-grid">
+          <section><h3>Manager adds &amp; drops</h3><div id="move-list" class="compact-list"></div></section>
+          <section><h3>Injury report</h3><div id="injury-list" class="compact-list"></div></section>
+          <section><h3>IR return &amp; keeper stashes</h3><div id="ir-list" class="compact-list"></div></section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="evidence-dialog" aria-labelledby="evidence-title">
+    <div class="dialog-head"><div><p class="eyebrow">Decision evidence</p><h2 id="evidence-title">Evidence</h2></div><button id="close-evidence" class="icon-button" type="button" aria-label="Close evidence">×</button></div>
+    <div id="evidence-body" class="evidence-body"></div>
+  </dialog>
+
+  <script type="module" src="./season.mjs?v=20260830a"></script>
+</body>
+</html>

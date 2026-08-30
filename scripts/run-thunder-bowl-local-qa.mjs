@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mergeEventStreams, replayDraft, toPublicSnapshot, validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
+import { buildSeasonRecommendationSnapshot } from "../netlify/functions/_lib/season-recommendations.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const publicRoot = join(projectRoot, "public");
@@ -12,6 +13,55 @@ const displayToken = "local-qa-display";
 let events = [];
 let revision = 0;
 const generation = 1;
+
+function qaSeasonPlan() {
+  const shape = { QB: 2, RB: 4, WR: 4, TE: 2, K: 1, DST: 1 };
+  const dogsPlayers = Object.entries(shape).flatMap(([position, count]) => pack.players
+    .filter((player) => player.position === position && Number.isFinite(player.weeklyProjection?.points?.[0]))
+    .sort((left, right) => left.weeklyProjection.points[0] - right.weeklyProjection.points[0])
+    .slice(0, count));
+  const used = new Set(dogsPlayers.map((player) => player.id));
+  const remaining = pack.players.filter((player) => !used.has(player.id));
+  const teams = pack.leagueConfig.teams.map((team, teamIndex) => {
+    const players = team.id === "dogs-of-war" ? dogsPlayers : remaining.slice((teamIndex - (teamIndex > 3 ? 1 : 0)) * 14, (teamIndex - (teamIndex > 3 ? 1 : 0)) * 14 + 14);
+    players.forEach((player) => used.add(player.id));
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      roster: players.map((player, index) => ({ playerId: player.id, salary: index + 1, contractYear: (index % 3) + 1, opponent: null, gameTime: null, bye: player.weeklyProjection?.byeWeek ?? null })),
+    };
+  });
+  const availablePlayerIds = pack.players.filter((player) => !used.has(player.id)).map((player) => player.id);
+  const irPlayer = pack.players.find((player) => availablePlayerIds.includes(player.id) && ["RB", "WR", "TE"].includes(player.position) && player.marketValue >= 8);
+  const dogsInjury = dogsPlayers.find((player) => player.position === "RB");
+  const generatedAt = "2026-09-08T12:10:00.000Z";
+  const plan = buildSeasonRecommendationSnapshot({
+    pack,
+    week: 1,
+    generatedAt,
+    leagueState: {
+      source: "CBS Sports authenticated Thunder Bowl all-team roster report",
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-08T12:05:00.000Z",
+      rawSha256: "b".repeat(64),
+      teams,
+      availablePlayerIds,
+    },
+    statusSnapshot: {
+      capturedAt: "2026-09-08T12:06:00.000Z",
+      updates: [
+        { playerId: dogsInjury.id, severity: "moderate", injuryStatus: "Questionable", injuryBodyPart: "Hamstring", practiceParticipation: "Limited", newsUpdated: generatedAt },
+        { playerId: irPlayer.id, severity: "critical", status: "Injured Reserve", injuryStatus: "IR", injuryBodyPart: "Knee", practiceParticipation: "", newsUpdated: generatedAt },
+      ],
+    },
+    leagueMoves: [{ id: "qa-move", detectedAt: generatedAt, playerId: irPlayer.id, playerName: irPlayer.name, position: irPlayer.position, nflTeam: irPlayer.nflTeam, type: "DROP", from: { teamId: "angry-face", teamName: "Angry Face" }, to: null, evidence: "QA snapshot diff." }],
+  });
+  plan.sourceFingerprint = "a".repeat(64);
+  plan.idempotencyKey = "2026/week-1/live-watch/v1";
+  return plan;
+}
+
+const seasonPlan = qaSeasonPlan();
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -47,6 +97,8 @@ function ledgerPayload() {
 async function serveStatic(pathname, response) {
   const route = pathname === "/thunder-bowl/" || pathname === "/thunder-bowl"
     ? "thunder-bowl/index.html"
+    : pathname === "/thunder-bowl/season/" || pathname === "/thunder-bowl/season"
+      ? "thunder-bowl/season/index.html"
     : pathname === "/thunder-bowl/board"
       ? "thunder-bowl/public.html"
       : pathname.replace(/^\//, "");
@@ -88,6 +140,19 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === "/api/thunder-bowl/status") {
       json(response, 503, { error: "Live status intentionally disabled in isolated QA." });
+      return;
+    }
+    if (url.pathname === "/api/thunder-bowl/season/snapshot") {
+      json(response, 200, seasonPlan);
+      return;
+    }
+    if (url.pathname === "/api/thunder-bowl/season/refresh" && request.method === "POST") {
+      const body = await requestBody(request);
+      if (body.action !== "refresh-public") {
+        json(response, 400, { error: "Local QA accepts only the public refresh action." });
+        return;
+      }
+      json(response, 200, { plan: seasonPlan, archived: false, week: 1 });
       return;
     }
     if (url.pathname === "/api/thunder-bowl/ledger" && request.method === "GET") {

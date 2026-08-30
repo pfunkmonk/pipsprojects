@@ -51,6 +51,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/thunder-bowl/season/snapshot"
+  to = "/.netlify/functions/thunder-season-snapshot"
+  status = 200
+
+[[redirects]]
+  from = "/api/thunder-bowl/season/refresh"
+  to = "/.netlify/functions/thunder-season-refresh"
+  status = 200
+
+[[redirects]]
   from = "/api/thunder-bowl/admin"
   to = "/.netlify/functions/thunder-admin"
   status = 200

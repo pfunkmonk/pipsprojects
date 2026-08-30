@@ -8,7 +8,8 @@ Installation is intentionally manual because Chrome requires the user to approve
 2. Enable **Developer mode**.
 3. Choose **Load unpacked** and select this folder.
 4. Sign in to the Thunder Bowl CBS league in the same Chrome profile.
-5. In Thunder Bowl, open **Admin & data** and choose **Capture current CBS rosters**.
+5. In Thunder Bowl, either open **Admin & data** and choose **Capture current CBS rosters**, or open **In-Season GM** and choose **Sync private league data**.
+
+The helper is deliberately user-triggered. CBS has no stable league API used by this project, so the in-season service never stores CBS credentials, cookies, or session tokens and never pretends that the private league sync is unattended.
 
 Do not install until the helper has passed browser QA and the user has explicitly approved installation.
-

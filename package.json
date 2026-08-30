@@ -20,6 +20,7 @@
     "backtest:thunder-runs": "node scripts/backtest-position-runs.mjs",
     "backtest:thunder-projections": "node scripts/run-projection-backtest.mjs",
     "backtest:thunder-priority": "python scripts/backtest-priority-week-weights.py",
+    "backtest:thunder-season": "node scripts/backtest-thunder-season-advice.mjs",
     "build:thunder-consensus": "node scripts/build-thunder-consensus-handoff.mjs",
     "import:thunder-weekly-assets": "node scripts/import-weekly-assets.mjs",
     "import:thunder-source-assets": "node scripts/import-source-weekly-assets.mjs",

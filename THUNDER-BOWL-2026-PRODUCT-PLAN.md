@@ -195,3 +195,15 @@ Final projection status (August 29): the newest Footballguys, CBS, FantasyPros, 
 - Startup work is now organized around the draft-day critical path: authenticate, restore the cached governed pack and append-only ledger, compute current auction authority, and show the Draft room. Pack freshness, status, news, and research refresh immediately afterward without blocking the first decision.
 - Critical IndexedDB metadata uses one batch transaction, event and access reads run concurrently, large value-neutral intelligence archives hydrate after first paint, a valid cached pack avoids a blocking 2 MB download, hidden Keeper/Admin views render on demand, and the 717-player pool uses a tested fixed-window virtual table.
 - Mission-gate result: no projection, VBD, Market, Max, rival-WTP, legal-roster, public allowlist, correction-history, offline, or recovery authority changed. Browser QA measured a 531 ms warm authenticated reload, 1,713 initial DOM nodes, 14 rendered player rows, equal-height auction columns, and no horizontal overflow.
+
+## In-season operating model — August 30, 2026
+
+The auction system remains intact and authoritative for the completed draft. The in-season product is a new private read/recommend surface at `/thunder-bowl/season/`, linked inside the existing Thunder Bowl hub card.
+
+1. Freeze the first successful Tuesday plan at approximately 06:00 America/Denver using season/week/source/schema idempotency. Never rewrite the archived plan when later evidence changes.
+2. Maintain a separate live plan during the week. Public injury, status, depth, and news evidence can refresh automatically; authenticated CBS league state and Footballguys weekly projections remain user-triggered inputs.
+3. Show the week, generated time, READY/PARTIAL/STALE state, and per-source timestamps before recommendations. Preserve the last-known-good browser snapshot as an unmistakably stale, read-only outage recovery view.
+4. Rank the legal exact lineup first, then at most five CBS-confirmed waiver add/drop pairs and at most five two-sided trade explorations. Salary, contract, keeper, source disagreement, and missing-rule limits must remain visible.
+5. Track every manager’s detected roster movement from consecutive all-team CBS snapshots. Label moves as pickup, drop, or owner change; do not invent transaction order, waiver price, or trade mechanism.
+6. Maintain a current injury report and an explicit IR/PUP stash report for strong healthy players. Separate possible current-season utility from next-season keeper upside, and never infer a return date.
+7. After each completed week, compare the frozen Tuesday evidence with results. Keep context factors evidence-only unless the time-forward archive demonstrates a durable out-of-sample improvement.

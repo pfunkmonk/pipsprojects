@@ -187,3 +187,14 @@ Use signed-in Chrome for production QA at a 1536×960 CSS viewport (the 3072×19
 ## Known dependency advisory
 
 `npm audit --omit=dev` reports zero known production vulnerabilities as of August 17, 2026. Recheck before every deployment; do not force a breaking dependency downgrade solely to silence a future transitive development-only advisory.
+
+## In-season GM handoff — August 30, 2026
+
+- The private route is `/thunder-bowl/season/` and uses the same owner session as the auction command center. Auctioneer and Draft Board role cookies cannot read or refresh it. Its API responses are `no-store`, and `/api/` remains outside the service-worker cache.
+- The final 2026 locked auction ledger is the startup roster baseline. Waiver availability and manager movement remain blocked until a user-triggered CBS Helper capture validates all 12 teams; no CBS password, cookie, or token is stored by the application.
+- Current-week Footballguys projection evidence is accepted only through the exact versioned CSV contract shown by the import error message. The current CBS/Footballguys integration does not claim an unsupported unattended authenticated API.
+- Public injury/status and Footballguys/CBS news/depth evidence refresh during the week. Each CBS capture is content-addressed and diffed into pickup, drop, or owner-change evidence; the transaction mechanism is never inferred from a roster diff.
+- A dual-UTC scheduled function guards on 06:00 America/Denver Tuesday, so daylight and standard time use one local policy. The first successful plan for the week is stored write-once; later live-watch refreshes never overwrite that archive.
+- Lineup optimization enforces exactly 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST. Waivers require a CBS-confirmed available add and legal drop. Trades are limited to two-sided 1-for-1 exploration until the remaining roster-adjustment, salary-transfer, and contract rules are confirmed.
+- The IR report requires explicit IR/PUP/reserve evidence. It does not infer a return date or add injury-derived projection points; it separates current availability, healthy projection value, and keeper-stash upside.
+- Run `npm.cmd run backtest:thunder-season` plus `node --test tests/thunder-season-gm.test.mjs`. The preseason report is intentionally an invariant/sensitivity audit, not a predictive-accuracy claim; frozen Tuesday archives enable the first legitimate outcome backtest after Week 1.
