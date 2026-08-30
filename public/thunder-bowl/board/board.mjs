@@ -2,7 +2,7 @@ import { createDataSource } from "../shared/data-source.mjs";
 import { assertPublicSnapshot, downloadBoardCsv, orderedTeamAssignments, teamSalaryLedger, teamSummary } from "../shared/public-core.mjs";
 import { PROJECTOR_STALE_AFTER_MS, writeProjectorPresence } from "../shared/projector-presence.mjs";
 import { clockFromSnapshot, formatNominationClock } from "../shared/nomination-clock.mjs?v=20260808-cloud";
-import { calculateBoardGeometry } from "./board-layout.mjs";
+import { calculateBoardGeometry, calculateSaleFlight } from "./board-layout.mjs?v=20260830c";
 
 const source = createDataSource("board");
 const OFFLINE_SNAPSHOT_KEY = "thunder-bowl-public-board-snapshot-v1";
@@ -10,6 +10,9 @@ const app = document.getElementById("board-app");
 const board = document.getElementById("team-board");
 const status = document.getElementById("board-status");
 const connection = document.getElementById("connection-state");
+const SALE_SPOTLIGHT_HOLD_MS = 5_000;
+const SALE_SPOTLIGHT_FLIGHT_MS = 900;
+const SALE_TARGET_PULSE_MS = 2_800;
 let snapshot = null;
 let refreshInFlight = false;
 let visibleRosterRows = 0;
@@ -17,7 +20,8 @@ let lastSuccessfulRefresh = 0;
 let lastRefreshError = null;
 let renderedRevision = null;
 const knownAuctionSaleIds = new Set();
-let spotlightTimer = null;
+let activeSaleSpotlight = null;
+let pendingSaleAssignmentId = null;
 let openSalaryLedgerTeamId = null;
 
 function createSalaryLedgerDialog() {
@@ -138,13 +142,14 @@ function splitName(name) {
   return bits.length === 1 ? ["", name] : [`${bits[0][0]}.`, bits.slice(1).join(" ")];
 }
 
-function sticker(assignment, isNew = false) {
+function sticker(assignment, isArrivalPending = false) {
   const [first, last] = splitName(assignment.playerName);
   const byeLabel = Number.isInteger(assignment.byeWeek) ? `BYE ${assignment.byeWeek}` : "BYE —";
   const element = document.createElement("article");
-  element.className = `player-sticker${assignment.acquisitionType === "keeper" ? " is-keeper" : ""}${isNew ? " is-new-sale" : ""}`;
+  element.className = `player-sticker${assignment.acquisitionType === "keeper" ? " is-keeper" : ""}${isArrivalPending ? " is-sale-arrival-pending" : ""}`;
   element.dataset.assignmentId = assignment.id;
   element.dataset.pos = assignment.position;
+  if (isArrivalPending) element.setAttribute("aria-hidden", "true");
   element.setAttribute("aria-label", `${assignment.playerName}, ${assignment.position}, ${assignment.nflTeam}, ${byeLabel.toLowerCase()}, $${assignment.price}${assignment.contractYear ? `, keeper year ${assignment.contractYear}` : ""}`);
   const meta = document.createElement("span");
   meta.className = "sticker-meta";
@@ -213,15 +218,18 @@ function renderLiveStatus(auctionSales = activeAuctionSales()) {
 
 function render() {
   assertPublicSnapshot(snapshot);
+  const auctionSales = activeAuctionSales();
+  const isSubsequentUpdate = renderedRevision !== null && snapshot.revision !== renderedRevision;
+  const newSale = isSubsequentUpdate ? auctionSales.find((sale) => !knownAuctionSaleIds.has(sale.id)) : null;
+  if (newSale) {
+    finishActiveSaleSpotlight({ pulse: false });
+    pendingSaleAssignmentId = newSale.id;
+  }
   board.replaceChildren();
   board.style.gridTemplateColumns = `repeat(${snapshot.teams.length}, minmax(0, 1fr))`;
   const maximumAuctionRows = Math.max(0, ...snapshot.teams.map((team) =>
     orderedTeamAssignments(snapshot, team.id).filter((assignment) => assignment.acquisitionType === "auction").length));
   visibleRosterRows = Math.min(snapshot.rosterSize, snapshot.keeperSlots + maximumAuctionRows);
-  const auctionSales = activeAuctionSales();
-  const isSubsequentUpdate = renderedRevision !== null && snapshot.revision !== renderedRevision;
-  const newSale = isSubsequentUpdate ? auctionSales.find((sale) => !knownAuctionSaleIds.has(sale.id)) : null;
-  const newSaleId = newSale?.id || null;
   for (const team of snapshot.teams) {
     const summary = teamSummary(snapshot, team.id);
     const assignments = orderedTeamAssignments(snapshot, team.id);
@@ -268,7 +276,7 @@ function render() {
     slots.slice(0, visibleRosterRows).forEach((assignment, index) => {
       const slot = document.createElement("div");
       slot.className = `roster-slot${index === snapshot.keeperSlots - 1 ? " keeper-boundary" : ""}`;
-      if (assignment) slot.append(sticker(assignment, assignment.id === newSaleId));
+      if (assignment) slot.append(sticker(assignment, assignment.id === pendingSaleAssignmentId));
       column.append(slot);
     });
     board.append(column);
@@ -310,8 +318,104 @@ function showSaleSpotlight(assignment) {
   document.getElementById("spotlight-player").textContent = assignment.playerName;
   document.getElementById("spotlight-result").textContent = `${snapshot.teams.find((team) => team.id === assignment.teamId)?.name || assignment.teamId} · $${assignment.price}`;
   spotlight.hidden = false;
-  if (spotlightTimer) window.clearTimeout(spotlightTimer);
-  spotlightTimer = window.setTimeout(() => { spotlight.hidden = true; }, 2400);
+  activeSaleSpotlight = {
+    assignmentId: assignment.id,
+    animation: null,
+    clone: null,
+    timer: window.setTimeout(() => void flySaleSpotlightToSticker(assignment.id), SALE_SPOTLIGHT_HOLD_MS),
+  };
+}
+
+function saleTarget(assignmentId) {
+  return [...board.querySelectorAll(".player-sticker")]
+    .find((candidate) => candidate.dataset.assignmentId === assignmentId) || null;
+}
+
+function revealSaleTarget(assignmentId, { pulse = true } = {}) {
+  const target = saleTarget(assignmentId);
+  if (target) {
+    target.classList.remove("is-sale-arrival-pending");
+    target.removeAttribute("aria-hidden");
+    if (pulse) {
+      target.classList.remove("is-new-sale");
+      void target.offsetWidth;
+      target.classList.add("is-new-sale");
+      window.setTimeout(() => target.classList.remove("is-new-sale"), SALE_TARGET_PULSE_MS);
+    }
+  }
+  if (pendingSaleAssignmentId === assignmentId) pendingSaleAssignmentId = null;
+}
+
+function finishActiveSaleSpotlight({ pulse = true } = {}) {
+  const current = activeSaleSpotlight;
+  if (!current) return;
+  activeSaleSpotlight = null;
+  window.clearTimeout(current.timer);
+  current.animation?.cancel();
+  current.clone?.remove();
+  document.getElementById("sale-spotlight").hidden = true;
+  revealSaleTarget(current.assignmentId, { pulse });
+}
+
+async function flySaleSpotlightToSticker(assignmentId) {
+  const current = activeSaleSpotlight;
+  if (!current || current.assignmentId !== assignmentId) return;
+  const spotlight = document.getElementById("sale-spotlight");
+  const target = saleTarget(assignmentId);
+  if (!target || typeof spotlight.animate !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    finishActiveSaleSpotlight();
+    return;
+  }
+
+  const sourceRect = spotlight.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const flight = calculateSaleFlight(sourceRect, targetRect);
+  if (!flight) {
+    finishActiveSaleSpotlight();
+    return;
+  }
+
+  const clone = spotlight.cloneNode(true);
+  clone.removeAttribute("id");
+  clone.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
+  clone.classList.add("sale-flight-card");
+  clone.setAttribute("aria-hidden", "true");
+  clone.hidden = false;
+  Object.assign(clone.style, {
+    height: `${sourceRect.height}px`,
+    left: `${sourceRect.left}px`,
+    maxHeight: "none",
+    top: `${sourceRect.top}px`,
+    transform: "none",
+    width: `${sourceRect.width}px`,
+  });
+  document.body.append(clone);
+  spotlight.hidden = true;
+  current.clone = clone;
+  current.animation = clone.animate([
+    { opacity: 1, transform: "translate(0, 0) scale(1, 1)" },
+    {
+      opacity: 0.96,
+      transform: `translate(${flight.translateX}px, ${flight.translateY}px) scale(${flight.scaleX}, ${flight.scaleY})`,
+    },
+  ], {
+    duration: SALE_SPOTLIGHT_FLIGHT_MS,
+    easing: "cubic-bezier(.22,.8,.2,1)",
+    fill: "forwards",
+  });
+
+  try {
+    await current.animation.finished;
+  } catch {
+    // A newer sale or a viewport change intentionally cancels an obsolete flight.
+  }
+  if (activeSaleSpotlight !== current) {
+    clone.remove();
+    return;
+  }
+  activeSaleSpotlight = null;
+  clone.remove();
+  revealSaleTarget(assignmentId);
 }
 
 function renderClock() {
@@ -416,7 +520,11 @@ document.addEventListener("keydown", (event) => {
   }
 });
 source.subscribe(() => void refresh());
-window.addEventListener("resize", () => { sizeBoard(); updateReliability(); });
+window.addEventListener("resize", () => {
+  sizeBoard();
+  if (activeSaleSpotlight?.animation) finishActiveSaleSpotlight();
+  updateReliability();
+});
 window.setInterval(updateReliability, 1000);
 window.setInterval(renderClock, 250);
 renderClock();

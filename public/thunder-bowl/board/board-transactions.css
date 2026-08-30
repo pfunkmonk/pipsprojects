@@ -1,6 +1,8 @@
 #board-app{grid-template-rows:minmax(42px,6.5vh) auto 1fr minmax(20px,2.5vh)}
 .nomination-spotlight{position:fixed;z-index:45;left:50%;top:10%;transform:translateX(-50%);width:min(900px,78vw);padding:clamp(24px,2.2vw,46px);border:.28cqw solid #f4bd42;background:#07192af5;box-shadow:0 22px 80px #000e,inset .55cqw 0 #f4bd42;text-align:center;animation:nomination-arrival .24s ease-out}.nomination-spotlight small{display:block;color:#f4c75d;font-size:clamp(15px,1.25vw,25px);font-weight:950;letter-spacing:.22em}.nomination-spotlight strong{display:block;margin-top:.35cqw;color:#fff;font-family:Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif;font-size:clamp(44px,5.5vw,106px);line-height:.95;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nomination-spotlight span{display:block;margin-top:.65cqw;color:#d8ebf6;font-size:clamp(20px,2vw,38px);font-weight:900}@keyframes nomination-arrival{from{opacity:0;transform:translate(-50%,-12px) scale(.96)}to{opacity:1;transform:translateX(-50%) scale(1)}}
 :is(.nomination-spotlight,.sale-spotlight){top:var(--board-spotlight-safe-top,30vh);max-height:calc(100vh - var(--board-spotlight-safe-top,30vh) - var(--board-spotlight-safe-bottom,32px));overflow:hidden}
+.player-sticker.is-sale-arrival-pending{opacity:0}
+.sale-flight-card{position:fixed;z-index:70;margin:0;pointer-events:none;transform-origin:top left;will-change:transform,opacity}
 .last-sale-strip{
   min-height:76px;
   padding:.55cqw .9cqw;

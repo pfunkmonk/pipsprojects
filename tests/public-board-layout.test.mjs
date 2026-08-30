@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { calculateBoardGeometry } from "../public/thunder-bowl/board/board-layout.mjs";
+import { calculateBoardGeometry, calculateSaleFlight } from "../public/thunder-bowl/board/board-layout.mjs";
 
 test("public board preserves compact row height while typography receives exact row dimensions", () => {
   const early = calculateBoardGeometry({
@@ -43,6 +43,22 @@ test("public board geometry fails soft for incomplete dimensions", () => {
     headerRowHeight: 0,
     teamColumnWidth: 0,
   });
+});
+
+test("sale flight derives its transform from the live spotlight and destination sticker rectangles", () => {
+  assert.deepEqual(calculateSaleFlight(
+    { left: 300, top: 200, width: 600, height: 200 },
+    { left: 100, top: 500, width: 100, height: 50 },
+  ), {
+    translateX: -200,
+    translateY: 300,
+    scaleX: 1 / 6,
+    scaleY: 0.25,
+  });
+  assert.equal(calculateSaleFlight(
+    { left: 0, top: 0, width: 0, height: 200 },
+    { left: 100, top: 500, width: 100, height: 50 },
+  ), null);
 });
 
 test("public board loads the responsive legibility layer and prints bye weeks on stickers", async () => {
@@ -92,8 +108,25 @@ test("nomination and sale spotlights stay below the measured manager-information
   assert.match(boardSource, /syncTransactionSpotlightSafeZone\(\)/);
   assert.match(styles, /:is\(\.nomination-spotlight,\.sale-spotlight\)\{top:var\(--board-spotlight-safe-top/);
   assert.match(styles, /max-height:calc\(100vh - var\(--board-spotlight-safe-top/);
-  assert.match(boardIndex, /board-transactions\.css\?v=20260830b/);
-  assert.match(boardFallback, /board-transactions\.css\?v=20260830b/);
+  assert.match(boardIndex, /board-transactions\.css\?v=20260830c/);
+  assert.match(boardFallback, /board-transactions\.css\?v=20260830c/);
+});
+
+test("sold spotlight holds for five seconds, flies to its assignment sticker, and fails soft", async () => {
+  const [boardSource, styles] = await Promise.all([
+    readFile(new URL("../public/thunder-bowl/board/board.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/board/board-transactions.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(boardSource, /SALE_SPOTLIGHT_HOLD_MS = 5_000/);
+  assert.match(boardSource, /SALE_SPOTLIGHT_FLIGHT_MS = 900/);
+  assert.match(boardSource, /SALE_TARGET_PULSE_MS = 2_800/);
+  assert.match(boardSource, /candidate\.dataset\.assignmentId === assignmentId/);
+  assert.match(boardSource, /calculateSaleFlight\(sourceRect, targetRect\)/);
+  assert.match(boardSource, /prefers-reduced-motion: reduce/);
+  assert.match(boardSource, /typeof spotlight\.animate !== "function"/);
+  assert.match(boardSource, /finishActiveSaleSpotlight\(\{ pulse: false \}\)/);
+  assert.match(styles, /\.player-sticker\.is-sale-arrival-pending\{opacity:0\}/);
+  assert.match(styles, /\.sale-flight-card\{[^}]*transform-origin:top left/);
 });
 
 test("small-screen board names use a readable system face and protected minimum sizes", async () => {

@@ -32,3 +32,25 @@ export function calculateBoardGeometry({
     teamColumnWidth: Math.max(0, (width - gridChromeWidth) / columns),
   });
 }
+
+export function calculateSaleFlight(sourceRect, targetRect) {
+  const sourceLeft = Number(sourceRect?.left);
+  const sourceTop = Number(sourceRect?.top);
+  const sourceWidth = Number(sourceRect?.width);
+  const sourceHeight = Number(sourceRect?.height);
+  const targetLeft = Number(targetRect?.left);
+  const targetTop = Number(targetRect?.top);
+  const targetWidth = Number(targetRect?.width);
+  const targetHeight = Number(targetRect?.height);
+  const measurements = [sourceLeft, sourceTop, sourceWidth, sourceHeight, targetLeft, targetTop, targetWidth, targetHeight];
+  if (measurements.some((value) => !Number.isFinite(value)) || sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) {
+    return null;
+  }
+
+  return Object.freeze({
+    translateX: targetLeft - sourceLeft,
+    translateY: targetTop - sourceTop,
+    scaleX: targetWidth / sourceWidth,
+    scaleY: targetHeight / sourceHeight,
+  });
+}
