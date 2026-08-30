@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
 import { leagueStateFromFinalLedger } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
+import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
 import {
   buildInjuryWatch,
   buildSeasonRecommendationSnapshot,
@@ -67,6 +68,15 @@ test("an incomplete auction ledger returns a safe authenticated setup state inst
   assert.equal(setup.lineup.starters.length, 0);
   assert.match(setup.waivers.blockedReason, /Sync private CBS/);
   assert.match(setup.sourceFingerprint, /^[a-f0-9]{64}$/);
+});
+
+test("the protected season pack loads from both source and flattened Netlify bundle layouts", async () => {
+  const pack = await readSeasonPack();
+  assert.equal(pack.season, 2026);
+  assert.ok(pack.players.length >= 650);
+  const source = await readFile(new URL("../netlify/functions/_lib/season-pack.mjs", import.meta.url), "utf8");
+  assert.match(source, /new URL\("\.\/_data\/draft-pack-2026-provisional\.json"/);
+  assert.match(source, /new URL\("\.\.\/_data\/draft-pack-2026-provisional\.json"/);
 });
 
 test("Footballguys weekly CSV is strict, traceable, and never turns missing into zero", () => {
