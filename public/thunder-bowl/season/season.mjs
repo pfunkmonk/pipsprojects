@@ -103,8 +103,11 @@ function renderHeader(value, offline) {
     node.append(element("strong", "", "CHECK"), element("span", "", message));
     return node;
   }));
+  const setupRequired = value.kind === "thunder-bowl-season-setup-required";
   const isCbs = value.baseline.authority.startsWith("authenticated");
-  byId("sync-copy").textContent = isCbs
+  byId("sync-copy").textContent = setupRequired
+    ? "Your access code worked. Sync all 12 CBS rosters now to create the private in-season baseline and unlock recommendations."
+    : isCbs
     ? `CBS all-team authority last captured ${dateTime(value.baseline.asOf)}. Sync again after waivers, trades, or lineup-changing roster moves.`
     : "CBS has not been synced for the season. Waivers are blocked and the final auction ledger is only a Week 1 roster baseline.";
 }
@@ -219,6 +222,7 @@ function renderWatch(value) {
 async function renderPlan(value, { offline = false } = {}) {
   plan = value;
   offlineMode = offline;
+  const setupRequired = value.kind === "thunder-bowl-season-setup-required";
   byId("login-view").hidden = true;
   byId("app-view").hidden = false;
   renderHeader(value, offline);
@@ -226,8 +230,13 @@ async function renderPlan(value, { offline = false } = {}) {
   renderWaivers(value);
   renderTrades(value);
   renderWatch(value);
-  for (const control of [byId("refresh-plan"), byId("sync-cbs"), byId("cbs-file"), byId("fbg-file")]) control.disabled = offline;
-  if (!offline) await setMeta(PLAN_CACHE_KEY, value);
+  byId("refresh-plan").disabled = offline || setupRequired;
+  byId("sync-cbs").disabled = offline;
+  byId("cbs-file").disabled = offline;
+  byId("fbg-file").disabled = offline || setupRequired;
+  byId("export-plan").disabled = offline || setupRequired;
+  if (setupRequired && !offline) setStatus("Access accepted. Sync private CBS league data to finish the one-time in-season setup.");
+  if (!offline && !setupRequired) await setMeta(PLAN_CACHE_KEY, value);
 }
 
 async function responseJson(response) {

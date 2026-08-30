@@ -83,6 +83,45 @@ export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
   return (await refreshSeasonPlan({ now })).plan;
 }
 
+export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
+  const generatedAt = new Date(now).toISOString();
+  const week = seasonWeekForDate(now);
+  const syncMessage = "The final auction ledger does not yet contain all 12 complete rosters. Sync private CBS league data to establish the in-season baseline.";
+  return {
+    schemaVersion: 1,
+    kind: "thunder-bowl-season-setup-required",
+    season: pack.season,
+    week,
+    generatedAt,
+    state: "PARTIAL",
+    requiresLeagueSync: true,
+    alerts: [syncMessage],
+    refreshBehavior: "CBS league sync is required before recommendations can be generated. Authentication remains active so the private source can be supplied safely.",
+    sources: [
+      { label: "CBS league", asOf: null, ageMinutes: null, required: true },
+      { label: "CBS stats", asOf: null, ageMinutes: null, required: false },
+      { label: "FBG projections", asOf: null, ageMinutes: null, required: true },
+      { label: "injury / news", asOf: null, ageMinutes: null, required: false },
+    ],
+    baseline: { authority: "season setup required", source: "authenticated CBS all-team roster snapshot", asOf: null },
+    lineup: { legal: false, total: null, requiredSlots: {}, missingSlots: [], starters: [], bench: [], swaps: [] },
+    waivers: { recommendations: [], blockedReason: syncMessage },
+    trades: { recommendations: [], blockedReason: syncMessage },
+    watch: { leagueMoves: [], injuries: [], irTargets: [] },
+    model: { deterministic: true, missingPolicy: "recommendations remain blocked until the private league baseline exists" },
+    sourceFingerprint: sha256({ schemaVersion: 1, kind: "thunder-bowl-season-setup-required", packId: pack.packId, week }),
+  };
+}
+
+export async function getCurrentSeasonSnapshot({ now = new Date() } = {}) {
+  try {
+    return await getOrCreateCurrentSeasonPlan({ now });
+  } catch (error) {
+    if (error?.code !== "SEASON_BASELINE_UNAVAILABLE") throw error;
+    return buildSeasonSetupSnapshot({ pack: await readSeasonPack(), now });
+  }
+}
+
 export async function importCbsLeagueSnapshot(input, { now = new Date() } = {}) {
   const pack = await readSeasonPack();
   const week = seasonWeekForDate(now);

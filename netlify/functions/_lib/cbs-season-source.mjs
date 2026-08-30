@@ -123,7 +123,9 @@ export function leagueStateFromFinalLedger({ ledger, pack }) {
   }));
   const rosteredPlayerIds = teams.flatMap((team) => team.roster.map((player) => player.playerId));
   if (teams.length !== 12 || rosteredPlayerIds.length !== 168 || new Set(rosteredPlayerIds).size !== 168) {
-    throw new Error("The locked final ledger does not yet contain 12 complete 14-player rosters.");
+    const error = new Error("The locked final ledger does not yet contain 12 complete 14-player rosters.");
+    error.code = "SEASON_BASELINE_UNAVAILABLE";
+    throw error;
   }
   return {
     schemaVersion: 1,

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
+import { leagueStateFromFinalLedger } from "../netlify/functions/_lib/cbs-season-source.mjs";
+import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
 import {
   buildInjuryWatch,
   buildSeasonRecommendationSnapshot,
@@ -51,6 +53,20 @@ test("America/Denver Tuesday scheduling handles both daylight and standard time"
   assert.equal(seasonWeekForDate("2026-09-08T12:05:00.000Z"), 1);
   assert.equal(seasonWeekForDate("2026-09-29T12:05:00.000Z"), 4);
   assert.equal(seasonIdempotencyKey({ date: "2026-09-29T12:05:00.000Z", source: "Tuesday plan" }), "2026/week-4/tuesday-plan/v1");
+});
+
+test("an incomplete auction ledger returns a safe authenticated setup state instead of trapping login", () => {
+  const pack = { season: 2026, packId: "test-pack", players: [] };
+  assert.throws(
+    () => leagueStateFromFinalLedger({ ledger: { document: { events: [], generation: 3, updatedAt: "2026-08-30T12:00:00.000Z" } }, pack }),
+    (error) => error.code === "SEASON_BASELINE_UNAVAILABLE" && /12 complete 14-player rosters/.test(error.message),
+  );
+  const setup = buildSeasonSetupSnapshot({ pack, now: "2026-08-30T12:00:00.000Z" });
+  assert.equal(setup.kind, "thunder-bowl-season-setup-required");
+  assert.equal(setup.requiresLeagueSync, true);
+  assert.equal(setup.lineup.starters.length, 0);
+  assert.match(setup.waivers.blockedReason, /Sync private CBS/);
+  assert.match(setup.sourceFingerprint, /^[a-f0-9]{64}$/);
 });
 
 test("Footballguys weekly CSV is strict, traceable, and never turns missing into zero", () => {
@@ -158,6 +174,8 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   ]);
   for (const id of ["refresh-plan", "sync-cbs", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
+  assert.match(source, /thunder-bowl-season-setup-required/);
+  assert.match(html, /maxlength="100"/);
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
