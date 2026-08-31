@@ -41,7 +41,11 @@ function incompleteRosterMessage(leagueState, decision) {
 }
 
 function fbgRowMap(snapshot) {
-  return new Map((snapshot?.items || []).map((row) => [`${row.playerId}|${row.week}`, row]));
+  return new Map((snapshot?.items || []).map((row) => [`${row.playerId}|${row.week}`, {
+    ...row,
+    snapshotSource: snapshot.source,
+    snapshotAuthority: snapshot.authority,
+  }]));
 }
 
 function cbsRowMap(leagueState) {
@@ -70,7 +74,11 @@ function playerWeekEvidence(player, week, fbgRows = new Map(), cbsRows = new Map
       source: sourceName,
       points: round(points),
       asOf: rawRow ? rawRow.providerAsOf : seasonSource.asOf,
-      input: rawRow ? "provider component stats scored by Thunder Bowl rules" : "governed weekly shape",
+      input: rawRow
+        ? /authenticated Footballguys PRO/i.test(rawRow.snapshotAuthority || "")
+          ? "signed-in Footballguys PRO component stats scored by Thunder Bowl rules"
+          : "provider component stats scored by Thunder Bowl rules"
+        : "governed weekly shape",
       ...(rawRow?.projectedStats ? { projectedStats: rawRow.projectedStats } : {}),
       ...(Number.isFinite(rawRow?.providerPoints) ? { providerPoints: rawRow.providerPoints } : {}),
       ...(rawRow?.scoringCaveats?.length ? { scoringCaveats: rawRow.scoringCaveats } : {}),

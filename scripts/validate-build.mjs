@@ -24,6 +24,8 @@ const required = [
   "public/thunder-bowl/state-engine.mjs",
   "public/thunder-bowl/priority-weights.mjs",
   "public/thunder-bowl/cbs-roster-snapshot.mjs",
+  "public/thunder-bowl/fbg-session-capture.mjs",
+  "public/thunder-bowl/helper/thunder-bowl-data-helper-v0.5.0.zip",
   "public/thunder-bowl/personal-board-exchange.mjs",
   "public/thunder-bowl/storage.mjs",
   "public/thunder-bowl/season/index.html",

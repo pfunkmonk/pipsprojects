@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
+import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgAuthenticatedWeeklyCapture, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
 import { leagueStateFromFinalLedger } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
@@ -110,6 +110,40 @@ test("official Footballguys weekly downloads use consensus stat lines and exact 
   assert.equal(snapshot.items[0].projectedStats.rushingTwoPointConversions, 1);
   assert.equal(snapshot.source, "Footballguys official weekly projections download");
   assert.equal(snapshot.consensusRowCount, 2);
+});
+
+test("authenticated Footballguys PRO captures require the Thunder Bowl account view and preserve raw-stat authority", async () => {
+  const fullPack = await readSeasonPack();
+  const supported = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
+  const selected = fullPack.players.filter((item) => item.id.startsWith("fbg:") && supported.has(item.position)).slice(0, 200);
+  assert.equal(selected.length, 200);
+  const position = { QB: "qb", RB: "rb", WR: "wr", TE: "te", K: "pk", DST: "td" };
+  const cell = (value) => /[",\r\n]/.test(String(value)) ? `"${String(value).replaceAll('"', '""')}"` : String(value);
+  const rows = selected.map((item) => {
+    const values = Object.fromEntries(FBG_NATIVE_WEEKLY_COLUMNS.map((column) => [column, "0"]));
+    Object.assign(values, { id: item.id.slice(4), name: item.name, pos: position[item.position], team: item.nflTeam, "set-id": "1", "set-userid": "123", "set-name": "Projections Consensus", "rush-yds": item.position === "RB" ? "40" : "0" });
+    return FBG_NATIVE_WEEKLY_COLUMNS.map((column) => cell(values[column])).join(",");
+  });
+  const capture = {
+    schemaVersion: 1,
+    source: "Footballguys authenticated weekly projections download",
+    modelEffect: "none",
+    authenticated: true,
+    accountLeague: "Thunder Bowl",
+    capturedAt: "2026-08-31T18:00:00.000Z",
+    providerAsOf: "2026-08-31T17:59:00.000Z",
+    season: 2026,
+    week: 1,
+    pageUrl: "https://www.footballguys.com/projections/duration/weekly?week=1&pos=qb",
+    downloadUrl: "https://www.footballguys.com/projections/download/weekly/all/2026/1",
+    csv: `${FBG_NATIVE_WEEKLY_COLUMNS.join(",")}\n${rows.join("\n")}\n`,
+  };
+  const snapshot = parseFbgAuthenticatedWeeklyCapture(capture, fullPack);
+  assert.equal(snapshot.itemCount, 200);
+  assert.equal(snapshot.accountLeague, "Thunder Bowl");
+  assert.match(snapshot.authority, /authenticated Footballguys PRO browser-session capture/);
+  assert.ok(snapshot.items.some((item) => item.projectedStats.rushingYards === 40));
+  assert.throws(() => parseFbgAuthenticatedWeeklyCapture({ ...capture, accountLeague: "Default" }, fullPack), /signed-in Thunder Bowl subscriber view/);
 });
 
 test("official kicker conversions and DST points-allowed columns map without turning a bye into ten points", () => {
@@ -248,7 +282,8 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(html, />Update everything</);
   assert.match(html, /Advanced recovery tools/);
   assert.match(source, /action: "capture-cbs"/);
-  assert.match(source, /action: "refresh-fbg"/);
+  assert.match(source, /requestFbgProjectionCapture/);
+  assert.match(source, /action: "capture-fbg"/);
   assert.match(source, /action: "refresh-news"/);
   assert.match(source, /snapshot, fbgSnapshot/);
   assert.match(source, /CBS was saved successfully/);
@@ -263,9 +298,10 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v136/);
+  assert.match(worker, /thunder-bowl-shell-v137/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831i/);
+  assert.match(worker, /season\.mjs\?v=20260831j/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260831a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);

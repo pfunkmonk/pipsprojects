@@ -1,6 +1,7 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
 import {
   captureCbsLeagueSource,
+  captureFootballguysSource,
   importCbsLeagueSnapshot,
   importFbgWeeklyCsv,
   refreshFootballguysSource,
@@ -60,6 +61,11 @@ export default async function handler(request) {
     if (input.action === "refresh-fbg") {
       exactKeys(input, ["action"]);
       return json(await refreshFootballguysSource());
+    }
+    if (input.action === "capture-fbg") {
+      exactKeys(input, ["action", "capture"]);
+      if (!input.capture || typeof input.capture !== "object" || Array.isArray(input.capture)) throw new Error("Footballguys account capture is missing.");
+      return json(await captureFootballguysSource(input.capture));
     }
     if (input.action === "refresh-news") {
       exactKeys(input, ["action", "snapshot", "fbgSnapshot"]);

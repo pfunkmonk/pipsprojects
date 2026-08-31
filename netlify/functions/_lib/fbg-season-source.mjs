@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalPlayerIdentity } from "../../../public/thunder-bowl/state-engine.mjs";
+import { FBG_CAPTURE_SOURCE, validateFbgSessionCapture } from "../../../public/thunder-bowl/fbg-session-capture.mjs";
 import { scoreThunderBowlProjectedStats, THUNDER_BOWL_SCORING_FINGERPRINT } from "./thunder-bowl-scoring.mjs";
 
 export const FBG_WEEKLY_COLUMNS = Object.freeze([
@@ -206,6 +207,22 @@ export async function downloadFbgWeeklySnapshot(pack, week, {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function parseFbgAuthenticatedWeeklyCapture(input, pack) {
+  const capture = validateFbgSessionCapture(input, { expectedSeason: pack.season });
+  const snapshot = parseFbgNativeWeeklyCsv(capture.csv, pack, {
+    week: capture.week,
+    providerAsOf: capture.providerAsOf,
+  });
+  return {
+    ...snapshot,
+    source: FBG_CAPTURE_SOURCE,
+    authority: "registered projection input; authenticated Footballguys PRO browser-session capture",
+    capturedAt: capture.capturedAt,
+    providerAsOf: capture.providerAsOf,
+    accountLeague: capture.accountLeague,
+  };
 }
 
 export function parseFbgWeeklyCsv(text, pack, { minimumRows = 8 } = {}) {

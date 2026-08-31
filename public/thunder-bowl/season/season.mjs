@@ -1,4 +1,5 @@
 import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831d";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260831a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831a";
 
@@ -112,7 +113,7 @@ function renderHeader(value, offline) {
   const isCbs = value.baseline.authority.startsWith("authenticated");
   const partialCbs = isCbs && (value.baseline.rostersReady ?? value.baseline.rostersComplete) === false;
   byId("sync-copy").textContent = setupRequired
-    ? "Your access code worked. Choose Update everything once to capture CBS rosters and raw weekly stat projections, download the Footballguys raw-stat file, and unlock the complete plan."
+    ? "Your access code worked. Choose Update everything once to capture CBS and your signed-in Footballguys PRO projections, then unlock the complete plan."
     : partialCbs
     ? `CBS is current, but ${value.baseline.legalTeamCount ?? value.baseline.completeTeamCount} of ${value.baseline.teamCount} teams currently satisfy the legal roster rule: eight required starters and no more than six backups.`
     : isCbs
@@ -143,7 +144,7 @@ function renderUpdateSources(value) {
   const sources = new Map(value.sources.map((source) => [source.label, source]));
   const summary = value.updateSummary || null;
   renderUpdateSource("update-cbs-source", "update-cbs-state", sources.get("CBS league"), summary?.cbs, "Needs the one-time CBS helper");
-  renderUpdateSource("update-fbg-source", "update-fbg-state", sources.get("FBG projections"), summary?.footballguys, "Ready to download automatically");
+  renderUpdateSource("update-fbg-source", "update-fbg-state", sources.get("FBG projections"), summary?.footballguys, "Ready to capture from your signed-in account");
   renderUpdateSource("update-news-source", "update-news-state", sources.get("injury / news"), summary?.injuryNews, "Ready to refresh automatically");
 }
 
@@ -316,7 +317,7 @@ async function runAction(button, message, task) {
       ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
       : partialRosters
       ? `Update finished, but only ${value.updateSummary.cbs.legalTeams ?? value.updateSummary.cbs.completeTeams}/${value.updateSummary.cbs.teamCount} CBS teams satisfy the required eight starters and 14-player maximum. Waiver and trade advice remains blocked.`
-      : `Everything updated ${dateTime(value.generatedAt)}. CBS moves and raw-stat projections, Footballguys raw-stat projections scored by Thunder Bowl rules, injuries, news, and IR targets are current.`
+      : `Everything updated ${dateTime(value.generatedAt)}. CBS moves and raw-stat projections, signed-in Footballguys PRO raw-stat projections scored by Thunder Bowl rules, injuries, news, and IR targets are current.`
     , failed.length > 0);
   } catch (error) {
     setStatus(errorMessage(error), true);
@@ -400,13 +401,15 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
   }
   byId("helper-setup").open = false;
 
-  setStatus("CBS saved. Step 2 of 3: downloading Footballguys component-stat projections…");
+  setStatus("CBS saved. Step 2 of 3: reading Footballguys PRO component-stat projections from your signed-in browser session…");
   let fbgSnapshot;
   try {
-    const fbgRefresh = await postAction({ action: "refresh-fbg" });
+    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: plan?.week || 1 });
+    const fbgRefresh = await postAction({ action: "capture-fbg", capture });
     fbgSnapshot = fbgRefresh.snapshot;
   } catch (error) {
-    throw new Error(`CBS was saved successfully, but Footballguys could not refresh: ${errorMessage(error)} CBS will not need to be recaptured.`);
+    byId("helper-setup").open = true;
+    throw new Error(`CBS was saved successfully, but Footballguys PRO could not be captured: ${errorMessage(error)} CBS will not need to be recaptured.`);
   }
 
   setStatus("CBS and Footballguys saved. Step 3 of 3: refreshing injuries, news, and IR evidence…");

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalizeCbsLeagueSnapshot, leagueStateFromFinalLedger } from "./cbs-season-source.mjs";
-import { downloadFbgWeeklySnapshot, parseFbgWeeklyCsv, validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
+import { downloadFbgWeeklySnapshot, parseFbgAuthenticatedWeeklyCapture, parseFbgWeeklyCsv, validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
 import { readLedger } from "./ledger-store.mjs";
 import { currentResearchSnapshot } from "./research-store.mjs";
 import { buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
@@ -52,6 +52,28 @@ export async function refreshFootballguysSource({ now = new Date() } = {}) {
       footballguys: {
         ok: true,
         requested: true,
+        asOf: snapshot.providerAsOf,
+        rows: snapshot.itemCount,
+        error: null,
+      },
+    },
+  };
+}
+
+export async function captureFootballguysSource(input, { now = new Date() } = {}) {
+  const pack = await readSeasonPack();
+  const week = seasonWeekForDate(now);
+  const snapshot = parseFbgAuthenticatedWeeklyCapture(input, pack);
+  if (snapshot.week !== week) throw new Error(`Footballguys member capture is for Week ${snapshot.week}; the dashboard is on Week ${week}.`);
+  await saveFbgWeeklySnapshot(snapshot, pack);
+  return {
+    week,
+    snapshot,
+    sourceRefresh: {
+      footballguys: {
+        ok: true,
+        requested: true,
+        authenticated: true,
         asOf: snapshot.providerAsOf,
         rows: snapshot.itemCount,
         error: null,

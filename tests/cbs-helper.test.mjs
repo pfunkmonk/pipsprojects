@@ -18,14 +18,14 @@ const rawPlayer = (id, name, position = "QB", nflTeam = "DET") => ({
 test("CBS helper manifest is least-privilege and has no cookie or storage permission", async () => {
   const manifest = JSON.parse(await readFile(new URL("../tools/cbs-chrome-helper/manifest.json", import.meta.url), "utf8"));
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
-  assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*"]);
+  assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*", "https://www.footballguys.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.4.1");
+  assert.equal(manifest.version, "0.5.0");
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
   assert.equal(JSON.stringify(manifest).includes("<all_urls>"), false);
 });
 
-test("CBS helper waits for rendered report content instead of Edge's tab-complete event", async () => {
+test("CBS and Footballguys helper waits for authenticated rendered content instead of Edge's tab-complete event", async () => {
   const [worker, seasonHtml] = await Promise.all([
     readFile(new URL("../tools/cbs-chrome-helper/service-worker.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
@@ -35,7 +35,11 @@ test("CBS helper waits for rendered report content instead of Edge's tab-complet
   assert.match(worker, /projectionTable\?\.querySelector/);
   assert.doesNotMatch(worker, /tabs\.onUpdated/);
   assert.doesNotMatch(worker, /changeInfo\.status === "complete"/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.4\.1\.zip/);
+  assert.match(worker, /accountLeague === "Thunder Bowl"/);
+  assert.match(worker, /Unlock the rest of the projections with a PRO subscription/);
+  assert.match(worker, /credentials: "include"/);
+  assert.match(worker, /projections\/download\/weekly\/all\/2026/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.5\.0\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
 });
 
