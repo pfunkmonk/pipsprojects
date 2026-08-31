@@ -270,7 +270,7 @@ async function sourceHtml(url) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; ThunderBowl/1.0; private personal fantasy draft tool)", Accept: "text/html,application/xhtml+xml" },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(10_000),
     });
     if (response.ok) {
       const contentType = response.headers.get("content-type") || "";

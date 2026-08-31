@@ -50,22 +50,20 @@ export async function refreshSeasonPlan({
   const week = seasonWeekForDate(now);
   const pack = await readSeasonPack();
   const leagueState = await liveLeagueState(pack);
-  let refreshedFbgSnapshot = null;
-  let fbgRefreshError = null;
-  if (refreshFootballguys) {
-    try {
-      refreshedFbgSnapshot = await downloadFbgWeeklySnapshot(pack, week);
-      await saveFbgWeeklySnapshot(refreshedFbgSnapshot, pack);
-    } catch (error) {
-      fbgRefreshError = error instanceof Error ? error.message : String(error);
-    }
-  }
-  const [fbgSnapshot, statusResult, researchResult, leagueMoves] = await Promise.all([
-    refreshedFbgSnapshot || readLatestFbgWeeklySnapshot(pack, week),
+  const fbgRefreshTask = refreshFootballguys
+    ? downloadFbgWeeklySnapshot(pack, week)
+      .then(async (value) => { await saveFbgWeeklySnapshot(value, pack); return { value }; })
+      .catch((error) => ({ error }))
+    : Promise.resolve({ value: null });
+  const [fbgRefreshResult, statusResult, researchResult, leagueMoves] = await Promise.all([
+    fbgRefreshTask,
     currentStatusSnapshot(pack, { force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
     currentResearchSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
     readLeagueMoves(week),
   ]);
+  const refreshedFbgSnapshot = fbgRefreshResult.value || null;
+  const fbgRefreshError = fbgRefreshResult.error instanceof Error ? fbgRefreshResult.error.message : fbgRefreshResult.error ? String(fbgRefreshResult.error) : null;
+  const fbgSnapshot = refreshedFbgSnapshot || await readLatestFbgWeeklySnapshot(pack, week);
   const statusSnapshot = statusResult.value || null;
   const researchSnapshot = researchResult.value || null;
   const statusRefreshError = statusResult.error?.message || statusSnapshot?.refreshError || null;
