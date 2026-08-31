@@ -40,6 +40,41 @@ async function liveLeagueState(pack) {
   return leagueStateFromFinalLedger({ ledger: await readLedger(), pack });
 }
 
+export async function refreshFootballguysSource({ now = new Date() } = {}) {
+  const pack = await readSeasonPack();
+  const week = seasonWeekForDate(now);
+  const snapshot = await downloadFbgWeeklySnapshot(pack, week);
+  await saveFbgWeeklySnapshot(snapshot, pack);
+  return {
+    week,
+    sourceRefresh: {
+      footballguys: {
+        ok: true,
+        requested: true,
+        asOf: snapshot.providerAsOf,
+        rows: snapshot.itemCount,
+        error: null,
+      },
+    },
+  };
+}
+
+export async function refreshSeasonPublicSources() {
+  const pack = await readSeasonPack();
+  const [statusResult, researchResult] = await Promise.all([
+    currentStatusSnapshot(pack, { force: true }).then((value) => ({ value })).catch((error) => ({ error })),
+    currentResearchSnapshot({ force: true }).then((value) => ({ value })).catch((error) => ({ error })),
+  ]);
+  const statusError = statusResult.error?.message || statusResult.value?.refreshError || null;
+  const researchError = researchResult.error?.message || researchResult.value?.refreshError || null;
+  return {
+    sourceRefresh: {
+      status: { ok: !statusError, asOf: statusResult.value?.capturedAt || null, error: statusError },
+      research: { ok: !researchError, asOf: researchResult.value?.capturedAt || null, error: researchError },
+    },
+  };
+}
+
 export async function refreshSeasonPlan({
   now = new Date(),
   forcePublic = false,

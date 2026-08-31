@@ -250,6 +250,7 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /action: "sync-cbs"/);
   assert.match(source, /action: "refresh-fbg"/);
   assert.match(source, /action: "refresh-news"/);
+  assert.match(source, /action: "rebuild-plan"/);
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.match(source, /thunder-bowl-season-setup-required/);
@@ -259,9 +260,9 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v131/);
+  assert.match(worker, /thunder-bowl-shell-v132/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831d/);
+  assert.match(worker, /season\.mjs\?v=20260831e/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);

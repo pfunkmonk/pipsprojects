@@ -1,5 +1,12 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
-import { importCbsLeagueSnapshot, importFbgWeeklyCsv, refreshSeasonPlan, updateSeasonEverything } from "./_lib/season-service.mjs";
+import {
+  importCbsLeagueSnapshot,
+  importFbgWeeklyCsv,
+  refreshFootballguysSource,
+  refreshSeasonPlan,
+  refreshSeasonPublicSources,
+  updateSeasonEverything,
+} from "./_lib/season-service.mjs";
 
 const MAX_BODY_BYTES = 2_100_000;
 
@@ -47,15 +54,11 @@ export default async function handler(request) {
     }
     if (input.action === "refresh-fbg") {
       exactKeys(input, ["action"]);
-      const refreshed = await refreshSeasonPlan({ refreshFootballguys: true });
-      if (!refreshed.sourceRefresh.footballguys.ok) {
-        throw new Error(`Footballguys refresh failed; the saved CBS snapshot and last-known projections remain available (${refreshed.sourceRefresh.footballguys.error}).`);
-      }
-      return json(refreshed);
+      return json(await refreshFootballguysSource());
     }
     if (input.action === "refresh-news") {
       exactKeys(input, ["action"]);
-      const refreshed = await refreshSeasonPlan({ forcePublic: true });
+      const refreshed = await refreshSeasonPublicSources();
       const failures = ["status", "research"]
         .filter((source) => !refreshed.sourceRefresh[source].ok)
         .map((source) => `${source}: ${refreshed.sourceRefresh[source].error}`);
@@ -63,6 +66,10 @@ export default async function handler(request) {
         throw new Error(`Injury/news refresh failed; the saved CBS and Footballguys data remain available (${failures.join("; ")}).`);
       }
       return json(refreshed);
+    }
+    if (input.action === "rebuild-plan") {
+      exactKeys(input, ["action"]);
+      return json(await refreshSeasonPlan());
     }
     return json({ error: "Refresh action is invalid." }, 400);
   } catch (error) {
