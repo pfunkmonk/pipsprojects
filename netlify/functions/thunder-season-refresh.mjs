@@ -45,6 +45,25 @@ export default async function handler(request) {
       if (typeof input.csv !== "string") throw new Error("Footballguys import must be CSV text.");
       return json(await importFbgWeeklyCsv(input.csv));
     }
+    if (input.action === "refresh-fbg") {
+      exactKeys(input, ["action"]);
+      const refreshed = await refreshSeasonPlan({ refreshFootballguys: true });
+      if (!refreshed.sourceRefresh.footballguys.ok) {
+        throw new Error(`Footballguys refresh failed; the saved CBS snapshot and last-known projections remain available (${refreshed.sourceRefresh.footballguys.error}).`);
+      }
+      return json(refreshed);
+    }
+    if (input.action === "refresh-news") {
+      exactKeys(input, ["action"]);
+      const refreshed = await refreshSeasonPlan({ forcePublic: true });
+      const failures = ["status", "research"]
+        .filter((source) => !refreshed.sourceRefresh[source].ok)
+        .map((source) => `${source}: ${refreshed.sourceRefresh[source].error}`);
+      if (failures.length) {
+        throw new Error(`Injury/news refresh failed; the saved CBS and Footballguys data remain available (${failures.join("; ")}).`);
+      }
+      return json(refreshed);
+    }
     return json({ error: "Refresh action is invalid." }, 400);
   } catch (error) {
     const configured = configurationError(error);

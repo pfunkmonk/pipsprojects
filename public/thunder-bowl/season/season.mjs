@@ -1,4 +1,4 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831c";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831d";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 
 const byId = (id) => document.getElementById(id);
@@ -276,7 +276,7 @@ async function renderPlan(value, { offline = false } = {}) {
 async function responseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.error || "The server request failed.");
+    const error = new Error(data.error || `The server stopped before this update stage finished (HTTP ${response.status}). Earlier completed stages remain saved.`);
     error.status = response.status;
     throw error;
   }
@@ -386,8 +386,33 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
     byId("helper-setup").open = true;
     throw new Error(`${errorMessage(error)} Open “First-time setup” below; after that, this same button updates everything.`);
   }
-  setStatus("CBS captured. Steps 2 and 3: downloading Footballguys projections and refreshing injuries, news, and IR evidence…");
-  return postAction({ action: "update-everything", snapshot });
+  setStatus("CBS captured. Saving rosters, moves, and CBS component-stat projections before continuing…");
+  let current;
+  try {
+    current = await postAction({ action: "sync-cbs", snapshot });
+  } catch (error) {
+    throw new Error(`CBS was captured but could not be saved: ${errorMessage(error)}`);
+  }
+  await renderPlan(current);
+  byId("refresh-plan").disabled = true;
+  byId("helper-setup").open = false;
+
+  setStatus("CBS saved. Step 2 of 3: downloading Footballguys component-stat projections…");
+  try {
+    current = await postAction({ action: "refresh-fbg" });
+  } catch (error) {
+    throw new Error(`CBS was saved successfully, but Footballguys could not refresh: ${errorMessage(error)} CBS will not need to be recaptured.`);
+  }
+  await renderPlan(current);
+  byId("refresh-plan").disabled = true;
+
+  setStatus("CBS and Footballguys saved. Step 3 of 3: refreshing injuries, news, and IR evidence…");
+  try {
+    current = await postAction({ action: "refresh-news" });
+  } catch (error) {
+    throw new Error(`CBS and Footballguys were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly plan remains usable.`);
+  }
+  return current;
 }));
 byId("cbs-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];

@@ -68,6 +68,8 @@ export async function refreshSeasonPlan({
   ]);
   const statusSnapshot = statusResult.value || null;
   const researchSnapshot = researchResult.value || null;
+  const statusRefreshError = statusResult.error?.message || statusSnapshot?.refreshError || null;
+  const researchRefreshError = researchResult.error?.message || researchSnapshot?.refreshError || null;
   const plan = buildSeasonRecommendationSnapshot({
     pack,
     leagueState,
@@ -80,10 +82,10 @@ export async function refreshSeasonPlan({
   });
   plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, researchSnapshot, statusSnapshot });
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
-  if (statusResult.error) plan.alerts.push(`Injury refresh failed; no current status snapshot is available (${statusResult.error.message}).`);
-  if (researchResult.error) plan.alerts.push(`Depth/news refresh failed; no current research snapshot is available (${researchResult.error.message}).`);
+  if (statusRefreshError) plan.alerts.push(`Injury refresh failed; last-known safe status evidence remains in use (${statusRefreshError}).`);
+  if (researchRefreshError) plan.alerts.push(`Depth/news refresh failed; last-known safe research evidence remains in use (${researchRefreshError}).`);
   if (fbgRefreshError) plan.alerts.push(`Footballguys raw-stat projections could not update; the last-known projection snapshot remains in use (${fbgRefreshError}).`);
-  if (statusResult.error || researchResult.error || fbgRefreshError) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
+  if (statusRefreshError || researchRefreshError || fbgRefreshError) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
   return {
@@ -97,8 +99,8 @@ export async function refreshSeasonPlan({
         rows: fbgSnapshot?.itemCount || 0,
         error: fbgRefreshError,
       },
-      status: { ok: !statusResult.error, asOf: statusSnapshot?.capturedAt || null, error: statusResult.error?.message || null },
-      research: { ok: !researchResult.error, asOf: researchSnapshot?.capturedAt || null, error: researchResult.error?.message || null },
+      status: { ok: !statusRefreshError, asOf: statusSnapshot?.capturedAt || null, error: statusRefreshError },
+      research: { ok: !researchRefreshError, asOf: researchSnapshot?.capturedAt || null, error: researchRefreshError },
     },
   };
 }

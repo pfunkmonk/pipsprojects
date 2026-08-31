@@ -247,7 +247,10 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   for (const id of ["refresh-plan", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, />Update everything</);
   assert.match(html, /Advanced recovery tools/);
-  assert.match(source, /action: "update-everything"/);
+  assert.match(source, /action: "sync-cbs"/);
+  assert.match(source, /action: "refresh-fbg"/);
+  assert.match(source, /action: "refresh-news"/);
+  assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
@@ -256,9 +259,9 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v130/);
+  assert.match(worker, /thunder-bowl-shell-v131/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831c/);
+  assert.match(worker, /season\.mjs\?v=20260831d/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);

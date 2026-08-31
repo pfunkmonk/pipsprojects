@@ -292,13 +292,11 @@ export async function currentResearchSnapshot({ force = false } = {}) {
   if (cached) return cached;
   try {
     const priorSnapshot = await readStored(latestKey);
-    const fbgHtml = await sourceHtml(FBG_DEPTH_URL);
-    const fbgNewsHtml = await sourceHtml(FBG_NEWS_URL);
-    const cbsPages = [];
-    for (const url of CBS_NEWS_URLS) {
-      cbsPages.push(await sourceHtml(url));
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
+    const [fbgHtml, fbgNewsHtml, cbsPages] = await Promise.all([
+      sourceHtml(FBG_DEPTH_URL),
+      sourceHtml(FBG_NEWS_URL),
+      Promise.all(CBS_NEWS_URLS.map((url) => sourceHtml(url))),
+    ]);
     const snapshot = validateResearchSnapshot(buildResearchSnapshot({ fbgHtml, fbgNewsHtml, cbsPages, priorSnapshot }));
     let winner = snapshot;
     if (force) {
