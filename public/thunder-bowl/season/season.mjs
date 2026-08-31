@@ -396,15 +396,17 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
   byId("helper-setup").open = false;
 
   setStatus("CBS saved. Step 2 of 3: downloading Footballguys component-stat projections…");
+  let fbgSnapshot;
   try {
-    await postAction({ action: "refresh-fbg" });
+    const fbgRefresh = await postAction({ action: "refresh-fbg" });
+    fbgSnapshot = fbgRefresh.snapshot;
   } catch (error) {
     throw new Error(`CBS was saved successfully, but Footballguys could not refresh: ${errorMessage(error)} CBS will not need to be recaptured.`);
   }
 
   setStatus("CBS and Footballguys saved. Step 3 of 3: refreshing injuries, news, and IR evidence…");
   try {
-    current = await postAction({ action: "refresh-news" });
+    current = await postAction({ action: "refresh-news", snapshot, fbgSnapshot });
   } catch (error) {
     throw new Error(`CBS and Footballguys were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly plan remains usable.`);
   }

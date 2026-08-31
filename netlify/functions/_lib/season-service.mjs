@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalizeCbsLeagueSnapshot, leagueStateFromFinalLedger } from "./cbs-season-source.mjs";
-import { downloadFbgWeeklySnapshot, parseFbgWeeklyCsv } from "./fbg-season-source.mjs";
+import { downloadFbgWeeklySnapshot, parseFbgWeeklyCsv, validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
 import { readLedger } from "./ledger-store.mjs";
 import { currentResearchSnapshot } from "./research-store.mjs";
 import { buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
@@ -47,6 +47,7 @@ export async function refreshFootballguysSource({ now = new Date() } = {}) {
   await saveFbgWeeklySnapshot(snapshot, pack);
   return {
     week,
+    snapshot,
     sourceRefresh: {
       footballguys: {
         ok: true,
@@ -83,11 +84,13 @@ export async function refreshSeasonPlan({
   archiveTuesday = false,
   refreshFootballguys = false,
   publicSourceOverrides = null,
+  leagueStateOverride = null,
+  fbgSnapshotOverride = null,
 } = {}) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
   const pack = await readSeasonPack();
-  const leagueState = await liveLeagueState(pack);
+  const leagueState = leagueStateOverride ? canonicalizeCbsLeagueSnapshot(leagueStateOverride, pack) : await liveLeagueState(pack);
   const fbgRefreshTask = refreshFootballguys
     ? downloadFbgWeeklySnapshot(pack, week)
       .then(async (value) => { await saveFbgWeeklySnapshot(value, pack); return { value }; })
@@ -105,7 +108,10 @@ export async function refreshSeasonPlan({
   ]);
   const refreshedFbgSnapshot = fbgRefreshResult.value || null;
   const fbgRefreshError = fbgRefreshResult.error instanceof Error ? fbgRefreshResult.error.message : fbgRefreshResult.error ? String(fbgRefreshResult.error) : null;
-  const fbgSnapshot = refreshedFbgSnapshot || await readLatestFbgWeeklySnapshot(pack, week);
+  const fbgSnapshot = fbgSnapshotOverride
+    ? validateFbgWeeklySnapshot(fbgSnapshotOverride, pack)
+    : refreshedFbgSnapshot || await readLatestFbgWeeklySnapshot(pack, week);
+  if (fbgSnapshot && fbgSnapshot.week !== week) throw new Error(`Footballguys source handoff is for Week ${fbgSnapshot.week}; the dashboard is on Week ${week}.`);
   const statusSnapshot = statusResult.value || null;
   const researchSnapshot = researchResult.value || null;
   const statusRefreshError = statusResult.error?.message || statusSnapshot?.refreshError || null;

@@ -21,7 +21,7 @@ test("every auction surface loads a dedicated final readability layer", async ()
   assert.match(auctioneerHtml, /<link[^>]+shell-safety\.css[^>]*>[\s\S]*<link[^>]+auctioneer-readability\.css[^>]*>/);
   assert.match(worker, /readability\.css\?v=20260827a/);
   assert.match(worker, /auctioneer-readability\.css\?v=20260828a/);
-  assert.match(worker, /thunder-bowl-shell-v133/);
+  assert.match(worker, /thunder-bowl-shell-v134/);
 });
 
 test("private command center preserves geometry while raising microcopy floors", async () => {

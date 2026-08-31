@@ -62,7 +62,8 @@ export default async function handler(request) {
       return json(await refreshFootballguysSource());
     }
     if (input.action === "refresh-news") {
-      exactKeys(input, ["action"]);
+      exactKeys(input, ["action", "snapshot", "fbgSnapshot"]);
+      if (!input.snapshot || !input.fbgSnapshot) throw new Error("The final refresh stage is missing its saved CBS or Footballguys source handoff.");
       const publicSources = await refreshSeasonPublicSources();
       const failures = ["status", "research"]
         .filter((source) => !publicSources.sourceRefresh[source].ok)
@@ -75,6 +76,8 @@ export default async function handler(request) {
           statusSnapshot: publicSources.statusSnapshot,
           researchSnapshot: publicSources.researchSnapshot,
         },
+        leagueStateOverride: input.snapshot,
+        fbgSnapshotOverride: input.fbgSnapshot,
       }));
     }
     return json({ error: "Refresh action is invalid." }, 400);

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v133";
+const CACHE_VERSION = "thunder-bowl-shell-v134";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -25,7 +25,7 @@ const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/season.css?v=20260831a",
-  "/thunder-bowl/season/season.mjs?v=20260831f",
+  "/thunder-bowl/season/season.mjs?v=20260831g",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
