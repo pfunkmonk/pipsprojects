@@ -265,10 +265,11 @@ test("private season shell exposes the complete weekly workflow without unsafe H
 });
 
 test("scheduled and persistence source preserve write-once Tuesday archives and separate live pointers", async () => {
-  const [storeSource, tuesdaySource, serviceSource] = await Promise.all([
+  const [storeSource, tuesdaySource, serviceSource, refreshSource] = await Promise.all([
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-tuesday-collector.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-refresh.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(storeSource, /`\$\{prefix\}\/tuesday`, plan, \{ onlyIfNew: true \}/);
   assert.match(storeSource, /setJSON\("plans\/v1\/latest", plan\)/);
@@ -277,4 +278,5 @@ test("scheduled and persistence source preserve write-once Tuesday archives and 
   assert.match(tuesdaySource, /refreshFootballguys: true/);
   assert.match(tuesdaySource, /schedule: "0,10 12,13 \* \* 2"/);
   assert.match(serviceSource, /archiveTuesday && fbgRefreshError/);
+  assert.match(refreshSource, /refreshSeasonPlan\(\{ forcePublic: true, refreshFootballguys: true \}\)/);
 });
