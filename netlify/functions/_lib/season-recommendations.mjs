@@ -449,7 +449,7 @@ function sourceChip(label, timestamp, now, required = false) {
   return { label, asOf: timestamp || null, ageMinutes: ageMinutes(timestamp, now), required };
 }
 
-function sourceState({ leagueState, pack, fbgSnapshot, researchSnapshot, statusSnapshot, now }) {
+function sourceState({ leagueState, pack, week, fbgSnapshot, researchSnapshot, statusSnapshot, now }) {
   const cbsAge = leagueState.authority.startsWith("authenticated") ? ageMinutes(leagueState.capturedAt, now) : null;
   const projectionAt = fbgSnapshot?.providerAsOf || pack.weeklyContext?.asOf || pack.asOf;
   const projectionAge = ageMinutes(projectionAt, now);
@@ -457,11 +457,13 @@ function sourceState({ leagueState, pack, fbgSnapshot, researchSnapshot, statusS
   const projectionFresh = projectionAge !== null && projectionAge <= 48 * 60;
   const projectionUsable = projectionAge !== null && projectionAge <= 14 * 24 * 60;
   const rostersReady = leagueRostersReady(leagueState);
-  const state = !cbsFresh || !projectionUsable ? "STALE" : projectionFresh && rostersReady ? "READY" : "PARTIAL";
+  const cbsProjectionReady = leagueState.projectionWeek === week && (leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0) >= 100;
+  const state = !cbsFresh || !projectionUsable ? "STALE" : projectionFresh && rostersReady && cbsProjectionReady ? "READY" : "PARTIAL";
   const alerts = [];
   if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; final draft rosters are a Week 1 baseline and waiver availability is blocked.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
   if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
+  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.4.0, then choose Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
   if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (researchSnapshot?.staleFallback || statusSnapshot?.staleFallback) alerts.push("One or more injury/news sources are using the last-known-good snapshot.");
@@ -506,7 +508,7 @@ export function buildSeasonRecommendationSnapshot({
   const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, statusSnapshot, researchSnapshot });
   const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, statusSnapshot });
   const watch = buildInjuryWatch({ pack, leagueState, week, statusSnapshot, researchSnapshot, fbgSnapshot });
-  const freshness = sourceState({ leagueState, pack, fbgSnapshot, researchSnapshot, statusSnapshot, now: generatedAt });
+  const freshness = sourceState({ leagueState, pack, week, fbgSnapshot, researchSnapshot, statusSnapshot, now: generatedAt });
   return {
     schemaVersion: 1,
     kind: "thunder-bowl-season-recommendations",
@@ -518,7 +520,7 @@ export function buildSeasonRecommendationSnapshot({
     refreshBehavior: "Every Tuesday the scheduled refresh downloads Footballguys component-stat projections and applies Thunder Bowl scoring. Update everything also captures CBS rosters, moves, and component-stat projections from your signed-in CBS tab, then refreshes injury, depth, news, and IR evidence. Archived Tuesday plans never change.",
     sources: [
       sourceChip("CBS league", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : null, generatedAt, true),
-      sourceChip("CBS stats", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : pack.sources.find((source) => source.name.includes("CBS Thunder Bowl weekly"))?.asOf, generatedAt),
+      sourceChip("CBS stats", leagueState.projectionWeek === week && (leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0) >= 100 ? leagueState.capturedAt : null, generatedAt),
       sourceChip("FBG projections", freshness.projectionAt, generatedAt, true),
       sourceChip("injury / news", statusSnapshot?.capturedAt || researchSnapshot?.capturedAt, generatedAt),
     ],

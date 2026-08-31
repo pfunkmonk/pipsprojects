@@ -280,3 +280,25 @@ test("scheduled and persistence source preserve write-once Tuesday archives and 
   assert.match(serviceSource, /archiveTuesday && fbgRefreshError/);
   assert.match(refreshSource, /refreshSeasonPlan\(\{ forcePublic: true, refreshFootballguys: true \}\)/);
 });
+
+test("a legal authenticated roster remains PARTIAL until current-week CBS component stats are captured", () => {
+  const players = rosterPlayers();
+  const pack = { season: 2026, packId: "test-pack", asOf: "2026-09-08T11:00:00.000Z", players, sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } };
+  const leagueState = {
+    source: "CBS",
+    authority: "authenticated league roster and availability authority",
+    capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true,
+    legalTeamCount: 12,
+    teamCount: 12,
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(players) }],
+    availablePlayerIds: [],
+    projectionWeek: null,
+    projectionCount: 0,
+    weeklyProjections: [],
+  };
+  const result = buildSeasonRecommendationSnapshot({ pack, leagueState, week: 1, generatedAt: "2026-09-08T12:00:00.000Z" });
+  assert.equal(result.state, "PARTIAL");
+  assert.equal(result.sources.find((source) => source.label === "CBS stats").asOf, null);
+  assert.ok(result.alerts.some((message) => message.includes("CBS Week 1 component-stat projections")));
+});
