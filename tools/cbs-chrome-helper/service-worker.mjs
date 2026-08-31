@@ -13,23 +13,55 @@ const CBS_ORIGIN = "https://berrymvp.football.cbssports.com";
 const REPORT_URL = `${CBS_ORIGIN}/teams/roster-report/all/2026/`;
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
+const PAGE_READY_TIMEOUT_MS = 30_000;
+const PAGE_POLL_INTERVAL_MS = 250;
 
-function waitForTab(tabId, timeoutMs = 15000) {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => finish(new Error("CBS page timed out while loading.")), timeoutMs);
-    function finish(error) {
-      clearTimeout(timeout);
-      chrome.tabs.onUpdated.removeListener(onUpdated);
-      if (error) reject(error); else resolve();
-    }
-    function onUpdated(updatedId, changeInfo) {
-      if (updatedId === tabId && changeInfo.status === "complete") finish();
-    }
-    chrome.tabs.onUpdated.addListener(onUpdated);
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === "complete") finish();
-    }).catch(() => finish(new Error("CBS tab closed before capture completed.")));
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function cbsPageHasContent(tabId, pageKind) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (kind) => {
+      const tables = [...document.querySelectorAll("table")];
+      if (kind === "roster") {
+        const teamTableCount = tables.filter((table) => /\sPlayers$/.test((table.querySelector("tr")?.innerText || "").replace(/\s+/g, " ").trim())).length;
+        return teamTableCount >= 12;
+      }
+      const projectionTable = tables.find((table) => /\bFPTS\b/.test(table.innerText || ""));
+      return Boolean(projectionTable?.querySelector('a.playerLink[href*="/players/playerpage/"]'));
+    },
+    args: [pageKind],
   });
+  return results[0]?.result === true;
+}
+
+async function waitForCbsContent(tabId, expectedUrlPrefix, pageKind, label, timeoutMs = PAGE_READY_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  const deadline = Date.now() + timeoutMs;
+  let sawExpectedPage = false;
+  while (Date.now() < deadline) {
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch {
+      throw new Error("CBS tab closed before capture completed.");
+    }
+    const pageUrl = tab.url || tab.pendingUrl || "";
+    if (pageUrl.startsWith(expectedUrlPrefix)) {
+      sawExpectedPage = true;
+      try {
+        if (await cbsPageHasContent(tabId, pageKind)) return;
+      } catch {
+        // Edge can briefly reject script injection between navigation commits.
+      }
+    } else if (sawExpectedPage || (Date.now() - startedAt > 1_500 && pageUrl && pageUrl !== "about:blank" && !pageUrl.startsWith(CBS_ORIGIN) && tab.status === "complete")) {
+      throw new Error(`CBS redirected away from the ${label}. Sign in to Thunder Bowl on CBS in this browser, then retry.`);
+    }
+    await delay(PAGE_POLL_INTERVAL_MS);
+  }
+  throw new Error(`CBS ${label} did not become ready within ${Math.round(timeoutMs / 1000)} seconds. Keep the CBS sign-in open in this browser, then retry.`);
 }
 
 async function rawRosterTables(tabId) {
@@ -58,9 +90,7 @@ async function rawRosterTables(tabId) {
 async function rawProjectionTable(tabId, position, week) {
   const reportUrl = `${CBS_ORIGIN}/stats/stats-main/all:${position}/${week}:p/standard/projections`;
   await chrome.tabs.update(tabId, { url: reportUrl, active: false });
-  await waitForTab(tabId);
-  const page = await chrome.tabs.get(tabId);
-  if (!page.url?.startsWith(`${CBS_ORIGIN}/stats/stats-main/`)) throw new Error("CBS redirected to sign-in while loading weekly projections.");
+  await waitForCbsContent(tabId, reportUrl, "projection", `${position} projection table`);
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     func: (expectedPosition) => {
@@ -89,9 +119,7 @@ async function captureRosters(week) {
   try {
     const tab = await chrome.tabs.create({ url: REPORT_URL, active: false });
     tabId = tab.id;
-    await waitForTab(tabId);
-    const page = await chrome.tabs.get(tabId);
-    if (!page.url?.startsWith(REPORT_URL)) throw new Error("CBS redirected to sign-in. Sign in to the Thunder Bowl league in Chrome, then retry.");
+    await waitForCbsContent(tabId, REPORT_URL, "roster", "all-team roster report");
     const reportTables = await rawRosterTables(tabId);
     const byTeam = new Map(reportTables.map((table) => [table.teamName, table.rows]));
     const missing = TEAMS.filter((team) => !byTeam.has(team.name));

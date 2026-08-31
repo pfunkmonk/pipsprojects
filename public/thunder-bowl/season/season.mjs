@@ -378,7 +378,7 @@ function downloadPlan() {
 }
 
 byId("login-form").addEventListener("submit", attemptLogin);
-byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 3: capturing all 12 CBS rosters from your signed-in Chrome session…", async () => {
+byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 3: capturing all 12 CBS rosters from your signed-in browser session…", async () => {
   let snapshot;
   try {
     snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 90_000, week: plan?.week || 1 }));
