@@ -28,44 +28,52 @@ function rosterTeam(leagueState, teamId) {
   return leagueState?.teams?.find((team) => team.teamId === teamId) || null;
 }
 
-function leagueRostersComplete(leagueState) {
+function leagueRostersReady(leagueState) {
+  if (typeof leagueState?.rostersReady === "boolean") return leagueState.rostersReady;
   if (typeof leagueState?.rostersComplete === "boolean") return leagueState.rostersComplete;
-  // Canonical snapshots written before completion metadata was introduced were
-  // accepted only when every roster was complete.
   return Array.isArray(leagueState?.availablePlayerIds);
 }
 
 function incompleteRosterMessage(leagueState, decision) {
-  const complete = Number.isSafeInteger(leagueState?.completeTeamCount) ? leagueState.completeTeamCount : 0;
+  const legal = Number.isSafeInteger(leagueState?.legalTeamCount) ? leagueState.legalTeamCount : Number.isSafeInteger(leagueState?.completeTeamCount) ? leagueState.completeTeamCount : 0;
   const teams = Number.isSafeInteger(leagueState?.teamCount) ? leagueState.teamCount : leagueState?.teams?.length || 12;
-  return `CBS updated successfully, but the auction is still in progress (${complete} of ${teams} teams have at least 14 players). ${decision} stays blocked so undrafted players are not mistaken for confirmed free agents.`;
+  return `CBS updated successfully, but only ${legal} of ${teams} teams have a legal 8–14 player roster with 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST. ${decision} stays blocked until every team satisfies the league rule.`;
 }
 
 function fbgRowMap(snapshot) {
   return new Map((snapshot?.items || []).map((row) => [`${row.playerId}|${row.week}`, row]));
 }
 
+function cbsRowMap(leagueState) {
+  return new Map((leagueState?.weeklyProjections || []).map((row) => [`${row.playerId}|${row.week}`, row]));
+}
+
 function statusMap(snapshot) {
   return new Map((snapshot?.updates || []).map((row) => [row.playerId, row]));
 }
 
-function playerWeekEvidence(player, week, fbgRows = new Map()) {
+function playerWeekEvidence(player, week, fbgRows = new Map(), cbsRows = new Map()) {
   const baseline = player.weeklyProjection?.points?.[week - 1];
   const baselinePoints = baseline == null || !Number.isFinite(Number(baseline)) ? null : Number(baseline);
   const manualFbg = fbgRows.get(`${player.id}|${week}`);
+  const currentCbs = cbsRows.get(`${player.id}|${week}`);
   const sourceRows = [];
   const shapeDenominator = Number(player.projectedPoints);
   const share = shapeDenominator > 0 && baselinePoints !== null ? baselinePoints / shapeDenominator : null;
   for (const sourceName of PREMIUM_PROJECTION_SOURCES) {
     const seasonSource = player.projectionSources?.find((row) => row.source === sourceName);
     const scaled = share !== null && Number.isFinite(Number(seasonSource?.points)) ? Number(seasonSource.points) * share : null;
-    const points = sourceName === "Footballguys" && manualFbg ? manualFbg.points : scaled;
+    const rawRow = sourceName === "Footballguys" ? manualFbg : sourceName === "CBS" ? currentCbs : null;
+    const points = rawRow ? rawRow.points : scaled;
     if (!Number.isFinite(points)) continue;
     sourceRows.push({
       source: sourceName,
       points: round(points),
-      asOf: sourceName === "Footballguys" && manualFbg ? manualFbg.providerAsOf : seasonSource.asOf,
-      input: sourceName === "Footballguys" && manualFbg ? "official weekly download" : "governed weekly shape",
+      asOf: rawRow ? rawRow.providerAsOf : seasonSource.asOf,
+      input: rawRow ? "provider component stats scored by Thunder Bowl rules" : "governed weekly shape",
+      ...(rawRow?.projectedStats ? { projectedStats: rawRow.projectedStats } : {}),
+      ...(Number.isFinite(rawRow?.providerPoints) ? { providerPoints: rawRow.providerPoints } : {}),
+      ...(rawRow?.scoringCaveats?.length ? { scoringCaveats: rawRow.scoringCaveats } : {}),
     });
   }
   if (!sourceRows.length) {
@@ -108,10 +116,10 @@ function legalStarterPath(roster) {
   return POSITIONS.every((position) => counts[position] >= STARTER_REQUIREMENTS[position]);
 }
 
-export function optimizeExactLineup(roster, { week, playerById, fbgRows = new Map(), statuses = new Map() }) {
+export function optimizeExactLineup(roster, { week, playerById, fbgRows = new Map(), cbsRows = new Map(), statuses = new Map() }) {
   const candidates = rosterPlayers(roster, playerById).map((entry) => ({
     ...entry,
-    projection: playerWeekEvidence(entry.player, week, fbgRows),
+    projection: playerWeekEvidence(entry.player, week, fbgRows, cbsRows),
     status: statuses.get(entry.playerId) || null,
   }));
   const starters = [];
@@ -203,24 +211,25 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
   }
-  if (!leagueRostersComplete(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Waiver advice") };
+  if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Waiver advice") };
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const fbgRows = fbgRowMap(fbgSnapshot);
+  const cbsRows = cbsRowMap(leagueState);
   const statuses = statusMap(statusSnapshot);
   const userTeam = rosterTeam(leagueState, USER_TEAM_ID);
   if (!userTeam) return { recommendations: [], blockedReason: "Dogs of War is missing from the CBS snapshot." };
   const currentRoster = rosterPlayers(userTeam.roster, playerById);
-  const context = { playerById, fbgRows, statuses };
+  const context = { playerById, fbgRows, cbsRows, statuses };
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
   const ros = weekRange(week, 17);
   const available = leagueState.availablePlayerIds
     .map((id) => playerById.get(id))
     .filter(Boolean)
-    .filter((player) => playerWeekEvidence(player, week, fbgRows).points !== null && !criticalStatus(statuses.get(player.id)))
+    .filter((player) => playerWeekEvidence(player, week, fbgRows, cbsRows).points !== null && !criticalStatus(statuses.get(player.id)))
     .sort((left, right) => {
-      const leftPoints = playerWeekEvidence(left, week, fbgRows).points ?? -1;
-      const rightPoints = playerWeekEvidence(right, week, fbgRows).points ?? -1;
+      const leftPoints = playerWeekEvidence(left, week, fbgRows, cbsRows).points ?? -1;
+      const rightPoints = playerWeekEvidence(right, week, fbgRows, cbsRows).points ?? -1;
       return rightPoints - leftPoints || right.vbd - left.vbd;
     })
     .slice(0, 100);
@@ -263,7 +272,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
     return right.addPlayer.vbd - left.addPlayer.vbd;
   });
   const recommendations = candidates.slice(0, 5).map((row, index) => {
-    const projection = playerWeekEvidence(row.addPlayer, week, fbgRows);
+    const projection = playerWeekEvidence(row.addPlayer, week, fbgRows, cbsRows);
     const signals = researchSignals(row.addPlayer, researchSnapshot);
     const verdict = (row.currentDelta.delta ?? 0) >= 2 && (row.nextThreeDelta.delta ?? 0) > 0
       ? "ADD"
@@ -297,11 +306,12 @@ function contractLabel(entry) {
 }
 
 export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, statusSnapshot = null, tradeRulesConfirmed = false }) {
-  if (!leagueRostersComplete(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Trade advice") };
+  if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Trade advice") };
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const fbgRows = fbgRowMap(fbgSnapshot);
+  const cbsRows = cbsRowMap(leagueState);
   const statuses = statusMap(statusSnapshot);
-  const context = { playerById, fbgRows, statuses, currentWeek: week };
+  const context = { playerById, fbgRows, cbsRows, statuses, currentWeek: week };
   const dogsTeam = rosterTeam(leagueState, USER_TEAM_ID);
   if (!dogsTeam) return { recommendations: [], blockedReason: "Dogs of War roster is unavailable." };
   const dogs = rosterPlayers(dogsTeam.roster, playerById);
@@ -353,13 +363,13 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, s
       rivalDeltas: idea.rivalDeltas,
       salary: { dogsDelta: salaryDelta, rivalDelta: salaryDelta === null ? null : -salaryDelta, rulesConfirmed: tradeRulesConfirmed },
       keeperEffect: { sends: contractLabel(idea.send), receives: contractLabel(idea.receive), note: "Keeper cost shown from CBS when present; next-season eligibility still depends on the league's unconfigured trade/contract rule." },
-      confidence: round(Math.min(playerWeekEvidence(idea.send.player, week, fbgRows).confidence ?? 0.4, playerWeekEvidence(idea.receive.player, week, fbgRows).confidence ?? 0.4), 2),
+      confidence: round(Math.min(playerWeekEvidence(idea.send.player, week, fbgRows, cbsRows).confidence ?? 0.4, playerWeekEvidence(idea.receive.player, week, fbgRows, cbsRows).confidence ?? 0.4), 2),
       whyRivalAccepts: idea.rivalDeltas.restOfSeason >= 0
         ? `${idea.rivalTeam.teamName} gains ${idea.rivalDeltas.restOfSeason.toFixed(1)} average optimal-lineup points over the rest of the season.`
         : `${idea.rivalTeam.teamName} gives up only ${Math.abs(idea.rivalDeltas.restOfSeason).toFixed(1)} average points while changing positional shape.`,
       primaryRisk: tradeRulesConfirmed ? "Projection disagreement and player availability can change before acceptance." : "Trade salary transfer, contract treatment, deadline, and commissioner approval are not yet configured.",
       proposal: `Would you consider ${idea.send.player.name} for ${idea.receive.player.name}? It improves my ${idea.receive.player.position} path and gives ${idea.rivalTeam.teamName} ${idea.send.player.name} at ${idea.send.salary == null ? "an unconfirmed salary" : `$${idea.send.salary}`}.`,
-      evidence: { method: "both teams' weekly exact legal optimal lineups; byes included; bench totals excluded", formatsConsidered: ["1-for-1"], blockedFormats: ["2-for-1 and 1-for-2 remain blocked until the 14-player roster adjustment and trade rules are confirmed"] },
+      evidence: { method: "both teams' weekly exact legal optimal lineups; byes included; bench totals excluded", formatsConsidered: ["1-for-1"], blockedFormats: ["2-for-1 and 1-for-2 remain blocked until multi-player trade rules and post-trade 8–14 player roster handling are configured"] },
     });
     if (recommendations.length === 5) break;
   }
@@ -379,10 +389,11 @@ function irEvidence(status) {
 
 export function buildInjuryWatch({ pack, leagueState, week, statusSnapshot = null, researchSnapshot = null, fbgSnapshot = null }) {
   const owners = teamOwnership(leagueState);
-  const availabilityConfirmed = leagueRostersComplete(leagueState);
+  const availabilityConfirmed = leagueRostersReady(leagueState);
   const available = new Set(availabilityConfirmed ? leagueState.availablePlayerIds || [] : []);
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const fbgRows = fbgRowMap(fbgSnapshot);
+  const cbsRows = cbsRowMap(leagueState);
   const actionable = (statusSnapshot?.updates || [])
     .filter((status) => ["critical", "high", "moderate"].includes(status.severity))
     .map((status) => {
@@ -402,7 +413,7 @@ export function buildInjuryWatch({ pack, leagueState, week, statusSnapshot = nul
         notes: status.injuryNotes || "",
         updatedAt: status.newsUpdated || statusSnapshot.capturedAt,
         leagueStatus: available.has(player.id) ? "AVAILABLE" : owner?.teamId === USER_TEAM_ID ? "DOGS OF WAR" : owner?.teamName || (availabilityConfirmed ? "UNRESOLVED" : "UNCONFIRMED"),
-        projection: playerWeekEvidence(player, week, fbgRows),
+        projection: playerWeekEvidence(player, week, fbgRows, cbsRows),
         news: signals.news,
       };
     })
@@ -413,7 +424,7 @@ export function buildInjuryWatch({ pack, leagueState, week, statusSnapshot = nul
     .filter((row) => irEvidence((statusSnapshot?.updates || []).find((status) => status.playerId === row.playerId)))
     .map((row) => {
       const player = playerById.get(row.playerId);
-      const remaining = weekRange(week, 17).map((candidateWeek) => playerWeekEvidence(player, candidateWeek, fbgRows).points);
+      const remaining = weekRange(week, 17).map((candidateWeek) => playerWeekEvidence(player, candidateWeek, fbgRows, cbsRows).points);
       const healthyRosAverage = average(remaining);
       const action = row.leagueStatus === "AVAILABLE" ? "STASH WATCH" : row.leagueStatus === "DOGS OF WAR" ? "HOLD / IR" : row.leagueStatus === "UNCONFIRMED" ? "MONITOR" : "TRADE WATCH";
       const keeperUpside = player.marketValue >= 20 || player.vbd >= 35 ? "HIGH" : player.marketValue >= 8 || player.vbd >= 15 ? "MEDIUM" : "SPECULATIVE";
@@ -445,13 +456,13 @@ function sourceState({ leagueState, pack, fbgSnapshot, researchSnapshot, statusS
   const cbsFresh = cbsAge !== null && cbsAge <= 30 * 60;
   const projectionFresh = projectionAge !== null && projectionAge <= 48 * 60;
   const projectionUsable = projectionAge !== null && projectionAge <= 14 * 24 * 60;
-  const rostersComplete = leagueRostersComplete(leagueState);
-  const state = !cbsFresh || !projectionUsable ? "STALE" : projectionFresh && rostersComplete ? "READY" : "PARTIAL";
+  const rostersReady = leagueRostersReady(leagueState);
+  const state = !cbsFresh || !projectionUsable ? "STALE" : projectionFresh && rostersReady ? "READY" : "PARTIAL";
   const alerts = [];
   if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; final draft rosters are a Week 1 baseline and waiver availability is blocked.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
-  if (leagueState.authority.startsWith("authenticated") && !rostersComplete) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
-  if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Import a fresh Footballguys weekly export for live projection agreement.");
+  if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
+  if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (researchSnapshot?.staleFallback || statusSnapshot?.staleFallback) alerts.push("One or more injury/news sources are using the last-known-good snapshot.");
   return { state, alerts, projectionAt };
@@ -469,10 +480,11 @@ export function buildSeasonRecommendationSnapshot({
 }) {
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const fbgRows = fbgRowMap(fbgSnapshot);
+  const cbsRows = cbsRowMap(leagueState);
   const statuses = statusMap(statusSnapshot);
   const dogs = rosterTeam(leagueState, USER_TEAM_ID);
   if (!dogs) throw new Error("Dogs of War is not present in the league state.");
-  const optimized = optimizeExactLineup(dogs.roster, { week, playerById, fbgRows, statuses });
+  const optimized = optimizeExactLineup(dogs.roster, { week, playerById, fbgRows, cbsRows, statuses });
   const starterIds = new Set(optimized.starters.map((entry) => entry.playerId));
   const swaps = optimized.bench
     .filter((bench) => bench.projection.points !== null && !criticalStatus(bench.status))
@@ -503,14 +515,30 @@ export function buildSeasonRecommendationSnapshot({
     generatedAt,
     state: freshness.state,
     alerts: freshness.alerts,
-    refreshBehavior: "Update everything captures all 12 CBS rosters, including safe partial auction progress, downloads current-week Footballguys projections, and refreshes injury, depth, news, and IR evidence. Archived Tuesday plans never change.",
+    refreshBehavior: "Every Tuesday the scheduled refresh downloads Footballguys component-stat projections and applies Thunder Bowl scoring. Update everything also captures CBS rosters, moves, and component-stat projections from your signed-in CBS tab, then refreshes injury, depth, news, and IR evidence. Archived Tuesday plans never change.",
     sources: [
       sourceChip("CBS league", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : null, generatedAt, true),
       sourceChip("CBS stats", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : pack.sources.find((source) => source.name.includes("CBS Thunder Bowl weekly"))?.asOf, generatedAt),
       sourceChip("FBG projections", freshness.projectionAt, generatedAt, true),
       sourceChip("injury / news", statusSnapshot?.capturedAt || researchSnapshot?.capturedAt, generatedAt),
     ],
-    baseline: { authority: leagueState.authority, source: leagueState.source, asOf: leagueState.capturedAt, rosteredPlayers: leagueState.rosteredPlayerCount ?? null, rosterTarget: leagueState.rosterTarget ?? null, completeTeamCount: leagueState.completeTeamCount ?? null, teamCount: leagueState.teamCount ?? leagueState.teams?.length ?? null, rostersComplete: leagueRostersComplete(leagueState) },
+    baseline: {
+      authority: leagueState.authority,
+      source: leagueState.source,
+      asOf: leagueState.capturedAt,
+      rosteredPlayers: leagueState.rosteredPlayerCount ?? null,
+      rosterMinimum: leagueState.rosterMinimum ?? 8,
+      rosterMaximum: leagueState.rosterMaximum ?? leagueState.rosterTarget ?? 14,
+      legalTeamCount: leagueState.legalTeamCount ?? leagueState.completeTeamCount ?? null,
+      teamCount: leagueState.teamCount ?? leagueState.teams?.length ?? null,
+      rostersReady: leagueRostersReady(leagueState),
+      projectionWeek: leagueState.projectionWeek ?? null,
+      projectionCount: leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0,
+      // Backward-compatible aliases for older clients.
+      rosterTarget: leagueState.rosterMaximum ?? leagueState.rosterTarget ?? 14,
+      completeTeamCount: leagueState.legalTeamCount ?? leagueState.completeTeamCount ?? null,
+      rostersComplete: leagueRostersReady(leagueState),
+    },
     lineup: {
       legal: optimized.missingSlots.length === 0 && starterIds.size === 8,
       total: optimized.total,

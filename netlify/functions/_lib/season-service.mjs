@@ -44,13 +44,24 @@ export async function refreshSeasonPlan({
   now = new Date(),
   forcePublic = false,
   archiveTuesday = false,
+  refreshFootballguys = false,
 } = {}) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
   const pack = await readSeasonPack();
   const leagueState = await liveLeagueState(pack);
+  let refreshedFbgSnapshot = null;
+  let fbgRefreshError = null;
+  if (refreshFootballguys) {
+    try {
+      refreshedFbgSnapshot = await downloadFbgWeeklySnapshot(pack, week);
+      await saveFbgWeeklySnapshot(refreshedFbgSnapshot, pack);
+    } catch (error) {
+      fbgRefreshError = error instanceof Error ? error.message : String(error);
+    }
+  }
   const [fbgSnapshot, statusResult, researchResult, leagueMoves] = await Promise.all([
-    readLatestFbgWeeklySnapshot(pack, week),
+    refreshedFbgSnapshot || readLatestFbgWeeklySnapshot(pack, week),
     currentStatusSnapshot(pack, { force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
     currentResearchSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
     readLeagueMoves(week),
@@ -71,12 +82,21 @@ export async function refreshSeasonPlan({
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
   if (statusResult.error) plan.alerts.push(`Injury refresh failed; no current status snapshot is available (${statusResult.error.message}).`);
   if (researchResult.error) plan.alerts.push(`Depth/news refresh failed; no current research snapshot is available (${researchResult.error.message}).`);
-  if (statusResult.error || researchResult.error) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
+  if (fbgRefreshError) plan.alerts.push(`Footballguys raw-stat projections could not update; the last-known projection snapshot remains in use (${fbgRefreshError}).`);
+  if (statusResult.error || researchResult.error || fbgRefreshError) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
+  if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
   return {
     ...saved,
     week,
     sourceRefresh: {
+      footballguys: {
+        ok: !fbgRefreshError,
+        requested: refreshFootballguys,
+        asOf: fbgSnapshot?.providerAsOf || null,
+        rows: fbgSnapshot?.itemCount || 0,
+        error: fbgRefreshError,
+      },
       status: { ok: !statusResult.error, asOf: statusSnapshot?.capturedAt || null, error: statusResult.error?.message || null },
       research: { ok: !researchResult.error, asOf: researchSnapshot?.capturedAt || null, error: researchResult.error?.message || null },
     },
@@ -93,7 +113,7 @@ export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
 export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
-  const syncMessage = "The final auction ledger does not yet contain all 12 complete rosters. Choose Update everything to capture CBS and establish the in-season baseline.";
+  const syncMessage = "The private CBS baseline is not connected. Choose Update everything to capture all 12 teams; each team is valid with the required eight starters and zero to six backups.";
   return {
     schemaVersion: 1,
     kind: "thunder-bowl-season-setup-required",
@@ -103,7 +123,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
     state: "PARTIAL",
     requiresLeagueSync: true,
     alerts: [syncMessage],
-    refreshBehavior: "Update everything captures the authenticated CBS league baseline, downloads weekly projections, and refreshes public injury/news evidence in one action.",
+    refreshBehavior: "Every Tuesday, Footballguys component-stat projections refresh automatically and are scored with Thunder Bowl rules. Update everything also captures authenticated CBS rosters, moves, and component-stat projections, plus current injury/news evidence.",
     sources: [
       { label: "CBS league", asOf: null, ageMinutes: null, required: true },
       { label: "CBS stats", asOf: null, ageMinutes: null, required: false },
@@ -153,16 +173,9 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
   const week = seasonWeekForDate(now);
   const snapshot = canonicalizeCbsLeagueSnapshot(input, pack);
   const cbsSaved = await saveCbsLeagueState(snapshot, pack, { week });
-  let fbgSnapshot = null;
-  let fbgError = null;
-  try {
-    fbgSnapshot = await downloadFbgWeeklySnapshot(pack, week);
-    await saveFbgWeeklySnapshot(fbgSnapshot, pack);
-  } catch (error) {
-    fbgError = error instanceof Error ? error.message : String(error);
-  }
-  const refreshed = await refreshSeasonPlan({ now, forcePublic: true });
+  const refreshed = await refreshSeasonPlan({ now, forcePublic: true, refreshFootballguys: true });
   const publicFailures = Object.entries(refreshed.sourceRefresh)
+    .filter(([source]) => source !== "footballguys")
     .filter(([, result]) => !result.ok)
     .map(([source, result]) => `${source}: ${result.error}`);
   const updateSummary = {
@@ -173,14 +186,28 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
       asOf: snapshot.capturedAt,
       moves: cbsSaved.leagueMoves.length,
       rosteredPlayers: snapshot.rosteredPlayerCount,
-      rosterTarget: snapshot.rosterTarget,
-      completeTeams: snapshot.completeTeamCount,
+      rosterMinimum: snapshot.rosterMinimum,
+      rosterMaximum: snapshot.rosterMaximum,
+      legalTeams: snapshot.legalTeamCount,
       teamCount: snapshot.teamCount,
-      rostersComplete: snapshot.rostersComplete,
+      rostersReady: snapshot.rostersReady,
+      projectionWeek: snapshot.projectionWeek ?? null,
+      projectionRows: snapshot.projectionCount ?? 0,
+      unmatchedProjectionRows: snapshot.unmatchedProjectionCount ?? 0,
+      // Backward-compatible aliases for older clients.
+      rosterTarget: snapshot.rosterMaximum,
+      completeTeams: snapshot.legalTeamCount,
+      rostersComplete: snapshot.rostersReady,
     },
-    footballguys: fbgSnapshot
-      ? { ok: true, asOf: fbgSnapshot.providerAsOf, rows: fbgSnapshot.itemCount, week }
-      : { ok: false, asOf: null, rows: 0, week, error: fbgError },
+    footballguys: {
+      ok: refreshed.sourceRefresh.footballguys.ok,
+      asOf: refreshed.sourceRefresh.footballguys.asOf,
+      rows: refreshed.sourceRefresh.footballguys.rows,
+      week,
+      input: "provider component-stat projections",
+      scoring: "Thunder Bowl rules",
+      error: refreshed.sourceRefresh.footballguys.error,
+    },
     injuryNews: {
       ok: publicFailures.length === 0,
       asOf: [refreshed.sourceRefresh.status.asOf, refreshed.sourceRefresh.research.asOf].filter(Boolean).sort().at(-1) || null,
@@ -188,9 +215,5 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
     },
   };
   const plan = { ...refreshed.plan, updateSummary };
-  if (fbgError) {
-    plan.alerts = [...plan.alerts, `Footballguys projections could not update; the last-known projection snapshot remains in use (${fbgError}).`];
-    if (plan.state === "READY") plan.state = "PARTIAL";
-  }
   return { plan, updateSummary };
 }

@@ -8,7 +8,7 @@ export default async function handler() {
   const week = seasonWeekForDate(now);
   const idempotencyKey = seasonIdempotencyKey({ date: now, source: "tuesday-plan" });
   if (await readTuesdayArchive(week)) return Response.json({ skipped: true, reason: "Tuesday plan already archived.", week, idempotencyKey });
-  const result = await refreshSeasonPlan({ now, archiveTuesday: true });
+  const result = await refreshSeasonPlan({ now, archiveTuesday: true, forcePublic: true, refreshFootballguys: true });
   await claimScheduledRun(idempotencyKey, now.toISOString());
   return Response.json({ week, idempotencyKey, archived: result.archived, sourceFingerprint: result.plan.sourceFingerprint });
 }

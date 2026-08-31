@@ -5,7 +5,12 @@ export const CBS_APP_SOURCE = "thunder-bowl-app";
 export const CBS_HELPER_SOURCE = "thunder-bowl-cbs-helper";
 export const CBS_SNAPSHOT_SOURCE = "CBS Sports authenticated Thunder Bowl all-team roster report";
 export const CBS_SNAPSHOT_MODEL_EFFECT = "none";
-export const CBS_BASE_ROSTER_SIZE = 14;
+export const CBS_STARTER_REQUIREMENTS = Object.freeze({ QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 });
+export const CBS_ROSTER_MINIMUM_SIZE = Object.values(CBS_STARTER_REQUIREMENTS).reduce((sum, value) => sum + value, 0);
+export const CBS_ROSTER_MAXIMUM_SIZE = 14;
+// Backward-compatible name retained for older consumers. Fourteen is a cap,
+// not the number a team must carry after the draft.
+export const CBS_BASE_ROSTER_SIZE = CBS_ROSTER_MAXIMUM_SIZE;
 
 export const CBS_TEAM_CATALOG = Object.freeze([
   { teamId: "angry-face", cbsTeamId: 1, name: "Angry Face" },
@@ -24,6 +29,38 @@ export const CBS_TEAM_CATALOG = Object.freeze([
 
 const TEAM_BY_NAME = new Map(CBS_TEAM_CATALOG.map((team) => [team.name, team]));
 const VALID_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
+
+export function cbsTeamRosterReadiness(players = []) {
+  const counts = Object.fromEntries(Object.keys(CBS_STARTER_REQUIREMENTS).map((position) => [position, 0]));
+  for (const player of players) if (counts[player?.position] !== undefined) counts[player.position] += 1;
+  const missingSlots = Object.entries(CBS_STARTER_REQUIREMENTS)
+    .flatMap(([position, required]) => Array.from({ length: Math.max(0, required - counts[position]) }, () => position));
+  const rosterSize = players.length;
+  return {
+    rosterSize,
+    counts,
+    missingSlots,
+    belowMinimum: rosterSize < CBS_ROSTER_MINIMUM_SIZE,
+    aboveMaximum: rosterSize > CBS_ROSTER_MAXIMUM_SIZE,
+    legal: missingSlots.length === 0 && rosterSize >= CBS_ROSTER_MINIMUM_SIZE && rosterSize <= CBS_ROSTER_MAXIMUM_SIZE,
+  };
+}
+
+export function cbsLeagueRosterReadiness(teams = []) {
+  const teamStatuses = teams.map((team) => ({
+    teamId: team.teamId,
+    teamName: team.teamName || team.name,
+    ...cbsTeamRosterReadiness(team.roster || team.players || []),
+  }));
+  const legalTeamCount = teamStatuses.filter((team) => team.legal).length;
+  return {
+    rosterMinimum: CBS_ROSTER_MINIMUM_SIZE,
+    rosterMaximum: CBS_ROSTER_MAXIMUM_SIZE,
+    legalTeamCount,
+    rostersReady: teamStatuses.length === CBS_TEAM_CATALOG.length && legalTeamCount === teamStatuses.length,
+    teamStatuses,
+  };
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -60,6 +97,21 @@ function validatePlayer(player, teamName) {
   assert(Array.isArray(player.markerClasses) && player.markerClasses.length <= 20 && player.markerClasses.every((value) => typeof value === "string" && value.length <= 100), `${player.name} has invalid icon markers.`);
 }
 
+function validateProjectionRow(row, week) {
+  assert(isPlainObject(row), "CBS weekly projections contain a malformed player row.");
+  assert(/^\d{1,10}$/.test(row.cbsPlayerId || ""), "CBS weekly projections contain an invalid player ID.");
+  assert(typeof row.name === "string" && row.name.trim().length >= 2 && row.name.length <= 80, "CBS weekly projections contain an invalid player name.");
+  assert(VALID_POSITIONS.has(row.position), `${row.name} has an unsupported projection position.`);
+  assert(/^[A-Z]{2,3}$/.test(row.nflTeam || ""), `${row.name} has an invalid projection NFL team.`);
+  assert(row.week === week, `${row.name} has a projection for the wrong week.`);
+  assert(isPlainObject(row.projectedStats), `${row.name} has malformed projected stats.`);
+  for (const [key, value] of Object.entries(row.projectedStats)) {
+    assert(/^[a-z][A-Za-z0-9]+$/.test(key) && (value === null || (Number.isFinite(value) && value >= -1000 && value <= 100000)), `${row.name} has an invalid ${key} projection.`);
+  }
+  finiteOrNull(row.providerPoints, `${row.name} CBS projected points`);
+  assert(row.opponent === null || typeof row.opponent === "string", `${row.name} has an invalid projection opponent.`);
+}
+
 export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {}) {
   assert(isPlainObject(input), "CBS roster capture is not an object.");
   assert(input.schemaVersion === 1, "CBS roster capture has an unsupported schema.");
@@ -81,7 +133,7 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
     assert(expected && expected.teamId === team.teamId && expected.cbsTeamId === team.cbsTeamId, `CBS roster capture contains an unknown team mapping: ${team.name || "unnamed"}.`);
     assert(!seenTeams.has(team.teamId), `CBS roster capture repeats ${team.name}.`);
     seenTeams.add(team.teamId);
-    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= 25, `${team.name} must have 1 to 25 rostered players.`);
+    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= CBS_ROSTER_MAXIMUM_SIZE, `${team.name} must have 1 to ${CBS_ROSTER_MAXIMUM_SIZE} rostered players.`);
     for (const player of team.players) {
       validatePlayer(player, team.name);
       assert(!seenPlayers.has(player.cbsPlayerId), `CBS player ${player.cbsPlayerId} appears on more than one team.`);
@@ -92,6 +144,16 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
   assert(seenTeams.size === CBS_TEAM_CATALOG.length, "CBS roster capture is missing a known team.");
   assert(input.teamCount === CBS_TEAM_CATALOG.length, "CBS roster capture team count does not match its rows.");
   assert(input.playerCount === playerCount, "CBS roster capture player count does not match its rows.");
+  if (input.weeklyProjections !== undefined) {
+    assert(Number.isSafeInteger(input.projectionWeek) && input.projectionWeek >= 1 && input.projectionWeek <= 18, "CBS weekly projections require a valid week.");
+    assert(Array.isArray(input.weeklyProjections) && input.weeklyProjections.length === input.projectionCount && input.weeklyProjections.length >= 100 && input.weeklyProjections.length <= 600, "CBS weekly projection coverage is unsafe.");
+    const seenProjectionIds = new Set();
+    for (const row of input.weeklyProjections) {
+      validateProjectionRow(row, input.projectionWeek);
+      assert(!seenProjectionIds.has(row.cbsPlayerId), `CBS weekly projections repeat ${row.cbsPlayerId}.`);
+      seenProjectionIds.add(row.cbsPlayerId);
+    }
+  }
   return input;
 }
 
@@ -121,7 +183,7 @@ export function compareCbsRosterSnapshots(previous, current) {
   return { baseline: false, added, removed, moved, contractChanges, totalChanges: added + removed + moved + contractChanges };
 }
 
-export function requestCbsRosterCapture({ targetWindow = window, origin = window.location.origin, timeoutMs = 20000 } = {}) {
+export function requestCbsRosterCapture({ targetWindow = window, origin = window.location.origin, timeoutMs = 45000, week = 1 } = {}) {
   const requestId = crypto.randomUUID();
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -143,6 +205,7 @@ export function requestCbsRosterCapture({ targetWindow = window, origin = window
       type: CBS_CAPTURE_REQUEST,
       protocolVersion: CBS_CAPTURE_PROTOCOL_VERSION,
       requestId,
+      week,
     }, origin);
   });
 }

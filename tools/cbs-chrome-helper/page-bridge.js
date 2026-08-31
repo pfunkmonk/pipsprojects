@@ -11,7 +11,7 @@
     const data = event.data;
     if (event.source !== window || event.origin !== window.location.origin || !allowedOrigins.has(event.origin)) return;
     if (!data || data.source !== APP_SOURCE || data.type !== REQUEST || data.protocolVersion !== PROTOCOL_VERSION || typeof data.requestId !== "string") return;
-    chrome.runtime.sendMessage({ action: "capture-cbs-rosters", requestId: data.requestId }, (result) => {
+    chrome.runtime.sendMessage({ action: "capture-cbs-rosters", requestId: data.requestId, week: data.week }, (result) => {
       const runtimeError = chrome.runtime.lastError;
       window.postMessage({
         source: HELPER_SOURCE,
@@ -25,4 +25,3 @@
     });
   });
 })();
-

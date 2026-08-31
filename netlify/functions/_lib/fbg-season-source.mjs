@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalPlayerIdentity } from "../../../public/thunder-bowl/state-engine.mjs";
+import { scoreThunderBowlProjectedStats, THUNDER_BOWL_SCORING_FINGERPRINT } from "./thunder-bowl-scoring.mjs";
 
 export const FBG_WEEKLY_COLUMNS = Object.freeze([
   "player_id", "player_name", "nfl_team", "position", "week", "projected_points", "floor", "ceiling", "provider_as_of",
@@ -53,34 +54,47 @@ function optionalNumber(value, label) {
   return number;
 }
 
-function pointsAllowedScore(value) {
-  if (value <= 0) return 10;
-  if (value <= 6) return 8;
-  if (value <= 13) return 6;
-  if (value <= 20) return 4;
-  if (value <= 34) return 0;
-  if (value <= 44) return -4;
-  return -6;
-}
-
 function nativeNumber(row, key) {
   const value = Number(row[key]);
   return Number.isFinite(value) ? value : 0;
 }
 
-function thunderBowlPoints(row, position) {
+function fbgProjectedStats(row, position) {
   const n = (key) => nativeNumber(row, key);
-  const offense = n("pass-yds") * 0.04 + n("pass-td") * 6 - n("pass-int") * 2 + n("pass-2pt") * 2
-    + n("rush-yds") * 0.1 + n("rush-td") * 6 + n("rush-2pt") * 2
-    + n("rec-rec") + n("rec-yds") * 0.1 + n("rec-td") * 6 + n("rec-2pt") * 2
-    - n("fum-lost") * 2;
-  const kicking = n("kck-fgc") * 3 + n("kck-xpc");
   const hasDefenseGame = n("tmd-pa") > 0 || n("tmd-ya") > 0 || ["tmd-sck", "tmd-int", "tmd-fmr", "tmd-td", "tmd-saf"].some((key) => n(key) > 0);
-  const defense = n("tmd-sck") * 2 + n("tmd-int") * 2 + n("tmd-fmr") * 2
-    + n("tmd-td") * 6 + n("tmd-saf") * 2
-    + (position === "DST" && hasDefenseGame ? pointsAllowedScore(n("tmd-pa")) : 0);
-  const returns = (n("kr-td") + n("pr-td")) * 6;
-  return Math.max(0, Math.round((offense + kicking + defense + returns) * 10) / 10);
+  return {
+    passingAttempts: n("pass-att"),
+    passingCompletions: n("pass-cmp"),
+    passingYards: n("pass-yds"),
+    passingTouchdowns: n("pass-td"),
+    interceptionsThrown: n("pass-int"),
+    passingTwoPointConversions: n("pass-2pt"),
+    rushingAttempts: n("rush-car"),
+    rushingYards: n("rush-yds"),
+    rushingTouchdowns: n("rush-td"),
+    rushingTwoPointConversions: n("rush-2pt"),
+    targets: n("rec-tgt"),
+    receptions: n("rec-rec"),
+    receivingYards: n("rec-yds"),
+    receivingTouchdowns: n("rec-td"),
+    receivingTwoPointConversions: n("rec-2pt"),
+    fumblesLost: n("fum-lost"),
+    fieldGoalAttempts: n("kck-fga"),
+    fieldGoalsMade: n("kck-fgc"),
+    extraPointAttempts: n("kck-xpa"),
+    extraPointsMade: n("kck-xpc"),
+    defensiveSacks: n("tmd-sck"),
+    defensiveInterceptions: n("tmd-int"),
+    defensiveFumblesRecovered: n("tmd-fmr"),
+    defensiveTouchdowns: n("tmd-td"),
+    defensiveSafeties: n("tmd-saf"),
+    blockedKicks: n("tmd-blk"),
+    defensivePointsAllowed: position === "DST" && hasDefenseGame ? n("tmd-pa") : null,
+    defensiveYardsAllowed: position === "DST" && hasDefenseGame ? n("tmd-ya") : null,
+    defensiveGameProjected: position === "DST" && hasDefenseGame,
+    kickReturnTouchdowns: n("kr-td"),
+    puntReturnTouchdowns: n("pr-td"),
+  };
 }
 
 function normalizeTeam(value) {
@@ -131,16 +145,19 @@ export function parseFbgNativeWeeklyCsv(text, pack, {
       unmatchedRows += 1;
       continue;
     }
+    const projectedStats = fbgProjectedStats(row, position);
     const item = {
       playerId: player.id,
       playerName: player.name,
       position: player.position,
       nflTeam: player.nflTeam,
       week,
-      points: thunderBowlPoints(row, position),
+      points: scoreThunderBowlProjectedStats(projectedStats, position),
       floor: null,
       ceiling: null,
       providerAsOf: providerTimestamp(providerAsOf),
+      projectedStats,
+      scoringCaveats: position === "K" ? ["Footballguys does not provide projected field-goal distance bands; its weekly score cannot include Thunder Bowl's +2 bonus for each 50+ yard field goal."] : [],
     };
     const prior = candidates.get(player.id);
     if (!prior || item.points > prior.points) candidates.set(player.id, item);
@@ -160,7 +177,7 @@ export function parseFbgNativeWeeklyCsv(text, pack, {
     itemCount: items.length,
     consensusRowCount: consensusRows,
     unmatchedRowCount: unmatchedRows,
-    scoringFingerprint: "tb26-ppr-6pt-pass-td-minus2-int-2pt-sack-50fg-v1",
+    scoringFingerprint: THUNDER_BOWL_SCORING_FINGERPRINT,
     items,
   };
 }
@@ -246,7 +263,8 @@ export function validateFbgWeeklySnapshot(value, pack) {
   const known = new Set(pack.players.map((player) => player.id));
   const ids = new Set();
   for (const item of value.items) {
-    if (!known.has(item.playerId) || item.week !== value.week || !Number.isFinite(item.points) || item.points < 0) throw new Error("Footballguys weekly snapshot contains an invalid row.");
+    if (!known.has(item.playerId) || item.week !== value.week || !Number.isFinite(item.points) || item.points < -100 || item.points > 100) throw new Error("Footballguys weekly snapshot contains an invalid row.");
+    if (item.projectedStats !== undefined && (!item.projectedStats || typeof item.projectedStats !== "object" || Array.isArray(item.projectedStats))) throw new Error("Footballguys weekly snapshot contains malformed projected stats.");
     if (ids.has(item.playerId)) throw new Error("Footballguys weekly snapshot repeats a player.");
     ids.add(item.playerId);
   }

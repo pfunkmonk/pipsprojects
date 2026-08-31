@@ -60,7 +60,7 @@ test("an incomplete auction ledger returns a safe authenticated setup state inst
   const pack = { season: 2026, packId: "test-pack", players: [] };
   assert.throws(
     () => leagueStateFromFinalLedger({ ledger: { document: { events: [], generation: 3, updatedAt: "2026-08-30T12:00:00.000Z" } }, pack }),
-    (error) => error.code === "SEASON_BASELINE_UNAVAILABLE" && /12 complete 14-player rosters/.test(error.message),
+    (error) => error.code === "SEASON_BASELINE_UNAVAILABLE" && /12 legal rosters/.test(error.message),
   );
   const setup = buildSeasonSetupSnapshot({ pack, now: "2026-08-30T12:00:00.000Z" });
   assert.equal(setup.kind, "thunder-bowl-season-setup-required");
@@ -104,6 +104,10 @@ test("official Footballguys weekly downloads use consensus stat lines and exact 
   const snapshot = parseFbgNativeWeeklyCsv(csv, pack, { week: 1, providerAsOf: "2026-08-30T16:00:00.000Z", minimumRows: 1 });
   assert.equal(snapshot.items.length, 1);
   assert.equal(snapshot.items[0].points, 23);
+  assert.equal(snapshot.items[0].projectedStats.rushingYards, 80);
+  assert.equal(snapshot.items[0].projectedStats.receptions, 4);
+  assert.equal(snapshot.items[0].projectedStats.fumblesLost, 0.5);
+  assert.equal(snapshot.items[0].projectedStats.rushingTwoPointConversions, 1);
   assert.equal(snapshot.source, "Footballguys official weekly projections download");
   assert.equal(snapshot.consensusRowCount, 2);
 });
@@ -128,7 +132,7 @@ test("official kicker conversions and DST points-allowed columns map without tur
   const snapshot = parseFbgNativeWeeklyCsv(csv, pack, { week: 1, providerAsOf: "2026-08-30T16:00:00.000Z", minimumRows: 3 });
   const points = new Map(snapshot.items.map((item) => [item.playerId, item.points]));
   assert.equal(points.get("fbg:AubrBr00"), 6.5);
-  assert.equal(points.get("fbg:pitxxx99"), 14.3);
+  assert.equal(points.get("fbg:pitxxx99"), 14.28);
   assert.equal(points.get("fbg:denxxx99"), 0);
 });
 
@@ -176,7 +180,7 @@ test("partial authenticated auction captures update safely without confirming fr
   };
   const result = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
   assert.equal(result.recommendations.length, 0);
-  assert.match(result.blockedReason, /auction is still in progress/);
+  assert.match(result.blockedReason, /legal 8–14 player roster/);
   assert.match(result.blockedReason, /3 of 12 teams/);
 });
 
@@ -252,22 +256,25 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v129/);
+  assert.match(worker, /thunder-bowl-shell-v130/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831b/);
+  assert.match(worker, /season\.mjs\?v=20260831c/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);
 });
 
 test("scheduled and persistence source preserve write-once Tuesday archives and separate live pointers", async () => {
-  const [storeSource, tuesdaySource] = await Promise.all([
+  const [storeSource, tuesdaySource, serviceSource] = await Promise.all([
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-tuesday-collector.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(storeSource, /`\$\{prefix\}\/tuesday`, plan, \{ onlyIfNew: true \}/);
   assert.match(storeSource, /setJSON\("plans\/v1\/latest", plan\)/);
   assert.match(storeSource, /sources\/cbs\/v1\/raw\/\$\{canonical\.rawSha256\}/);
   assert.match(tuesdaySource, /isDenverTuesdayRefresh\(now\)/);
+  assert.match(tuesdaySource, /refreshFootballguys: true/);
   assert.match(tuesdaySource, /schedule: "0,10 12,13 \* \* 2"/);
+  assert.match(serviceSource, /archiveTuesday && fbgRefreshError/);
 });

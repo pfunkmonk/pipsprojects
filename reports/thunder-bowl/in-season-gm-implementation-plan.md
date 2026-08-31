@@ -9,7 +9,7 @@
 
 ## New work
 
-- A versioned canonical in-season source contract for authenticated CBS all-team rosters/availability and optional manual Footballguys weekly exports.
+- A versioned canonical in-season source contract for authenticated CBS all-team rosters/availability plus current-week CBS component projections, and automatic official Footballguys component-stat downloads with manual imports retained only for recovery.
 - Exact weekly lineup optimization; waiver add/drop marginal lineup and resilience scoring; two-sided rest-of-season trade evaluation with salaries and keeper contracts.
 - An append-only private Tuesday recommendation store and history, Denver-aware scheduled public refresh, idempotency by season/week/source/schema, and stale/partial recovery.
 - A private `/thunder-bowl/season/` working surface with one public refresh action, one explicit private CBS sync action, compact evidence dialogs, offline last-known-good recovery, and no static/private payload leakage.
@@ -24,7 +24,7 @@
 
 ## Known risks and fail-closed choices
 
-- CBS documents E-Reports but no supported unattended private-league API; Footballguys' current CBS connection uses a browser extension. Private league sync therefore remains visibly user-triggered.
+- CBS documents E-Reports but no supported unattended private-league API; private CBS roster and projection sync therefore remains visibly user-triggered through the signed-in browser helper. Footballguys component projections refresh automatically in the Tuesday job.
 - Exact in-season waiver pricing/contracts, trade salary-transfer rules, and deadlines are not present in the repository. Advice omits price authority and labels trades `EXPLORE` until those CBS rules are confirmed.
 - Comparable historical premium weekly snapshots do not exist. No historical accuracy is invented; the release creates the append-only 2026 archive needed for future time-forward validation.
 - The final Week 1 baseline comes from the production append-only ledger; live CBS becomes authority as soon as the owner syncs it.

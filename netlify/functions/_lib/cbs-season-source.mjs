@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
-import { CBS_BASE_ROSTER_SIZE, validateCbsRosterSnapshot } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
+import {
+  CBS_ROSTER_MAXIMUM_SIZE,
+  cbsLeagueRosterReadiness,
+  validateCbsRosterSnapshot,
+} from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { canonicalPlayerIdentity, replayDraft } from "../../../public/thunder-bowl/state-engine.mjs";
+import { scoreThunderBowlProjectedStats, THUNDER_BOWL_SCORING_FINGERPRINT } from "./thunder-bowl-scoring.mjs";
 
 function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -81,7 +86,41 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     }),
   }));
   const availablePlayerIds = pack.players.map((player) => player.id).filter((id) => !seenPlayerIds.has(id));
-  const completeTeamCount = teams.filter((team) => team.roster.length >= CBS_BASE_ROSTER_SIZE).length;
+  const readiness = cbsLeagueRosterReadiness(teams);
+  const projectedIds = new Set();
+  let unmatchedProjectionCount = 0;
+  const weeklyProjections = [];
+  for (const row of snapshot.weeklyProjections || []) {
+    let resolved;
+    try {
+      resolved = resolvePlayer(row, indexes).player;
+    } catch {
+      unmatchedProjectionCount += 1;
+      continue;
+    }
+    if (projectedIds.has(resolved.id)) continue;
+    projectedIds.add(resolved.id);
+    weeklyProjections.push({
+      playerId: resolved.id,
+      playerName: resolved.name,
+      position: resolved.position,
+      nflTeam: row.nflTeam,
+      week: row.week,
+      points: scoreThunderBowlProjectedStats(row.projectedStats, resolved.position),
+      providerPoints: row.providerPoints,
+      projectedStats: { ...row.projectedStats },
+      opponent: row.opponent,
+      providerAsOf: snapshot.capturedAt,
+      source: "CBS Sports authenticated weekly component projections",
+      scoringFingerprint: THUNDER_BOWL_SCORING_FINGERPRINT,
+      scoringCaveats: resolved.position === "DST"
+        ? ["CBS standard projections do not expose blocked-kick or return-touchdown components."]
+        : ["QB", "RB", "WR", "TE"].includes(resolved.position)
+          ? ["CBS standard projections do not expose two-point-conversion components."]
+          : [],
+    });
+  }
+  weeklyProjections.sort((left, right) => left.playerId.localeCompare(right.playerId));
   return {
     schemaVersion: 1,
     season: pack.season,
@@ -92,15 +131,25 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     reportId: new URL(snapshot.pageUrl).pathname,
     rawSha256: sha256(snapshot),
     teamCount: teams.length,
-    rosterTarget: CBS_BASE_ROSTER_SIZE,
-    completeTeamCount,
-    rostersComplete: completeTeamCount === teams.length,
+    rosterMinimum: readiness.rosterMinimum,
+    rosterMaximum: readiness.rosterMaximum,
+    legalTeamCount: readiness.legalTeamCount,
+    rostersReady: readiness.rostersReady,
+    teamStatuses: readiness.teamStatuses,
+    // Legacy aliases retained while cached clients and stored plans migrate.
+    rosterTarget: readiness.rosterMaximum,
+    completeTeamCount: readiness.legalTeamCount,
+    rostersComplete: readiness.rostersReady,
     rosteredPlayerCount: seenPlayerIds.size,
     availablePlayerCount: availablePlayerIds.length,
     teamDrift,
     teams,
     rosteredPlayerIds: [...seenPlayerIds],
     availablePlayerIds,
+    projectionWeek: snapshot.projectionWeek ?? null,
+    projectionCount: weeklyProjections.length,
+    unmatchedProjectionCount,
+    weeklyProjections,
   };
 }
 
@@ -115,11 +164,29 @@ export function validateCanonicalCbsLeagueState(value, pack) {
   if (!Array.isArray(value.availablePlayerIds) || value.availablePlayerIds.length !== value.availablePlayerCount || value.availablePlayerIds.some((id) => !knownIds.has(id))) throw new Error("CBS availability coverage is invalid.");
   const available = new Set(value.availablePlayerIds);
   if (rostered.some((player) => available.has(player.playerId)) || rostered.length + available.size !== knownIds.size) throw new Error("CBS rostered and available players do not partition the governed catalog.");
-  const rosterTarget = value.rosterTarget ?? CBS_BASE_ROSTER_SIZE;
-  const completeTeamCount = value.completeTeamCount ?? value.teams.filter((team) => team.roster.length >= rosterTarget).length;
-  const rostersComplete = value.rostersComplete ?? completeTeamCount === value.teams.length;
-  if (rosterTarget !== CBS_BASE_ROSTER_SIZE || !Number.isSafeInteger(completeTeamCount) || completeTeamCount < 0 || completeTeamCount > value.teams.length || rostersComplete !== (completeTeamCount === value.teams.length)) throw new Error("CBS league roster-completion metadata is invalid.");
-  return { ...value, rosterTarget, completeTeamCount, rostersComplete };
+  if (value.teams.some((team) => !Array.isArray(team.roster) || team.roster.length < 1 || team.roster.length > CBS_ROSTER_MAXIMUM_SIZE)) throw new Error("CBS league state contains an invalid roster size.");
+  const readiness = cbsLeagueRosterReadiness(value.teams);
+  const weeklyProjections = Array.isArray(value.weeklyProjections) ? value.weeklyProjections : [];
+  const projectionIds = new Set();
+  for (const row of weeklyProjections) {
+    if (!knownIds.has(row.playerId) || !Number.isSafeInteger(row.week) || row.week < 1 || row.week > 18 || !Number.isFinite(row.points) || row.points < -100 || row.points > 100 || !row.projectedStats || typeof row.projectedStats !== "object") throw new Error("CBS weekly projection state contains an invalid row.");
+    if (projectionIds.has(row.playerId)) throw new Error("CBS weekly projection state repeats a player.");
+    projectionIds.add(row.playerId);
+  }
+  return {
+    ...value,
+    rosterMinimum: readiness.rosterMinimum,
+    rosterMaximum: readiness.rosterMaximum,
+    legalTeamCount: readiness.legalTeamCount,
+    rostersReady: readiness.rostersReady,
+    teamStatuses: readiness.teamStatuses,
+    rosterTarget: readiness.rosterMaximum,
+    completeTeamCount: readiness.legalTeamCount,
+    rostersComplete: readiness.rostersReady,
+    projectionWeek: Number.isSafeInteger(value.projectionWeek) ? value.projectionWeek : null,
+    projectionCount: weeklyProjections.length,
+    weeklyProjections,
+  };
 }
 
 export function leagueStateFromFinalLedger({ ledger, pack }) {
@@ -144,8 +211,9 @@ export function leagueStateFromFinalLedger({ ledger, pack }) {
     })),
   }));
   const rosteredPlayerIds = teams.flatMap((team) => team.roster.map((player) => player.playerId));
-  if (teams.length !== 12 || rosteredPlayerIds.length !== 168 || new Set(rosteredPlayerIds).size !== 168) {
-    const error = new Error("The locked final ledger does not yet contain 12 complete 14-player rosters.");
+  const readiness = cbsLeagueRosterReadiness(teams);
+  if (teams.length !== 12 || new Set(rosteredPlayerIds).size !== rosteredPlayerIds.length || !readiness.rostersReady) {
+    const error = new Error("The locked final ledger does not yet contain 12 legal rosters with the required eight starters and no more than six backups.");
     error.code = "SEASON_BASELINE_UNAVAILABLE";
     throw error;
   }
@@ -159,6 +227,14 @@ export function leagueStateFromFinalLedger({ ledger, pack }) {
     reportId: `ledger-generation-${document.generation}`,
     rawSha256: sha256(document.events),
     teamCount: teams.length,
+    rosterMinimum: readiness.rosterMinimum,
+    rosterMaximum: readiness.rosterMaximum,
+    legalTeamCount: readiness.legalTeamCount,
+    rostersReady: readiness.rostersReady,
+    teamStatuses: readiness.teamStatuses,
+    rosterTarget: readiness.rosterMaximum,
+    completeTeamCount: readiness.legalTeamCount,
+    rostersComplete: readiness.rostersReady,
     rosteredPlayerCount: rosteredPlayerIds.length,
     availablePlayerCount: null,
     teamDrift: [],
