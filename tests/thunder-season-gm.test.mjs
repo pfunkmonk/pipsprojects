@@ -253,6 +253,9 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /snapshot, fbgSnapshot/);
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
+  assert.doesNotMatch(source, /JSON\.stringify\(value/);
+  assert.match(source, /buildEvidenceExplanation/);
+  for (const kind of ["starter", "bench", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
   assert.match(html, /maxlength="100"/);
@@ -260,9 +263,10 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v135/);
+  assert.match(worker, /thunder-bowl-shell-v136/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831h/);
+  assert.match(worker, /season\.mjs\?v=20260831i/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260831a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);

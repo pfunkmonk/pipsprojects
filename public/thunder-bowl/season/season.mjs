@@ -1,11 +1,11 @@
 import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831d";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
+import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831a";
 
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
 const REFRESH_URL = "/api/thunder-bowl/season/refresh";
 const PLAN_CACHE_KEY = "seasonPlanV1";
-const evidenceValues = new WeakMap();
 let plan = null;
 let offlineMode = false;
 
@@ -42,24 +42,29 @@ function empty(message) {
   return element("p", "empty", message);
 }
 
-function evidenceButton(title, value, label = "Evidence") {
+function evidenceButton(title, value, kind, label = "Why?") {
   const button = element("button", "evidence-button", label);
   button.type = "button";
-  evidenceValues.set(button, { title, value });
-  button.addEventListener("click", () => openEvidence(title, value));
+  button.addEventListener("click", () => openEvidence(title, value, kind));
   return button;
 }
 
-function openEvidence(title, value) {
+function openEvidence(title, value, kind) {
   byId("evidence-title").textContent = title;
   const body = byId("evidence-body");
   body.replaceChildren();
-  const section = element("section");
-  section.append(element("h3", "", "Registered inputs and reasoning"));
-  const pre = element("pre");
-  pre.textContent = JSON.stringify(value, null, 2);
-  section.append(pre);
-  body.append(section);
+  const explanation = buildEvidenceExplanation(kind, value, { week: plan?.week || null });
+  body.append(element("p", "evidence-summary", explanation.summary));
+  for (const group of explanation.sections) {
+    if (!group.items.length) continue;
+    const sectionNode = element("section");
+    sectionNode.append(element("h3", "", group.title));
+    const list = element("ul", "evidence-list");
+    for (const item of group.items) list.append(element("li", "", item));
+    sectionNode.append(list);
+    body.append(sectionNode);
+  }
+  if (explanation.note) body.append(element("p", "evidence-note", explanation.note));
   byId("evidence-dialog").showModal();
 }
 
@@ -71,13 +76,13 @@ function sourceAge(source) {
   return `${Math.floor(source.ageMinutes / 1440)}d old`;
 }
 
-function compactRow(title, detail, evidence = null) {
+function compactRow(title, detail, evidence = null, evidenceKind = "generic") {
   const row = element("article", "compact-row");
   const copy = element("div");
   copy.append(element("strong", "", title));
   if (detail) copy.append(element("p", "", detail));
   row.append(copy);
-  if (evidence) row.append(evidenceButton(title, evidence));
+  if (evidence) row.append(evidenceButton(title, evidence, evidenceKind));
   return row;
 }
 
@@ -157,7 +162,7 @@ function renderLineup(value) {
     const range = element("td", "", `${number(row.floor)}–${number(row.ceiling)}`);
     const points = element("td", "player-name", number(row.points));
     const action = document.createElement("td");
-    action.append(evidenceButton(`${row.name} Week ${value.week}`, row));
+    action.append(evidenceButton(`${row.name} Week ${value.week}`, row, "starter"));
     tr.append(slot, playerCell, game, range, points, action);
     return tr;
   }));
@@ -170,10 +175,10 @@ function renderLineup(value) {
   }
   const swaps = byId("swap-list");
   swaps.replaceChildren(...(value.lineup.swaps.length
-    ? value.lineup.swaps.map((row) => compactRow(`Start ${row.start} over ${row.sit}`, `${signed(row.delta)} points · confidence ${number(row.confidence, 2)}`, row))
+    ? value.lineup.swaps.map((row) => compactRow(`Start ${row.start} over ${row.sit}`, `${signed(row.delta)} points · confidence ${number(row.confidence, 2)}`, row, "swap"))
     : [empty("No close start/sit contingency is registered.")]));
   const bench = byId("bench-list");
-  bench.replaceChildren(...value.lineup.bench.map((row) => compactRow(`${row.position} · ${row.name}`, `${number(row.points)} projected · ${row.injury?.status || "no actionable injury tag"}`, row)));
+  bench.replaceChildren(...value.lineup.bench.map((row) => compactRow(`${row.position} · ${row.name}`, `${number(row.points)} projected · ${row.injury?.status || "no actionable injury tag"}`, row, "bench")));
 }
 
 function metric(label, value) {
@@ -199,7 +204,7 @@ function renderWaivers(value) {
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
     card.append(metrics);
     const actions = element("div", "card-actions");
-    actions.append(evidenceButton(`${row.add.name} waiver case`, { availability: row.availability, acquisitionAdvice: row.acquisitionAdvice, dropCost: row.dropCost, confidence: row.confidence, evidence: row.evidence }));
+    actions.append(evidenceButton(`${row.add.name} waiver case`, row, "waiver"));
     card.append(actions);
     return card;
   }));
@@ -224,7 +229,7 @@ function renderTrades(value) {
     metrics.append(metric("Dogs ROS", signed(row.dogsDeltas.restOfSeason)), metric("Rival ROS", signed(row.rivalDeltas.restOfSeason)), metric("Salary", row.salary.dogsDelta === null ? "unknown" : `$${signed(row.salary.dogsDelta)}`));
     card.append(metrics);
     const actions = element("div", "card-actions");
-    actions.append(evidenceButton(`${send} for ${receive}`, row));
+    actions.append(evidenceButton(`${send} for ${receive}`, row, "trade"));
     const copy = element("button", "evidence-button", "Copy proposal");
     copy.type = "button";
     copy.addEventListener("click", async () => { await navigator.clipboard.writeText(row.proposal); setStatus("Trade proposal copied."); });
@@ -237,15 +242,15 @@ function renderTrades(value) {
 function renderWatch(value) {
   const moves = byId("move-list");
   moves.replaceChildren(...(value.watch.leagueMoves.length
-    ? value.watch.leagueMoves.map((row) => compactRow(`${row.type}: ${row.playerName}`, `${row.from?.teamName || "Available"} → ${row.to?.teamName || "Available"} · ${dateTime(row.detectedAt)}`, row))
+    ? value.watch.leagueMoves.map((row) => compactRow(`${row.type}: ${row.playerName}`, `${row.from?.teamName || "Available"} → ${row.to?.teamName || "Available"} · ${dateTime(row.detectedAt)}`, row, "move"))
     : [empty("No manager roster change has been detected from consecutive CBS snapshots this week.")]));
   const injuries = byId("injury-list");
   injuries.replaceChildren(...(value.watch.injuries.length
-    ? value.watch.injuries.slice(0, 15).map((row) => compactRow(`${row.name} · ${row.status}`, `${row.leagueStatus} · ${row.practice || row.bodyPart || "details pending"} · ${number(row.projection.points)} projected`, row))
+    ? value.watch.injuries.slice(0, 15).map((row) => compactRow(`${row.name} · ${row.status}`, `${row.leagueStatus} · ${row.practice || row.bodyPart || "details pending"} · ${number(row.projection.points)} projected`, row, "injury"))
     : [empty("No actionable injury row is registered.")]));
   const ir = byId("ir-list");
   ir.replaceChildren(...(value.watch.irTargets.length
-    ? value.watch.irTargets.map((row) => compactRow(`${row.action}: ${row.name}`, `${row.leagueStatus} · keeper upside ${row.keeperUpside} · healthy ROS ${number(row.healthyRosAverage)}`, row))
+    ? value.watch.irTargets.map((row) => compactRow(`${row.action}: ${row.name}`, `${row.leagueStatus} · keeper upside ${row.keeperUpside} · healthy ROS ${number(row.healthyRosAverage)}`, row, "ir"))
     : [empty("No IR/PUP stash target currently clears the governed watch gate.")]));
 }
 
