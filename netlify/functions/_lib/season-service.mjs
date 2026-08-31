@@ -173,6 +173,10 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
       asOf: snapshot.capturedAt,
       moves: cbsSaved.leagueMoves.length,
       rosteredPlayers: snapshot.rosteredPlayerCount,
+      rosterTarget: snapshot.rosterTarget,
+      completeTeams: snapshot.completeTeamCount,
+      teamCount: snapshot.teamCount,
+      rostersComplete: snapshot.rostersComplete,
     },
     footballguys: fbgSnapshot
       ? { ok: true, asOf: fbgSnapshot.providerAsOf, rows: fbgSnapshot.itemCount, week }

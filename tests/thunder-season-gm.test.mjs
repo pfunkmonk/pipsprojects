@@ -162,6 +162,24 @@ test("waiver recommendations remain blocked until CBS supplies authenticated ava
   assert.match(result.blockedReason, /Sync private CBS/);
 });
 
+test("partial authenticated auction captures update safely without confirming free agents", () => {
+  const roster = rosterPlayers();
+  const freeAgent = player("rb-undrafted", "RB", 18, { vbd: 80, marketValue: 30 });
+  const leagueState = {
+    authority: "authenticated league roster and availability authority",
+    capturedAt: "2026-08-31T14:00:00.000Z",
+    rostersComplete: false,
+    completeTeamCount: 3,
+    teamCount: 12,
+    teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+    availablePlayerIds: [freeAgent.id],
+  };
+  const result = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
+  assert.equal(result.recommendations.length, 0);
+  assert.match(result.blockedReason, /auction is still in progress/);
+  assert.match(result.blockedReason, /3 of 12 teams/);
+});
+
 test("waiver recommendations use only CBS-available adds and pair every add with a legal roster drop", () => {
   const roster = rosterPlayers();
   const freeAgent = player("rb-upgrade", "RB", 18, { vbd: 80, marketValue: 30 });
@@ -234,9 +252,9 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v128/);
+  assert.match(worker, /thunder-bowl-shell-v129/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831a/);
+  assert.match(worker, /season\.mjs\?v=20260831b/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);

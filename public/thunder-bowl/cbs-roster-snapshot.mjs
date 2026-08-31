@@ -5,6 +5,7 @@ export const CBS_APP_SOURCE = "thunder-bowl-app";
 export const CBS_HELPER_SOURCE = "thunder-bowl-cbs-helper";
 export const CBS_SNAPSHOT_SOURCE = "CBS Sports authenticated Thunder Bowl all-team roster report";
 export const CBS_SNAPSHOT_MODEL_EFFECT = "none";
+export const CBS_BASE_ROSTER_SIZE = 14;
 
 export const CBS_TEAM_CATALOG = Object.freeze([
   { teamId: "angry-face", cbsTeamId: 1, name: "Angry Face" },
@@ -80,7 +81,7 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
     assert(expected && expected.teamId === team.teamId && expected.cbsTeamId === team.cbsTeamId, `CBS roster capture contains an unknown team mapping: ${team.name || "unnamed"}.`);
     assert(!seenTeams.has(team.teamId), `CBS roster capture repeats ${team.name}.`);
     seenTeams.add(team.teamId);
-    assert(Array.isArray(team.players) && team.players.length >= 14 && team.players.length <= 25, `${team.name} must have 14 to 25 rostered players.`);
+    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= 25, `${team.name} must have 1 to 25 rostered players.`);
     for (const player of team.players) {
       validatePlayer(player, team.name);
       assert(!seenPlayers.has(player.cbsPlayerId), `CBS player ${player.cbsPlayerId} appears on more than one team.`);

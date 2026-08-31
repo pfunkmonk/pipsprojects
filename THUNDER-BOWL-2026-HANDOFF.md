@@ -1,6 +1,6 @@
 # Thunder Bowl 2026 handoff
 
-Updated August 29, 2026. This is the takeover starting point for another developer or Codex task.
+Updated August 31, 2026. This is the takeover starting point for another developer or Codex task.
 
 ## Current outcome
 
@@ -11,6 +11,8 @@ Updated August 29, 2026. This is the takeover starting point for another develop
 - Current authority: production-locked final pack; 717 players; 12 teams. The server-pinned SHA-256 is `6214947472bdd20b16c27e62263525165a4c2a426b099bc09c9b8776ea9d4db5`.
 - Keeper selection and rights trading begin August 15. Auction is August 29, 2026.
 - Technical readiness rehearsal: passed and pack-pinned (24 keepers, 144 auction sales, 16/16 catastrophe gates).
+- The private In-Season GM is live at `/thunder-bowl/season/`. Its single **Update everything** action uses the least-privilege Chrome Data Helper v0.3.0 to read CBS's authenticated all-team report, then refreshes Footballguys weekly projections plus injury, depth, news, and IR evidence. Manual JSON/CSV imports remain recovery-only.
+- CBS can legitimately report fewer than 14 players per team while the auction is being entered. The August 31 authenticated report contained all 12 team tables, 144 rostered players, and 3 teams at the 14-player base target. That partial snapshot is now saved and displayed instead of rejected: Dogs of War lineup/news/watch features update, while waiver availability and trade recommendations stay blocked until all 12 base rosters are complete. DST nickname/team-code aliases are reconciled at the governed identity boundary, and actual CBS column positions are anchored from the stable trailing salary/contract columns.
 - Final-pack verification: 440/440 automated tests, 717-player/12-team production build, exact-byte pack audit, 168-sale full auction, 36-player/608-rollout-per-player advice Monte Carlo, foolproof roster simulation, and 24-keeper/144-sale catastrophe/recovery rehearsal all pass against the August 29 pack. The complete August 11 signed-in production role audit is recorded in `reports/thunder-bowl/release-audit-20260811.md`; the refreshed-pack code/browser/dependency wrap is in `reports/thunder-bowl/release-audit-20260817.md`; current price/advice evidence is in `reports/thunder-bowl/auction-price-curve-backtest.json` and `auction-advice-monte-carlo.json`.
 - **Live 2026 keeper authority is final.** The canonical 24-active-keeper cloud set (two per team) was sealed on August 28, 2026 at 5:08 PM MT. Production verification shows exactly one `KEEPERS_FINALIZED` event, the read-only board reports the final lock without exposing its private reason, and a live auctioneer edit probe is rejected with HTTP 403 / `KEEPERS_FINALIZED` without changing assignments or revision. Fresh private devices are forced to the official cloud workspace; only the authenticated organizer can deliberately enable session-scoped corrections.
 - The August 29 projection refresh is the final production-locked 2026 value pack. It league-scores and blends the newest Footballguys, CBS, FantasyPros, and PFF weekly assets at the week level, renormalizes only across sources actually available for that player-week, and never converts a missing row to zero. Fresh source evidence covers 636/716 original identities; the remaining 80 deep players retain the prior validated projection and weekly shape. A separately governed, source-backed supplemental catalog adds Jonnu Smith as the 717th searchable identity (`TE`, `GB`, bye 11, $1) without changing any existing player record. All 717 season/weekly profiles reconcile and the $1,212 allocation reconciles exactly. The source audit and hashes are pinned in `reports/thunder-bowl/latest-source-weekly-assets-audit.{json,md}`; the supplemental transition audit is `reports/thunder-bowl/latest-pack-refresh-audit.{json,md}`.
@@ -65,6 +67,7 @@ Every change must be easier, more intuitive, more desirable, and faster than pap
 - Exact-byte final-pack promotion overlay: `netlify/functions/_lib/pack-release-store.mjs`, `thunder-pack-promote.mjs`
 - Automated QA/rehearsals: `tests/`, `scripts/run-full-auction-rehearsal.mjs`, `scripts/run-keeper-auction-catastrophe-rehearsal.mjs`
 - User operations guide: `public/thunder-bowl/guides/index.html`
+- In-season UI and source boundary: `public/thunder-bowl/season/`, `public/thunder-bowl/cbs-roster-snapshot.mjs`, `netlify/functions/_lib/{cbs-season-source,season-recommendations,season-service,season-store}.mjs`; least-privilege helper source is `tools/cbs-chrome-helper/`
 - Dated release audit: `reports/thunder-bowl/release-audit-20260811.md`
 - Refreshed-pack release audit: `reports/thunder-bowl/release-audit-20260817.md`
 - Draft-pressure decision helpers: `decision-context.mjs`; rendering and interaction wiring are in `app.mjs`

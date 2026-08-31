@@ -1,14 +1,19 @@
 import { createHash } from "node:crypto";
-import { validateCbsRosterSnapshot } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
+import { CBS_BASE_ROSTER_SIZE, validateCbsRosterSnapshot } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { canonicalPlayerIdentity, replayDraft } from "../../../public/thunder-bowl/state-engine.mjs";
 
 function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+function canonicalNflTeam(value) {
+  return canonicalPlayerIdentity("team", "DST", value).split("|").at(-1);
+}
+
 function packIndexes(pack) {
   const exact = new Map();
   const loose = new Map();
+  const defenseByTeam = new Map();
   for (const player of pack.players || []) {
     const identity = canonicalPlayerIdentity(player.name, player.position, player.nflTeam);
     if (exact.has(identity)) throw new Error(`The protected pack repeats player identity ${identity}.`);
@@ -17,14 +22,23 @@ function packIndexes(pack) {
     const rows = loose.get(looseKey) || [];
     rows.push(player);
     loose.set(looseKey, rows);
+    if (player.position === "DST") {
+      const nflTeam = canonicalNflTeam(player.nflTeam);
+      if (defenseByTeam.has(nflTeam)) throw new Error(`The protected pack repeats the ${nflTeam} defense.`);
+      defenseByTeam.set(nflTeam, player);
+    }
   }
-  return { exact, loose };
+  return { exact, loose, defenseByTeam };
 }
 
 function resolvePlayer(player, indexes) {
   const identity = canonicalPlayerIdentity(player.name, player.position, player.nflTeam);
   const exact = indexes.exact.get(identity);
   if (exact) return { player: exact, resolution: "exact" };
+  if (player.position === "DST") {
+    const defense = indexes.defenseByTeam.get(canonicalNflTeam(player.nflTeam));
+    if (defense) return { player: defense, resolution: "dst_team_alias" };
+  }
   const loose = indexes.loose.get(identity.split("|").slice(0, 2).join("|")) || [];
   if (loose.length === 1) return { player: loose[0], resolution: "unique_name_position_team_drift" };
   if (loose.length > 1) throw new Error(`${player.name} is ambiguous after CBS NFL-team drift.`);
@@ -48,7 +62,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
       if (cbsIds.has(row.cbsPlayerId)) throw new Error(`CBS player ${row.cbsPlayerId} appears more than once.`);
       seenPlayerIds.add(resolved.player.id);
       cbsIds.add(row.cbsPlayerId);
-      if (resolved.resolution !== "exact") teamDrift.push({ playerId: resolved.player.id, cbsNflTeam: row.nflTeam, packNflTeam: resolved.player.nflTeam });
+      if (resolved.resolution === "unique_name_position_team_drift") teamDrift.push({ playerId: resolved.player.id, cbsNflTeam: row.nflTeam, packNflTeam: resolved.player.nflTeam });
       return {
         playerId: resolved.player.id,
         cbsPlayerId: row.cbsPlayerId,
@@ -67,6 +81,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     }),
   }));
   const availablePlayerIds = pack.players.map((player) => player.id).filter((id) => !seenPlayerIds.has(id));
+  const completeTeamCount = teams.filter((team) => team.roster.length >= CBS_BASE_ROSTER_SIZE).length;
   return {
     schemaVersion: 1,
     season: pack.season,
@@ -77,6 +92,9 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     reportId: new URL(snapshot.pageUrl).pathname,
     rawSha256: sha256(snapshot),
     teamCount: teams.length,
+    rosterTarget: CBS_BASE_ROSTER_SIZE,
+    completeTeamCount,
+    rostersComplete: completeTeamCount === teams.length,
     rosteredPlayerCount: seenPlayerIds.size,
     availablePlayerCount: availablePlayerIds.length,
     teamDrift,
@@ -97,7 +115,11 @@ export function validateCanonicalCbsLeagueState(value, pack) {
   if (!Array.isArray(value.availablePlayerIds) || value.availablePlayerIds.length !== value.availablePlayerCount || value.availablePlayerIds.some((id) => !knownIds.has(id))) throw new Error("CBS availability coverage is invalid.");
   const available = new Set(value.availablePlayerIds);
   if (rostered.some((player) => available.has(player.playerId)) || rostered.length + available.size !== knownIds.size) throw new Error("CBS rostered and available players do not partition the governed catalog.");
-  return value;
+  const rosterTarget = value.rosterTarget ?? CBS_BASE_ROSTER_SIZE;
+  const completeTeamCount = value.completeTeamCount ?? value.teams.filter((team) => team.roster.length >= rosterTarget).length;
+  const rostersComplete = value.rostersComplete ?? completeTeamCount === value.teams.length;
+  if (rosterTarget !== CBS_BASE_ROSTER_SIZE || !Number.isSafeInteger(completeTeamCount) || completeTeamCount < 0 || completeTeamCount > value.teams.length || rostersComplete !== (completeTeamCount === value.teams.length)) throw new Error("CBS league roster-completion metadata is invalid.");
+  return { ...value, rosterTarget, completeTeamCount, rostersComplete };
 }
 
 export function leagueStateFromFinalLedger({ ledger, pack }) {

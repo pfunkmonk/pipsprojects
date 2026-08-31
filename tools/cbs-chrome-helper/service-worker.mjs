@@ -31,20 +31,25 @@ function waitForTab(tabId, timeoutMs = 15000) {
   });
 }
 
-async function rawRosterRows(tabId) {
+async function rawRosterTables(tabId) {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => [...document.querySelectorAll("tr")].map((row) => {
-      const playerLink = [...row.querySelectorAll("a[href]")].find((link) => /playerpage|\/players\/\d+/i.test(link.getAttribute("href") || ""));
-      const id = (playerLink?.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "";
-      return {
-        cbsPlayerId: id,
-        name: (playerLink?.textContent || "").trim(),
-        cells: [...row.querySelectorAll("th,td")].map((cell) => (cell.innerText || cell.textContent || "").replace(/\s+/g, " ").trim()),
-        newsTitles: [...row.querySelectorAll("[title]")].map((element) => element.getAttribute("title")).filter(Boolean),
-        markerClasses: [...row.querySelectorAll("[class]")].flatMap((element) => [...element.classList]).filter((name) => /inj|status|question|doubt|out|ir|pup/i.test(name)),
-      };
-    }),
+    func: () => [...document.querySelectorAll("table")].map((table) => {
+      const heading = (table.querySelector("tr")?.innerText || "").replace(/\s+/g, " ").trim();
+      const teamName = heading.match(/^(.+?)\s+Players$/)?.[1] || "";
+      const rows = [...table.querySelectorAll("tr")].map((row) => {
+        const playerLink = [...row.querySelectorAll("a[href]")].find((link) => /playerpage|\/players\/\d+/i.test(link.getAttribute("href") || ""));
+        const id = (playerLink?.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "";
+        return {
+          cbsPlayerId: id,
+          name: (playerLink?.textContent || "").trim(),
+          cells: [...row.querySelectorAll("th,td")].map((cell) => (cell.innerText || cell.textContent || "").replace(/\s+/g, " ").trim()),
+          newsTitles: [...row.querySelectorAll("[title]")].map((element) => element.getAttribute("title")).filter(Boolean),
+          markerClasses: [...row.querySelectorAll("[class]")].flatMap((element) => [...element.classList]).filter((name) => /inj|status|question|doubt|out|ir|pup/i.test(name)),
+        };
+      });
+      return { teamName, rows };
+    }).filter((table) => table.teamName),
   });
   return results[0]?.result || [];
 }
@@ -52,19 +57,16 @@ async function rawRosterRows(tabId) {
 async function captureRosters() {
   let tabId = null;
   try {
-    const teams = [];
-    const tab = await chrome.tabs.create({ url: `${CBS_ORIGIN}/teams/1`, active: false });
+    const tab = await chrome.tabs.create({ url: REPORT_URL, active: false });
     tabId = tab.id;
     await waitForTab(tabId);
-    for (const team of TEAMS) {
-      if (team.cbsTeamId !== 1) {
-        await chrome.tabs.update(tabId, { url: `${CBS_ORIGIN}/teams/${team.cbsTeamId}`, active: false });
-        await waitForTab(tabId);
-      }
-      const page = await chrome.tabs.get(tabId);
-      if (!page.url?.startsWith(`${CBS_ORIGIN}/teams/`)) throw new Error("CBS redirected to sign-in. Sign in to the Thunder Bowl league in Chrome, then retry.");
-      teams.push(normalizeCbsTeamRows(team, await rawRosterRows(tabId)));
-    }
+    const page = await chrome.tabs.get(tabId);
+    if (!page.url?.startsWith(REPORT_URL)) throw new Error("CBS redirected to sign-in. Sign in to the Thunder Bowl league in Chrome, then retry.");
+    const reportTables = await rawRosterTables(tabId);
+    const byTeam = new Map(reportTables.map((table) => [table.teamName, table.rows]));
+    const missing = TEAMS.filter((team) => !byTeam.has(team.name));
+    if (missing.length) throw new Error(`CBS roster report is missing ${missing.map((team) => team.name).join(", ")}.`);
+    const teams = TEAMS.map((team) => normalizeCbsTeamRows(team, byTeam.get(team.name)));
     const playerCount = teams.reduce((sum, team) => sum + team.players.length, 0);
     return {
       schemaVersion: 1,

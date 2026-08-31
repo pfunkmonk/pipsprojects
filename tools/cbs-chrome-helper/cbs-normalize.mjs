@@ -62,19 +62,25 @@ export function normalizeCbsTeamRows(team, rawRows) {
       priorSeasonPoints: numberOrNull(cells.at(-3)),
       threeYearAverage: numberOrNull(cells.at(-2)),
       projectedPoints: numberOrNull(cells.at(-1)),
-      opponent: cells[3] || null,
-      gameTime: cells[4] || null,
-      bye: numberOrNull(cells[5]),
-      overUnder: numberOrNull(cells[6]),
-      positionRank: numberOrNull(cells[7]),
-      opponentVsPosition: numberOrNull(cells[8]),
-      rosteredPercent: numberOrNull(cells[9]),
-      startedPercent: numberOrNull(cells[10]),
+      // Anchor the schedule/rank fields from the stable trailing CBS columns.
+      // CBS currently omits the historical blank leading cell on the all-team
+      // report, while some team views still include it.
+      opponent: cells.at(-13) || null,
+      gameTime: cells.at(-12) || null,
+      bye: numberOrNull(cells.at(-11)),
+      overUnder: numberOrNull(cells.at(-10)),
+      positionRank: numberOrNull(cells.at(-9)),
+      opponentVsPosition: numberOrNull(cells.at(-8)),
+      rosteredPercent: numberOrNull(cells.at(-7)),
+      startedPercent: numberOrNull(cells.at(-6)),
       newsTitles: (row.newsTitles || []).filter((value) => typeof value === "string").slice(0, 10),
       markerClasses: (row.markerClasses || []).filter((value) => typeof value === "string").slice(0, 20),
     });
     seen.add(id);
   }
-  if (players.length < 14 || players.length > 25) throw new Error(`${team.name} returned ${players.length} roster rows; expected 14–25.`);
+  // A CBS roster is legitimately below the 14-player target while the auction
+  // is still being entered. Preserve that authenticated partial state; the app
+  // applies separate safety gates before treating the league as waiver-ready.
+  if (players.length < 1 || players.length > 25) throw new Error(`${team.name} returned ${players.length} roster rows; expected 1–25.`);
   return { teamId: team.teamId, cbsTeamId: team.cbsTeamId, name: team.name, players };
 }

@@ -1,4 +1,4 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831a";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831b";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 
 const byId = (id) => document.getElementById(id);
@@ -105,8 +105,11 @@ function renderHeader(value, offline) {
   }));
   const setupRequired = value.kind === "thunder-bowl-season-setup-required";
   const isCbs = value.baseline.authority.startsWith("authenticated");
+  const partialCbs = isCbs && value.baseline.rostersComplete === false;
   byId("sync-copy").textContent = setupRequired
     ? "Your access code worked. Choose Update everything once to capture CBS, download weekly projections, and unlock the complete plan."
+    : partialCbs
+    ? `CBS is current, but the auction is still being entered: ${value.baseline.rosteredPlayers} players captured and ${value.baseline.completeTeamCount} of ${value.baseline.teamCount} teams have 14 players. Update everything again as CBS changes.`
     : isCbs
     ? `Last full CBS capture: ${dateTime(value.baseline.asOf)}. Choose Update everything after waivers, trades, news, or lineup-changing roster moves.`
     : "CBS has not been captured for the season. Choose Update everything before trusting availability, manager moves, or weekly lineup advice.";
@@ -119,7 +122,9 @@ function renderUpdateSource(rowId, stateId, source, summary, emptyText) {
   if (summary) {
     row.classList.add(summary.ok ? "updated" : "failed");
     state.textContent = summary.ok
-      ? `Updated ${dateTime(summary.asOf || summary.capturedAt)}`
+      ? summary.rostersComplete === false
+        ? `Updated ${dateTime(summary.asOf || summary.capturedAt)} · ${summary.rosteredPlayers}/${summary.teamCount * summary.rosterTarget} roster slots filled`
+        : `Updated ${dateTime(summary.asOf || summary.capturedAt)}`
       : `Needs attention: ${summary.error || "update failed"}`;
     return;
   }
@@ -298,8 +303,11 @@ async function runAction(button, message, task) {
     const failed = value.updateSummary
       ? Object.entries(value.updateSummary).filter(([key, result]) => key !== "capturedAt" && result?.ok === false).map(([key]) => key)
       : [];
+    const partialRosters = value.updateSummary?.cbs?.rostersComplete === false;
     setStatus(failed.length
       ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
+      : partialRosters
+      ? `Update finished. CBS has ${value.updateSummary.cbs.rosteredPlayers}/${value.updateSummary.cbs.teamCount * value.updateSummary.cbs.rosterTarget} roster slots filled; lineup, projections, injuries, news, and IR targets are current. Waiver and trade advice will unlock after all 12 rosters are complete.`
       : `Everything updated ${dateTime(value.generatedAt)}. CBS moves, weekly projections, injuries, news, and IR targets are current.`
     , failed.length > 0);
   } catch (error) {

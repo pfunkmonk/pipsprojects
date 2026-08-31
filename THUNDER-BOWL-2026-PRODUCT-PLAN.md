@@ -108,6 +108,12 @@ A separate priority-week calibration then joined 48 archived Thunder Bowl team-s
 
 Beginning with the 2026 snapshot, every dated premium-source input, modified projection, model ID, and later result will be retained so future tests no longer depend on surrogate sources.
 
+## In-season one-click refresh checkpoint — August 31, 2026
+
+- The private In-Season GM now has one normal update path: the Chrome Data Helper reads CBS's signed-in all-team roster report on demand, while the server downloads Footballguys weekly projections and refreshes injury, depth, news, and IR evidence in the same action. Provider credentials, cookies, and browser storage remain outside the app and server.
+- Authenticated partial CBS auction progress is a supported PARTIAL state rather than a parser failure. The system saves all 12 team tables and updates Dogs of War's legal lineup and weekly watch, but does not label undrafted players as confirmed free agents or generate waiver/trade advice until all 12 base rosters contain at least 14 players.
+- The v0.3.0 helper was verified against the live August 31 CBS report: 12 teams, 144 rostered players, 3 complete base rosters, and 573 governed-catalog players not yet rostered. Live CBS column alignment, defense nickname aliases, and JAC/JAX normalization pass the same source-validation boundary used by the server.
+
 Novel ideas from medicine, engineering, finance, operations research, or other sciences are welcome as challengers. At least three unconventional models should be tested, but none receives automatic model weight. Examples queued for controlled tests include:
 
 1. reliability/survival-style workload modeling for injury-adjusted availability;

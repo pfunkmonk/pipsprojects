@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v128";
+const CACHE_VERSION = "thunder-bowl-shell-v129";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -25,7 +25,7 @@ const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/season.css?v=20260831a",
-  "/thunder-bowl/season/season.mjs?v=20260831a",
+  "/thunder-bowl/season/season.mjs?v=20260831b",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
@@ -80,7 +80,7 @@ const APP_SHELL = [
   "/thunder-bowl/human-rehearsal.mjs?v=20260805g",
   "/thunder-bowl/priority-weights.mjs?v=20260810b",
   "/thunder-bowl/league-setup.mjs?v=20260809a",
-  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831a",
+  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831b",
   "/thunder-bowl/sales-entry-mode.mjs?v=20260808a",
   "/thunder-bowl/emergency-print.css?v=20260805g",
   "/thunder-bowl/sample-draft-pack.json",

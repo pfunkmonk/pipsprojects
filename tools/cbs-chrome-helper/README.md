@@ -1,10 +1,10 @@
 # Thunder Bowl Data Helper
 
-This small Chrome helper provides the private CBS portion of the In-Season GM’s **Update everything** button. It reads all 12 Thunder Bowl roster pages only when that button is pressed. Footballguys projections and public injury/news sources are downloaded by the server in the same update.
+This small Chrome helper provides the private CBS portion of the In-Season GM’s **Update everything** button. It reads CBS’s all-team Thunder Bowl roster report only when that button is pressed. Footballguys projections and public injury/news sources are downloaded by the server in the same update.
 
 ## One-time setup
 
-1. Extract `thunder-bowl-data-helper-v0.2.0.zip` to a permanent folder.
+1. Extract `thunder-bowl-data-helper-v0.3.0.zip` to a permanent folder.
 2. Open `chrome://extensions` in the Chrome profile used for Thunder Bowl.
 3. Turn on **Developer mode**.
 4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
@@ -18,6 +18,7 @@ After setup, the single button captures CBS rosters, additions/drops and current
 - No password, cookie, or browser-storage permission is requested.
 - The helper does not store CBS credentials or session data.
 - It opens CBS roster pages in an inactive tab only after the user presses the update button, extracts the roster table, then closes the tab.
+- It accepts CBS's authenticated partial auction progress, while the app keeps waiver and trade recommendations blocked until all 12 base rosters are complete.
 - It cannot change CBS rosters, lineups, waivers, trades, keepers, salaries, contracts, auction values, or ledger state.
 - The manifest is limited to the Thunder Bowl CBS host and the Thunder Bowl app origins.
 

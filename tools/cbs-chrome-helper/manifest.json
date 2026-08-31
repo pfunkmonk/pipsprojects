@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "User-triggered, read-only CBS roster capture for the Thunder Bowl one-click weekly update.",
   "permissions": ["scripting", "tabs"],
   "host_permissions": [
