@@ -1,5 +1,6 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
 import {
+  captureCbsLeagueSource,
   importCbsLeagueSnapshot,
   importFbgWeeklyCsv,
   refreshFootballguysSource,
@@ -47,6 +48,10 @@ export default async function handler(request) {
       exactKeys(input, ["action", "snapshot"]);
       return json(await importCbsLeagueSnapshot(input.snapshot));
     }
+    if (input.action === "capture-cbs") {
+      exactKeys(input, ["action", "snapshot"]);
+      return json(await captureCbsLeagueSource(input.snapshot));
+    }
     if (input.action === "sync-fbg") {
       exactKeys(input, ["action", "csv"]);
       if (typeof input.csv !== "string") throw new Error("Footballguys import must be CSV text.");
@@ -58,18 +63,19 @@ export default async function handler(request) {
     }
     if (input.action === "refresh-news") {
       exactKeys(input, ["action"]);
-      const refreshed = await refreshSeasonPublicSources();
+      const publicSources = await refreshSeasonPublicSources();
       const failures = ["status", "research"]
-        .filter((source) => !refreshed.sourceRefresh[source].ok)
-        .map((source) => `${source}: ${refreshed.sourceRefresh[source].error}`);
+        .filter((source) => !publicSources.sourceRefresh[source].ok)
+        .map((source) => `${source}: ${publicSources.sourceRefresh[source].error}`);
       if (failures.length) {
         throw new Error(`Injury/news refresh failed; the saved CBS and Footballguys data remain available (${failures.join("; ")}).`);
       }
-      return json(refreshed);
-    }
-    if (input.action === "rebuild-plan") {
-      exactKeys(input, ["action"]);
-      return json(await refreshSeasonPlan());
+      return json(await refreshSeasonPlan({
+        publicSourceOverrides: {
+          statusSnapshot: publicSources.statusSnapshot,
+          researchSnapshot: publicSources.researchSnapshot,
+        },
+      }));
     }
     return json({ error: "Refresh action is invalid." }, 400);
   } catch (error) {

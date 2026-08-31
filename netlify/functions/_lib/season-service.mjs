@@ -68,6 +68,8 @@ export async function refreshSeasonPublicSources() {
   const statusError = statusResult.error?.message || statusResult.value?.refreshError || null;
   const researchError = researchResult.error?.message || researchResult.value?.refreshError || null;
   return {
+    statusSnapshot: statusResult.value || null,
+    researchSnapshot: researchResult.value || null,
     sourceRefresh: {
       status: { ok: !statusError, asOf: statusResult.value?.capturedAt || null, error: statusError },
       research: { ok: !researchError, asOf: researchResult.value?.capturedAt || null, error: researchError },
@@ -80,6 +82,7 @@ export async function refreshSeasonPlan({
   forcePublic = false,
   archiveTuesday = false,
   refreshFootballguys = false,
+  publicSourceOverrides = null,
 } = {}) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
@@ -92,8 +95,12 @@ export async function refreshSeasonPlan({
     : Promise.resolve({ value: null });
   const [fbgRefreshResult, statusResult, researchResult, leagueMoves] = await Promise.all([
     fbgRefreshTask,
-    currentStatusSnapshot(pack, { force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
-    currentResearchSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
+    publicSourceOverrides
+      ? Promise.resolve({ value: publicSourceOverrides.statusSnapshot })
+      : currentStatusSnapshot(pack, { force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
+    publicSourceOverrides
+      ? Promise.resolve({ value: publicSourceOverrides.researchSnapshot })
+      : currentResearchSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
     readLeagueMoves(week),
   ]);
   const refreshedFbgSnapshot = fbgRefreshResult.value || null;
@@ -185,12 +192,17 @@ export async function getCurrentSeasonSnapshot({ now = new Date() } = {}) {
 }
 
 export async function importCbsLeagueSnapshot(input, { now = new Date() } = {}) {
+  const captured = await captureCbsLeagueSource(input, { now });
+  const refreshed = await refreshSeasonPlan({ now });
+  return { plan: refreshed.plan, source: captured.source };
+}
+
+export async function captureCbsLeagueSource(input, { now = new Date() } = {}) {
   const pack = await readSeasonPack();
   const week = seasonWeekForDate(now);
   const snapshot = canonicalizeCbsLeagueSnapshot(input, pack);
   const saved = await saveCbsLeagueState(snapshot, pack, { week });
-  const refreshed = await refreshSeasonPlan({ now });
-  return { plan: refreshed.plan, source: { changed: saved.changed, capturedAt: snapshot.capturedAt, leagueMoves: saved.leagueMoves } };
+  return { source: { changed: saved.changed, capturedAt: snapshot.capturedAt, leagueMoves: saved.leagueMoves } };
 }
 
 export async function importFbgWeeklyCsv(text, { now = new Date() } = {}) {

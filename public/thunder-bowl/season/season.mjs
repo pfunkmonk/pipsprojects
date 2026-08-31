@@ -389,12 +389,10 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
   setStatus("CBS captured. Saving rosters, moves, and CBS component-stat projections before continuing…");
   let current;
   try {
-    current = await postAction({ action: "sync-cbs", snapshot });
+    await postAction({ action: "capture-cbs", snapshot });
   } catch (error) {
     throw new Error(`CBS was captured but could not be saved: ${errorMessage(error)}`);
   }
-  await renderPlan(current);
-  byId("refresh-plan").disabled = true;
   byId("helper-setup").open = false;
 
   setStatus("CBS saved. Step 2 of 3: downloading Footballguys component-stat projections…");
@@ -406,16 +404,11 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
 
   setStatus("CBS and Footballguys saved. Step 3 of 3: refreshing injuries, news, and IR evidence…");
   try {
-    await postAction({ action: "refresh-news" });
+    current = await postAction({ action: "refresh-news" });
   } catch (error) {
     throw new Error(`CBS and Footballguys were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly plan remains usable.`);
   }
-  setStatus("All sources saved. Rebuilding the weekly recommendations from the new evidence…");
-  try {
-    return await postAction({ action: "rebuild-plan" });
-  } catch (error) {
-    throw new Error(`CBS, Footballguys, and injuries/news were all saved, but the recommendation view could not rebuild: ${errorMessage(error)} Reloading later will not require recapturing the sources.`);
-  }
+  return current;
 }));
 byId("cbs-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
