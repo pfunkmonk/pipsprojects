@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v127";
+const CACHE_VERSION = "thunder-bowl-shell-v128";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -24,8 +24,8 @@ const APP_SHELL = [
   "/thunder-bowl/guides/guides.mjs",
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
-  "/thunder-bowl/season/season.css?v=20260830a",
-  "/thunder-bowl/season/season.mjs?v=20260830c",
+  "/thunder-bowl/season/season.css?v=20260831a",
+  "/thunder-bowl/season/season.mjs?v=20260831a",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
@@ -80,7 +80,7 @@ const APP_SHELL = [
   "/thunder-bowl/human-rehearsal.mjs?v=20260805g",
   "/thunder-bowl/priority-weights.mjs?v=20260810b",
   "/thunder-bowl/league-setup.mjs?v=20260809a",
-  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260805g",
+  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831a",
   "/thunder-bowl/sales-entry-mode.mjs?v=20260808a",
   "/thunder-bowl/emergency-print.css?v=20260805g",
   "/thunder-bowl/sample-draft-pack.json",
@@ -92,11 +92,18 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("thunder-bowl-shell-") && key !== CACHE_VERSION).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const priorShells = keys.filter((key) => key.startsWith("thunder-bowl-shell-") && key !== CACHE_VERSION);
+    await Promise.all(priorShells.map((key) => caches.delete(key)));
+    await self.clients.claim();
+    if (!priorShells.length) return;
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    await Promise.all(windows.map(async (client) => {
+      const url = new URL(client.url);
+      if (url.origin === self.location.origin && url.pathname.startsWith("/thunder-bowl/season")) await client.navigate(client.url).catch(() => undefined);
+    }));
+  })());
 });
 
 async function navigationResponse(request) {
