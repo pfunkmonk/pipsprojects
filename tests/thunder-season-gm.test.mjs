@@ -281,6 +281,31 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.doesNotMatch(JSON.stringify(result.recommendations), /contract|keeper/i);
 });
 
+test("CBS FAB-not-started evidence uses the confirmed $50 opening balance without inventing tie order", () => {
+  const roster = rosterPlayers();
+  const freeAgent = player("rb-preseason-upgrade", "RB", 18, { vbd: 80, marketValue: 30 });
+  const partialFab = fabState();
+  partialFab.status = "PARTIAL";
+  partialFab.coverage = { budgetTeams: 0, orderTeams: 0, recordTeams: 12, pickupEvidence: "CURRENT_WEEK", pickupRows: 0 };
+  partialFab.teams = partialFab.teams.map((team) => ({ ...team, remainingBudget: null, fabOrder: null }));
+  const result = recommendWaivers({
+    pack: { players: [...roster, freeAgent] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-08-31T12:00:00.000Z",
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [freeAgent.id],
+      fabState: partialFab,
+    },
+    week: 1,
+  });
+  assert.ok(result.recommendations[0].fab.recommended >= 1);
+  assert.equal(result.recommendations[0].fab.currentBudget, 50);
+  assert.equal(result.recommendations[0].fab.tiePosition, null);
+  assert.equal(result.fab.notStarted, true);
+  assert.equal(result.fab.orderAvailable, false);
+});
+
 test("FAB bids preserve K/DST bye and injury reserves without using roster salary", () => {
   const roster = rosterPlayers();
   const freeAgent = player("wr-upgrade", "WR", 21, { vbd: 100, marketValue: 40 });

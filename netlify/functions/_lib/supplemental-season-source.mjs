@@ -19,9 +19,9 @@ function normalizeTeam(value) {
   return ({ ARZ: "ARI", JAC: "JAX", LA: "LAR", BLT: "BAL", CLV: "CLE", HST: "HOU" })[team] || team;
 }
 
-function number(value, label) {
+function number(value, label, { minimum = 0 } = {}) {
   const parsed = Number(String(value ?? "").trim());
-  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10_000) throw new Error(`${label} is not a safe nonnegative projection.`);
+  if (!Number.isFinite(parsed) || parsed < minimum || parsed > 10_000) throw new Error(`${label} is not a safe projection.`);
   return parsed;
 }
 
@@ -91,14 +91,15 @@ function snapshot(capture, pack, provider, items, unmatchedRowCount) {
 function fantasyProsStats(row, position) {
   const c = row.cells;
   const n = (index, label) => number(c[index], `FantasyPros ${row.playerName} ${label}`);
+  const signed = (index, label) => number(c[index], `FantasyPros ${row.playerName} ${label}`, { minimum: -1_000 });
   const stats = baseStats();
   let providerPoints;
-  if (position === "QB") Object.assign(stats, { passingAttempts: n(0, "pass attempts"), passingCompletions: n(1, "completions"), passingYards: n(2, "pass yards"), passingTouchdowns: n(3, "pass TDs"), interceptionsThrown: n(4, "interceptions"), rushingAttempts: n(5, "rush attempts"), rushingYards: n(6, "rush yards"), rushingTouchdowns: n(7, "rush TDs"), fumblesLost: n(8, "fumbles lost") }), providerPoints = n(9, "provider points");
-  if (position === "RB") Object.assign(stats, { rushingAttempts: n(0, "rush attempts"), rushingYards: n(1, "rush yards"), rushingTouchdowns: n(2, "rush TDs"), receptions: n(3, "receptions"), receivingYards: n(4, "receiving yards"), receivingTouchdowns: n(5, "receiving TDs"), fumblesLost: n(6, "fumbles lost") }), providerPoints = n(7, "provider points");
-  if (position === "WR") Object.assign(stats, { receptions: n(0, "receptions"), receivingYards: n(1, "receiving yards"), receivingTouchdowns: n(2, "receiving TDs"), rushingAttempts: n(3, "rush attempts"), rushingYards: n(4, "rush yards"), rushingTouchdowns: n(5, "rush TDs"), fumblesLost: n(6, "fumbles lost") }), providerPoints = n(7, "provider points");
-  if (position === "TE") Object.assign(stats, { receptions: n(0, "receptions"), receivingYards: n(1, "receiving yards"), receivingTouchdowns: n(2, "receiving TDs"), fumblesLost: n(3, "fumbles lost") }), providerPoints = n(4, "provider points");
-  if (position === "K") Object.assign(stats, { fieldGoalsMade: n(0, "field goals"), fieldGoalAttempts: n(1, "field-goal attempts"), extraPointsMade: n(2, "extra points") }), providerPoints = n(3, "provider points");
-  if (position === "DST") Object.assign(stats, { defensiveSacks: n(0, "sacks"), defensiveInterceptions: n(1, "interceptions"), defensiveFumblesRecovered: n(2, "fumble recoveries"), defensiveTouchdowns: n(4, "touchdowns"), defensiveSafeties: n(5, "safeties"), defensivePointsAllowed: n(6, "points allowed"), defensiveYardsAllowed: n(7, "yards allowed"), defensiveGameProjected: true }), providerPoints = n(8, "provider points");
+  if (position === "QB") Object.assign(stats, { passingAttempts: n(0, "pass attempts"), passingCompletions: n(1, "completions"), passingYards: n(2, "pass yards"), passingTouchdowns: n(3, "pass TDs"), interceptionsThrown: n(4, "interceptions"), rushingAttempts: n(5, "rush attempts"), rushingYards: signed(6, "rush yards"), rushingTouchdowns: n(7, "rush TDs"), fumblesLost: n(8, "fumbles lost") }), providerPoints = signed(9, "provider points");
+  if (position === "RB") Object.assign(stats, { rushingAttempts: n(0, "rush attempts"), rushingYards: signed(1, "rush yards"), rushingTouchdowns: n(2, "rush TDs"), receptions: n(3, "receptions"), receivingYards: n(4, "receiving yards"), receivingTouchdowns: n(5, "receiving TDs"), fumblesLost: n(6, "fumbles lost") }), providerPoints = signed(7, "provider points");
+  if (position === "WR") Object.assign(stats, { receptions: n(0, "receptions"), receivingYards: n(1, "receiving yards"), receivingTouchdowns: n(2, "receiving TDs"), rushingAttempts: n(3, "rush attempts"), rushingYards: signed(4, "rush yards"), rushingTouchdowns: n(5, "rush TDs"), fumblesLost: n(6, "fumbles lost") }), providerPoints = signed(7, "provider points");
+  if (position === "TE") Object.assign(stats, { receptions: n(0, "receptions"), receivingYards: n(1, "receiving yards"), receivingTouchdowns: n(2, "receiving TDs"), fumblesLost: n(3, "fumbles lost") }), providerPoints = signed(4, "provider points");
+  if (position === "K") Object.assign(stats, { fieldGoalsMade: n(0, "field goals"), fieldGoalAttempts: n(1, "field-goal attempts"), extraPointsMade: n(2, "extra points") }), providerPoints = signed(3, "provider points");
+  if (position === "DST") Object.assign(stats, { defensiveSacks: n(0, "sacks"), defensiveInterceptions: n(1, "interceptions"), defensiveFumblesRecovered: n(2, "fumble recoveries"), defensiveTouchdowns: n(4, "touchdowns"), defensiveSafeties: n(5, "safeties"), defensivePointsAllowed: n(6, "points allowed"), defensiveYardsAllowed: n(7, "yards allowed"), defensiveGameProjected: true }), providerPoints = signed(8, "provider points");
   return { stats, providerPoints };
 }
 
@@ -137,9 +138,10 @@ export function parseFantasyProsAuthenticatedCapture(input, pack) {
 function pffOffenseStats(row) {
   const c = row.cells;
   const n = (index, label) => number(c[index], `PFF ${row.playerName} ${label}`);
+  const signed = (index, label) => number(c[index], `PFF ${row.playerName} ${label}`, { minimum: -1_000 });
   const stats = baseStats();
-  Object.assign(stats, { passingYards: n(5, "pass yards"), passingTouchdowns: n(6, "pass TDs"), interceptionsThrown: n(7, "interceptions"), rushingYards: n(8, "rush yards"), rushingTouchdowns: n(9, "rush TDs"), receptions: n(10, "receptions"), receivingYards: n(11, "receiving yards"), receivingTouchdowns: n(12, "receiving TDs"), fieldGoalsMade: n(13, "field goals"), extraPointsMade: n(14, "extra points") });
-  return { stats, providerPoints: n(4, "provider points") };
+  Object.assign(stats, { passingYards: n(5, "pass yards"), passingTouchdowns: n(6, "pass TDs"), interceptionsThrown: n(7, "interceptions"), rushingYards: signed(8, "rush yards"), rushingTouchdowns: n(9, "rush TDs"), receptions: n(10, "receptions"), receivingYards: n(11, "receiving yards"), receivingTouchdowns: n(12, "receiving TDs"), fieldGoalsMade: n(13, "field goals"), extraPointsMade: n(14, "extra points") });
+  return { stats, providerPoints: signed(4, "provider points") };
 }
 
 function pffDstStats(row) {

@@ -265,30 +265,62 @@ function fabPickupCounts(leagueMoves = []) {
   return counts;
 }
 
+function isCbsFabNotStarted(raw, week) {
+  const teams = raw?.teams || [];
+  const coverage = raw?.coverage || {};
+  return week === 1
+    && raw?.status === "PARTIAL"
+    && teams.length === 12
+    && coverage.budgetTeams === 0
+    && coverage.orderTeams === 0
+    && coverage.recordTeams === 12
+    && Number(coverage.pickupRows || 0) === 0
+    && teams.every((team) => team.remainingBudget === null
+      && team.fabOrder === null
+      && team.record?.wins === 0
+      && team.record?.losses === 0
+      && team.record?.ties === 0
+      && (team.weeklySuccessfulPickups === null || team.weeklySuccessfulPickups === 0));
+}
+
+function incompleteFabMessage(raw) {
+  const coverage = raw?.coverage || {};
+  const missing = [];
+  if (coverage.budgetTeams !== 12) missing.push("all 12 FAB balances");
+  if (coverage.recordTeams !== 12) missing.push("all 12 standings records");
+  if (coverage.orderTeams !== 12) missing.push("the current CBS FAB order");
+  return `CBS has not exposed ${missing.join(", ") || "complete waiver data"} yet. Keep the current Data Helper and choose Update CBS after CBS activates or updates those reports.`;
+}
+
 function effectiveFabState(leagueState, leagueMoves, roster, week) {
   const raw = leagueState?.fabState;
   const diffCounts = fabPickupCounts(leagueMoves);
+  const notStarted = isCbsFabNotStarted(raw, week);
   const teams = (raw?.teams || []).map((team) => ({
     ...team,
+    remainingBudget: notStarted ? 50 : team.remainingBudget,
     weeklySuccessfulPickups: team.weeklySuccessfulPickups === null
       ? diffCounts.get(team.teamId) || 0
       : Math.max(team.weeklySuccessfulPickups, diffCounts.get(team.teamId) || 0),
   }));
   const dogs = teams.find((team) => team.teamId === USER_TEAM_ID) || null;
-  const complete = raw?.status === "COMPLETE" && teams.length === 12 && teams.every((team) => team.remainingBudget !== null && team.fabOrder !== null && team.record !== null);
+  const pricingReady = teams.length === 12 && teams.every((team) => team.remainingBudget !== null && team.record !== null);
+  const orderAvailable = teams.length === 12 && teams.every((team) => team.fabOrder !== null);
   const specialTeamsByes = ["K", "DST"].flatMap((position) => {
     const atPosition = roster.filter((entry) => entry.player.position === position);
     if (atPosition.length !== 1) return [];
     const bye = atPosition[0].bye ?? atPosition[0].player.weeklyProjection?.byeWeek;
     return Number.isSafeInteger(bye) && bye >= week ? [{ position, week: bye }] : [];
   });
-  const budget = complete ? dogs.remainingBudget : null;
+  const budget = pricingReady ? dogs.remainingBudget : null;
   const injuryReserve = Math.min(5, Math.max(2, Math.ceil((18 - week) / 4)));
   const plannedReserve = budget === null ? null : Math.min(Math.max(0, budget - 1), injuryReserve + specialTeamsByes.length);
-  const teamsAheadOnTie = complete ? teams.filter((team) => team.teamId !== USER_TEAM_ID && compareFabTiePriority(team, dogs) < 0).length : null;
+  const teamsAheadOnTie = pricingReady && orderAvailable ? teams.filter((team) => team.teamId !== USER_TEAM_ID && compareFabTiePriority(team, dogs) < 0).length : null;
   return {
-    available: complete,
-    reason: complete ? null : "Update CBS with Data Helper v0.7.0 to capture all 12 FAB balances, standings records, and the current FAB order.",
+    available: pricingReady,
+    reason: pricingReady ? null : incompleteFabMessage(raw),
+    notStarted,
+    orderAvailable,
     budget,
     plannedReserve,
     spendable: budget === null ? null : Math.max(0, budget - plannedReserve),
@@ -310,7 +342,7 @@ function effectiveFabState(leagueState, leagueMoves, roster, week) {
 }
 
 function fabSequenceTie(fab, earlierWins) {
-  if (!fab.available) return { tiePosition: null, teamsAheadOnTie: null, weeklySuccessfulPickups: fab.weeklySuccessfulPickups };
+  if (!fab.available || !fab.orderAvailable) return { tiePosition: null, teamsAheadOnTie: null, weeklySuccessfulPickups: fab.weeklySuccessfulPickups };
   const teams = fab.teams.map((team) => team.teamId === USER_TEAM_ID
     ? { ...team, weeklySuccessfulPickups: team.weeklySuccessfulPickups + earlierWins }
     : team);
@@ -603,8 +635,8 @@ function sourceState({ leagueState, pack, week, fbgSnapshot, fantasyProsSnapshot
   if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; roster, waiver, and manager-move guidance remains blocked until Update CBS or Update everything captures the league.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
   if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
-  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.7.0, then choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
-  if (leagueState.authority.startsWith("authenticated") && leagueState.fabState?.status !== "COMPLETE") alerts.push("FAB bids are not priced yet because CBS budget, standings, or priority coverage is incomplete. Data Helper v0.7.0 captures those pages during Update CBS.");
+  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Keep the current Data Helper and choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
+  if (leagueState.authority.startsWith("authenticated") && leagueState.fabState?.status !== "COMPLETE" && !isCbsFabNotStarted(leagueState.fabState, week)) alerts.push(incompleteFabMessage(leagueState.fabState));
   if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Choose Update FBG or Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (!fantasyProsSnapshot) alerts.push("FantasyPros signed-in weekly component stats have not been captured; the available-source blend is reweighted without them.");

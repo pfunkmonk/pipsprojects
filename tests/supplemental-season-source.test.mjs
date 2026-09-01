@@ -55,6 +55,9 @@ test("signed-in FantasyPros component tables are scored by Thunder Bowl rules, n
     tables: Object.entries(selected).map(([position, players]) => ({ position, headers: FP_HEADERS[position], rowCount: players.length })),
     rows,
   };
+  const negativeRushRow = capture.rows.find((row) => row.position === "QB");
+  negativeRushRow.cells = [...negativeRushRow.cells];
+  negativeRushRow.cells[6] = "-1.3";
   const snapshot = parseFantasyProsAuthenticatedCapture(capture, pack);
   assert.equal(snapshot.itemCount, rows.length);
   assert.equal(snapshot.unmatchedRowCount, 0);
@@ -62,6 +65,7 @@ test("signed-in FantasyPros component tables are scored by Thunder Bowl rules, n
   assert.equal(quarterback.providerPoints, 999);
   assert.equal(quarterback.points, 27.5);
   assert.equal(quarterback.projectedStats.passingYards, 250);
+  assert.equal(snapshot.items.find((item) => item.playerName === negativeRushRow.playerName).projectedStats.rushingYards, -1.3);
   assert.match(quarterback.scoringCaveats[0], /two-point/);
   assert.throws(() => parseFantasyProsAuthenticatedCapture({ ...capture, accountLeague: "Another league" }, pack), /Thunder Bowl league view/);
   const changed = structuredClone(capture);

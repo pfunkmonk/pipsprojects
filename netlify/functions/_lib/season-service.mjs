@@ -19,6 +19,8 @@ import {
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot } from "./status-store.mjs";
 
+const RECOMMENDATION_ENGINE_VERSION = 2;
+
 function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
@@ -26,6 +28,7 @@ function sha256(value) {
 function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot }) {
   return sha256({
     schemaVersion: 1,
+    recommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION,
     season: pack.season,
     week,
     packId: pack.packId,
@@ -178,6 +181,7 @@ export async function refreshSeasonPlan({
     generatedAt,
   });
   plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot });
+  plan.recommendationEngineVersion = RECOMMENDATION_ENGINE_VERSION;
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
   if (statusRefreshError) plan.alerts.push(`Injury refresh failed; last-known safe status evidence remains in use (${statusRefreshError}).`);
   if (researchRefreshError) plan.alerts.push(`Depth/news refresh failed; last-known safe research evidence remains in use (${researchRefreshError}).`);
@@ -207,7 +211,7 @@ export async function refreshSeasonPlan({
 export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
   const latest = await readLatestSeasonPlan();
   const week = seasonWeekForDate(now);
-  if (latest?.week === week) return latest;
+  if (latest?.week === week && latest.recommendationEngineVersion === RECOMMENDATION_ENGINE_VERSION) return latest;
   return (await refreshSeasonPlan({ now })).plan;
 }
 
@@ -217,6 +221,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
   const syncMessage = "The private CBS baseline is not connected. Choose Update CBS or Update everything to capture all 12 teams; each team is valid with the required eight starters and zero to six backups.";
   return {
     schemaVersion: 1,
+    recommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION,
     kind: "thunder-bowl-season-setup-required",
     season: pack.season,
     week,
