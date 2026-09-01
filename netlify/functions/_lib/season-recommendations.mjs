@@ -478,7 +478,7 @@ function sourceState({ leagueState, pack, week, fbgSnapshot, fantasyProsSnapshot
   if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; final draft rosters are a Week 1 baseline and waiver availability is blocked.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
   if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
-  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.6.0, then choose Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
+  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.6.1, then choose Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
   if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (!fantasyProsSnapshot) alerts.push("FantasyPros signed-in weekly component stats have not been captured; the available-source blend is reweighted without them.");

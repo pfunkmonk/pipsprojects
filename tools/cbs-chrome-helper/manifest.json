@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "User-triggered, read-only CBS, Footballguys, FantasyPros, and PFF weekly data capture for Thunder Bowl.",
   "permissions": ["scripting", "tabs"],
   "host_permissions": [

@@ -4,7 +4,7 @@ This small Chrome/Edge helper provides the private CBS, Footballguys, FantasyPro
 
 ## One-time setup
 
-1. Extract `thunder-bowl-data-helper-v0.6.0.zip` to a permanent folder.
+1. Extract `thunder-bowl-data-helper-v0.6.1.zip` to a permanent folder.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge, using the browser profile used for Thunder Bowl.
 3. Turn on **Developer mode**.
 4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.

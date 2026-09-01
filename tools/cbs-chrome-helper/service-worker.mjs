@@ -482,13 +482,17 @@ async function rawPffWeeklyTables(tabId) {
         return identities.map((identity, index) => {
           const identityCells = [...identity.querySelectorAll('[role="gridcell"]')];
           const link = identity.querySelector(linkSelector);
+          const providerUrl = link?.href || "";
+          const providerId = (link?.getAttribute("href") || "").match(/\/(\d+)(?:[/?#]|$)/)?.[1] || "";
+          const cells = [...stats[index].querySelectorAll('[role="gridcell"]')].map((cell) => text(cell).replace(/,/g, ""));
           return {
             kind,
             rank: Number(text(identityCells[0])),
-            providerId: (link?.getAttribute("href") || "").match(/\/(\d+)\/?$/)?.[1] || "",
-            providerUrl: link?.href || "",
+            providerId,
+            providerUrl,
             playerName: text(link),
-            cells: [...stats[index].querySelectorAll('[role="gridcell"]')].map((cell) => text(cell).replace(/,/g, "")),
+            cells,
+            rowKey: providerId || `${text(link)}|${cells[0] || ""}|${cells[1] || kind}`,
           };
         });
       }
@@ -497,10 +501,10 @@ async function rawPffWeeklyTables(tabId) {
         for (let page = 0; page < 6; page += 1) {
           const previous = buttons().find((button) => /kyber-table-pagination__button-prev/.test(button.className));
           if (!previous || previous.disabled || /--disabled/.test(previous.className)) break;
-          const firstKey = currentRows(kind)[0]?.providerId;
+          const firstKey = currentRows(kind)[0]?.rowKey;
           previous.click();
           await waitFor(() => {
-            try { return currentRows(kind)[0]?.providerId !== firstKey; } catch { return false; }
+            try { return currentRows(kind)[0]?.rowKey !== firstKey; } catch { return false; }
           }, `PFF ${kind} pagination did not rewind.`);
         }
         const captured = [];
@@ -509,17 +513,17 @@ async function rawPffWeeklyTables(tabId) {
           const pageRows = await waitFor(() => {
             try { return currentRows(kind); } catch { return null; }
           }, `PFF ${kind} table did not become stable.`);
-          const firstKey = pageRows[0]?.providerId;
+          const firstKey = pageRows[0]?.rowKey;
           for (const row of pageRows) {
-            if (!row.providerId || seen.has(row.providerId)) continue;
-            seen.add(row.providerId);
+            if (!row.rowKey || seen.has(row.rowKey)) continue;
+            seen.add(row.rowKey);
             captured.push(row);
           }
           const next = buttons().find((button) => /kyber-table-pagination__button-next/.test(button.className));
           if (!next || next.disabled || /--disabled/.test(next.className)) break;
           next.click();
           await waitFor(() => {
-            try { return currentRows(kind)[0]?.providerId !== firstKey; } catch { return false; }
+            try { return currentRows(kind)[0]?.rowKey !== firstKey; } catch { return false; }
           }, `PFF ${kind} pagination did not advance.`);
         }
         return captured;

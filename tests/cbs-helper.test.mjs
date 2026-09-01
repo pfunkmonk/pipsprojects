@@ -20,7 +20,7 @@ test("CBS helper manifest is least-privilege and has no cookie or storage permis
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*", "https://www.footballguys.com/*", "https://www.fantasypros.com/*", "https://www.pff.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.6.0");
+  assert.equal(manifest.version, "0.6.1");
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
   assert.equal(JSON.stringify(manifest).includes("<all_urls>"), false);
 });
@@ -42,7 +42,9 @@ test("the four-source helper waits for authenticated rendered content instead of
   assert.match(worker, /captureFantasyProsProjections/);
   assert.match(worker, /capturePffProjections/);
   assert.match(worker, /a\[href\*="\/nfl\/teams\/"\]/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.6\.0\.zip/);
+  assert.match(worker, /rowKey: providerId \|\|/);
+  assert.match(worker, /seen\.has\(row\.rowKey\)/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.6\.1\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
 });
 
