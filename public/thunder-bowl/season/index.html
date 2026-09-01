@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and IR-stash command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260831e" />
+  <link rel="stylesheet" href="./season.css?v=20260831f" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to recommendations</a>
@@ -78,9 +78,9 @@
     <main id="season-main" class="dashboard">
       <section class="panel lineup-panel" aria-labelledby="lineup-title">
         <header class="panel-head"><div><p class="eyebrow">Exact legal lineup</p><h2 id="lineup-title">Start / sit plan</h2></div><strong id="lineup-total">— pts</strong></header>
-        <div class="table-wrap"><table><thead><tr><th>Slot</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th></th></tr></thead><tbody id="starter-rows"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Slot</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="starter-rows"></tbody></table></div>
         <div id="swap-list" class="compact-list"></div>
-        <details><summary>Bench and contingency order</summary><div id="bench-list" class="compact-list"></div></details>
+        <details class="bench-details"><summary>Bench players</summary><div class="table-wrap"><table><thead><tr><th>Pos.</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="bench-rows"></tbody></table></div></details>
       </section>
 
       <section class="panel waiver-panel" aria-labelledby="waiver-title">
@@ -105,10 +105,10 @@
   </div>
 
   <dialog id="evidence-dialog" aria-labelledby="evidence-title">
-    <div class="dialog-head"><div><p class="eyebrow">Plain-English explanation</p><h2 id="evidence-title">Why this recommendation</h2></div><button id="close-evidence" class="icon-button" type="button" aria-label="Close explanation">×</button></div>
+    <div class="dialog-head"><div><p id="evidence-eyebrow" class="eyebrow">Plain-English explanation</p><h2 id="evidence-title">Why this recommendation</h2></div><button id="close-evidence" class="icon-button" type="button" aria-label="Close dialog">×</button></div>
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260831p"></script>
+  <script type="module" src="./season.mjs?v=20260831q"></script>
 </body>
 </html>

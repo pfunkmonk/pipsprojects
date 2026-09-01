@@ -3,15 +3,19 @@ import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=202608
 import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260831a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831c";
+import { collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260831a";
 
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
 const REFRESH_URL = "/api/thunder-bowl/season/refresh";
+const NEWS_URL = "/api/thunder-bowl/news?force=1";
+const RESEARCH_URL = "/api/thunder-bowl/research?force=1";
 const PLAN_CACHE_KEY = "seasonPlanV1";
 const UPDATE_CONTROL_IDS = Object.freeze(["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only"]);
 const FILE_CONTROL_IDS = Object.freeze(["cbs-file", "fbg-file", "export-plan"]);
 let plan = null;
 let offlineMode = false;
+let playerNewsRequestId = 0;
 
 function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
@@ -53,6 +57,14 @@ function evidenceButton(title, value, kind, label = "Why?") {
   return button;
 }
 
+function newsButton(player) {
+  const button = element("button", "news-button", "Latest news");
+  button.type = "button";
+  button.setAttribute("aria-label", `Latest news for ${player.name}`);
+  button.addEventListener("click", () => openPlayerNews(player));
+  return button;
+}
+
 function setUpdateControlsDisabled(disabled) {
   for (const id of UPDATE_CONTROL_IDS) byId(id).disabled = disabled;
 }
@@ -71,6 +83,8 @@ function restoreActionControls() {
 }
 
 function openEvidence(title, value, kind) {
+  playerNewsRequestId += 1;
+  byId("evidence-eyebrow").textContent = "Plain-English explanation";
   byId("evidence-title").textContent = title;
   const body = byId("evidence-body");
   body.replaceChildren();
@@ -87,6 +101,61 @@ function openEvidence(title, value, kind) {
   }
   if (explanation.note) body.append(element("p", "evidence-note", explanation.note));
   byId("evidence-dialog").showModal();
+}
+
+async function privateJson(url) {
+  const response = await fetch(url, { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+  const value = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(value.error || `News request failed (${response.status}).`);
+  return value;
+}
+
+function newsStory(item) {
+  const story = element("section", "news-story");
+  const meta = element("p", "news-meta", `${item.source}${item.asOf ? ` · ${dateTime(item.asOf)}` : ""}`);
+  story.append(meta, element("h3", "", item.title), element("p", "", item.summary));
+  const href = safeNewsUrl(item.url);
+  if (href) {
+    const link = element("a", "news-link", `Open ${item.source} story`);
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    story.append(link);
+  }
+  return story;
+}
+
+async function openPlayerNews(player) {
+  const requestId = ++playerNewsRequestId;
+  byId("evidence-eyebrow").textContent = "Latest player news";
+  byId("evidence-title").textContent = player.name;
+  const body = byId("evidence-body");
+  body.replaceChildren(element("p", "evidence-summary", `Checking RotoWire, CBS, and Footballguys for the latest ${player.name} news…`));
+  body.setAttribute("aria-busy", "true");
+  const dialog = byId("evidence-dialog");
+  if (!dialog.open) dialog.showModal();
+  if (offlineMode) {
+    body.replaceChildren(element("p", "evidence-note", "Latest player news is unavailable in the offline recovery view. Reconnect, then choose News again."));
+    body.removeAttribute("aria-busy");
+    return;
+  }
+  const [newsResult, researchResult] = await Promise.allSettled([privateJson(NEWS_URL), privateJson(RESEARCH_URL)]);
+  if (requestId !== playerNewsRequestId) return;
+  const newsSnapshot = newsResult.status === "fulfilled" ? newsResult.value : null;
+  const researchSnapshot = researchResult.status === "fulfilled" ? researchResult.value : null;
+  const items = collectLatestPlayerNews(player.name, newsSnapshot, researchSnapshot);
+  const failures = [newsResult, researchResult].filter((result) => result.status === "rejected");
+  body.replaceChildren();
+  body.append(element("p", "evidence-summary", failures.length === 2
+    ? `Latest news could not be loaded for ${player.name}. The projection and injury designation shown in the row remain unchanged.`
+    : items.length
+    ? `${items.length} current ${items.length === 1 ? "update" : "updates"} matched ${player.name}. News is evidence only and does not change the projection.`
+    : `No current RotoWire, CBS, or Footballguys story matched ${player.name}. That does not override the injury designation or projection shown in the row.`));
+  if (items.length) body.append(...items.map(newsStory));
+  if (failures.length) body.append(element("p", "evidence-note", failures.length === 2
+    ? "The current news feeds did not answer. Close this window and choose Latest news again in a moment."
+    : "One news feed could not refresh, so the available verified sources are shown."));
+  body.removeAttribute("aria-busy");
 }
 
 function sourceAge(source) {
@@ -171,24 +240,30 @@ function renderUpdateSources(value) {
   renderUpdateSource("update-news-source", "update-news-state", sources.get("injury / news"), summary?.injuryNews, "Ready to refresh automatically");
 }
 
-function renderLineup(value) {
-  byId("lineup-total").textContent = `${number(value.lineup.total)} pts`;
-  const tbody = byId("starter-rows");
-  const slotCount = {};
-  tbody.replaceChildren(...value.lineup.starters.map((row) => {
-    slotCount[row.position] = (slotCount[row.position] || 0) + 1;
+function lineupRow(row, slotLabel, kind, value) {
     const tr = document.createElement("tr");
     const slot = document.createElement("td");
-    slot.append(element("span", "position", `${row.position}${slotCount[row.position] > 1 ? slotCount[row.position] : ""}`));
+    slot.append(element("span", "position", slotLabel));
     const playerCell = document.createElement("td");
     playerCell.append(element("span", "player-name", row.name), element("span", "subtext", `${row.nflTeam}${row.injury?.status ? ` · ${row.injury.status}` : ""}`));
     const game = element("td", "", row.opponent || (row.bye === value.week ? "BYE" : "TBD"));
     const range = element("td", "", `${number(row.floor)}–${number(row.ceiling)}`);
     const points = element("td", "player-name", number(row.points));
     const action = document.createElement("td");
-    action.append(evidenceButton(`${row.name} Week ${value.week}`, row, "starter"));
+    const actions = element("div", "row-actions");
+    actions.append(newsButton(row), evidenceButton(`${row.name} Week ${value.week}`, row, kind));
+    action.append(actions);
     tr.append(slot, playerCell, game, range, points, action);
     return tr;
+}
+
+function renderLineup(value) {
+  byId("lineup-total").textContent = `${number(value.lineup.total)} pts`;
+  const tbody = byId("starter-rows");
+  const slotCount = {};
+  tbody.replaceChildren(...value.lineup.starters.map((row) => {
+    slotCount[row.position] = (slotCount[row.position] || 0) + 1;
+    return lineupRow(row, `${row.position}${slotCount[row.position] > 1 ? slotCount[row.position] : ""}`, "starter", value);
   }));
   if (!value.lineup.starters.length) {
     const tr = document.createElement("tr");
@@ -201,8 +276,15 @@ function renderLineup(value) {
   swaps.replaceChildren(...(value.lineup.swaps.length
     ? value.lineup.swaps.map((row) => compactRow(`Start ${row.start} over ${row.sit}`, `${signed(row.delta)} points · confidence ${number(row.confidence, 2)}`, row, "swap"))
     : [empty("No close start/sit contingency is registered.")]));
-  const bench = byId("bench-list");
-  bench.replaceChildren(...value.lineup.bench.map((row) => compactRow(`${row.position} · ${row.name}`, `${number(row.points)} projected · ${row.injury?.status || "no actionable injury tag"}`, row, "bench")));
+  const bench = byId("bench-rows");
+  bench.replaceChildren(...value.lineup.bench.map((row) => lineupRow(row, row.position, "bench", value)));
+  if (!value.lineup.bench.length) {
+    const tr = document.createElement("tr");
+    const td = element("td", "empty", "No bench players are currently rostered.");
+    td.colSpan = 6;
+    tr.append(td);
+    bench.append(tr);
+  }
 }
 
 function metric(label, value) {

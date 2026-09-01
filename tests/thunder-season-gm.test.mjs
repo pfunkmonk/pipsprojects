@@ -415,7 +415,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-refresh.mjs", import.meta.url), "utf8"),
   ]);
-  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "helper-setup", "helper-download", "fbg-file", "starter-rows", "bench-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog", "evidence-eyebrow"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, />Update everything</);
   assert.match(html, /Two-sided current-season value/);
   for (const label of ["Update CBS", "Update FBG", "Update FantasyPros", "Update PFF", "Update injuries/news"]) assert.match(html, new RegExp(`>${label}<`));
@@ -438,6 +438,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
   assert.doesNotMatch(source, /metric\("Salary"/);
   assert.match(source, /buildEvidenceExplanation/);
+  assert.match(source, /collectLatestPlayerNews/);
+  assert.match(source, /\/api\/thunder-bowl\/news\?force=1/);
+  assert.match(source, /\/api\/thunder-bowl\/research\?force=1/);
+  assert.match(source, /Latest news for \$\{player\.name\}/);
   for (const kind of ["starter", "bench", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
@@ -448,9 +452,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v4/);
+  assert.match(worker, /thunder-bowl-season-v5/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260831p/);
+  assert.match(worker, /season\.mjs\?v=20260831q/);
+  assert.match(worker, /season-news\.mjs\?v=20260831a/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260831c/);
