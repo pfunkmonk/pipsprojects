@@ -2,7 +2,7 @@ import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roste
 import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260831a";
 import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260831a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
-import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831a";
+import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831b";
 
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
@@ -249,7 +249,7 @@ function renderTrades(value) {
     header.append(title, element("span", "verdict", row.verdict));
     card.append(header, element("p", "", row.whyRivalAccepts));
     const metrics = element("div", "metrics");
-    metrics.append(metric("Dogs ROS", signed(row.dogsDeltas.restOfSeason)), metric("Rival ROS", signed(row.rivalDeltas.restOfSeason)), metric("Salary", row.salary.dogsDelta === null ? "unknown" : `$${signed(row.salary.dogsDelta)}`));
+    metrics.append(metric("Dogs ROS", signed(row.dogsDeltas.restOfSeason)), metric("Rival ROS", signed(row.rivalDeltas.restOfSeason)), metric("Dogs next 3", signed(row.dogsDeltas.nextThree)));
     card.append(metrics);
     const actions = element("div", "card-actions");
     actions.append(evidenceButton(`${send} for ${receive}`, row, "trade"));

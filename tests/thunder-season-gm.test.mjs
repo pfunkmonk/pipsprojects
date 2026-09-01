@@ -9,6 +9,7 @@ import {
   buildInjuryWatch,
   buildSeasonRecommendationSnapshot,
   optimizeExactLineup,
+  recommendTrades,
   recommendWaivers,
 } from "../netlify/functions/_lib/season-recommendations.mjs";
 import { diffLeagueOwnership } from "../netlify/functions/_lib/season-store.mjs";
@@ -254,6 +255,40 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.equal(result.recommendations[0].add.playerId, freeAgent.id);
   assert.ok(roster.some((item) => item.id === result.recommendations[0].drop.playerId));
   assert.match(result.recommendations[0].availability.source, /CBS/);
+  assert.doesNotMatch(JSON.stringify(result.recommendations), /salary|contract|keeper|bid/i);
+});
+
+test("waiver and trade recommendations are invariant to salary and contract data", () => {
+  const teamPlayers = (prefix, rbPoints, wrPoints) => [
+    player(`${prefix}-qb-one`, "QB", 20), player(`${prefix}-qb-two`, "QB", 14),
+    ...rbPoints.map((points, index) => player(`${prefix}-rb-${index + 1}`, "RB", points)),
+    ...wrPoints.map((points, index) => player(`${prefix}-wr-${index + 1}`, "WR", points)),
+    player(`${prefix}-te-one`, "TE", 10), player(`${prefix}-te-two`, "TE", 6),
+    player(`${prefix}-k-one`, "K", 8), player(`${prefix}-dst-one`, "DST", 7),
+  ];
+  const dogs = teamPlayers("dogs", [13, 8, 7, 6], [20, 18, 17, 16]);
+  const rival = teamPlayers("rival", [20, 18, 17, 16], [13, 8, 7, 6]);
+  const pack = { players: [...dogs, ...rival] };
+  const baseLeague = {
+    authority: "authenticated league roster and availability authority",
+    capturedAt: "2026-09-08T12:00:00.000Z",
+    rostersReady: true,
+    availablePlayerIds: [],
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) },
+      { teamId: "rival", teamName: "Orange Crush", roster: rosterRows(rival) },
+    ],
+  };
+  const changedLeague = structuredClone(baseLeague);
+  for (const team of changedLeague.teams) for (const row of team.roster) {
+    row.salary += 100;
+    row.contractYear = 9;
+  }
+  const base = recommendTrades({ pack, leagueState: baseLeague, week: 1 });
+  const changed = recommendTrades({ pack, leagueState: changedLeague, week: 1 });
+  assert.ok(base.recommendations.length > 0);
+  assert.deepEqual(changed, base);
+  assert.doesNotMatch(JSON.stringify(base.recommendations), /salary|contract|keeper/i);
 });
 
 test("CBS snapshot diffs distinguish pickups, drops, and owner changes without inferring transaction type", () => {
@@ -274,6 +309,26 @@ test("IR watch reports only evidence-backed reserve statuses and does not invent
   assert.equal(result.irTargets[0].action, "STASH WATCH");
   assert.match(result.irTargets[0].returnOutlook, /not inferred/);
   assert.equal(result.irTargets[0].keeperUpside, "HIGH");
+  assert.equal(result.irTargets[0].keeperEvaluationActive, false);
+  assert.equal(result.irTargets[0].keeperCost, null);
+});
+
+test("keeper salary remains gated until the Week 13 keeper-review window", () => {
+  const target = player("late-keeper", "RB", 15, { marketValue: 35, vbd: 50 });
+  const leagueState = {
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: [] },
+      { teamId: "rival", teamName: "Orange Crush", roster: [{ playerId: target.id, salary: 7, contractYear: 2 }] },
+    ],
+    availablePlayerIds: [],
+  };
+  const statusSnapshot = { capturedAt: "2026-11-25T12:00:00.000Z", updates: [{ playerId: target.id, severity: "critical", status: "Injured Reserve", injuryStatus: "IR", newsUpdated: "2026-11-25T11:00:00.000Z" }] };
+  const early = buildInjuryWatch({ pack: { players: [target] }, leagueState, week: 12, statusSnapshot }).irTargets[0];
+  const late = buildInjuryWatch({ pack: { players: [target] }, leagueState, week: 13, statusSnapshot }).irTargets[0];
+  assert.equal(early.keeperEvaluationActive, false);
+  assert.equal(early.keeperCost, null);
+  assert.equal(late.keeperEvaluationActive, true);
+  assert.equal(late.keeperCost, 7);
 });
 
 test("combined plans are deterministic for identical sources and disclose baseline limits", () => {
@@ -302,6 +357,7 @@ test("private season shell supports full and per-source updates without auction 
   ]);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, />Update everything</);
+  assert.match(html, /Two-sided current-season value/);
   for (const label of ["Update CBS", "Update FBG", "Update FantasyPros", "Update PFF", "Update injuries/news"]) assert.match(html, new RegExp(`>${label}<`));
   assert.match(html, /Advanced recovery tools/);
   assert.doesNotMatch(html, /auction room|auction command center/i);
@@ -320,6 +376,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
+  assert.doesNotMatch(source, /metric\("Salary"/);
   assert.match(source, /buildEvidenceExplanation/);
   for (const kind of ["starter", "bench", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
   assert.match(source, /thunder-bowl-season-setup-required/);
@@ -331,12 +388,12 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v2/);
+  assert.match(worker, /thunder-bowl-season-v3/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260831n/);
+  assert.match(worker, /season\.mjs\?v=20260831o/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
-  assert.match(worker, /season-evidence\.mjs\?v=20260831a/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260831b/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);
   assert.doesNotMatch(rootWorker, /\/thunder-bowl\/season\/index\.html/);

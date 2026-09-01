@@ -149,14 +149,14 @@ function waiverExplanation(value, week) {
       ]),
       section("Why this player and this drop", [
         clean(value.reason),
-        finite(value.dropCost) ? `Removing ${drop.name} by itself costs about ${points(value.dropCost)} per rest-of-season optimal lineup, making this the lowest-cost legal drop found.` : `${drop.name} was the lowest-cost legal drop across the tested time horizons.`,
+        finite(value.dropProjectionLoss) ? `Removing ${drop.name} by itself loses about ${points(value.dropProjectionLoss)} per rest-of-season optimal lineup, the smallest projected-points loss among the legal drops tested.` : `${drop.name} produces the smallest projected-points loss among the legal drops tested.`,
         evidence.range && finite(evidence.range.median) ? `${add.name}'s ${weekLabel} projection is ${points(evidence.range.median)}, with a ${decimal(evidence.range.floor)}–${decimal(evidence.range.ceiling)} range.` : "",
         confidence(value.confidence),
       ]),
       section("Availability and roster rules", [
         `${add.name} was confirmed available by the authenticated CBS all-team roster snapshot${availability.asOf ? ` captured ${dateTime(availability.asOf)}` : ""}.`,
         "The advisor tested the move against the league's eight required starters and 14-player maximum.",
-        clean(value.acquisitionAdvice),
+        "The ranking uses current-season projected lineup value and roster legality only.",
       ]),
       section("Role and news", [
         role ? `Depth-chart role: ${role.starter ? "starter" : `depth order ${role.order ?? "unknown"}`}${clean(role.status) ? `; status ${role.status}` : ""}.` : "No additional depth-chart signal is registered.",
@@ -164,7 +164,6 @@ function waiverExplanation(value, week) {
         ...projectionSourceItems(evidence.projections),
       ]),
     ],
-    note: "Waiver cost, salary, and contract treatment remain a league-rule confirmation item; the advisor is recommending the roster move, not an automatic bid amount.",
   };
 }
 
@@ -178,10 +177,6 @@ function tradeExplanation(value) {
   const rival = value.rival?.teamName || "the other team";
   const dogs = value.dogsDeltas || {};
   const theirs = value.rivalDeltas || {};
-  const salary = value.salary || {};
-  const salaryEffect = finite(salary.dogsDelta)
-    ? `Dogs of War's recorded roster salary would ${Number(salary.dogsDelta) > 0 ? "increase" : Number(salary.dogsDelta) < 0 ? "decrease" : "stay unchanged"}${Number(salary.dogsDelta) === 0 ? "." : ` by $${Math.abs(Number(salary.dogsDelta)).toFixed(0)}.`}`
-    : "The salary effect cannot be confirmed from current data.";
   return {
     summary: `The advisor says to ${String(value.verdict || "explore").toLowerCase()} sending ${send} for ${receive} because Dogs of War improves its modeled rest-of-season lineup while ${rival} receives a package close enough to be rational for both sides.`,
     sections: [
@@ -197,11 +192,10 @@ function tradeExplanation(value) {
         deltaItem(`${rival}'s rest of season`, theirs.restOfSeason),
         deltaItem(`${rival}'s next three weeks`, theirs.nextThree),
       ]),
-      section("Roster, salary, and keeper checks", [
+      section("Roster and lineup checks", [
         "The comparison keeps both teams on a legal starter path and evaluates exact weekly starting lineups; bench totals are excluded.",
-        salaryEffect,
-        value.keeperEffect ? `${value.keeperEffect.sends}; ${value.keeperEffect.receives}. ${clean(value.keeperEffect.note)}` : "Keeper treatment is not fully configured.",
-        "Only one-for-one trades are tested. Multi-player formats remain blocked until their roster and contract rules are configured.",
+        "The advisor compares current-season production and roster fit only.",
+        "Only one-for-one trades are tested. Multi-player formats remain blocked until their post-trade 8–14 player roster handling is configured.",
       ]),
       section("Main risk", [clean(value.primaryRisk)]),
     ],
@@ -252,8 +246,9 @@ function injuryExplanation(value) {
   };
 }
 
-function irExplanation(value) {
+function irExplanation(value, week) {
   const action = clean(value.action) || "MONITOR";
+  const keeperEvaluationActive = value.keeperEvaluationActive === true && finite(week) && Number(week) >= 13;
   return {
     summary: `${value.name} is a ${action.toLowerCase()} because reserve-list evidence is confirmed and the player's healthy rest-of-season projection and ${String(value.keeperUpside || "speculative").toLowerCase()} keeper upside justify continued attention.`,
     sections: [
@@ -262,11 +257,12 @@ function irExplanation(value) {
         `League status: ${clean(value.leagueStatus) || "unconfirmed"}; recommended action: ${action}.`,
         finite(value.healthyRosAverage) ? `If healthy, the governed rest-of-season average is ${points(value.healthyRosAverage)} per week.` : "A dependable healthy rest-of-season average is not available.",
       ]),
-      section("Keeper and roster value", [
+      section(keeperEvaluationActive ? "Late-season keeper and roster value" : "Current-season stash value", [
         `Keeper upside: ${clean(value.keeperUpside) || "speculative"}.`,
-        finite(value.preInjuryMarketValue) ? `Pre-injury market value: $${Number(value.preInjuryMarketValue).toFixed(0)}.` : "",
         finite(value.preInjuryVbd) ? `Pre-injury value above replacement: ${decimal(value.preInjuryVbd)}.` : "",
-        finite(value.keeperCost) ? `Current recorded keeper salary: $${Number(value.keeperCost).toFixed(0)}.` : "No keeper salary is attached to an available player.",
+        keeperEvaluationActive
+          ? finite(value.keeperCost) ? `Current recorded keeper salary: $${Number(value.keeperCost).toFixed(0)}.` : "No keeper salary is attached to this available or unpriced player."
+          : "Salary is intentionally excluded until the Week 13 keeper-review window.",
       ]),
       section("Return uncertainty", [
         clean(value.returnOutlook),
@@ -295,6 +291,6 @@ export function buildEvidenceExplanation(kind, value, { week = null } = {}) {
   if (kind === "trade") return tradeExplanation(value || {});
   if (kind === "move") return moveExplanation(value || {});
   if (kind === "injury") return injuryExplanation(value || {});
-  if (kind === "ir") return irExplanation(value || {});
+  if (kind === "ir") return irExplanation(value || {}, week);
   return genericExplanation(value || {});
 }

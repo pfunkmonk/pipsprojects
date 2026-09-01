@@ -5,6 +5,7 @@ import { ageMinutes } from "./season-time.mjs";
 const USER_TEAM_ID = "dogs-of-war";
 const POSITIONS = Object.keys(STARTER_REQUIREMENTS);
 const PRIORITY_WEEKS = Object.freeze({ division: [1, 2, 12, 13], playoffs: [15, 16, 17] });
+export const KEEPER_EVALUATION_START_WEEK = 13;
 
 function round(value, digits = 1) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -256,8 +257,6 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
         name: addPlayer.name,
         position: addPlayer.position,
         nflTeam: addPlayer.nflTeam,
-        salary: null,
-        contractYear: null,
         opponent: null,
         gameTime: null,
         bye: addPlayer.weeklyProjection?.byeWeek ?? null,
@@ -270,8 +269,8 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       const nextThreeDelta = marginal(currentRoster, afterRoster, nextThree, context);
       const rosDelta = marginal(currentRoster, afterRoster, ros, context);
       const withoutDrop = currentRoster.filter((entry) => entry.playerId !== drop.playerId);
-      const dropCost = marginal(currentRoster, withoutDrop, ros, context);
-      const row = { addPlayer, drop, afterRoster, currentDelta, nextThreeDelta, rosDelta, dropCost };
+      const dropProjectionLoss = marginal(currentRoster, withoutDrop, ros, context);
+      const row = { addPlayer, drop, afterRoster, currentDelta, nextThreeDelta, rosDelta, dropProjectionLoss };
       const tuple = [currentDelta.resilienceWeeks, currentDelta.delta ?? -999, nextThreeDelta.delta ?? -999, rosDelta.delta ?? -999];
       if (!best || compareNumberTuples(tuple, best.tuple) > 0) best = { ...row, tuple };
     }
@@ -300,11 +299,10 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       add: { playerId: row.addPlayer.id, name: row.addPlayer.name, position: row.addPlayer.position, nflTeam: row.addPlayer.nflTeam, opponent: null, gameTime: null },
       drop: { playerId: row.drop.playerId, name: row.drop.player.name, position: row.drop.player.position, nflTeam: row.drop.player.nflTeam },
       gains: { week: row.currentDelta.delta, nextThree: row.nextThreeDelta.delta, restOfSeason: row.rosDelta.delta, resilienceWeeks: row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks },
-      dropCost: row.dropCost.delta === null ? null : round(-row.dropCost.delta),
+      dropProjectionLoss: row.dropProjectionLoss.delta === null ? null : round(-row.dropProjectionLoss.delta),
       confidence: projection.confidence,
       availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams" },
-      acquisitionAdvice: "Waiver price, salary, and contract effect are not configured; confirm the CBS rule before bidding.",
-      reason: `${horizon}; ${row.drop.player.name} is the lowest-cost legal drop across the tested horizons.`,
+      reason: `${horizon}; ${row.drop.player.name} produces the smallest projected-points loss among the legal drops tested.`,
       evidence: { projections: projection.sources, range: { floor: projection.floor, median: projection.points, ceiling: projection.ceiling }, role: signals.depth, news: signals.news, rankingRule: "lexicographic: legal/resilience gain, Week gain, next-three gain, then rest-of-season gain; no unvalidated context modifier" },
     };
   });
@@ -315,11 +313,7 @@ function tradeDelta(beforeRoster, afterRoster, weeks, context) {
   return marginal(beforeRoster, afterRoster, weeks.filter((candidate) => candidate >= context.currentWeek), context).delta;
 }
 
-function contractLabel(entry) {
-  return entry.contractYear == null ? "contract year unknown" : `contract year ${entry.contractYear}`;
-}
-
-export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, tradeRulesConfirmed = false }) {
+export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null }) {
   if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Trade advice") };
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
@@ -367,22 +361,19 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   for (const idea of ideas) {
     if (usedRivals.has(idea.rivalTeam.teamId)) continue;
     usedRivals.add(idea.rivalTeam.teamId);
-    const salaryDelta = Number.isFinite(idea.receive.salary) && Number.isFinite(idea.send.salary) ? idea.receive.salary - idea.send.salary : null;
     recommendations.push({
-      verdict: tradeRulesConfirmed && idea.rivalDeltas.restOfSeason >= 0 ? "OFFER" : "EXPLORE",
+      verdict: "EXPLORE",
       rival: { teamId: idea.rivalTeam.teamId, teamName: idea.rivalTeam.teamName },
-      sends: [{ playerId: idea.send.playerId, name: idea.send.player.name, position: idea.send.player.position, salary: idea.send.salary, contractYear: idea.send.contractYear }],
-      receives: [{ playerId: idea.receive.playerId, name: idea.receive.player.name, position: idea.receive.player.position, salary: idea.receive.salary, contractYear: idea.receive.contractYear }],
+      sends: [{ playerId: idea.send.playerId, name: idea.send.player.name, position: idea.send.player.position }],
+      receives: [{ playerId: idea.receive.playerId, name: idea.receive.player.name, position: idea.receive.player.position }],
       dogsDeltas: idea.dogsDeltas,
       rivalDeltas: idea.rivalDeltas,
-      salary: { dogsDelta: salaryDelta, rivalDelta: salaryDelta === null ? null : -salaryDelta, rulesConfirmed: tradeRulesConfirmed },
-      keeperEffect: { sends: contractLabel(idea.send), receives: contractLabel(idea.receive), note: "Keeper cost shown from CBS when present; next-season eligibility still depends on the league's unconfigured trade/contract rule." },
       confidence: round(Math.min(playerWeekEvidence(idea.send.player, week, projectionRows, cbsRows).confidence ?? 0.4, playerWeekEvidence(idea.receive.player, week, projectionRows, cbsRows).confidence ?? 0.4), 2),
       whyRivalAccepts: idea.rivalDeltas.restOfSeason >= 0
         ? `${idea.rivalTeam.teamName} gains ${idea.rivalDeltas.restOfSeason.toFixed(1)} average optimal-lineup points over the rest of the season.`
         : `${idea.rivalTeam.teamName} gives up only ${Math.abs(idea.rivalDeltas.restOfSeason).toFixed(1)} average points while changing positional shape.`,
-      primaryRisk: tradeRulesConfirmed ? "Projection disagreement and player availability can change before acceptance." : "Trade salary transfer, contract treatment, deadline, and commissioner approval are not yet configured.",
-      proposal: `Would you consider ${idea.send.player.name} for ${idea.receive.player.name}? It improves my ${idea.receive.player.position} path and gives ${idea.rivalTeam.teamName} ${idea.send.player.name} at ${idea.send.salary == null ? "an unconfirmed salary" : `$${idea.send.salary}`}.`,
+      primaryRisk: "Projection disagreement, injuries, lineup needs, and player availability can change before acceptance.",
+      proposal: `Would you consider ${idea.send.player.name} for ${idea.receive.player.name}? It improves my ${idea.receive.player.position} path and gives ${idea.rivalTeam.teamName} ${idea.send.player.name} for its current-season lineup.`,
       evidence: { method: "both teams' weekly exact legal optimal lineups; byes included; bench totals excluded", formatsConsidered: ["1-for-1"], blockedFormats: ["2-for-1 and 1-for-2 remain blocked until multi-player trade rules and post-trade 8–14 player roster handling are configured"] },
     });
     if (recommendations.length === 5) break;
@@ -402,6 +393,7 @@ function irEvidence(status) {
 }
 
 export function buildInjuryWatch({ pack, leagueState, week, statusSnapshot = null, researchSnapshot = null, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null }) {
+  const keeperEvaluationActive = week >= KEEPER_EVALUATION_START_WEEK;
   const owners = teamOwnership(leagueState);
   const availabilityConfirmed = leagueRostersReady(leagueState);
   const available = new Set(availabilityConfirmed ? leagueState.availablePlayerIds || [] : []);
@@ -441,20 +433,22 @@ export function buildInjuryWatch({ pack, leagueState, week, statusSnapshot = nul
       const remaining = weekRange(week, 17).map((candidateWeek) => playerWeekEvidence(player, candidateWeek, projectionRows, cbsRows).points);
       const healthyRosAverage = average(remaining);
       const action = row.leagueStatus === "AVAILABLE" ? "STASH WATCH" : row.leagueStatus === "DOGS OF WAR" ? "HOLD / IR" : row.leagueStatus === "UNCONFIRMED" ? "MONITOR" : "TRADE WATCH";
-      const keeperUpside = player.marketValue >= 20 || player.vbd >= 35 ? "HIGH" : player.marketValue >= 8 || player.vbd >= 15 ? "MEDIUM" : "SPECULATIVE";
+      const keeperUpside = player.vbd >= 35 ? "HIGH" : player.vbd >= 15 ? "MEDIUM" : "SPECULATIVE";
       return {
         ...row,
         action,
         healthyRosAverage: round(healthyRosAverage),
-        preInjuryMarketValue: player.marketValue,
         preInjuryVbd: player.vbd,
         keeperUpside,
-        keeperCost: row.leagueStatus === "AVAILABLE" ? null : owners.get(player.id)?.roster?.find((entry) => entry.playerId === player.id)?.salary ?? null,
+        keeperEvaluationActive,
+        keeperCost: keeperEvaluationActive && row.leagueStatus !== "AVAILABLE" ? owners.get(player.id)?.roster?.find((entry) => entry.playerId === player.id)?.salary ?? null : null,
         returnOutlook: "Return date is not inferred. Confirm the official NFL/CBS eligibility window and practice activation before using a roster spot.",
-        reason: `${player.name}'s governed healthy projection and ${keeperUpside.toLowerCase()} keeper upside merit monitoring; injury evidence never adds projection points.`,
+        reason: keeperEvaluationActive
+          ? `${player.name}'s governed healthy projection and ${keeperUpside.toLowerCase()} keeper upside merit monitoring; Week ${week} keeper review may also use the recorded keeper salary when one exists.`
+          : `${player.name}'s governed healthy projection and ${keeperUpside.toLowerCase()} long-term upside merit monitoring; salary is excluded until the Week ${KEEPER_EVALUATION_START_WEEK} keeper-review window.`,
       };
     })
-    .sort((left, right) => (right.healthyRosAverage ?? -1) - (left.healthyRosAverage ?? -1) || right.preInjuryMarketValue - left.preInjuryMarketValue)
+    .sort((left, right) => (right.healthyRosAverage ?? -1) - (left.healthyRosAverage ?? -1) || right.preInjuryVbd - left.preInjuryVbd)
     .slice(0, 10);
   return { injuries: actionable.slice(0, 30), irTargets };
 }
@@ -574,6 +568,13 @@ export function buildSeasonRecommendationSnapshot({
     waivers: waiver,
     trades,
     watch: { ...watch, leagueMoves: leagueMoves.slice(0, 50) },
-    model: { deterministic: true, monteCarlo: false, seed: null, missingPolicy: "missing is excluded, never zero", contextPolicy: "news, injury, depth, matchup, weather, travel, and venue are evidence-only unless a time-forward gate earns authority" },
+    model: {
+      deterministic: true,
+      monteCarlo: false,
+      seed: null,
+      missingPolicy: "missing is excluded, never zero",
+      contextPolicy: "news, injury, depth, matchup, weather, travel, and venue are evidence-only unless a time-forward gate earns authority",
+      salaryPolicy: `salary and contract data are excluded from lineups, waivers, and trades; salary is shown only in Week ${KEEPER_EVALUATION_START_WEEK}+ keeper-stash review`,
+    },
   };
 }

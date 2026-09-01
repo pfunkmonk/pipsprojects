@@ -19,20 +19,20 @@ test("every In-Season GM evidence type produces a plain-English recommendation e
     ["swap", { start: "Starter", sit: "Bench Player", position: "RB", delta: 2.3, confidence: 0.8, reason: "Starter has the stronger Week 1 projection." }],
     ["waiver", {
       verdict: "ADD", add: { name: "Free Agent" }, drop: { name: "Bench Player" },
-      gains: { week: 2, nextThree: 1.4, restOfSeason: 0.8, resilienceWeeks: 1 }, dropCost: 0.2, confidence: 0.75,
-      reason: "Free Agent improves the lineup; Bench Player is the lowest-cost legal drop.",
-      availability: { asOf: "2026-09-08T12:00:00.000Z" }, acquisitionAdvice: "Confirm the waiver price before bidding.",
+      gains: { week: 2, nextThree: 1.4, restOfSeason: 0.8, resilienceWeeks: 1 }, dropProjectionLoss: 0.2, confidence: 0.75,
+      reason: "Free Agent improves the lineup; Bench Player produces the smallest projected-points loss.",
+      availability: { asOf: "2026-09-08T12:00:00.000Z" },
       evidence: { range: { floor: 12, median: 15, ceiling: 18 }, projections: projection.sources, role: null, news: [] },
     }],
     ["trade", {
       verdict: "EXPLORE", rival: { teamName: "Orange Crush" }, sends: [{ name: "Outgoing" }], receives: [{ name: "Incoming" }],
       dogsDeltas: { nextThree: 1, restOfSeason: 0.7 }, rivalDeltas: { nextThree: 0.2, restOfSeason: 0.1 },
-      salary: { dogsDelta: 2 }, confidence: 0.7, whyRivalAccepts: "Orange Crush also improves slightly.",
-      primaryRisk: "Projections can change.", keeperEffect: { sends: "Outgoing contract year 1", receives: "Incoming contract year 2", note: "Eligibility must be confirmed." },
+      confidence: 0.7, whyRivalAccepts: "Orange Crush also improves slightly.",
+      primaryRisk: "Projections can change.",
     }],
     ["move", { playerName: "Moved Player", type: "PICKUP", from: null, to: { teamName: "Big Head" }, detectedAt: "2026-09-08T12:00:00.000Z", evidence: "Diff of two authenticated CBS snapshots." }],
     ["injury", { ...projection, status: "Questionable", severity: "moderate", leagueStatus: "DOGS OF WAR", bodyPart: "hamstring", practice: "limited", updatedAt: "2026-09-08T12:00:00.000Z", projection, news: [] }],
-    ["ir", { ...projection, action: "STASH WATCH", status: "IR", leagueStatus: "AVAILABLE", keeperUpside: "HIGH", healthyRosAverage: 14, preInjuryMarketValue: 24, preInjuryVbd: 40, keeperCost: null, reason: "Healthy production and keeper upside merit monitoring.", returnOutlook: "No return date is inferred." }],
+    ["ir", { ...projection, action: "STASH WATCH", status: "IR", leagueStatus: "AVAILABLE", keeperUpside: "HIGH", healthyRosAverage: 14, preInjuryVbd: 40, keeperEvaluationActive: false, keeperCost: null, reason: "Healthy production and keeper upside merit monitoring.", returnOutlook: "No return date is inferred." }],
   ];
 
   for (const [kind, value] of cases) {
@@ -46,7 +46,11 @@ test("every In-Season GM evidence type produces a plain-English recommendation e
   assert.match(fullText(buildEvidenceExplanation("starter", projection, { week: 1 })), /highest eligible|strongest eligible/);
   assert.match(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /eight required starters and 14-player maximum/);
   assert.match(fullText(buildEvidenceExplanation("trade", cases[4][1], { week: 1 })), /rational for both sides/);
+  assert.doesNotMatch(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /salary|contract|keeper|bid/i);
+  assert.doesNotMatch(fullText(buildEvidenceExplanation("trade", cases[4][1], { week: 1 })), /salary|contract|keeper/i);
   assert.match(fullText(buildEvidenceExplanation("move", cases[5][1], { week: 1 })), /does not guess/);
   assert.match(fullText(buildEvidenceExplanation("injury", cases[6][1], { week: 1 })), /never increases the projection/);
   assert.match(fullText(buildEvidenceExplanation("ir", cases[7][1], { week: 1 })), /does not invent a return date/);
+  assert.match(fullText(buildEvidenceExplanation("ir", cases[7][1], { week: 1 })), /excluded until the Week 13 keeper-review window/);
+  assert.match(fullText(buildEvidenceExplanation("ir", { ...cases[7][1], keeperEvaluationActive: true, keeperCost: 7 }, { week: 13 })), /recorded keeper salary: \$7/);
 });
