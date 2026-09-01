@@ -293,6 +293,23 @@ function metric(label, value) {
   return node;
 }
 
+function waiverBidAdvice(fab) {
+  const advice = element("section", "fab-advice");
+  advice.setAttribute("aria-label", "Waiver bid recommendation");
+  const recommendation = element("div", "fab-advice-primary");
+  recommendation.append(
+    element("span", "", "Recommended blind bid"),
+    element("strong", "", `$${number(fab.recommended, 0)}`),
+  );
+  const details = element("div", "fab-advice-details");
+  details.append(
+    metric("Do not exceed", `$${number(fab.maximum, 0)}`),
+    metric("Remaining after a win", `$${number(fab.budgetAfter, 0)}`),
+  );
+  advice.append(recommendation, details);
+  return advice;
+}
+
 function renderWaivers(value) {
   const target = byId("waiver-list");
   if (!value.waivers.recommendations.length) {
@@ -309,7 +326,7 @@ function renderWaivers(value) {
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
     if (Number.isFinite(row.fab?.recommended)) {
-      metrics.append(metric("Bid", `$${number(row.fab.recommended, 0)}`), metric("Max", `$${number(row.fab.maximum, 0)}`), metric("After", `$${number(row.fab.budgetAfter, 0)}`));
+      card.append(waiverBidAdvice(row.fab));
     } else if (row.fab?.unavailableReason) {
       card.append(element("p", "fab-unavailable", row.fab.unavailableReason));
     }
