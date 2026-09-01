@@ -144,6 +144,11 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[headers]]
+  for = "/thunder-bowl/season/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
   for = "/api/thunder-bowl/*"
   [headers.values]
     Cache-Control = "no-store"

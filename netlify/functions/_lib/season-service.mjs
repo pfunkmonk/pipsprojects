@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import { canonicalizeCbsLeagueSnapshot, leagueStateFromFinalLedger } from "./cbs-season-source.mjs";
+import { canonicalizeCbsLeagueSnapshot } from "./cbs-season-source.mjs";
 import { downloadFbgWeeklySnapshot, parseFbgAuthenticatedWeeklyCapture, parseFbgWeeklyCsv, validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
-import { readLedger } from "./ledger-store.mjs";
 import { currentResearchSnapshot } from "./research-store.mjs";
 import { buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
 import { parseFantasyProsAuthenticatedCapture, parsePffAuthenticatedCapture } from "./supplemental-season-source.mjs";
@@ -42,7 +41,9 @@ function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSn
 async function liveLeagueState(pack) {
   const cbs = await readLatestCbsLeagueState(pack);
   if (cbs) return cbs.snapshot;
-  return leagueStateFromFinalLedger({ ledger: await readLedger(), pack });
+  const error = new Error("The authenticated CBS league snapshot is not available. Choose Update everything to establish the in-season roster baseline.");
+  error.code = "SEASON_BASELINE_UNAVAILABLE";
+  throw error;
 }
 
 export async function refreshFootballguysSource({ now = new Date() } = {}) {

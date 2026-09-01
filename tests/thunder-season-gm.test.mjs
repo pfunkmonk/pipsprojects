@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgAuthenticatedWeeklyCapture, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
-import { leagueStateFromFinalLedger } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
 import {
@@ -56,12 +55,10 @@ test("America/Denver Tuesday scheduling handles both daylight and standard time"
   assert.equal(seasonIdempotencyKey({ date: "2026-09-29T12:05:00.000Z", source: "Tuesday plan" }), "2026/week-4/tuesday-plan/v1");
 });
 
-test("an incomplete auction ledger returns a safe authenticated setup state instead of trapping login", () => {
+test("a missing CBS baseline returns a safe setup state without consulting the auction system", async () => {
   const pack = { season: 2026, packId: "test-pack", players: [] };
-  assert.throws(
-    () => leagueStateFromFinalLedger({ ledger: { document: { events: [], generation: 3, updatedAt: "2026-08-30T12:00:00.000Z" } }, pack }),
-    (error) => error.code === "SEASON_BASELINE_UNAVAILABLE" && /12 legal rosters/.test(error.message),
-  );
+  const serviceSource = await readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(serviceSource, /ledger-store|leagueStateFromFinalLedger|readLedger/);
   const setup = buildSeasonSetupSnapshot({ pack, now: "2026-08-30T12:00:00.000Z" });
   assert.equal(setup.kind, "thunder-bowl-season-setup-required");
   assert.equal(setup.requiresLeagueSync, true);
@@ -70,13 +67,14 @@ test("an incomplete auction ledger returns a safe authenticated setup state inst
   assert.match(setup.sourceFingerprint, /^[a-f0-9]{64}$/);
 });
 
-test("the protected season pack loads from both source and flattened Netlify bundle layouts", async () => {
+test("the protected season player catalog loads directly without the auction release workflow", async () => {
   const pack = await readSeasonPack();
   assert.equal(pack.season, 2026);
   assert.ok(pack.players.length >= 650);
   const source = await readFile(new URL("../netlify/functions/_lib/season-pack.mjs", import.meta.url), "utf8");
   assert.match(source, /new URL\("\.\/_data\/draft-pack-2026-provisional\.json"/);
   assert.match(source, /new URL\("\.\.\/_data\/draft-pack-2026-provisional\.json"/);
+  assert.doesNotMatch(source, /pack-release-store|readDraftPackRelease|releasedPackText/);
 });
 
 test("Footballguys weekly CSV is strict, traceable, and never turns missing into zero", () => {
@@ -221,7 +219,7 @@ test("waiver recommendations remain blocked until CBS supplies authenticated ava
   assert.match(result.blockedReason, /Sync private CBS/);
 });
 
-test("partial authenticated auction captures update safely without confirming free agents", () => {
+test("partial authenticated CBS captures update safely without confirming free agents", () => {
   const roster = rosterPlayers();
   const freeAgent = player("rb-undrafted", "RB", 18, { vbd: 80, marketValue: 30 });
   const leagueState = {
@@ -281,7 +279,7 @@ test("IR watch reports only evidence-backed reserve statuses and does not invent
 test("combined plans are deterministic for identical sources and disclose baseline limits", () => {
   const players = rosterPlayers();
   const pack = { season: 2026, packId: "test-pack", asOf: "2026-09-08T11:00:00.000Z", players, sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } };
-  const leagueState = { source: "final ledger", authority: "week-one roster baseline only; not current CBS availability", capturedAt: "2026-08-30T12:00:00.000Z", teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(players) }], availablePlayerIds: null };
+  const leagueState = { source: "unverified roster baseline", authority: "not current CBS availability", capturedAt: "2026-08-30T12:00:00.000Z", teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(players) }], availablePlayerIds: null };
   const input = { pack, leagueState, week: 1, generatedAt: "2026-09-08T12:00:00.000Z" };
   const left = buildSeasonRecommendationSnapshot(input);
   const right = buildSeasonRecommendationSnapshot(input);
@@ -291,17 +289,21 @@ test("combined plans are deterministic for identical sources and disclose baseli
   assert.ok(left.alerts.some((message) => message.includes("CBS league data has not been synced")));
 });
 
-test("private season shell exposes the complete weekly workflow without unsafe HTML rendering", async () => {
-  const [html, source, css, worker, netlify] = await Promise.all([
+test("private season shell is a standalone weekly workflow without auction navigation or caching", async () => {
+  const [html, source, css, worker, rootWorker, manifest, netlify] = await Promise.all([
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.css", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/season/service-worker.js", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/season/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
   ]);
   for (const id of ["refresh-plan", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, />Update everything</);
   assert.match(html, /Advanced recovery tools/);
+  assert.doesNotMatch(html, /auction room|auction command center/i);
+  assert.match(html, /\.\/manifest\.webmanifest/);
   assert.match(source, /action: "capture-cbs"/);
   assert.match(source, /requestFbgProjectionCapture/);
   assert.match(source, /action: "capture-fbg"/);
@@ -321,16 +323,21 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
+  assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v139/);
-  assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831l/);
+  assert.match(worker, /thunder-bowl-season-v1/);
+  assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
+  assert.match(worker, /season\.mjs\?v=20260831m/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260831a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
+  assert.match(rootWorker, /thunder-bowl-shell-v140/);
+  assert.doesNotMatch(rootWorker, /\/thunder-bowl\/season\/index\.html/);
+  assert.equal(JSON.parse(manifest).scope, "/thunder-bowl/season/");
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);
+  assert.match(netlify, /for = "\/thunder-bowl\/season\/service-worker\.js"/);
 });
 
 test("scheduled and persistence source preserve write-once Tuesday archives and separate live pointers", async () => {

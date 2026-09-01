@@ -466,7 +466,7 @@ window.addEventListener("online", async () => {
   try { await renderPlan(await loadSnapshot()); setStatus("Reconnected and loaded the current private plan."); } catch { /* Keep explicit stale recovery view. */ }
 });
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("../service-worker.js", { scope: "../" }).catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(() => {});
 
 (async () => {
   if (navigator.onLine) {

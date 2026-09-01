@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { validateDraftPack } from "../../../public/thunder-bowl/state-engine.mjs";
-import { readDraftPackRelease, releasedPackText } from "./pack-release-store.mjs";
 
 const PACK_PATHS = [
   new URL("./_data/draft-pack-2026-provisional.json", import.meta.url),
@@ -19,8 +18,7 @@ export async function readSeasonPack() {
         lastError = error;
       }
     }
-    if (!cachedText) throw lastError || new Error("The protected draft pack is unavailable.");
+    if (!cachedText) throw lastError || new Error("The protected in-season player catalog is unavailable.");
   }
-  const releasedText = releasedPackText(cachedText, await readDraftPackRelease());
-  return validateDraftPack(JSON.parse(releasedText));
+  return validateDraftPack(JSON.parse(cachedText));
 }

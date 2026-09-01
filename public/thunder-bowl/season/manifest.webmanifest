@@ -1,0 +1,19 @@
+{
+  "name": "Thunder Bowl In-Season GM",
+  "short_name": "In-Season GM",
+  "description": "Private weekly lineup, waiver, trade, injury, and IR-stash guidance for Thunder Bowl.",
+  "start_url": "/thunder-bowl/season/",
+  "scope": "/thunder-bowl/season/",
+  "display": "standalone",
+  "background_color": "#071a31",
+  "theme_color": "#071a31",
+  "icons": [
+    {
+      "src": "/thunder-bowl/season/favicon.svg?v=20260831a",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "utilities", "productivity"]
+}

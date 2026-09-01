@@ -1,4 +1,4 @@
-const CACHE_VERSION = "thunder-bowl-shell-v139";
+const CACHE_VERSION = "thunder-bowl-shell-v140";
 const APP_SHELL = [
   "/thunder-bowl/",
   "/thunder-bowl/index.html",
@@ -22,13 +22,6 @@ const APP_SHELL = [
   "/thunder-bowl/guides/index.html",
   "/thunder-bowl/guides/guides.css",
   "/thunder-bowl/guides/guides.mjs",
-  "/thunder-bowl/season/",
-  "/thunder-bowl/season/index.html",
-  "/thunder-bowl/season/season.css?v=20260831b",
-  "/thunder-bowl/season/season.mjs?v=20260831l",
-  "/thunder-bowl/season/season-evidence.mjs?v=20260831a",
-  "/thunder-bowl/fbg-session-capture.mjs?v=20260831a",
-  "/thunder-bowl/supplemental-session-capture.mjs?v=20260831a",
   "/thunder-bowl/board.html",
   "/thunder-bowl/board/board.css",
   "/thunder-bowl/board/board-reliability.css",
@@ -100,12 +93,6 @@ self.addEventListener("activate", (event) => {
     const priorShells = keys.filter((key) => key.startsWith("thunder-bowl-shell-") && key !== CACHE_VERSION);
     await Promise.all(priorShells.map((key) => caches.delete(key)));
     await self.clients.claim();
-    if (!priorShells.length) return;
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    await Promise.all(windows.map(async (client) => {
-      const url = new URL(client.url);
-      if (url.origin === self.location.origin && url.pathname.startsWith("/thunder-bowl/season")) await client.navigate(client.url).catch(() => undefined);
-    }));
   })());
 });
 
@@ -119,8 +106,6 @@ async function navigationResponse(request) {
     const pathname = new URL(request.url).pathname;
     const fallback = pathname.startsWith("/thunder-bowl/board")
       ? "/thunder-bowl/board.html"
-      : pathname.startsWith("/thunder-bowl/season")
-        ? "/thunder-bowl/season/index.html"
       : pathname.startsWith("/thunder-bowl/guides")
         ? "/thunder-bowl/guides/index.html"
       : pathname.startsWith("/thunder-bowl/draft-board")

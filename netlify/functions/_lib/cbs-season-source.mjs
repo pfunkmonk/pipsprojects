@@ -4,7 +4,7 @@ import {
   cbsLeagueRosterReadiness,
   validateCbsRosterSnapshot,
 } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
-import { canonicalPlayerIdentity, replayDraft } from "../../../public/thunder-bowl/state-engine.mjs";
+import { canonicalPlayerIdentity } from "../../../public/thunder-bowl/state-engine.mjs";
 import { scoreThunderBowlProjectedStats, THUNDER_BOWL_SCORING_FINGERPRINT } from "./thunder-bowl-scoring.mjs";
 
 function sha256(value) {
@@ -186,60 +186,5 @@ export function validateCanonicalCbsLeagueState(value, pack) {
     projectionWeek: Number.isSafeInteger(value.projectionWeek) ? value.projectionWeek : null,
     projectionCount: weeklyProjections.length,
     weeklyProjections,
-  };
-}
-
-export function leagueStateFromFinalLedger({ ledger, pack }) {
-  const document = ledger?.document || ledger;
-  const state = replayDraft(document?.events || []);
-  const teams = Object.values(state.teams).map((team) => ({
-    teamId: team.id,
-    teamName: team.name,
-    roster: team.roster.map((row) => ({
-      playerId: row.playerId,
-      name: row.playerName,
-      position: row.position,
-      nflTeam: row.nflTeam,
-      salary: row.price,
-      contractYear: row.keeperYear ?? null,
-      opponent: null,
-      gameTime: null,
-      bye: pack.players.find((player) => player.id === row.playerId)?.weeklyProjection?.byeWeek ?? null,
-      projectedPoints: null,
-      newsTitles: [],
-      markerClasses: [],
-    })),
-  }));
-  const rosteredPlayerIds = teams.flatMap((team) => team.roster.map((player) => player.playerId));
-  const readiness = cbsLeagueRosterReadiness(teams);
-  if (teams.length !== 12 || new Set(rosteredPlayerIds).size !== rosteredPlayerIds.length || !readiness.rostersReady) {
-    const error = new Error("The locked final ledger does not yet contain 12 legal rosters with the required eight starters and no more than six backups.");
-    error.code = "SEASON_BASELINE_UNAVAILABLE";
-    throw error;
-  }
-  return {
-    schemaVersion: 1,
-    season: pack.season,
-    source: "Thunder Bowl production-locked final auction ledger",
-    authority: "week-one roster baseline only; not current CBS availability",
-    capturedAt: document.updatedAt,
-    providerAsOf: document.updatedAt,
-    reportId: `ledger-generation-${document.generation}`,
-    rawSha256: sha256(document.events),
-    teamCount: teams.length,
-    rosterMinimum: readiness.rosterMinimum,
-    rosterMaximum: readiness.rosterMaximum,
-    legalTeamCount: readiness.legalTeamCount,
-    rostersReady: readiness.rostersReady,
-    teamStatuses: readiness.teamStatuses,
-    rosterTarget: readiness.rosterMaximum,
-    completeTeamCount: readiness.legalTeamCount,
-    rostersComplete: readiness.rostersReady,
-    rosteredPlayerCount: rosteredPlayerIds.length,
-    availablePlayerCount: null,
-    teamDrift: [],
-    teams,
-    rosteredPlayerIds,
-    availablePlayerIds: null,
   };
 }
