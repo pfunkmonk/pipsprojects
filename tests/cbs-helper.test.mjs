@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { normalizeCbsProjectionRows, normalizeCbsTeamRows } from "../tools/cbs-chrome-helper/cbs-normalize.mjs";
+import { normalizeCbsFabPages } from "../tools/cbs-chrome-helper/cbs-fab-normalize.mjs";
 import { cbsLeagueRosterReadiness, compareCbsRosterSnapshots, validateCbsRosterSnapshot } from "../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { canonicalizeCbsLeagueSnapshot, validateCanonicalCbsLeagueState } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { scoreThunderBowlProjectedStats } from "../netlify/functions/_lib/thunder-bowl-scoring.mjs";
@@ -20,7 +21,7 @@ test("CBS helper manifest is least-privilege and has no cookie or storage permis
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*", "https://www.footballguys.com/*", "https://www.fantasypros.com/*", "https://www.pff.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.6.1");
+  assert.equal(manifest.version, "0.7.0");
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
   assert.equal(JSON.stringify(manifest).includes("<all_urls>"), false);
 });
@@ -44,8 +45,27 @@ test("the four-source helper waits for authenticated rendered content instead of
   assert.match(worker, /a\[href\*="\/nfl\/teams\/"\]/);
   assert.match(worker, /rowKey: providerId \|\|/);
   assert.match(worker, /seen\.has\(row\.rowKey\)/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.6\.1\.zip/);
+  assert.match(worker, /captureCbsFabPages/);
+  assert.match(worker, /fab-budget/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.7\.0\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
+});
+
+test("CBS FAB pages normalize the $50 budget, reverse-standings order, records, and current-week pickups", () => {
+  const teams = ["Angry Face", "Orange Crush", "Big Head", "Dogs of War", "T-Dogs", "Super Suckers", "Three Amigos", "Goon Skwad", "El Guapo", "Crime and Punishment", "The Hobbits", "The Bungles"];
+  const pages = [
+    { url: "https://berrymvp.football.cbssports.com/transactions/fab-budget", title: "FAB Budget", text: "FAB Budget Remaining", tables: [{ headers: ["Team", "Remaining Budget"], rows: teams.map((name, index) => [name, `$${50 - index}`]) }] },
+    { url: "https://berrymvp.football.cbssports.com/transactions/fab-order", title: "FAB Order", text: "FAB priority order", tables: [{ headers: ["Order", "Team"], rows: teams.map((name, index) => [String(index + 1), name]) }] },
+    { url: "https://berrymvp.football.cbssports.com/standings", title: "Standings", text: "Overall standings", tables: [{ headers: ["Team", "Record"], rows: teams.map((name, index) => [name, `${index % 3}-${2 - (index % 3)}-0`]) }] },
+    { url: "https://berrymvp.football.cbssports.com/transactions/report", title: "Transactions", text: "Week 1 transaction report", tables: [{ headers: ["Team", "Result", "Player"], rows: [["Dogs of War", "Awarded", "Test Player"], ["Angry Face", "Unsuccessful", "Other Player"]] }] },
+  ];
+  const fab = normalizeCbsFabPages(pages, 1, "2026-09-08T12:00:00.000Z");
+  assert.equal(fab.status, "COMPLETE");
+  assert.equal(fab.rules.startingBudget, 50);
+  assert.deepEqual(fab.rules.equalBidTieBreakers, ["WORST_RECORD", "FEWEST_WEEKLY_PICKUPS", "FAB_ORDER"]);
+  assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").remainingBudget, 47);
+  assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").fabOrder, 4);
+  assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").weeklySuccessfulPickups, 1);
 });
 
 test("CBS row normalization uses the verified salary, contract, and scoring-column order", () => {

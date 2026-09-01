@@ -137,6 +137,8 @@ function waiverExplanation(value, week) {
   const role = evidence.role;
   const news = Array.isArray(evidence.news) ? evidence.news : [];
   const availability = value.availability || {};
+  const fab = value.fab || {};
+  const alternatives = Array.isArray(value.alternatives) ? value.alternatives : [];
   const weekLabel = finite(week) ? `Week ${week}` : "Current week";
   return {
     summary: `The advisor ranks ${add.name} as a ${value.verdict || "waiver"} option because adding ${add.name} for ${drop.name} keeps the roster legal and produces the best tested lineup improvement among the available choices.`,
@@ -156,7 +158,23 @@ function waiverExplanation(value, week) {
       section("Availability and roster rules", [
         `${add.name} was confirmed available by the authenticated CBS all-team roster snapshot${availability.asOf ? ` captured ${dateTime(availability.asOf)}` : ""}.`,
         "The advisor tested the move against the league's eight required starters and 14-player maximum.",
-        "The ranking uses current-season projected lineup value and roster legality only.",
+        "The player ranking uses current-season projected lineup value and roster legality; roster salary and contract are excluded.",
+      ]),
+      section("Blind-auction bid plan", finite(fab.recommended) ? [
+        `Recommended bid: $${Number(fab.recommended).toFixed(0)}; do not exceed $${Number(fab.maximum).toFixed(0)} for this claim.`,
+        `Current FAB balance: $${Number(fab.currentBudget).toFixed(0)}; the recommended bid would leave $${Number(fab.budgetAfter).toFixed(0)}.`,
+        `The model protects $${Number(fab.plannedReserve).toFixed(0)} for later injury coverage${fab.specialTeamsByes?.length ? ` and ${fab.specialTeamsByes.map((item) => `${item.position} Week ${item.week}`).join(" plus ")} bye replacements` : ""}.`,
+        finite(fab.tiePosition) ? `On an equal bid, Dogs of War currently ranks about ${Number(fab.tiePosition).toFixed(0)} of 12: worse record first, then fewer successful pickups this week, then CBS FAB order.` : "CBS tie position is not available yet.",
+        Number(fab.earlierClaimWinsAssumed || 0) > 0 ? `That tie estimate conservatively assumes the ${Number(fab.earlierClaimWinsAssumed).toFixed(0)} higher displayed claim${Number(fab.earlierClaimWinsAssumed) === 1 ? " was" : "s were"} won first in this run.` : "This is the first displayed claim, so no earlier same-run win is assumed.",
+        "Each successful pickup immediately increases that team's weekly pickup count, lowering its priority for a later equal bid in the same overnight run.",
+        `Processing schedule: ${clean(fab.processingSchedule) || "Tuesday through Saturday nights"}.`,
+        fab.bidHistoryAvailable ? "CBS bid history is available for competition calibration." : "CBS does not currently expose enough losing-bid history to calibrate rival bids, so the maximum is a conservative value cap—not a prediction of the winning price.",
+        alternatives.length ? `If this player is gone, continue with ${alternatives.map((item) => `#${item.priority} ${item.name}${finite(item.recommendedBid) ? ` at $${item.recommendedBid}` : ""}`).join(", ")}.` : "No lower-ranked alternative cleared every current gate.",
+      ] : [
+        clean(fab.unavailableReason) || "FAB balances, standings, and priority order have not been captured, so the advisor will not invent a bid.",
+      ]),
+      section("What the bid does not use", [
+        "The bid is constrained by the separate $50 season FAB balance. A player's roster salary after acquisition does not increase his waiver ranking or trade value.",
       ]),
       section("Role and news", [
         role ? `Depth-chart role: ${role.starter ? "starter" : `depth order ${role.order ?? "unknown"}`}${clean(role.status) ? `; status ${role.status}` : ""}.` : "No additional depth-chart signal is registered.",

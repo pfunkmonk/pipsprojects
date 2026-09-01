@@ -1,8 +1,8 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831d";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831e";
 import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260831a";
 import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260831a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
-import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831b";
+import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831c";
 
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
@@ -151,7 +151,8 @@ function renderUpdateSource(rowId, stateId, source, summary, emptyText) {
     else if (source?.label === "CBS league") {
       const legalTeams = summary.legalTeams ?? summary.completeTeams;
       const projections = summary.projectionRows ? ` · ${summary.projectionRows} raw-stat projections for Week ${summary.projectionWeek}` : "";
-      state.textContent = `Updated ${dateTime(summary.asOf || summary.capturedAt)} · ${legalTeams}/${summary.teamCount} legal rosters · ${summary.rosteredPlayers} players${projections}`;
+      const fab = summary.fabStatus === "COMPLETE" ? " · FAB balances/order/records captured" : " · FAB pricing incomplete";
+      state.textContent = `Updated ${dateTime(summary.asOf || summary.capturedAt)} · ${legalTeams}/${summary.teamCount} legal rosters · ${summary.rosteredPlayers} players${projections}${fab}`;
     } else if (source?.label === "FBG projections") {
       state.textContent = `Updated ${dateTime(summary.asOf || summary.capturedAt)} · ${summary.rows || 0} raw-stat rows · Thunder Bowl scoring`;
     } else state.textContent = `Updated ${dateTime(summary.asOf || summary.capturedAt)}`;
@@ -225,6 +226,11 @@ function renderWaivers(value) {
     card.append(header, element("p", "", row.reason));
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
+    if (Number.isFinite(row.fab?.recommended)) {
+      metrics.append(metric("Bid", `$${number(row.fab.recommended, 0)}`), metric("Max", `$${number(row.fab.maximum, 0)}`), metric("After", `$${number(row.fab.budgetAfter, 0)}`));
+    } else if (row.fab?.unavailableReason) {
+      card.append(element("p", "fab-unavailable", row.fab.unavailableReason));
+    }
     card.append(metrics);
     const actions = element("div", "card-actions");
     actions.append(evidenceButton(`${row.add.name} waiver case`, row, "waiver"));

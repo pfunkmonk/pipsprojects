@@ -121,6 +121,25 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     });
   }
   weeklyProjections.sort((left, right) => left.playerId.localeCompare(right.playerId));
+  const fabState = snapshot.fabState ? {
+    schemaVersion: snapshot.fabState.schemaVersion,
+    source: snapshot.fabState.source,
+    capturedAt: snapshot.fabState.capturedAt,
+    week: snapshot.fabState.week,
+    status: snapshot.fabState.status,
+    rules: structuredClone(snapshot.fabState.rules),
+    coverage: structuredClone(snapshot.fabState.coverage),
+    teams: snapshot.fabState.teams.map((team) => ({
+      teamId: team.teamId,
+      teamName: team.name,
+      cbsTeamId: team.cbsTeamId,
+      remainingBudget: team.remainingBudget,
+      fabOrder: team.fabOrder,
+      record: team.record ? { ...team.record } : null,
+      weeklySuccessfulPickups: team.weeklySuccessfulPickups,
+    })),
+    pageUrls: [...snapshot.fabState.pageUrls],
+  } : null;
   return {
     schemaVersion: 1,
     season: pack.season,
@@ -150,6 +169,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     projectionCount: weeklyProjections.length,
     unmatchedProjectionCount,
     weeklyProjections,
+    fabState,
   };
 }
 
@@ -173,6 +193,19 @@ export function validateCanonicalCbsLeagueState(value, pack) {
     if (projectionIds.has(row.playerId)) throw new Error("CBS weekly projection state repeats a player.");
     projectionIds.add(row.playerId);
   }
+  const fabState = value.fabState ?? null;
+  if (fabState !== null) {
+    if (fabState.schemaVersion !== 1 || !["COMPLETE", "PARTIAL"].includes(fabState.status) || !Array.isArray(fabState.teams) || fabState.teams.length !== 12) throw new Error("CBS FAB state failed its source contract.");
+    const ids = new Set(value.teams.map((team) => team.teamId));
+    const orders = new Set();
+    for (const team of fabState.teams) {
+      if (!ids.has(team.teamId) || (team.remainingBudget !== null && (!Number.isSafeInteger(team.remainingBudget) || team.remainingBudget < 0 || team.remainingBudget > 50)) || (team.fabOrder !== null && (!Number.isSafeInteger(team.fabOrder) || team.fabOrder < 1 || team.fabOrder > 12))) throw new Error("CBS FAB state contains an invalid team row.");
+      if (team.fabOrder !== null) {
+        if (orders.has(team.fabOrder)) throw new Error("CBS FAB state repeats an order position.");
+        orders.add(team.fabOrder);
+      }
+    }
+  }
   return {
     ...value,
     rosterMinimum: readiness.rosterMinimum,
@@ -186,5 +219,6 @@ export function validateCanonicalCbsLeagueState(value, pack) {
     projectionWeek: Number.isSafeInteger(value.projectionWeek) ? value.projectionWeek : null,
     projectionCount: weeklyProjections.length,
     weeklyProjections,
+    fabState,
   };
 }

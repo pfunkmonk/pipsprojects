@@ -23,6 +23,8 @@ test("every In-Season GM evidence type produces a plain-English recommendation e
       reason: "Free Agent improves the lineup; Bench Player produces the smallest projected-points loss.",
       availability: { asOf: "2026-09-08T12:00:00.000Z" },
       evidence: { range: { floor: 12, median: 15, ceiling: 18 }, projections: projection.sources, role: null, news: [] },
+      fab: { recommended: 5, maximum: 7, currentBudget: 50, budgetAfter: 45, plannedReserve: 7, tiePosition: 4, weeklySuccessfulPickups: 0, fabOrder: 4, bidHistoryAvailable: false, processingSchedule: "Tuesday through Saturday nights; typically 1–4 a.m. ET", specialTeamsByes: [{ position: "K", week: 9 }, { position: "DST", week: 12 }] },
+      alternatives: [{ priority: 2, name: "Backup Claim", recommendedBid: 3 }],
     }],
     ["trade", {
       verdict: "EXPLORE", rival: { teamName: "Orange Crush" }, sends: [{ name: "Outgoing" }], receives: [{ name: "Incoming" }],
@@ -46,7 +48,9 @@ test("every In-Season GM evidence type produces a plain-English recommendation e
   assert.match(fullText(buildEvidenceExplanation("starter", projection, { week: 1 })), /highest eligible|strongest eligible/);
   assert.match(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /eight required starters and 14-player maximum/);
   assert.match(fullText(buildEvidenceExplanation("trade", cases[4][1], { week: 1 })), /rational for both sides/);
-  assert.doesNotMatch(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /salary|contract|keeper|bid/i);
+  assert.match(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /Recommended bid: \$5/);
+  assert.match(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /worse record first, then fewer successful pickups/);
+  assert.match(fullText(buildEvidenceExplanation("waiver", cases[3][1], { week: 1 })), /roster salary.*does not increase/i);
   assert.doesNotMatch(fullText(buildEvidenceExplanation("trade", cases[4][1], { week: 1 })), /salary|contract|keeper/i);
   assert.match(fullText(buildEvidenceExplanation("move", cases[5][1], { week: 1 })), /does not guess/);
   assert.match(fullText(buildEvidenceExplanation("injury", cases[6][1], { week: 1 })), /never increases the projection/);

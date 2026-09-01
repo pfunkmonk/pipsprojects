@@ -1,4 +1,5 @@
 import { normalizeCbsProjectionRows, normalizeCbsTeamRows } from "./cbs-normalize.mjs";
+import { normalizeCbsFabPages } from "./cbs-fab-normalize.mjs";
 
 const TEAMS = [
   ["angry-face", 1, "Angry Face"], ["orange-crush", 2, "Orange Crush"],
@@ -93,6 +94,81 @@ async function rawRosterTables(tabId) {
   return results[0]?.result || [];
 }
 
+async function captureCbsFabPages(tabId, week) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async (expectedWeek, cbsOrigin) => {
+      const relevant = /fab|waiver|claim|transaction|standings|rules|settings|add-drop/i;
+      const paths = [
+        "/", "/rules", "/settings", "/standings", "/transactions", "/transactions/add-drop",
+        "/transactions/waivers", "/transactions/fab", "/transactions/fab-budget",
+        "/transactions/fab-order", "/transactions/report",
+      ];
+      const queue = new Set(paths.map((path) => new URL(path, cbsOrigin).href));
+      for (const link of document.querySelectorAll("a[href]")) {
+        try {
+          const url = new URL(link.href, location.href);
+          if (url.origin === cbsOrigin && relevant.test(`${link.textContent || ""} ${url.pathname}`)) queue.add(url.href);
+        } catch {
+          // Ignore malformed navigation links.
+        }
+      }
+      async function fetchPage(requestedUrl) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 8_000);
+          const response = await fetch(requestedUrl, { credentials: "include", cache: "no-store", signal: controller.signal, headers: { Accept: "text/html" } });
+          clearTimeout(timeout);
+          if (!response.ok || new URL(response.url).origin !== cbsOrigin) return null;
+          const html = await response.text();
+          if (html.length < 500 || html.length > 3_000_000) return null;
+          const documentCopy = new DOMParser().parseFromString(html, "text/html");
+          const text = (documentCopy.body?.innerText || documentCopy.body?.textContent || "").replace(/\s+/g, " ").trim();
+          if (/sign in to continue|forgot your password/i.test(text) && !/Angry Face|Dogs of War|Orange Crush/.test(text)) return null;
+          const tables = [...documentCopy.querySelectorAll("table")].map((table) => {
+            const headerRow = table.querySelector("thead tr:last-child") || table.querySelector("tr");
+            const headers = [...(headerRow?.querySelectorAll("th,td") || [])].map((cell) => (cell.textContent || "").replace(/\s+/g, " ").trim());
+            const rows = [...table.querySelectorAll("tbody tr, tr")]
+              .filter((row) => row !== headerRow)
+              .map((row) => [...row.querySelectorAll("th,td")].map((cell) => (cell.textContent || "").replace(/\s+/g, " ").trim()))
+              .filter((row) => row.length);
+            return { headers, rows };
+          }).filter((table) => table.rows.length);
+          if (!relevant.test(`${documentCopy.title || ""} ${response.url} ${text}`) && !/Angry Face|Dogs of War|Orange Crush/.test(text)) return null;
+          const discovered = [];
+          for (const link of documentCopy.querySelectorAll("a[href]")) {
+            try {
+              const url = new URL(link.href, response.url);
+              if (url.origin === cbsOrigin && relevant.test(`${link.textContent || ""} ${url.pathname}`)) discovered.push(url.href);
+            } catch {
+              // Ignore malformed navigation links.
+            }
+          }
+          return { page: { url: response.url, title: documentCopy.title || "", text: text.slice(0, 200_000), tables }, discovered };
+        } catch {
+          // A missing optional CBS report must not discard roster/projection data.
+          return null;
+        }
+      }
+      const pages = [];
+      const visited = new Set();
+      for (let round = 0; round < 2; round += 1) {
+        const batch = [...queue].filter((url) => !visited.has(url)).slice(0, 24);
+        if (!batch.length) break;
+        batch.forEach((url) => visited.add(url));
+        const captured = await Promise.all(batch.map(fetchPage));
+        for (const result of captured.filter(Boolean)) {
+          pages.push(result.page);
+          for (const url of result.discovered) if (queue.size < 40) queue.add(url);
+        }
+      }
+      return { week: expectedWeek, pages };
+    },
+    args: [week, CBS_ORIGIN],
+  });
+  return normalizeCbsFabPages(results[0]?.result?.pages || [], week, new Date().toISOString());
+}
+
 async function rawProjectionTable(tabId, position, week) {
   const reportUrl = `${CBS_ORIGIN}/stats/stats-main/all:${position}/${week}:p/standard/projections`;
   await chrome.tabs.update(tabId, { url: reportUrl, active: false });
@@ -132,6 +208,7 @@ async function captureRosters(week) {
     if (missing.length) throw new Error(`CBS roster report is missing ${missing.map((team) => team.name).join(", ")}.`);
     const teams = TEAMS.map((team) => normalizeCbsTeamRows(team, byTeam.get(team.name)));
     const playerCount = teams.reduce((sum, team) => sum + team.players.length, 0);
+    const fabState = await captureCbsFabPages(tabId, week);
     const weeklyProjections = [];
     for (const position of POSITIONS) weeklyProjections.push(...await rawProjectionTable(tabId, position, week));
     return {
@@ -147,6 +224,7 @@ async function captureRosters(week) {
       projectionWeek: week,
       projectionCount: weeklyProjections.length,
       weeklyProjections,
+      fabState,
     };
   } finally {
     if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);

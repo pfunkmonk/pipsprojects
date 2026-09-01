@@ -11,6 +11,7 @@ import {
   optimizeExactLineup,
   recommendTrades,
   recommendWaivers,
+  simulateFabTieClaims,
 } from "../netlify/functions/_lib/season-recommendations.mjs";
 import { diffLeagueOwnership } from "../netlify/functions/_lib/season-store.mjs";
 import { isDenverTuesdayRefresh, seasonIdempotencyKey, seasonWeekForDate } from "../netlify/functions/_lib/season-time.mjs";
@@ -45,6 +46,24 @@ function rosterPlayers() {
 
 function rosterRows(players) {
   return players.map((item, index) => ({ playerId: item.id, salary: index + 1, contractYear: 1, opponent: null, gameTime: null, bye: item.weeklyProjection.byeWeek }));
+}
+
+function fabState({ dogsBudget = 50, dogsOrder = 4, dogsPickups = 0 } = {}) {
+  const catalog = ["angry-face", "orange-crush", "big-head", "dogs-of-war", "t-dogs", "super-suckers", "three-amigos", "goon-skwad", "el-guapo", "crime-and-punishment", "the-hobbits", "the-bungles"];
+  return {
+    schemaVersion: 1,
+    status: "COMPLETE",
+    capturedAt: "2026-09-08T12:00:00.000Z",
+    coverage: { pickupEvidence: "CURRENT_WEEK" },
+    rules: { processingNights: ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"], typicalProcessingWindow: "1–4 a.m. ET the following morning" },
+    teams: catalog.map((teamId, index) => ({
+      teamId,
+      remainingBudget: teamId === "dogs-of-war" ? dogsBudget : 50,
+      fabOrder: teamId === "dogs-of-war" ? dogsOrder : index + 1 === dogsOrder ? 12 : index + 1,
+      record: { wins: 0, losses: 0, ties: 0 },
+      weeklySuccessfulPickups: teamId === "dogs-of-war" ? dogsPickups : 0,
+    })),
+  };
 }
 
 test("America/Denver Tuesday scheduling handles both daylight and standard time", () => {
@@ -248,6 +267,7 @@ test("waiver recommendations use only CBS-available adds and pair every add with
       capturedAt: "2026-09-08T12:00:00.000Z",
       teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
       availablePlayerIds: [freeAgent.id],
+      fabState: fabState(),
     },
     week: 1,
   });
@@ -255,7 +275,47 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.equal(result.recommendations[0].add.playerId, freeAgent.id);
   assert.ok(roster.some((item) => item.id === result.recommendations[0].drop.playerId));
   assert.match(result.recommendations[0].availability.source, /CBS/);
-  assert.doesNotMatch(JSON.stringify(result.recommendations), /salary|contract|keeper|bid/i);
+  assert.ok(result.recommendations[0].fab.recommended >= 1);
+  assert.ok(result.recommendations[0].fab.maximum >= result.recommendations[0].fab.recommended);
+  assert.ok(result.recommendations[0].fab.budgetAfter < 50);
+  assert.doesNotMatch(JSON.stringify(result.recommendations), /contract|keeper/i);
+});
+
+test("FAB bids preserve K/DST bye and injury reserves without using roster salary", () => {
+  const roster = rosterPlayers();
+  const freeAgent = player("wr-upgrade", "WR", 21, { vbd: 100, marketValue: 40 });
+  const leagueState = {
+    authority: "authenticated league roster and availability authority",
+    capturedAt: "2026-09-08T12:00:00.000Z",
+    rostersReady: true,
+    teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+    availablePlayerIds: [freeAgent.id],
+    fabState: fabState({ dogsBudget: 20 }),
+  };
+  const first = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
+  const changed = structuredClone(leagueState);
+  for (const row of changed.teams[0].roster) row.salary += 100;
+  const second = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState: changed, week: 1 });
+  assert.ok(first.fab.plannedReserve >= 2);
+  assert.ok(first.recommendations[0].fab.maximum <= 20 - first.fab.plannedReserve);
+  assert.deepEqual(second, first);
+});
+
+test("an earlier tied FAB win lowers that team for a later tied claim in the same overnight run", () => {
+  const teams = [
+    { teamId: "dogs-of-war", remainingBudget: 50, fabOrder: 1, record: { wins: 1, losses: 2, ties: 0 }, weeklySuccessfulPickups: 0 },
+    { teamId: "orange-crush", remainingBudget: 50, fabOrder: 2, record: { wins: 1, losses: 2, ties: 0 }, weeklySuccessfulPickups: 0 },
+  ];
+  const simulation = simulateFabTieClaims({
+    teams,
+    claims: [
+      { playerId: "first", offers: [{ teamId: "dogs-of-war", bid: 5 }, { teamId: "orange-crush", bid: 5 }] },
+      { playerId: "second", offers: [{ teamId: "dogs-of-war", bid: 5 }, { teamId: "orange-crush", bid: 5 }] },
+    ],
+  });
+  assert.deepEqual(simulation.results.map((row) => row.winnerTeamId), ["dogs-of-war", "orange-crush"]);
+  assert.equal(simulation.teams.find((team) => team.teamId === "dogs-of-war").weeklySuccessfulPickups, 1);
+  assert.equal(simulation.teams.find((team) => team.teamId === "orange-crush").weeklySuccessfulPickups, 1);
 });
 
 test("waiver and trade recommendations are invariant to salary and contract data", () => {
@@ -388,12 +448,12 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v3/);
+  assert.match(worker, /thunder-bowl-season-v4/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260831o/);
+  assert.match(worker, /season\.mjs\?v=20260831p/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
-  assert.match(worker, /season-evidence\.mjs\?v=20260831b/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260831c/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);
   assert.doesNotMatch(rootWorker, /\/thunder-bowl\/season\/index\.html/);

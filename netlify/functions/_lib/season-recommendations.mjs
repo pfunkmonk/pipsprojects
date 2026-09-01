@@ -222,7 +222,116 @@ function researchSignals(player, research) {
   };
 }
 
-export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null }) {
+function recordRate(record) {
+  const games = Number(record?.wins || 0) + Number(record?.losses || 0) + Number(record?.ties || 0);
+  return games ? (Number(record.wins || 0) + Number(record.ties || 0) * 0.5) / games : 0.5;
+}
+
+export function compareFabTiePriority(left, right) {
+  const rate = recordRate(left?.record) - recordRate(right?.record);
+  if (rate) return rate;
+  const pickups = Number(left?.weeklySuccessfulPickups || 0) - Number(right?.weeklySuccessfulPickups || 0);
+  if (pickups) return pickups;
+  return Number(left?.fabOrder || 99) - Number(right?.fabOrder || 99);
+}
+
+export function simulateFabTieClaims({ teams = [], claims = [] } = {}) {
+  const state = new Map(teams.map((team) => [team.teamId, { ...team, weeklySuccessfulPickups: Number(team.weeklySuccessfulPickups || 0) }]));
+  const results = [];
+  for (const claim of claims) {
+    const contenders = (claim.offers || [])
+      .map((offer) => ({ ...offer, team: state.get(offer.teamId) }))
+      .filter((offer) => offer.team && Number.isSafeInteger(offer.bid) && offer.bid >= 1 && offer.bid <= Number(offer.team.remainingBudget ?? 50))
+      .sort((left, right) => right.bid - left.bid || compareFabTiePriority(left.team, right.team));
+    const winner = contenders[0] || null;
+    if (!winner) {
+      results.push({ playerId: claim.playerId, winnerTeamId: null, bid: null });
+      continue;
+    }
+    const team = state.get(winner.teamId);
+    team.remainingBudget = Number(team.remainingBudget ?? 50) - winner.bid;
+    team.weeklySuccessfulPickups += 1;
+    results.push({ playerId: claim.playerId, winnerTeamId: winner.teamId, bid: winner.bid });
+  }
+  return { results, teams: [...state.values()] };
+}
+
+function fabPickupCounts(leagueMoves = []) {
+  const counts = new Map();
+  for (const move of leagueMoves) {
+    if (move?.type !== "PICKUP" || !move.to?.teamId) continue;
+    counts.set(move.to.teamId, (counts.get(move.to.teamId) || 0) + 1);
+  }
+  return counts;
+}
+
+function effectiveFabState(leagueState, leagueMoves, roster, week) {
+  const raw = leagueState?.fabState;
+  const diffCounts = fabPickupCounts(leagueMoves);
+  const teams = (raw?.teams || []).map((team) => ({
+    ...team,
+    weeklySuccessfulPickups: team.weeklySuccessfulPickups === null
+      ? diffCounts.get(team.teamId) || 0
+      : Math.max(team.weeklySuccessfulPickups, diffCounts.get(team.teamId) || 0),
+  }));
+  const dogs = teams.find((team) => team.teamId === USER_TEAM_ID) || null;
+  const complete = raw?.status === "COMPLETE" && teams.length === 12 && teams.every((team) => team.remainingBudget !== null && team.fabOrder !== null && team.record !== null);
+  const specialTeamsByes = ["K", "DST"].flatMap((position) => {
+    const atPosition = roster.filter((entry) => entry.player.position === position);
+    if (atPosition.length !== 1) return [];
+    const bye = atPosition[0].bye ?? atPosition[0].player.weeklyProjection?.byeWeek;
+    return Number.isSafeInteger(bye) && bye >= week ? [{ position, week: bye }] : [];
+  });
+  const budget = complete ? dogs.remainingBudget : null;
+  const injuryReserve = Math.min(5, Math.max(2, Math.ceil((18 - week) / 4)));
+  const plannedReserve = budget === null ? null : Math.min(Math.max(0, budget - 1), injuryReserve + specialTeamsByes.length);
+  const teamsAheadOnTie = complete ? teams.filter((team) => team.teamId !== USER_TEAM_ID && compareFabTiePriority(team, dogs) < 0).length : null;
+  return {
+    available: complete,
+    reason: complete ? null : "Update CBS with Data Helper v0.7.0 to capture all 12 FAB balances, standings records, and the current FAB order.",
+    budget,
+    plannedReserve,
+    spendable: budget === null ? null : Math.max(0, budget - plannedReserve),
+    injuryReserve,
+    specialTeamsByes,
+    weeklySuccessfulPickups: dogs?.weeklySuccessfulPickups ?? null,
+    fabOrder: dogs?.fabOrder ?? null,
+    record: dogs?.record ?? null,
+    tiePosition: teamsAheadOnTie === null ? null : teamsAheadOnTie + 1,
+    teamsAheadOnTie,
+    pickupEvidence: raw?.coverage?.pickupEvidence || (leagueMoves.length ? "ROSTER_SNAPSHOT_DIFFS" : "NO_RESULTS_YET"),
+    bidHistoryAvailable: false,
+    processingSchedule: raw?.rules?.typicalProcessingWindow
+      ? `${raw.rules.processingNights.map((night) => night[0] + night.slice(1).toLowerCase()).join(", ")} nights; ${raw.rules.typicalProcessingWindow}`
+      : "Tuesday through Saturday nights; typically 1–4 a.m. ET the following morning",
+    rules: raw?.rules || null,
+    teams,
+  };
+}
+
+function fabSequenceTie(fab, earlierWins) {
+  if (!fab.available) return { tiePosition: null, teamsAheadOnTie: null, weeklySuccessfulPickups: fab.weeklySuccessfulPickups };
+  const teams = fab.teams.map((team) => team.teamId === USER_TEAM_ID
+    ? { ...team, weeklySuccessfulPickups: team.weeklySuccessfulPickups + earlierWins }
+    : team);
+  const dogs = teams.find((team) => team.teamId === USER_TEAM_ID);
+  const teamsAheadOnTie = teams.filter((team) => team.teamId !== USER_TEAM_ID && compareFabTiePriority(team, dogs) < 0).length;
+  return { tiePosition: teamsAheadOnTie + 1, teamsAheadOnTie, weeklySuccessfulPickups: dogs.weeklySuccessfulPickups };
+}
+
+function fabBidFor(row, verdict, fab) {
+  if (!fab.available || fab.budget < 1) return { recommended: null, maximum: null, budgetAfter: null };
+  const gains = [row.currentDelta.delta, row.nextThreeDelta.delta, row.rosDelta.delta].map((value) => Number(value || 0));
+  const strength = Math.max(0, gains[0] * 2 + gains[1] * 3 + gains[2] * 2 + (row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks) * 3);
+  const base = verdict === "ADD" ? 4 : verdict === "CLAIM" ? 2 : 1;
+  const rawBid = base + Math.ceil(strength / 4);
+  const positionCap = ["K", "DST"].includes(row.addPlayer.position) ? 2 : verdict === "WATCH" ? 2 : verdict === "CLAIM" ? 8 : 15;
+  const recommended = Math.max(1, Math.min(fab.spendable, positionCap, rawBid));
+  const maximum = Math.max(recommended, Math.min(fab.spendable, positionCap, recommended + Math.max(1, Math.ceil(recommended / 2))));
+  return { recommended, maximum, budgetAfter: fab.budget - recommended };
+}
+
+export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [] }) {
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
   }
@@ -234,6 +343,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const userTeam = rosterTeam(leagueState, USER_TEAM_ID);
   if (!userTeam) return { recommendations: [], blockedReason: "Dogs of War is missing from the CBS snapshot." };
   const currentRoster = rosterPlayers(userTeam.roster, playerById);
+  const fab = effectiveFabState(leagueState, leagueMoves, currentRoster, week);
   const context = { playerById, projectionRows, cbsRows, statuses };
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
@@ -293,6 +403,8 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
         ? "CLAIM"
         : "WATCH";
     const horizon = row.currentDelta.delta && row.currentDelta.delta > 0 ? `+${row.currentDelta.delta.toFixed(1)} expected Week ${week} points` : `${row.nextThreeDelta.delta >= 0 ? "+" : ""}${row.nextThreeDelta.delta?.toFixed(1) || "0.0"} average over the next three weeks`;
+    const bid = fabBidFor(row, verdict, fab);
+    const sequenceTie = fabSequenceTie(fab, index);
     return {
       priority: index + 1,
       verdict,
@@ -304,9 +416,28 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams" },
       reason: `${horizon}; ${row.drop.player.name} produces the smallest projected-points loss among the legal drops tested.`,
       evidence: { projections: projection.sources, range: { floor: projection.floor, median: projection.points, ceiling: projection.ceiling }, role: signals.depth, news: signals.news, rankingRule: "lexicographic: legal/resilience gain, Week gain, next-three gain, then rest-of-season gain; no unvalidated context modifier" },
+      fab: {
+        ...bid,
+        currentBudget: fab.budget,
+        plannedReserve: fab.plannedReserve,
+        spendable: fab.spendable,
+        tiePosition: sequenceTie.tiePosition,
+        teamsAheadOnTie: sequenceTie.teamsAheadOnTie,
+        weeklySuccessfulPickups: sequenceTie.weeklySuccessfulPickups,
+        earlierClaimWinsAssumed: index,
+        fabOrder: fab.fabOrder,
+        record: fab.record,
+        bidHistoryAvailable: fab.bidHistoryAvailable,
+        pickupEvidence: fab.pickupEvidence,
+        processingSchedule: fab.processingSchedule,
+        specialTeamsByes: fab.specialTeamsByes,
+        unavailableReason: fab.reason,
+      },
     };
   });
-  return { recommendations, blockedReason: null };
+  for (const [index, recommendation] of recommendations.entries()) recommendation.alternatives = recommendations.slice(index + 1).map((row) => ({ priority: row.priority, name: row.add.name, recommendedBid: row.fab.recommended })).slice(0, 3);
+  const { teams: _teams, ...publicFab } = fab;
+  return { recommendations, blockedReason: null, fab: publicFab };
 }
 
 function tradeDelta(beforeRoster, afterRoster, weeks, context) {
@@ -472,7 +603,8 @@ function sourceState({ leagueState, pack, week, fbgSnapshot, fantasyProsSnapshot
   if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; roster, waiver, and manager-move guidance remains blocked until Update CBS or Update everything captures the league.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
   if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
-  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.6.1, then choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
+  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.7.0, then choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
+  if (leagueState.authority.startsWith("authenticated") && leagueState.fabState?.status !== "COMPLETE") alerts.push("FAB bids are not priced yet because CBS budget, standings, or priority coverage is incomplete. Data Helper v0.7.0 captures those pages during Update CBS.");
   if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Choose Update FBG or Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (!fantasyProsSnapshot) alerts.push("FantasyPros signed-in weekly component stats have not been captured; the available-source blend is reweighted without them.");
@@ -518,7 +650,7 @@ export function buildSeasonRecommendationSnapshot({
     .filter(Boolean)
     .sort((left, right) => left.delta - right.delta)
     .slice(0, 6);
-  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot });
+  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves });
   const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot });
   const watch = buildInjuryWatch({ pack, leagueState, week, statusSnapshot, researchSnapshot, fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   const freshness = sourceState({ leagueState, pack, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, now: generatedAt });
@@ -551,6 +683,8 @@ export function buildSeasonRecommendationSnapshot({
       rostersReady: leagueRostersReady(leagueState),
       projectionWeek: leagueState.projectionWeek ?? null,
       projectionCount: leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0,
+      fabStatus: leagueState.fabState?.status || "UNAVAILABLE",
+      fabCapturedAt: leagueState.fabState?.capturedAt || null,
       // Backward-compatible aliases for older clients.
       rosterTarget: leagueState.rosterMaximum ?? leagueState.rosterTarget ?? 14,
       completeTeamCount: leagueState.legalTeamCount ?? leagueState.completeTeamCount ?? null,
@@ -574,7 +708,7 @@ export function buildSeasonRecommendationSnapshot({
       seed: null,
       missingPolicy: "missing is excluded, never zero",
       contextPolicy: "news, injury, depth, matchup, weather, travel, and venue are evidence-only unless a time-forward gate earns authority",
-      salaryPolicy: `salary and contract data are excluded from lineups, waivers, and trades; salary is shown only in Week ${KEEPER_EVALUATION_START_WEEK}+ keeper-stash review`,
+      salaryPolicy: `roster salary and contract data are excluded from lineup, player ranking, waiver value, and trade value; the separately captured $50 FAB balance is used only to size blind-auction waiver bids; roster salary is shown only in Week ${KEEPER_EVALUATION_START_WEEK}+ keeper-stash review`,
     },
   };
 }

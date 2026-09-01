@@ -302,6 +302,10 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
       projectionWeek: snapshot.projectionWeek ?? null,
       projectionRows: snapshot.projectionCount ?? 0,
       unmatchedProjectionRows: snapshot.unmatchedProjectionCount ?? 0,
+      fabStatus: snapshot.fabState?.status || "UNAVAILABLE",
+      fabBudgetTeams: snapshot.fabState?.coverage?.budgetTeams || 0,
+      fabOrderTeams: snapshot.fabState?.coverage?.orderTeams || 0,
+      fabRecordTeams: snapshot.fabState?.coverage?.recordTeams || 0,
       // Backward-compatible aliases for older clients.
       rosterTarget: snapshot.rosterMaximum,
       completeTeams: snapshot.legalTeamCount,

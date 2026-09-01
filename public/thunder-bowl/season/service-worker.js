@@ -1,13 +1,13 @@
-const CACHE_VERSION = "thunder-bowl-season-v3";
+const CACHE_VERSION = "thunder-bowl-season-v4";
 const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/favicon.svg?v=20260831a",
   "/thunder-bowl/season/manifest.webmanifest?v=20260831a",
-  "/thunder-bowl/season/season.css?v=20260831d",
-  "/thunder-bowl/season/season.mjs?v=20260831o",
-  "/thunder-bowl/season/season-evidence.mjs?v=20260831b",
-  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831d",
+  "/thunder-bowl/season/season.css?v=20260831e",
+  "/thunder-bowl/season/season.mjs?v=20260831p",
+  "/thunder-bowl/season/season-evidence.mjs?v=20260831c",
+  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831e",
   "/thunder-bowl/fbg-session-capture.mjs?v=20260831a",
   "/thunder-bowl/supplemental-session-capture.mjs?v=20260831a",
   "/thunder-bowl/storage.mjs?v=20260823a",

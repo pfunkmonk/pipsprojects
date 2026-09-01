@@ -26,7 +26,7 @@ const required = [
   "public/thunder-bowl/cbs-roster-snapshot.mjs",
   "public/thunder-bowl/fbg-session-capture.mjs",
   "public/thunder-bowl/supplemental-session-capture.mjs",
-  "public/thunder-bowl/helper/thunder-bowl-data-helper-v0.6.1.zip",
+  "public/thunder-bowl/helper/thunder-bowl-data-helper-v0.7.0.zip",
   "public/thunder-bowl/personal-board-exchange.mjs",
   "public/thunder-bowl/storage.mjs",
   "public/thunder-bowl/season/index.html",
@@ -92,6 +92,7 @@ const required = [
   "tools/cbs-chrome-helper/page-bridge.js",
   "tools/cbs-chrome-helper/service-worker.mjs",
   "tools/cbs-chrome-helper/cbs-normalize.mjs",
+  "tools/cbs-chrome-helper/cbs-fab-normalize.mjs",
 ];
 
 for (const relative of required) await stat(resolve(root, relative));

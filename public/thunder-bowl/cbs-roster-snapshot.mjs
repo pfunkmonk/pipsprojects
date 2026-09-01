@@ -29,6 +29,7 @@ export const CBS_TEAM_CATALOG = Object.freeze([
 
 const TEAM_BY_NAME = new Map(CBS_TEAM_CATALOG.map((team) => [team.name, team]));
 const VALID_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
+const VALID_FAB_NIGHTS = ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 
 export function cbsTeamRosterReadiness(players = []) {
   const counts = Object.fromEntries(Object.keys(CBS_STARTER_REQUIREMENTS).map((position) => [position, 0]));
@@ -112,6 +113,33 @@ function validateProjectionRow(row, week) {
   assert(row.opponent === null || typeof row.opponent === "string", `${row.name} has an invalid projection opponent.`);
 }
 
+function validateFabState(value, week) {
+  assert(isPlainObject(value) && value.schemaVersion === 1, "CBS FAB capture has an unsupported schema.");
+  assert(value.source === "CBS Sports authenticated Thunder Bowl FAB, standings, and transaction pages", "CBS FAB capture has an unexpected source.");
+  assert(Number.isFinite(Date.parse(value.capturedAt)) && value.week === week, "CBS FAB capture has invalid timing.");
+  assert(["COMPLETE", "PARTIAL"].includes(value.status), "CBS FAB capture has an invalid status.");
+  const rules = value.rules;
+  assert(isPlainObject(rules) && rules.startingBudget === 50 && rules.minimumBid === 1 && rules.zeroDollarBidsAllowed === false && rules.allPlayersUseFab === true, "CBS FAB capture does not match the current $50 blind-auction rules.");
+  assert(JSON.stringify(rules.processingNights) === JSON.stringify(VALID_FAB_NIGHTS), "CBS FAB capture has the wrong processing nights.");
+  assert(rules.weeklyPriorityReset === "REVERSE_STANDINGS" && JSON.stringify(rules.equalBidTieBreakers) === JSON.stringify(["WORST_RECORD", "FEWEST_WEEKLY_PICKUPS", "FAB_ORDER"]) && rules.sequentialWinsLowerPriority === true, "CBS FAB capture has the wrong tie rules.");
+  assert(rules.winningBidBecomesSalary === true && rules.dropPeriodDays === 1, "CBS FAB capture has the wrong acquisition rules.");
+  assert(Array.isArray(value.teams) && value.teams.length === CBS_TEAM_CATALOG.length, "CBS FAB capture must cover all 12 teams.");
+  const seenOrders = new Set();
+  for (const team of value.teams) {
+    const expected = CBS_TEAM_CATALOG.find((candidate) => candidate.teamId === team.teamId);
+    assert(expected && expected.cbsTeamId === team.cbsTeamId && expected.name === team.name, "CBS FAB capture contains an unknown team.");
+    assert(team.remainingBudget === null || (Number.isSafeInteger(team.remainingBudget) && team.remainingBudget >= 0 && team.remainingBudget <= 50), `${team.name} has an invalid FAB balance.`);
+    assert(team.fabOrder === null || (Number.isSafeInteger(team.fabOrder) && team.fabOrder >= 1 && team.fabOrder <= 12), `${team.name} has an invalid FAB order.`);
+    if (team.fabOrder !== null) {
+      assert(!seenOrders.has(team.fabOrder), "CBS FAB capture repeats a FAB-order position.");
+      seenOrders.add(team.fabOrder);
+    }
+    assert(team.weeklySuccessfulPickups === null || (Number.isSafeInteger(team.weeklySuccessfulPickups) && team.weeklySuccessfulPickups >= 0 && team.weeklySuccessfulPickups <= 50), `${team.name} has an invalid weekly pickup count.`);
+    assert(team.record === null || (Number.isSafeInteger(team.record.wins) && Number.isSafeInteger(team.record.losses) && Number.isSafeInteger(team.record.ties) && team.record.wins >= 0 && team.record.losses >= 0 && team.record.ties >= 0), `${team.name} has an invalid record.`);
+  }
+  assert(Array.isArray(value.pageUrls) && value.pageUrls.every((pageUrl) => new URL(pageUrl).origin === "https://berrymvp.football.cbssports.com"), "CBS FAB capture contains an invalid source page.");
+}
+
 export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {}) {
   assert(isPlainObject(input), "CBS roster capture is not an object.");
   assert(input.schemaVersion === 1, "CBS roster capture has an unsupported schema.");
@@ -154,6 +182,7 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
       seenProjectionIds.add(row.cbsPlayerId);
     }
   }
+  if (input.fabState !== undefined) validateFabState(input.fabState, input.projectionWeek ?? 1);
   return input;
 }
 
