@@ -57,12 +57,16 @@ function evidenceButton(title, value, kind, label = "Why?") {
   return button;
 }
 
-function newsButton(player) {
-  const button = element("button", "news-button", "Latest news");
+function newsButton(player, label = "Latest news") {
+  const button = element("button", "news-button", label);
   button.type = "button";
   button.setAttribute("aria-label", `Latest news for ${player.name}`);
   button.addEventListener("click", () => openPlayerNews(player));
   return button;
+}
+
+function recommendationNewsButtons(players) {
+  return players.map((player) => newsButton(player, `News: ${player.name}`));
 }
 
 function setUpdateControlsDisabled(disabled) {
@@ -332,6 +336,7 @@ function renderWaivers(value) {
     }
     card.append(metrics);
     const actions = element("div", "card-actions");
+    actions.append(...recommendationNewsButtons([row.add, row.drop]));
     actions.append(evidenceButton(`${row.add.name} waiver case`, row, "waiver"));
     card.append(actions);
     return card;
@@ -357,6 +362,7 @@ function renderTrades(value) {
     metrics.append(metric("Dogs ROS", signed(row.dogsDeltas.restOfSeason)), metric("Rival ROS", signed(row.rivalDeltas.restOfSeason)), metric("Dogs next 3", signed(row.dogsDeltas.nextThree)));
     card.append(metrics);
     const actions = element("div", "card-actions");
+    actions.append(...recommendationNewsButtons([...row.sends, ...row.receives]));
     actions.append(evidenceButton(`${send} for ${receive}`, row, "trade"));
     const copy = element("button", "evidence-button", "Copy proposal");
     copy.type = "button";

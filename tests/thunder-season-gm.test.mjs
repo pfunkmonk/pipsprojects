@@ -467,6 +467,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /\/api\/thunder-bowl\/news\?force=1/);
   assert.match(source, /\/api\/thunder-bowl\/research\?force=1/);
   assert.match(source, /Latest news for \$\{player\.name\}/);
+  assert.match(source, /recommendationNewsButtons\(\[row\.add, row\.drop\]\)/);
+  assert.match(source, /recommendationNewsButtons\(\[\.\.\.row\.sends, \.\.\.row\.receives\]\)/);
+  assert.match(source, /News: \$\{player\.name\}/);
   assert.match(source, /Recommended blind bid/);
   assert.match(source, /Do not exceed/);
   assert.match(source, /Remaining after a win/);
@@ -480,9 +483,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v6/);
+  assert.match(worker, /thunder-bowl-season-v7/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260901a/);
+  assert.match(worker, /season\.mjs\?v=20260901b/);
   assert.match(worker, /season-news\.mjs\?v=20260831a/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
