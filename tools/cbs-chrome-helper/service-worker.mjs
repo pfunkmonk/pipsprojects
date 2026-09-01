@@ -512,7 +512,9 @@ async function waitForPffContent(tabId, timeoutMs = PAGE_READY_TIMEOUT_MS) {
 async function rawPffWeeklyTables(tabId) {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
+    world: "MAIN",
     func: async () => {
+      try {
       const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
       const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
       const visible = (node) => Boolean(node && (node.offsetWidth || node.offsetHeight || node.getClientRects().length));
@@ -526,7 +528,10 @@ async function rawPffWeeklyTables(tabId) {
         throw new Error(message);
       }
       const buttons = () => [...document.querySelectorAll("main button")];
-      const exactLabels = (label) => [...document.querySelectorAll("main label.kyber-dropdown-option__checkbox")].filter((node) => text(node) === label && visible(node));
+      // PFF keeps all Kyber dropdown choices mounted even when their menu is
+      // visually closed. Using the mounted option avoids background-tab click
+      // behavior preventing the menu animation from becoming visible.
+      const exactLabels = (label) => [...document.querySelectorAll("main label.kyber-dropdown-option__checkbox")].filter((node) => text(node).toLowerCase() === label.toLowerCase());
       async function openFilters() {
         const filter = buttons().find((button) => text(button) === "Filters");
         if (!filter) throw new Error("PFF Filters control is missing.");
@@ -534,8 +539,11 @@ async function rawPffWeeklyTables(tabId) {
         await waitFor(() => buttons().find((button) => /^Timeframe/i.test(text(button)) && visible(button)), "PFF timeframe control did not open.");
       }
       async function choose(toggleLabel, optionLabel) {
-        const toggle = await waitFor(() => buttons().find((button) => new RegExp(`^${toggleLabel}`, "i").test(text(button)) && visible(button)), `PFF ${toggleLabel} control is missing.`);
-        const selected = () => text(toggle).replace(new RegExp(`^${toggleLabel}\\s*`, "i"), "").trim().toLowerCase();
+        const findToggle = () => buttons().find((button) => new RegExp(`^${toggleLabel}`, "i").test(text(button)) && visible(button));
+        const toggle = await waitFor(findToggle, `PFF ${toggleLabel} control is missing.`);
+        // PFF replaces the dropdown button after a selection. Re-read it while
+        // waiting instead of checking the detached pre-selection React node.
+        const selected = () => text(findToggle()).replace(new RegExp(`^${toggleLabel}\\s*`, "i"), "").trim().toLowerCase();
         if (selected() === optionLabel.toLowerCase()) return;
         toggle.click();
         const option = await waitFor(() => exactLabels(optionLabel)[0], `PFF ${optionLabel} choice is missing.`);
@@ -544,7 +552,10 @@ async function rawPffWeeklyTables(tabId) {
         await pause(350);
       }
       async function setPageSize() {
-        const input = [...document.querySelectorAll('main input[type="checkbox"]')].find((node) => node.value === "250");
+        const inputs = [...document.querySelectorAll('main input[type="checkbox"]')]
+          .filter((node) => /^\d+$/.test(node.value || ""))
+          .sort((left, right) => Number(right.value) - Number(left.value));
+        const input = inputs[0];
         if (input && !input.checked) {
           (input.closest("label") || input).click();
           await pause(500);
@@ -576,18 +587,18 @@ async function rawPffWeeklyTables(tabId) {
       }
       async function capturePages(kind) {
         await setPageSize();
-        for (let page = 0; page < 6; page += 1) {
+        for (let page = 0; page < 20; page += 1) {
           const previous = buttons().find((button) => /kyber-table-pagination__button-prev/.test(button.className));
           if (!previous || previous.disabled || /--disabled/.test(previous.className)) break;
-          const firstKey = currentRows(kind)[0]?.rowKey;
           previous.click();
-          await waitFor(() => {
-            try { return currentRows(kind)[0]?.rowKey !== firstKey; } catch { return false; }
-          }, `PFF ${kind} pagination did not rewind.`);
+          await pause(400);
         }
+        await waitFor(() => {
+          try { return currentRows(kind); } catch { return null; }
+        }, `PFF ${kind} table did not become stable.`);
         const captured = [];
         const seen = new Set();
-        for (let page = 0; page < 6; page += 1) {
+        for (let page = 0; page < 20; page += 1) {
           const pageRows = await waitFor(() => {
             try { return currentRows(kind); } catch { return null; }
           }, `PFF ${kind} table did not become stable.`);
@@ -611,19 +622,39 @@ async function rawPffWeeklyTables(tabId) {
       await openFilters();
       await choose("Timeframe", "This Week");
       await choose("Positions", "Offense");
-      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell) === "Rec"), "PFF offense component columns did not load.");
+      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell).toLowerCase() === "rec"), "PFF offense component columns did not load.");
       const offenseRows = await capturePages("offense");
       await choose("Positions", "DST");
-      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell) === "Sack"), "PFF DST component columns did not load.");
+      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell).toLowerCase() === "sack"), "PFF DST component columns did not load.");
       const dstRows = await capturePages("dst");
       return {
         offenseHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "PASS_YDS", "PASS_TD", "PASS_INT", "RUSH_YDS", "RUSH_TD", "REC", "REC_YDS", "REC_TD", "FG", "XP"],
         dstHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "SACK", "SFT", "INT", "FF", "FR", "TD", "RETURN_YDS", "RETURN_TD", "PA_0", "PA_1_6", "PA_7_13", "PA_14_20", "PA_21_27", "PA_28_34", "PA_35_PLUS"],
         rows: [...offenseRows, ...dstRows],
       };
+      } catch (error) {
+        return {
+          captureError: error?.message || String(error),
+          captureStage: {
+            url: location.href,
+            buttons: [...document.querySelectorAll("main button")].map((button) => (button.innerText || button.textContent || "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 20),
+            options: [...document.querySelectorAll("main label.kyber-dropdown-option__checkbox")].map((label) => (label.innerText || label.textContent || "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 40),
+            rowCellCounts: [...new Set([...document.querySelectorAll('main .kyber-table-body [role="row"]')].map((row) => row.querySelectorAll('[role="gridcell"]').length))],
+          },
+        };
+      }
     },
   });
-  return results[0]?.result || null;
+  const injection = results[0];
+  if (injection?.result?.captureError) {
+    const stage = injection.result.captureStage || {};
+    throw new Error(`PFF capture stopped: ${injection.result.captureError} [${stage.url || "unknown page"}; cells ${(stage.rowCellCounts || []).join(",") || "none"}; options ${(stage.options || []).join("|") || "none"}]`);
+  }
+  if (!injection?.result) {
+    const detail = injection?.error?.message || String(injection?.error || "").trim();
+    throw new Error(detail ? `PFF capture stopped: ${detail}` : "PFF capture script returned no data.");
+  }
+  return injection.result;
 }
 
 async function capturePffProjections(week) {

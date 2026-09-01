@@ -26,7 +26,7 @@ const required = [
   "public/thunder-bowl/cbs-roster-snapshot.mjs",
   "public/thunder-bowl/fbg-session-capture.mjs",
   "public/thunder-bowl/supplemental-session-capture.mjs",
-  "public/thunder-bowl/helper/thunder-bowl-data-helper-v0.7.0.zip",
+  "public/thunder-bowl/helper/thunder-bowl-data-helper-v0.7.9.zip",
   "public/thunder-bowl/personal-board-exchange.mjs",
   "public/thunder-bowl/storage.mjs",
   "public/thunder-bowl/season/index.html",
