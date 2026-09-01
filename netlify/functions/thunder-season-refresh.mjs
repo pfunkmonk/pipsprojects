@@ -1,7 +1,9 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
 import {
   captureCbsLeagueSource,
+  captureFantasyProsSource,
   captureFootballguysSource,
+  capturePffSource,
   importCbsLeagueSnapshot,
   importFbgWeeklyCsv,
   refreshFootballguysSource,
@@ -67,23 +69,30 @@ export default async function handler(request) {
       if (!input.capture || typeof input.capture !== "object" || Array.isArray(input.capture)) throw new Error("Footballguys account capture is missing.");
       return json(await captureFootballguysSource(input.capture));
     }
+    if (input.action === "capture-fantasypros") {
+      exactKeys(input, ["action", "capture"]);
+      if (!input.capture || typeof input.capture !== "object" || Array.isArray(input.capture)) throw new Error("FantasyPros account capture is missing.");
+      return json(await captureFantasyProsSource(input.capture));
+    }
+    if (input.action === "capture-pff") {
+      exactKeys(input, ["action", "capture"]);
+      if (!input.capture || typeof input.capture !== "object" || Array.isArray(input.capture)) throw new Error("PFF account capture is missing.");
+      return json(await capturePffSource(input.capture));
+    }
     if (input.action === "refresh-news") {
-      exactKeys(input, ["action", "snapshot", "fbgSnapshot"]);
-      if (!input.snapshot || !input.fbgSnapshot) throw new Error("The final refresh stage is missing its saved CBS or Footballguys source handoff.");
+      exactKeys(input, ["action"]);
       const publicSources = await refreshSeasonPublicSources();
       const failures = ["status", "research"]
         .filter((source) => !publicSources.sourceRefresh[source].ok)
         .map((source) => `${source}: ${publicSources.sourceRefresh[source].error}`);
       if (failures.length) {
-        throw new Error(`Injury/news refresh failed; the saved CBS and Footballguys data remain available (${failures.join("; ")}).`);
+        throw new Error(`Injury/news refresh failed; the saved CBS and projection data remain available (${failures.join("; ")}).`);
       }
       return json(await refreshSeasonPlan({
         publicSourceOverrides: {
           statusSnapshot: publicSources.statusSnapshot,
           researchSnapshot: publicSources.researchSnapshot,
         },
-        leagueStateOverride: input.snapshot,
-        fbgSnapshotOverride: input.fbgSnapshot,
       }));
     }
     return json({ error: "Refresh action is invalid." }, 400);

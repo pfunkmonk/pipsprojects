@@ -18,7 +18,7 @@ form { display:grid; gap:.55rem; } label { font-weight:800; } input { width:100%
 .alerts { display:grid; gap:.4rem; padding:.6rem clamp(.8rem,2vw,1.5rem) 0; } .alert { display:flex; gap:.5rem; border:1px solid var(--warning); border-radius:9px; padding:.55rem .75rem; background:rgba(255,215,123,.08); color:var(--warning); font-size:.84rem; } .alert.danger { margin:.6rem clamp(.8rem,2vw,1.5rem) 0; border-color:var(--danger); color:var(--danger); }
 .sync-panel { display:grid; gap:1rem; margin:.8rem clamp(.8rem,2vw,1.5rem); border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:var(--surface-2); } .sync-panel p { margin-bottom:0; color:var(--muted); } .file-button input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
 .sync-intro { max-width:880px; }
-.update-source-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+.update-source-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.65rem; }
 .update-source { display:flex; align-items:center; gap:.65rem; min-width:0; border:1px solid var(--line); border-radius:10px; padding:.7rem; background:rgba(4,19,38,.48); }
 .update-source>span { display:grid; flex:0 0 1.85rem; width:1.85rem; height:1.85rem; place-items:center; border:1px solid var(--line); border-radius:50%; color:var(--gold); font-size:.78rem; font-weight:950; }
 .update-source strong,.update-source small { display:block; } .update-source small { margin-top:.12rem; overflow:hidden; color:var(--quiet); font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }

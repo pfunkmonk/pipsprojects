@@ -18,14 +18,14 @@ const rawPlayer = (id, name, position = "QB", nflTeam = "DET") => ({
 test("CBS helper manifest is least-privilege and has no cookie or storage permission", async () => {
   const manifest = JSON.parse(await readFile(new URL("../tools/cbs-chrome-helper/manifest.json", import.meta.url), "utf8"));
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
-  assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*", "https://www.footballguys.com/*"]);
+  assert.deepEqual(manifest.host_permissions, ["https://berrymvp.football.cbssports.com/*", "https://www.footballguys.com/*", "https://www.fantasypros.com/*", "https://www.pff.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.5.0");
+  assert.equal(manifest.version, "0.6.0");
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
   assert.equal(JSON.stringify(manifest).includes("<all_urls>"), false);
 });
 
-test("CBS and Footballguys helper waits for authenticated rendered content instead of Edge's tab-complete event", async () => {
+test("the four-source helper waits for authenticated rendered content instead of Edge's tab-complete event", async () => {
   const [worker, seasonHtml] = await Promise.all([
     readFile(new URL("../tools/cbs-chrome-helper/service-worker.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
@@ -39,7 +39,10 @@ test("CBS and Footballguys helper waits for authenticated rendered content inste
   assert.match(worker, /Unlock the rest of the projections with a PRO subscription/);
   assert.match(worker, /credentials: "include"/);
   assert.match(worker, /projections\/download\/weekly\/all\/2026/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.5\.0\.zip/);
+  assert.match(worker, /captureFantasyProsProjections/);
+  assert.match(worker, /capturePffProjections/);
+  assert.match(worker, /a\[href\*="\/nfl\/teams\/"\]/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.6\.0\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
 });
 

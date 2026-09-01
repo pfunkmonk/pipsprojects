@@ -1,5 +1,6 @@
 import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260831d";
 import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260831a";
+import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260831a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260831a";
 
@@ -113,7 +114,7 @@ function renderHeader(value, offline) {
   const isCbs = value.baseline.authority.startsWith("authenticated");
   const partialCbs = isCbs && (value.baseline.rostersReady ?? value.baseline.rostersComplete) === false;
   byId("sync-copy").textContent = setupRequired
-    ? "Your access code worked. Choose Update everything once to capture CBS and your signed-in Footballguys PRO projections, then unlock the complete plan."
+    ? "Your access code worked. Choose Update everything once to capture CBS plus signed-in Footballguys, FantasyPros, and PFF projections, then unlock the complete plan."
     : partialCbs
     ? `CBS is current, but ${value.baseline.legalTeamCount ?? value.baseline.completeTeamCount} of ${value.baseline.teamCount} teams currently satisfy the legal roster rule: eight required starters and no more than six backups.`
     : isCbs
@@ -145,6 +146,8 @@ function renderUpdateSources(value) {
   const summary = value.updateSummary || null;
   renderUpdateSource("update-cbs-source", "update-cbs-state", sources.get("CBS league"), summary?.cbs, "Needs the one-time CBS helper");
   renderUpdateSource("update-fbg-source", "update-fbg-state", sources.get("FBG projections"), summary?.footballguys, "Ready to capture from your signed-in account");
+  renderUpdateSource("update-fp-source", "update-fp-state", sources.get("FantasyPros"), summary?.fantasyPros, "Ready to capture from your signed-in account");
+  renderUpdateSource("update-pff-source", "update-pff-state", sources.get("PFF"), summary?.pff, "Ready to capture from your signed-in account");
   renderUpdateSource("update-news-source", "update-news-state", sources.get("injury / news"), summary?.injuryNews, "Ready to refresh automatically");
 }
 
@@ -317,7 +320,7 @@ async function runAction(button, message, task) {
       ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
       : partialRosters
       ? `Update finished, but only ${value.updateSummary.cbs.legalTeams ?? value.updateSummary.cbs.completeTeams}/${value.updateSummary.cbs.teamCount} CBS teams satisfy the required eight starters and 14-player maximum. Waiver and trade advice remains blocked.`
-      : `Everything updated ${dateTime(value.generatedAt)}. CBS moves and raw-stat projections, signed-in Footballguys PRO raw-stat projections scored by Thunder Bowl rules, injuries, news, and IR targets are current.`
+      : `Everything updated ${dateTime(value.generatedAt)}. CBS, Footballguys PRO, FantasyPros, and PFF raw component projections were scored with Thunder Bowl rules; moves, injuries, news, and IR targets are current.`
     , failed.length > 0);
   } catch (error) {
     setStatus(errorMessage(error), true);
@@ -384,7 +387,7 @@ function downloadPlan() {
 }
 
 byId("login-form").addEventListener("submit", attemptLogin);
-byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 3: capturing all 12 CBS rosters from your signed-in browser session…", async () => {
+byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 5: capturing all 12 CBS rosters from your signed-in browser session…", async () => {
   let snapshot;
   try {
     snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 90_000, week: plan?.week || 1 }));
@@ -401,22 +404,38 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
   }
   byId("helper-setup").open = false;
 
-  setStatus("CBS saved. Step 2 of 3: reading Footballguys PRO component-stat projections from your signed-in browser session…");
-  let fbgSnapshot;
+  setStatus("CBS saved. Step 2 of 5: reading Footballguys PRO component-stat projections from your signed-in browser session…");
   try {
     const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: plan?.week || 1 });
-    const fbgRefresh = await postAction({ action: "capture-fbg", capture });
-    fbgSnapshot = fbgRefresh.snapshot;
+    await postAction({ action: "capture-fbg", capture });
   } catch (error) {
     byId("helper-setup").open = true;
     throw new Error(`CBS was saved successfully, but Footballguys PRO could not be captured: ${errorMessage(error)} CBS will not need to be recaptured.`);
   }
 
-  setStatus("CBS and Footballguys saved. Step 3 of 3: refreshing injuries, news, and IR evidence…");
+  setStatus("CBS and Footballguys saved. Step 3 of 5: reading FantasyPros component-stat projections from your signed-in Thunder Bowl account…");
   try {
-    current = await postAction({ action: "refresh-news", snapshot, fbgSnapshot });
+    const capture = await requestSupplementalProjectionCapture({ provider: "fantasyPros", timeoutMs: 180_000, week: plan?.week || 1 });
+    await postAction({ action: "capture-fantasypros", capture });
   } catch (error) {
-    throw new Error(`CBS and Footballguys were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly plan remains usable.`);
+    byId("helper-setup").open = true;
+    throw new Error(`CBS and Footballguys were saved successfully, but FantasyPros could not be captured: ${errorMessage(error)} The completed sources remain saved.`);
+  }
+
+  setStatus("CBS, Footballguys, and FantasyPros saved. Step 4 of 5: reading PFF component-stat projections from your signed-in account…");
+  try {
+    const capture = await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week: plan?.week || 1 });
+    await postAction({ action: "capture-pff", capture });
+  } catch (error) {
+    byId("helper-setup").open = true;
+    throw new Error(`CBS, Footballguys, and FantasyPros were saved successfully, but PFF could not be captured: ${errorMessage(error)} The completed sources remain saved.`);
+  }
+
+  setStatus("All four projection sources saved. Step 5 of 5: refreshing injuries, news, and IR evidence…");
+  try {
+    current = await postAction({ action: "refresh-news" });
+  } catch (error) {
+    throw new Error(`CBS, Footballguys, FantasyPros, and PFF were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly sources remain usable.`);
   }
   return current;
 }));

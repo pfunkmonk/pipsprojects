@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.5.0",
-  "description": "User-triggered, read-only CBS and Footballguys weekly data capture for Thunder Bowl.",
+  "version": "0.6.0",
+  "description": "User-triggered, read-only CBS, Footballguys, FantasyPros, and PFF weekly data capture for Thunder Bowl.",
   "permissions": ["scripting", "tabs"],
   "host_permissions": [
     "https://berrymvp.football.cbssports.com/*",
-    "https://www.footballguys.com/*"
+    "https://www.footballguys.com/*",
+    "https://www.fantasypros.com/*",
+    "https://www.pff.com/*"
   ],
   "background": {
     "service_worker": "service-worker.mjs",

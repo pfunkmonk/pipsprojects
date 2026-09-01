@@ -57,15 +57,18 @@ function projectionSourceItems(sources = []) {
   if (!Array.isArray(sources) || !sources.length) {
     return ["No current premium weekly source was available, so the governed baseline is being used with reduced confidence."];
   }
-  return sources.map((source) => {
+  return sources.flatMap((source) => {
     const weight = finite(source.weight) ? ` It supplies ${Math.round(Number(source.weight) * 100)}% of the registered blend.` : "";
     const method = clean(source.input);
     const input = method === "provider component stats scored by Thunder Bowl rules"
       ? " Its projected yards, receptions, touchdowns, turnovers, kicking, or defense statistics were converted with Thunder Bowl scoring—not the provider's fantasy-points total."
-      : /signed-in Footballguys PRO component stats/i.test(method)
-        ? " These are the current raw yards, receptions, touchdowns, turnovers, kicking, and defense projections downloaded through your signed-in Footballguys PRO session and converted with Thunder Bowl scoring—not Footballguys fantasy points."
+      : /signed-in .+ component stats/i.test(method)
+        ? ` These are current raw component projections read through your signed-in ${clean(source.source) || "provider"} session and converted with Thunder Bowl scoring—not the provider's fantasy-points total.`
         : method ? ` Input method: ${method}.` : "";
-    return `${clean(source.source) || "A registered source"} projects ${points(source.points)}.${weight}${input}`;
+    return [
+      `${clean(source.source) || "A registered source"} projects ${points(source.points)}.${weight}${input}`,
+      ...(Array.isArray(source.scoringCaveats) ? source.scoringCaveats.map((caveat) => `${clean(source.source) || "This source"} limitation: ${clean(caveat)}`) : []),
+    ];
   });
 }
 

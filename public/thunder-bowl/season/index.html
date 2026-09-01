@@ -46,19 +46,21 @@
     <section id="alerts" class="alerts" aria-live="polite"></section>
 
     <section class="sync-panel" aria-labelledby="sync-title">
-      <div class="sync-intro"><p class="eyebrow">One-click weekly update</p><h2 id="sync-title">One button updates the whole week</h2><p id="sync-copy">Update everything captures the current CBS league and weekly component stats, then reads the current Footballguys PRO projections through your signed-in browser session.</p></div>
+      <div class="sync-intro"><p class="eyebrow">One-click weekly update</p><h2 id="sync-title">One button updates the whole week</h2><p id="sync-copy">Update everything captures CBS, Footballguys PRO, FantasyPros, and PFF raw weekly component projections through your signed-in browser sessions, then applies Thunder Bowl scoring.</p></div>
       <div class="update-source-grid" aria-label="One-click update sources">
         <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small></div></article>
         <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small></div></article>
-        <article id="update-news-source" class="update-source"><span aria-hidden="true">3</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small></div></article>
+        <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small></div></article>
+        <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small></div></article>
+        <article id="update-news-source" class="update-source"><span aria-hidden="true">5</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small></div></article>
       </div>
       <div class="setup-and-recovery">
         <details id="helper-setup" class="setup-details">
-          <summary>First-time setup: connect CBS and Footballguys once</summary>
+          <summary>First-time setup: connect all four signed-in sources once</summary>
           <div class="setup-copy">
-            <p>The helper reads the CBS league and weekly component-stat tables, then verifies your Footballguys PRO subscriber page and retrieves its official component-stat download only when you press <strong>Update everything</strong>. It uses your normal signed-in sessions and never receives or stores either password.</p>
-            <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong> in Chrome or <strong>edge://extensions</strong> in Edge, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into CBS and Footballguys in the same browser profile, then reload this page.</li></ol>
-            <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.5.0.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a></div>
+            <p>The helper reads only the required weekly component-stat tables after you press <strong>Update everything</strong>. It uses your normal signed-in CBS, Footballguys, FantasyPros, and PFF sessions and never receives or stores any password.</p>
+            <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong> in Chrome or <strong>edge://extensions</strong> in Edge, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into CBS, Footballguys, FantasyPros, and PFF in the same browser profile, then reload this page.</li></ol>
+            <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.6.0.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a><a class="button" href="https://www.fantasypros.com/nfl/projections/qb.php?week=1" target="_blank" rel="noopener noreferrer">Open FantasyPros</a><a class="button" href="https://www.pff.com/fantasy/projections" target="_blank" rel="noopener noreferrer">Open PFF</a></div>
           </div>
         </details>
         <details class="recovery-details">
@@ -108,6 +110,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260831j"></script>
+  <script type="module" src="./season.mjs?v=20260831k"></script>
 </body>
 </html>

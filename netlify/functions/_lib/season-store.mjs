@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { validateCanonicalCbsLeagueState } from "./cbs-season-source.mjs";
 import { validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
+import { validateSupplementalWeeklySnapshot } from "./supplemental-season-source.mjs";
 
 const STORE_NAME = "thunder-bowl-2026-season";
 
@@ -95,6 +96,18 @@ export async function saveFbgWeeklySnapshot(snapshot, pack) {
   const weekly = validateFbgWeeklySnapshot(snapshot, pack);
   await store().setJSON(`sources/fbg/v1/week-${weekly.week}/raw/${weekly.rawSha256}`, weekly, { onlyIfNew: true });
   await store().setJSON(`sources/fbg/v1/week-${weekly.week}/latest`, weekly);
+  return weekly;
+}
+
+export async function readLatestSupplementalWeeklySnapshot(pack, week, provider) {
+  const value = await readJson(`sources/${provider}/v1/week-${week}/latest`);
+  return value ? validateSupplementalWeeklySnapshot(value, pack, provider) : null;
+}
+
+export async function saveSupplementalWeeklySnapshot(snapshot, pack, provider) {
+  const weekly = validateSupplementalWeeklySnapshot(snapshot, pack, provider);
+  await store().setJSON(`sources/${provider}/v1/week-${weekly.week}/raw/${weekly.rawSha256}`, weekly, { onlyIfNew: true });
+  await store().setJSON(`sources/${provider}/v1/week-${weekly.week}/latest`, weekly);
   return weekly;
 }
 

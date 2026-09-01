@@ -13,6 +13,10 @@ const CBS_ORIGIN = "https://berrymvp.football.cbssports.com";
 const REPORT_URL = `${CBS_ORIGIN}/teams/roster-report/all/2026/`;
 const FBG_ORIGIN = "https://www.footballguys.com";
 const FBG_CAPTURE_SOURCE = "Footballguys authenticated weekly projections download";
+const FANTASYPROS_ORIGIN = "https://www.fantasypros.com";
+const FANTASYPROS_CAPTURE_SOURCE = "FantasyPros authenticated weekly component projections capture";
+const PFF_ORIGIN = "https://www.pff.com";
+const PFF_CAPTURE_SOURCE = "PFF authenticated weekly component projections capture";
 const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
@@ -260,17 +264,335 @@ async function captureFbgProjections(week) {
   }
 }
 
+const FANTASYPROS_POSITIONS = Object.freeze(["qb", "rb", "wr", "te", "k", "dst"]);
+const FANTASYPROS_HEADERS = Object.freeze({
+  qb: ["PLAYER", "ATT", "CMP", "YDS", "TDS", "INTS", "ATT", "YDS", "TDS", "FL", "FPTS"],
+  rb: ["PLAYER", "ATT", "YDS", "TDS", "REC", "YDS", "TDS", "FL", "FPTS"],
+  wr: ["PLAYER", "REC", "YDS", "TDS", "ATT", "YDS", "TDS", "FL", "FPTS"],
+  te: ["PLAYER", "REC", "YDS", "TDS", "FL", "FPTS"],
+  k: ["PLAYER", "FG", "FGA", "XPT", "FPTS"],
+  dst: ["PLAYER", "SACK", "INT", "FR", "FF", "TD", "SAFETY", "PA", "YDS AGN", "FPTS"],
+});
+
+async function fantasyProsPageState(tabId, position, week) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (expectedPosition, expectedWeek) => {
+      const table = document.querySelector("table#data");
+      const selected = [...document.querySelectorAll("select option:checked")].map((option) => option.textContent?.trim() || "").filter(Boolean);
+      return {
+        accountLeague: selected.find((value) => value === "Thunder Bowl") || "",
+        heading: document.querySelector("h1")?.textContent?.trim() || "",
+        providerTime: document.querySelector("h2 time")?.getAttribute("datetime") || "",
+        headers: table ? [...table.querySelectorAll("thead tr:last-child th")].map((cell) => (cell.innerText || cell.textContent || "").trim()) : [],
+        rowCount: table?.querySelectorAll("tbody tr").length || 0,
+        pageMatches: location.pathname === `/nfl/projections/${expectedPosition}.php` && new URLSearchParams(location.search).get("week") === String(expectedWeek),
+      };
+    },
+    args: [position, week],
+  });
+  return results[0]?.result || null;
+}
+
+async function waitForFantasyProsContent(tabId, position, week, timeoutMs = PAGE_READY_TIMEOUT_MS) {
+  const pageUrl = `${FANTASYPROS_ORIGIN}/nfl/projections/${position}.php?week=${week}`;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch {
+      throw new Error("FantasyPros tab closed before capture completed.");
+    }
+    const currentUrl = tab.url || tab.pendingUrl || "";
+    if (currentUrl.startsWith(`${FANTASYPROS_ORIGIN}/nfl/projections/`)) {
+      try {
+        const state = await fantasyProsPageState(tabId, position, week);
+        if (state?.pageMatches && state.accountLeague === "Thunder Bowl" && state.rowCount >= (position === "k" || position === "dst" ? 30 : 50) && state.headers.join("|") === FANTASYPROS_HEADERS[position].join("|")) return state;
+        if (tab.status === "complete" && state?.heading && state.accountLeague !== "Thunder Bowl") throw new Error("FantasyPros is signed in, but the Thunder Bowl league is not selected or available in this account.");
+      } catch (error) {
+        if (/Thunder Bowl league/.test(error?.message || "")) throw error;
+      }
+    } else if (currentUrl && currentUrl !== "about:blank" && tab.status === "complete") {
+      throw new Error("FantasyPros redirected away from the weekly projections. Sign into FantasyPros in this browser, then retry.");
+    }
+    await delay(PAGE_POLL_INTERVAL_MS);
+  }
+  throw new Error(`FantasyPros ${position.toUpperCase()} Week ${week} projections did not become ready within 30 seconds.`);
+}
+
+async function rawFantasyProsTable(tabId, position) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (expectedPosition) => {
+      const table = document.querySelector("table#data");
+      if (!table) return null;
+      const headers = [...table.querySelectorAll("thead tr:last-child th")].map((cell) => (cell.innerText || cell.textContent || "").trim());
+      const rows = [...table.querySelectorAll("tbody tr")].map((row) => {
+        const cells = [...row.querySelectorAll("td")];
+        const identity = cells[0];
+        const link = identity?.querySelector("a.fp-player-link, a.player-name");
+        const playerName = link?.getAttribute("fp-player-name")?.trim() || link?.textContent?.trim() || "";
+        const identityText = (identity?.innerText || identity?.textContent || "").replace(/\s+/g, " ").trim();
+        const teamText = identityText.startsWith(playerName) ? identityText.slice(playerName.length).trim() : "";
+        return {
+          providerId: (link?.className || "").match(/\bfp-id-(\d+)\b/)?.[1] || "",
+          providerUrl: link?.href || "",
+          playerName,
+          nflTeam: expectedPosition === "dst" ? "" : teamText.split(/\s+/).at(-1) || "",
+          position: expectedPosition === "dst" ? "DST" : expectedPosition.toUpperCase(),
+          cells: cells.slice(1).map((cell) => (cell.innerText || cell.textContent || "").replace(/,/g, "").trim()),
+        };
+      }).filter((row) => row.providerId && row.playerName);
+      return { headers, rows };
+    },
+    args: [position],
+  });
+  return results[0]?.result || null;
+}
+
+function fantasyProsProviderTime(value) {
+  const normalized = String(value || "").trim().replace(" ", "T");
+  const parsed = Date.parse(normalized.endsWith("Z") ? normalized : `${normalized}Z`);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
+}
+
+async function captureFantasyProsProjections(week) {
+  const pageUrl = `${FANTASYPROS_ORIGIN}/nfl/projections/qb.php?week=${week}`;
+  let tabId = null;
+  try {
+    const tab = await chrome.tabs.create({ url: pageUrl, active: false });
+    tabId = tab.id;
+    const rows = [];
+    const tables = [];
+    let providerAsOf = null;
+    for (const position of FANTASYPROS_POSITIONS) {
+      const targetUrl = `${FANTASYPROS_ORIGIN}/nfl/projections/${position}.php?week=${week}`;
+      if (position !== "qb") await chrome.tabs.update(tabId, { url: targetUrl, active: false });
+      const state = await waitForFantasyProsContent(tabId, position, week);
+      const table = await rawFantasyProsTable(tabId, position);
+      if (!table || table.headers.join("|") !== FANTASYPROS_HEADERS[position].join("|") || table.rows.length !== state.rowCount) throw new Error(`FantasyPros ${position.toUpperCase()} table changed while it was being captured.`);
+      providerAsOf = providerAsOf || fantasyProsProviderTime(state.providerTime);
+      tables.push({ position: position === "dst" ? "DST" : position.toUpperCase(), headers: table.headers, rowCount: table.rows.length });
+      rows.push(...table.rows);
+    }
+    if (rows.length < 400 || rows.length > 800) throw new Error(`FantasyPros returned unsafe weekly coverage (${rows.length} rows).`);
+    return {
+      schemaVersion: 1,
+      provider: "fantasyPros",
+      source: FANTASYPROS_CAPTURE_SOURCE,
+      modelEffect: "none",
+      authenticated: true,
+      accountLeague: "Thunder Bowl",
+      capturedAt: new Date().toISOString(),
+      providerAsOf: providerAsOf || new Date().toISOString(),
+      season: 2026,
+      week,
+      pageUrl,
+      tables,
+      rows,
+    };
+  } finally {
+    if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
+  }
+}
+
+async function waitForPffContent(tabId, timeoutMs = PAGE_READY_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch {
+      throw new Error("PFF tab closed before capture completed.");
+    }
+    const currentUrl = tab.url || tab.pendingUrl || "";
+    if (currentUrl.startsWith(`${PFF_ORIGIN}/fantasy/projections`)) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => ({
+            signedIn: [...document.querySelectorAll("a")].some((link) => (link.textContent || "").trim() === "Sign out"),
+            heading: document.querySelector("main h1, h1")?.textContent?.trim() || "",
+            hasGrid: Boolean(document.querySelector('main [role="grid"]')),
+          }),
+        });
+        const state = results[0]?.result;
+        if (state?.signedIn && state.heading === "Fantasy Football Projections" && state.hasGrid) return;
+        if (tab.status === "complete" && state?.heading && !state.signedIn) throw new Error("PFF is not signed in in this browser. Sign into PFF, then retry.");
+      } catch (error) {
+        if (/not signed in/.test(error?.message || "")) throw error;
+      }
+    } else if (currentUrl && currentUrl !== "about:blank" && tab.status === "complete") {
+      throw new Error("PFF redirected away from the fantasy projections. Sign into PFF in this browser, then retry.");
+    }
+    await delay(PAGE_POLL_INTERVAL_MS);
+  }
+  throw new Error("PFF projections did not become ready within 30 seconds.");
+}
+
+async function rawPffWeeklyTables(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async () => {
+      const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+      const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
+      const visible = (node) => Boolean(node && (node.offsetWidth || node.offsetHeight || node.getClientRects().length));
+      async function waitFor(check, message, timeoutMs = 15_000) {
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+          const value = check();
+          if (value) return value;
+          await pause(100);
+        }
+        throw new Error(message);
+      }
+      const buttons = () => [...document.querySelectorAll("main button")];
+      const exactLabels = (label) => [...document.querySelectorAll("main label.kyber-dropdown-option__checkbox")].filter((node) => text(node) === label && visible(node));
+      async function openFilters() {
+        const filter = buttons().find((button) => text(button) === "Filters");
+        if (!filter) throw new Error("PFF Filters control is missing.");
+        if (!buttons().some((button) => /^Timeframe/i.test(text(button)) && visible(button))) filter.click();
+        await waitFor(() => buttons().find((button) => /^Timeframe/i.test(text(button)) && visible(button)), "PFF timeframe control did not open.");
+      }
+      async function choose(toggleLabel, optionLabel) {
+        const toggle = await waitFor(() => buttons().find((button) => new RegExp(`^${toggleLabel}`, "i").test(text(button)) && visible(button)), `PFF ${toggleLabel} control is missing.`);
+        const selected = () => text(toggle).replace(new RegExp(`^${toggleLabel}\\s*`, "i"), "").trim().toLowerCase();
+        if (selected() === optionLabel.toLowerCase()) return;
+        toggle.click();
+        const option = await waitFor(() => exactLabels(optionLabel)[0], `PFF ${optionLabel} choice is missing.`);
+        option.click();
+        await waitFor(() => selected() === optionLabel.toLowerCase(), `PFF did not select ${optionLabel}.`);
+        await pause(350);
+      }
+      async function setPageSize() {
+        const input = [...document.querySelectorAll('main input[type="checkbox"]')].find((node) => node.value === "250");
+        if (input && !input.checked) {
+          (input.closest("label") || input).click();
+          await pause(500);
+        }
+      }
+      function currentRows(kind) {
+        const all = [...document.querySelectorAll('main .kyber-table-body [role="row"]')];
+        const linkSelector = kind === "offense" ? 'a[href*="/nfl/players/"]' : 'a[href*="/nfl/teams/"]';
+        const identities = all.filter((row) => row.querySelectorAll('[role="gridcell"]').length === 2 && row.querySelector(linkSelector));
+        const expectedCells = kind === "offense" ? 15 : 20;
+        const stats = all.filter((row) => row.querySelectorAll('[role="gridcell"]').length === expectedCells && text(row));
+        if (!identities.length || identities.length !== stats.length) throw new Error(`PFF ${kind} player and stat rows did not reconcile.`);
+        return identities.map((identity, index) => {
+          const identityCells = [...identity.querySelectorAll('[role="gridcell"]')];
+          const link = identity.querySelector(linkSelector);
+          return {
+            kind,
+            rank: Number(text(identityCells[0])),
+            providerId: (link?.getAttribute("href") || "").match(/\/(\d+)\/?$/)?.[1] || "",
+            providerUrl: link?.href || "",
+            playerName: text(link),
+            cells: [...stats[index].querySelectorAll('[role="gridcell"]')].map((cell) => text(cell).replace(/,/g, "")),
+          };
+        });
+      }
+      async function capturePages(kind) {
+        await setPageSize();
+        for (let page = 0; page < 6; page += 1) {
+          const previous = buttons().find((button) => /kyber-table-pagination__button-prev/.test(button.className));
+          if (!previous || previous.disabled || /--disabled/.test(previous.className)) break;
+          const firstKey = currentRows(kind)[0]?.providerId;
+          previous.click();
+          await waitFor(() => {
+            try { return currentRows(kind)[0]?.providerId !== firstKey; } catch { return false; }
+          }, `PFF ${kind} pagination did not rewind.`);
+        }
+        const captured = [];
+        const seen = new Set();
+        for (let page = 0; page < 6; page += 1) {
+          const pageRows = await waitFor(() => {
+            try { return currentRows(kind); } catch { return null; }
+          }, `PFF ${kind} table did not become stable.`);
+          const firstKey = pageRows[0]?.providerId;
+          for (const row of pageRows) {
+            if (!row.providerId || seen.has(row.providerId)) continue;
+            seen.add(row.providerId);
+            captured.push(row);
+          }
+          const next = buttons().find((button) => /kyber-table-pagination__button-next/.test(button.className));
+          if (!next || next.disabled || /--disabled/.test(next.className)) break;
+          next.click();
+          await waitFor(() => {
+            try { return currentRows(kind)[0]?.providerId !== firstKey; } catch { return false; }
+          }, `PFF ${kind} pagination did not advance.`);
+        }
+        return captured;
+      }
+
+      if (![...document.querySelectorAll("a")].some((link) => text(link) === "Sign out")) throw new Error("PFF is not signed in.");
+      await openFilters();
+      await choose("Timeframe", "This Week");
+      await choose("Positions", "Offense");
+      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell) === "Rec"), "PFF offense component columns did not load.");
+      const offenseRows = await capturePages("offense");
+      await choose("Positions", "DST");
+      await waitFor(() => [...document.querySelectorAll('main [role="columnheader"]')].some((cell) => text(cell) === "Sack"), "PFF DST component columns did not load.");
+      const dstRows = await capturePages("dst");
+      return {
+        offenseHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "PASS_YDS", "PASS_TD", "PASS_INT", "RUSH_YDS", "RUSH_TD", "REC", "REC_YDS", "REC_TD", "FG", "XP"],
+        dstHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "SACK", "SFT", "INT", "FF", "FR", "TD", "RETURN_YDS", "RETURN_TD", "PA_0", "PA_1_6", "PA_7_13", "PA_14_20", "PA_21_27", "PA_28_34", "PA_35_PLUS"],
+        rows: [...offenseRows, ...dstRows],
+      };
+    },
+  });
+  return results[0]?.result || null;
+}
+
+async function capturePffProjections(week) {
+  const pageUrl = `${PFF_ORIGIN}/fantasy/projections`;
+  let tabId = null;
+  try {
+    const tab = await chrome.tabs.create({ url: pageUrl, active: false });
+    tabId = tab.id;
+    await waitForPffContent(tabId);
+    const capturedAt = new Date().toISOString();
+    const table = await rawPffWeeklyTables(tabId);
+    if (!table || table.rows.length < 200 || table.rows.length > 800 || !table.rows.some((row) => row.kind === "dst")) throw new Error(`PFF returned unsafe weekly coverage (${table?.rows?.length || 0} rows).`);
+    return {
+      schemaVersion: 1,
+      provider: "pff",
+      source: PFF_CAPTURE_SOURCE,
+      modelEffect: "none",
+      authenticated: true,
+      accountStatus: "signed-in",
+      capturedAt,
+      providerAsOf: capturedAt,
+      season: 2026,
+      week,
+      pageUrl,
+      offenseHeaders: table.offenseHeaders,
+      dstHeaders: table.dstHeaders,
+      rows: table.rows,
+    };
+  } finally {
+    if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const origin = (() => { try { return new URL(sender.url).origin; } catch { return ""; } })();
-  if (!ALLOWED_APP_ORIGINS.has(origin) || !["capture-cbs-rosters", "capture-fbg-projections"].includes(message?.action)) return false;
+  const allowedActions = ["capture-cbs-rosters", "capture-fbg-projections", "capture-fantasypros-projections", "capture-pff-projections"];
+  if (!ALLOWED_APP_ORIGINS.has(origin) || !allowedActions.includes(message?.action)) return false;
   const week = Number(message.week);
   if (!Number.isSafeInteger(week) || week < 1 || week > 18) {
     sendResponse({ ok: false, error: "The In-Season GM requested an invalid NFL week." });
     return false;
   }
-  const task = message.action === "capture-fbg-projections" ? captureFbgProjections(week) : captureRosters(week);
+  const task = message.action === "capture-fbg-projections"
+    ? captureFbgProjections(week)
+    : message.action === "capture-fantasypros-projections"
+      ? captureFantasyProsProjections(week)
+      : message.action === "capture-pff-projections"
+        ? capturePffProjections(week)
+        : captureRosters(week);
   task
-    .then((value) => sendResponse(message.action === "capture-fbg-projections" ? { ok: true, capture: value } : { ok: true, snapshot: value }))
-    .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "CBS capture failed safely." }));
+    .then((value) => sendResponse(message.action === "capture-cbs-rosters" ? { ok: true, snapshot: value } : { ok: true, capture: value }))
+    .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Premium projection capture failed safely." }));
   return true;
 });

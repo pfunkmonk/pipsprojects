@@ -177,7 +177,7 @@ test("exact optimizer fills 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST without bench
   assert.deepEqual(Object.fromEntries(["QB", "RB", "WR", "TE", "K", "DST"].map((position) => [position, result.starters.filter((row) => row.player.position === position).length])), { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 });
   assert.equal(result.bench.length, 6);
   assert.equal(result.missingSlots.length, 0);
-  assert.equal(result.total, 108.8);
+  assert.equal(result.total, 108);
   assert.ok(result.total < [...result.starters, ...result.bench].reduce((sum, row) => sum + (row.projection.points || 0), 0));
 });
 
@@ -187,6 +187,27 @@ test("an owner weekly FBG row can supply the current week when the dated baselin
   const fbgRows = new Map([["qb-one|1", { playerId: "qb-one", week: 1, points: 25, floor: 19, ceiling: 31, providerAsOf: "2026-09-08T11:00:00.000Z" }]]);
   const result = optimizeExactLineup(rosterRows(players), { week: 1, playerById: new Map(players.map((item) => [item.id, item])), fbgRows });
   assert.equal(result.starters.find((row) => row.playerId === "qb-one").projection.points, 25);
+});
+
+test("the current-week lineup blend uses signed-in FantasyPros and PFF component-stat snapshots", () => {
+  const players = rosterPlayers();
+  const rows = (points) => players.map((item) => ({ playerId: item.id, week: 1, points, providerAsOf: "2026-09-08T11:30:00.000Z", projectedStats: { rushingYards: points * 10 } }));
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(players) }], weeklyProjections: rows(20),
+  };
+  const projectionSnapshot = (source, points) => ({ source, authority: `authenticated ${source} browser-session capture`, providerAsOf: "2026-09-08T11:30:00.000Z", items: rows(points) });
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "test-pack", asOf: "2026-09-08T11:00:00.000Z", players, sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState, week: 1, generatedAt: "2026-09-08T12:00:00.000Z",
+    fbgSnapshot: projectionSnapshot("Footballguys", 21), fantasyProsSnapshot: projectionSnapshot("FantasyPros", 22), pffSnapshot: projectionSnapshot("PFF", 23),
+  });
+  const starter = result.lineup.starters[0];
+  assert.deepEqual(starter.sources.map((source) => source.source), projectionSources);
+  assert.ok(starter.sources.every((source) => /component stats scored by Thunder Bowl rules/.test(source.input)));
+  assert.equal(result.sources.find((source) => source.label === "FantasyPros").asOf, "2026-09-08T11:30:00.000Z");
+  assert.equal(result.sources.find((source) => source.label === "PFF").asOf, "2026-09-08T11:30:00.000Z");
 });
 
 test("waiver recommendations remain blocked until CBS supplies authenticated availability", () => {
@@ -285,7 +306,10 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /requestFbgProjectionCapture/);
   assert.match(source, /action: "capture-fbg"/);
   assert.match(source, /action: "refresh-news"/);
-  assert.match(source, /snapshot, fbgSnapshot/);
+  assert.match(source, /provider: "fantasyPros"/);
+  assert.match(source, /provider: "pff"/);
+  assert.match(source, /action: "capture-fantasypros"/);
+  assert.match(source, /action: "capture-pff"/);
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
@@ -298,10 +322,11 @@ test("private season shell exposes the complete weekly workflow without unsafe H
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-shell-v137/);
+  assert.match(worker, /thunder-bowl-shell-v138/);
   assert.match(worker, /client\.navigate\(client\.url\)/);
-  assert.match(worker, /season\.mjs\?v=20260831j/);
+  assert.match(worker, /season\.mjs\?v=20260831k/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260831a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);

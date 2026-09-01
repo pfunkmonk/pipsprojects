@@ -4,15 +4,18 @@ import { downloadFbgWeeklySnapshot, parseFbgAuthenticatedWeeklyCapture, parseFbg
 import { readLedger } from "./ledger-store.mjs";
 import { currentResearchSnapshot } from "./research-store.mjs";
 import { buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
+import { parseFantasyProsAuthenticatedCapture, parsePffAuthenticatedCapture } from "./supplemental-season-source.mjs";
 import { readSeasonPack } from "./season-pack.mjs";
 import {
   readLatestCbsLeagueState,
   readLatestFbgWeeklySnapshot,
   readLatestSeasonPlan,
+  readLatestSupplementalWeeklySnapshot,
   readLeagueMoves,
   saveCbsLeagueState,
   saveFbgWeeklySnapshot,
   saveSeasonPlan,
+  saveSupplementalWeeklySnapshot,
 } from "./season-store.mjs";
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot } from "./status-store.mjs";
@@ -21,7 +24,7 @@ function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, researchSnapshot, statusSnapshot }) {
+function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot }) {
   return sha256({
     schemaVersion: 1,
     season: pack.season,
@@ -29,6 +32,8 @@ function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, researchSnaps
     packId: pack.packId,
     cbs: leagueState.rawSha256,
     fbg: fbgSnapshot?.rawSha256 || null,
+    fantasyPros: fantasyProsSnapshot?.rawSha256 || null,
+    pff: pffSnapshot?.rawSha256 || null,
     research: researchSnapshot?.capturedAt || null,
     status: statusSnapshot?.rawSha256 || statusSnapshot?.capturedAt || null,
   });
@@ -58,6 +63,23 @@ export async function refreshFootballguysSource({ now = new Date() } = {}) {
       },
     },
   };
+}
+
+async function captureSupplementalSource(input, provider, parse, { now = new Date() } = {}) {
+  const pack = await readSeasonPack();
+  const week = seasonWeekForDate(now);
+  const snapshot = parse(input, pack);
+  if (snapshot.week !== week) throw new Error(`${provider} capture is for Week ${snapshot.week}; the dashboard is on Week ${week}.`);
+  await saveSupplementalWeeklySnapshot(snapshot, pack, provider);
+  return { week, snapshot, sourceRefresh: { [provider]: { ok: true, requested: true, authenticated: true, asOf: snapshot.providerAsOf, rows: snapshot.itemCount, error: null } } };
+}
+
+export function captureFantasyProsSource(input, options = {}) {
+  return captureSupplementalSource(input, "fantasyPros", parseFantasyProsAuthenticatedCapture, options);
+}
+
+export function capturePffSource(input, options = {}) {
+  return captureSupplementalSource(input, "pff", parsePffAuthenticatedCapture, options);
 }
 
 export async function captureFootballguysSource(input, { now = new Date() } = {}) {
@@ -108,6 +130,8 @@ export async function refreshSeasonPlan({
   publicSourceOverrides = null,
   leagueStateOverride = null,
   fbgSnapshotOverride = null,
+  fantasyProsSnapshotOverride = null,
+  pffSnapshotOverride = null,
 } = {}) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
@@ -134,6 +158,8 @@ export async function refreshSeasonPlan({
     ? validateFbgWeeklySnapshot(fbgSnapshotOverride, pack)
     : refreshedFbgSnapshot || await readLatestFbgWeeklySnapshot(pack, week);
   if (fbgSnapshot && fbgSnapshot.week !== week) throw new Error(`Footballguys source handoff is for Week ${fbgSnapshot.week}; the dashboard is on Week ${week}.`);
+  const fantasyProsSnapshot = fantasyProsSnapshotOverride || await readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros");
+  const pffSnapshot = pffSnapshotOverride || await readLatestSupplementalWeeklySnapshot(pack, week, "pff");
   const statusSnapshot = statusResult.value || null;
   const researchSnapshot = researchResult.value || null;
   const statusRefreshError = statusResult.error?.message || statusSnapshot?.refreshError || null;
@@ -143,12 +169,14 @@ export async function refreshSeasonPlan({
     leagueState,
     week,
     fbgSnapshot,
+    fantasyProsSnapshot,
+    pffSnapshot,
     researchSnapshot,
     statusSnapshot,
     leagueMoves,
     generatedAt,
   });
-  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, researchSnapshot, statusSnapshot });
+  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot });
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
   if (statusRefreshError) plan.alerts.push(`Injury refresh failed; last-known safe status evidence remains in use (${statusRefreshError}).`);
   if (researchRefreshError) plan.alerts.push(`Depth/news refresh failed; last-known safe research evidence remains in use (${researchRefreshError}).`);
@@ -167,6 +195,8 @@ export async function refreshSeasonPlan({
         rows: fbgSnapshot?.itemCount || 0,
         error: fbgRefreshError,
       },
+      fantasyPros: { ok: Boolean(fantasyProsSnapshot), requested: false, authenticated: Boolean(fantasyProsSnapshot), asOf: fantasyProsSnapshot?.providerAsOf || null, rows: fantasyProsSnapshot?.itemCount || 0, error: null },
+      pff: { ok: Boolean(pffSnapshot), requested: false, authenticated: Boolean(pffSnapshot), asOf: pffSnapshot?.providerAsOf || null, rows: pffSnapshot?.itemCount || 0, error: null },
       status: { ok: !statusRefreshError, asOf: statusSnapshot?.capturedAt || null, error: statusRefreshError },
       research: { ok: !researchRefreshError, asOf: researchSnapshot?.capturedAt || null, error: researchRefreshError },
     },
@@ -193,11 +223,13 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
     state: "PARTIAL",
     requiresLeagueSync: true,
     alerts: [syncMessage],
-    refreshBehavior: "Every Tuesday, Footballguys component-stat projections refresh automatically and are scored with Thunder Bowl rules. Update everything also captures authenticated CBS rosters, moves, and component-stat projections, plus current injury/news evidence.",
+    refreshBehavior: "Update everything captures authenticated CBS, Footballguys, FantasyPros, and PFF component-stat projections, applies Thunder Bowl scoring, and refreshes current injury/news evidence. The Tuesday scheduler refreshes the sources it can access without your signed-in browser.",
     sources: [
       { label: "CBS league", asOf: null, ageMinutes: null, required: true },
       { label: "CBS stats", asOf: null, ageMinutes: null, required: false },
       { label: "FBG projections", asOf: null, ageMinutes: null, required: true },
+      { label: "FantasyPros", asOf: null, ageMinutes: null, required: false },
+      { label: "PFF", asOf: null, ageMinutes: null, required: false },
       { label: "injury / news", asOf: null, ageMinutes: null, required: false },
     ],
     baseline: { authority: "season setup required", source: "authenticated CBS all-team roster snapshot", asOf: null },
@@ -250,7 +282,7 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
   const cbsSaved = await saveCbsLeagueState(snapshot, pack, { week });
   const refreshed = await refreshSeasonPlan({ now, forcePublic: true, refreshFootballguys: true });
   const publicFailures = Object.entries(refreshed.sourceRefresh)
-    .filter(([source]) => source !== "footballguys")
+    .filter(([source]) => ["status", "research"].includes(source))
     .filter(([, result]) => !result.ok)
     .map(([source, result]) => `${source}: ${result.error}`);
   const updateSummary = {
