@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and IR-stash command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260831c" />
+  <link rel="stylesheet" href="./season.css?v=20260831d" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to recommendations</a>
@@ -45,13 +45,13 @@
     <section id="alerts" class="alerts" aria-live="polite"></section>
 
     <section class="sync-panel" aria-labelledby="sync-title">
-      <div class="sync-intro"><p class="eyebrow">One-click weekly update</p><h2 id="sync-title">One button updates the whole week</h2><p id="sync-copy">Update everything captures CBS, Footballguys PRO, FantasyPros, and PFF raw weekly component projections through your signed-in browser sessions, then applies Thunder Bowl scoring.</p></div>
+      <div class="sync-intro"><p class="eyebrow">Flexible weekly updates</p><h2 id="sync-title">Update everything—or only the source that changed</h2><p id="sync-copy">Use the main button for a complete refresh, or update one source below when you know only that provider has posted new stats. Every projection source supplies raw components that are scored with Thunder Bowl rules.</p></div>
       <div class="update-source-grid" aria-label="One-click update sources">
-        <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small></div></article>
-        <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small></div></article>
-        <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small></div></article>
-        <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small></div></article>
-        <article id="update-news-source" class="update-source"><span aria-hidden="true">5</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small></div></article>
+        <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small><button id="update-cbs-only" class="source-update-button" type="button">Update CBS</button></div></article>
+        <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small><button id="update-fbg-only" class="source-update-button" type="button">Update FBG</button></div></article>
+        <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small><button id="update-fp-only" class="source-update-button" type="button">Update FantasyPros</button></div></article>
+        <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small><button id="update-pff-only" class="source-update-button" type="button">Update PFF</button></div></article>
+        <article id="update-news-source" class="update-source"><span aria-hidden="true">5</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small><button id="update-news-only" class="source-update-button" type="button">Update injuries/news</button></div></article>
       </div>
       <div class="setup-and-recovery">
         <details id="helper-setup" class="setup-details">
@@ -109,6 +109,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260831m"></script>
+  <script type="module" src="./season.mjs?v=20260831n"></script>
 </body>
 </html>

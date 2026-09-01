@@ -19,11 +19,15 @@ form { display:grid; gap:.55rem; } label { font-weight:800; } input { width:100%
 .sync-panel { display:grid; gap:1rem; margin:.8rem clamp(.8rem,2vw,1.5rem); border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:var(--surface-2); } .sync-panel p { margin-bottom:0; color:var(--muted); } .file-button input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
 .sync-intro { max-width:880px; }
 .update-source-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.65rem; }
-.update-source { display:flex; align-items:center; gap:.65rem; min-width:0; border:1px solid var(--line); border-radius:10px; padding:.7rem; background:rgba(4,19,38,.48); }
+.update-source { display:flex; align-items:flex-start; gap:.65rem; min-width:0; border:1px solid var(--line); border-radius:10px; padding:.7rem; background:rgba(4,19,38,.48); }
 .update-source>span { display:grid; flex:0 0 1.85rem; width:1.85rem; height:1.85rem; place-items:center; border:1px solid var(--line); border-radius:50%; color:var(--gold); font-size:.78rem; font-weight:950; }
+.update-source>div { display:grid; min-width:0; width:100%; }
 .update-source strong,.update-source small { display:block; } .update-source small { margin-top:.12rem; overflow:hidden; color:var(--quiet); font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }
+.source-update-button { min-height:44px; margin-top:.55rem; border:1px solid var(--line); border-radius:8px; padding:.45rem .6rem; background:var(--surface-2); color:var(--text); font-weight:850; cursor:pointer; }
+.source-update-button:hover { border-color:var(--gold); color:var(--gold); } .source-update-button:disabled { opacity:.55; cursor:wait; }
 .update-source.updated { border-color:rgba(111,221,167,.65); } .update-source.updated>span { border-color:var(--good); color:var(--good); }
 .update-source.failed { border-color:rgba(255,157,157,.7); } .update-source.failed>span { border-color:var(--danger); color:var(--danger); }
+.update-source.updating { border-color:var(--gold); box-shadow:0 0 0 1px rgba(239,194,87,.25); }
 .setup-and-recovery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
 .setup-details,.recovery-details { border:1px solid var(--line); border-radius:10px; background:rgba(4,19,38,.35); }
 .setup-details summary,.recovery-details summary { padding:.7rem .8rem; color:var(--text); font-weight:850; }

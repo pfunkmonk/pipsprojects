@@ -43,6 +43,10 @@ export default async function handler(request) {
       exactKeys(input, ["action"]);
       return json(await refreshSeasonPlan({ forcePublic: true, refreshFootballguys: true }));
     }
+    if (input.action === "rebuild-plan") {
+      exactKeys(input, ["action"]);
+      return json(await refreshSeasonPlan());
+    }
     if (input.action === "update-everything") {
       exactKeys(input, ["action", "snapshot"]);
       return json(await updateSeasonEverything(input.snapshot));

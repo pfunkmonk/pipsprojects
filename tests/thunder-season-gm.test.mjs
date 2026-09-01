@@ -289,8 +289,8 @@ test("combined plans are deterministic for identical sources and disclose baseli
   assert.ok(left.alerts.some((message) => message.includes("CBS league data has not been synced")));
 });
 
-test("private season shell is a standalone weekly workflow without auction navigation or caching", async () => {
-  const [html, source, css, worker, rootWorker, manifest, netlify] = await Promise.all([
+test("private season shell supports full and per-source updates without auction navigation or caching", async () => {
+  const [html, source, css, worker, rootWorker, manifest, netlify, refreshHandler] = await Promise.all([
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.css", import.meta.url), "utf8"),
@@ -298,9 +298,11 @@ test("private season shell is a standalone weekly workflow without auction navig
     readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-refresh.mjs", import.meta.url), "utf8"),
   ]);
-  for (const id of ["refresh-plan", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "helper-setup", "helper-download", "fbg-file", "starter-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, />Update everything</);
+  for (const label of ["Update CBS", "Update FBG", "Update FantasyPros", "Update PFF", "Update injuries/news"]) assert.match(html, new RegExp(`>${label}<`));
   assert.match(html, /Advanced recovery tools/);
   assert.doesNotMatch(html, /auction room|auction command center/i);
   assert.match(html, /\.\/manifest\.webmanifest/);
@@ -312,6 +314,9 @@ test("private season shell is a standalone weekly workflow without auction navig
   assert.match(source, /provider: "pff"/);
   assert.match(source, /action: "capture-fantasypros"/);
   assert.match(source, /action: "capture-pff"/);
+  assert.match(source, /action: "rebuild-plan"/);
+  assert.match(refreshHandler, /input\.action === "rebuild-plan"/);
+  assert.match(refreshHandler, /return json\(await refreshSeasonPlan\(\)\)/);
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
@@ -323,11 +328,12 @@ test("private season shell is a standalone weekly workflow without auction navig
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /clientX < rect\.left/);
   assert.match(css, /@media \(max-width:620px\)/);
+  assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v1/);
+  assert.match(worker, /thunder-bowl-season-v2/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260831m/);
+  assert.match(worker, /season\.mjs\?v=20260831n/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260831a/);

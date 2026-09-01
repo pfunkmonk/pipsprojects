@@ -475,11 +475,11 @@ function sourceState({ leagueState, pack, week, fbgSnapshot, fantasyProsSnapshot
   const signedInPremiumReady = Boolean(fantasyProsSnapshot && pffSnapshot);
   const state = !cbsFresh || !projectionUsable ? "STALE" : projectionFresh && rostersReady && cbsProjectionReady && signedInPremiumReady ? "READY" : "PARTIAL";
   const alerts = [];
-  if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; roster, waiver, and manager-move guidance remains blocked until Update everything captures the league.");
+  if (!leagueState.authority.startsWith("authenticated")) alerts.push("CBS league data has not been synced; roster, waiver, and manager-move guidance remains blocked until Update CBS or Update everything captures the league.");
   else if (!cbsFresh) alerts.push("CBS league data is older than 30 hours. Sync before trusting availability or manager moves.");
   if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
-  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.6.1, then choose Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
-  if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Update everything to fetch fresh raw-stat Footballguys projections.");
+  if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(`CBS Week ${week} component-stat projections have not been captured yet. Update the Data Helper to v0.6.1, then choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`);
+  if (!projectionFresh && projectionUsable) alerts.push("Current-week projections use the governed dated baseline. Choose Update FBG or Update everything to fetch fresh raw-stat Footballguys projections.");
   if (!projectionUsable) alerts.push("Projection evidence is older than 14 days; recommendations remain visible only as a stale recovery plan.");
   if (!fantasyProsSnapshot) alerts.push("FantasyPros signed-in weekly component stats have not been captured; the available-source blend is reweighted without them.");
   if (!pffSnapshot) alerts.push("PFF signed-in weekly component stats have not been captured; the available-source blend is reweighted without them.");
@@ -536,7 +536,7 @@ export function buildSeasonRecommendationSnapshot({
     generatedAt,
     state: freshness.state,
     alerts: freshness.alerts,
-    refreshBehavior: "Update everything captures signed-in CBS, Footballguys, FantasyPros, and PFF component-stat projections and applies Thunder Bowl scoring before refreshing rosters, moves, injuries, depth, news, and IR evidence. The Tuesday scheduler refreshes sources available without your browser; archived Tuesday plans never change.",
+    refreshBehavior: "Each source can be refreshed independently. Update everything captures signed-in CBS, Footballguys, FantasyPros, and PFF component-stat projections and applies Thunder Bowl scoring before refreshing rosters, moves, injuries, depth, news, and IR evidence. The Tuesday scheduler refreshes sources available without your browser; archived Tuesday plans never change.",
     sources: [
       sourceChip("CBS league", leagueState.authority.startsWith("authenticated") ? leagueState.capturedAt : null, generatedAt, true),
       sourceChip("CBS stats", leagueState.projectionWeek === week && (leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0) >= 100 ? leagueState.capturedAt : null, generatedAt),

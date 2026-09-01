@@ -41,7 +41,7 @@ function sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSn
 async function liveLeagueState(pack) {
   const cbs = await readLatestCbsLeagueState(pack);
   if (cbs) return cbs.snapshot;
-  const error = new Error("The authenticated CBS league snapshot is not available. Choose Update everything to establish the in-season roster baseline.");
+  const error = new Error("The authenticated CBS league snapshot is not available. Choose Update CBS or Update everything to establish the in-season roster baseline.");
   error.code = "SEASON_BASELINE_UNAVAILABLE";
   throw error;
 }
@@ -214,7 +214,7 @@ export async function getOrCreateCurrentSeasonPlan({ now = new Date() } = {}) {
 export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
   const generatedAt = new Date(now).toISOString();
   const week = seasonWeekForDate(now);
-  const syncMessage = "The private CBS baseline is not connected. Choose Update everything to capture all 12 teams; each team is valid with the required eight starters and zero to six backups.";
+  const syncMessage = "The private CBS baseline is not connected. Choose Update CBS or Update everything to capture all 12 teams; each team is valid with the required eight starters and zero to six backups.";
   return {
     schemaVersion: 1,
     kind: "thunder-bowl-season-setup-required",
@@ -224,7 +224,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
     state: "PARTIAL",
     requiresLeagueSync: true,
     alerts: [syncMessage],
-    refreshBehavior: "Update everything captures authenticated CBS, Footballguys, FantasyPros, and PFF component-stat projections, applies Thunder Bowl scoring, and refreshes current injury/news evidence. The Tuesday scheduler refreshes the sources it can access without your signed-in browser.",
+    refreshBehavior: "Each source can be updated independently, while Update everything captures authenticated CBS, Footballguys, FantasyPros, and PFF component-stat projections, applies Thunder Bowl scoring, and refreshes current injury/news evidence. The Tuesday scheduler refreshes the sources it can access without your signed-in browser.",
     sources: [
       { label: "CBS league", asOf: null, ageMinutes: null, required: true },
       { label: "CBS stats", asOf: null, ageMinutes: null, required: false },

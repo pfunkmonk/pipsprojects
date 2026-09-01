@@ -8,6 +8,8 @@ const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
 const REFRESH_URL = "/api/thunder-bowl/season/refresh";
 const PLAN_CACHE_KEY = "seasonPlanV1";
+const UPDATE_CONTROL_IDS = Object.freeze(["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only"]);
+const FILE_CONTROL_IDS = Object.freeze(["cbs-file", "fbg-file", "export-plan"]);
 let plan = null;
 let offlineMode = false;
 
@@ -49,6 +51,23 @@ function evidenceButton(title, value, kind, label = "Why?") {
   button.type = "button";
   button.addEventListener("click", () => openEvidence(title, value, kind));
   return button;
+}
+
+function setUpdateControlsDisabled(disabled) {
+  for (const id of UPDATE_CONTROL_IDS) byId(id).disabled = disabled;
+}
+
+function setActionControlsDisabled(disabled) {
+  setUpdateControlsDisabled(disabled);
+  for (const id of FILE_CONTROL_IDS) byId(id).disabled = disabled;
+}
+
+function restoreActionControls() {
+  const setupRequired = plan?.kind === "thunder-bowl-season-setup-required";
+  setUpdateControlsDisabled(offlineMode);
+  byId("cbs-file").disabled = offlineMode;
+  byId("fbg-file").disabled = offlineMode || setupRequired;
+  byId("export-plan").disabled = offlineMode || setupRequired;
 }
 
 function openEvidence(title, value, kind) {
@@ -114,12 +133,12 @@ function renderHeader(value, offline) {
   const isCbs = value.baseline.authority.startsWith("authenticated");
   const partialCbs = isCbs && (value.baseline.rostersReady ?? value.baseline.rostersComplete) === false;
   byId("sync-copy").textContent = setupRequired
-    ? "Your access code worked. Choose Update everything once to capture CBS plus signed-in Footballguys, FantasyPros, and PFF projections, then unlock the complete plan."
+    ? "Your access code worked. Choose Update CBS to establish the roster baseline, then update the projection sources you want—or use Update everything for all five stages."
     : partialCbs
     ? `CBS is current, but ${value.baseline.legalTeamCount ?? value.baseline.completeTeamCount} of ${value.baseline.teamCount} teams currently satisfy the legal roster rule: eight required starters and no more than six backups.`
     : isCbs
-    ? `Last CBS capture: ${dateTime(value.baseline.asOf)}. All teams satisfy the 8–14 player rule. Choose Update everything after waivers, trades, news, or lineup-changing roster moves.`
-    : "CBS has not been captured for the season. Choose Update everything before trusting availability, manager moves, or weekly lineup advice.";
+    ? `Last CBS capture: ${dateTime(value.baseline.asOf)}. All teams satisfy the 8–14 player rule. Refresh only the source that changed, or use Update everything for a complete pass.`
+    : "CBS has not been captured for the season. Choose Update CBS or Update everything before trusting availability, manager moves, or weekly lineup advice.";
 }
 
 function renderUpdateSource(rowId, stateId, source, summary, emptyText) {
@@ -270,13 +289,10 @@ async function renderPlan(value, { offline = false } = {}) {
   renderTrades(value);
   renderWatch(value);
   renderUpdateSources(value);
-  byId("refresh-plan").disabled = offline;
-  byId("cbs-file").disabled = offline;
-  byId("fbg-file").disabled = offline || setupRequired;
-  byId("export-plan").disabled = offline || setupRequired;
+  restoreActionControls();
   if (setupRequired && !offline) {
     byId("helper-setup").open = true;
-    setStatus("Access accepted. Complete the one-time helper setup, then choose Update everything.");
+    setStatus("Access accepted. Complete the one-time helper setup, then choose Update CBS or Update everything.");
   }
   if (value.updateSummary?.cbs?.ok) byId("helper-setup").open = false;
   if (!offline && !setupRequired) await setMeta(PLAN_CACHE_KEY, value);
@@ -306,8 +322,9 @@ async function postAction(payload) {
   }));
 }
 
-async function runAction(button, message, task) {
-  button.disabled = true;
+async function runAction(button, message, task, successMessage = null) {
+  setActionControlsDisabled(true);
+  button.closest?.(".update-source")?.classList.add("updating");
   setStatus(message);
   try {
     const value = await task();
@@ -316,17 +333,63 @@ async function runAction(button, message, task) {
       ? Object.entries(value.updateSummary).filter(([key, result]) => key !== "capturedAt" && result?.ok === false).map(([key]) => key)
       : [];
     const partialRosters = (value.updateSummary?.cbs?.rostersReady ?? value.updateSummary?.cbs?.rostersComplete) === false;
-    setStatus(failed.length
+    const defaultMessage = failed.length
       ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
       : partialRosters
       ? `Update finished, but only ${value.updateSummary.cbs.legalTeams ?? value.updateSummary.cbs.completeTeams}/${value.updateSummary.cbs.teamCount} CBS teams satisfy the required eight starters and 14-player maximum. Waiver and trade advice remains blocked.`
-      : `Everything updated ${dateTime(value.generatedAt)}. CBS, Footballguys PRO, FantasyPros, and PFF raw component projections were scored with Thunder Bowl rules; moves, injuries, news, and IR targets are current.`
-    , failed.length > 0);
+      : `Everything updated ${dateTime(value.generatedAt)}. CBS, Footballguys PRO, FantasyPros, and PFF raw component projections were scored with Thunder Bowl rules; moves, injuries, news, and IR targets are current.`;
+    setStatus(successMessage && !failed.length && !partialRosters
+      ? typeof successMessage === "function" ? successMessage(value) : successMessage
+      : defaultMessage, failed.length > 0);
   } catch (error) {
     setStatus(errorMessage(error), true);
   } finally {
-    button.disabled = offlineMode;
+    button.closest?.(".update-source")?.classList.remove("updating");
+    restoreActionControls();
   }
+}
+
+async function rebuildAfterSourceSave(source) {
+  try {
+    return await postAction({ action: "rebuild-plan" });
+  } catch (error) {
+    throw new Error(`${source} was saved, but the recommendations could not be rebuilt: ${errorMessage(error)}`);
+  }
+}
+
+async function updateCbsOnly() {
+  let snapshot;
+  try {
+    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 90_000, week: plan?.week || 1 }));
+    await postAction({ action: "capture-cbs", snapshot });
+  } catch (error) {
+    byId("helper-setup").open = true;
+    throw error;
+  }
+  byId("helper-setup").open = false;
+  return rebuildAfterSourceSave("CBS");
+}
+
+async function updateFbgOnly() {
+  try {
+    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: plan?.week || 1 });
+    await postAction({ action: "capture-fbg", capture });
+  } catch (error) {
+    byId("helper-setup").open = true;
+    throw error;
+  }
+  return rebuildAfterSourceSave("Footballguys");
+}
+
+async function updateSupplementalOnly(provider, label) {
+  try {
+    const capture = await requestSupplementalProjectionCapture({ provider, timeoutMs: 180_000, week: plan?.week || 1 });
+    await postAction({ action: provider === "fantasyPros" ? "capture-fantasypros" : "capture-pff", capture });
+  } catch (error) {
+    byId("helper-setup").open = true;
+    throw error;
+  }
+  return rebuildAfterSourceSave(label);
 }
 
 async function attemptLogin(event) {
@@ -387,6 +450,36 @@ function downloadPlan() {
 }
 
 byId("login-form").addEventListener("submit", attemptLogin);
+byId("update-cbs-only").addEventListener("click", () => runAction(
+  byId("update-cbs-only"),
+  "Updating CBS rosters, moves, availability, and weekly component stats…",
+  updateCbsOnly,
+  (value) => `CBS updated ${dateTime(value.generatedAt)}. Recommendations now use the latest saved CBS data; the other sources were left unchanged.`,
+));
+byId("update-fbg-only").addEventListener("click", () => runAction(
+  byId("update-fbg-only"),
+  "Updating Footballguys PRO weekly component projections…",
+  updateFbgOnly,
+  (value) => `Footballguys updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+));
+byId("update-fp-only").addEventListener("click", () => runAction(
+  byId("update-fp-only"),
+  "Updating FantasyPros weekly component projections…",
+  () => updateSupplementalOnly("fantasyPros", "FantasyPros"),
+  (value) => `FantasyPros updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+));
+byId("update-pff-only").addEventListener("click", () => runAction(
+  byId("update-pff-only"),
+  "Updating PFF weekly component projections…",
+  () => updateSupplementalOnly("pff", "PFF"),
+  (value) => `PFF updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+));
+byId("update-news-only").addEventListener("click", () => runAction(
+  byId("update-news-only"),
+  "Refreshing injuries, news, practice status, and IR evidence…",
+  () => postAction({ action: "refresh-news" }),
+  (value) => `Injuries, news, and IR evidence updated ${dateTime(value.generatedAt)}. Projection sources were left unchanged.`,
+));
 byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 5: capturing all 12 CBS rosters from your signed-in browser session…", async () => {
   let snapshot;
   try {
