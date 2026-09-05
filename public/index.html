@@ -31,8 +31,11 @@
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
       padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px;
-      text-decoration: none; color: inherit; transition: transform .15s, border-color .15s, box-shadow .15s; position: relative; }
-    a.card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+      text-decoration: none; color: inherit; transition: transform .15s, border-color .15s, box-shadow .15s, background .15s; position: relative; }
+    a.card:hover, a.card:focus-visible, button.card:hover, button.card:focus-visible {
+      transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+    a.card:focus-visible, button.card:focus-visible, .go:focus-visible, .close:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 3px; }
     .card .icon { font-size: 30px; }
     .card h2 { margin: 0; font-size: 19px; }
     .card p { margin: 0; color: var(--muted); font-size: 15px; }
@@ -40,12 +43,33 @@
     .card-actions { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: auto; padding-top: 4px; }
     .card-actions .go { margin-top: 0; text-decoration: none; }
     .card-actions .go:hover, .card-actions .go:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
-    .card.soon { opacity: .72; }
     .badge { position: absolute; top: 16px; right: 16px; font-size: 11px; font-weight: 750;
       text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; }
     .badge.live { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
     .badge.wip  { background: color-mix(in srgb, var(--accent-2) 18%, transparent); color: var(--accent-2); }
+    .badge.soon { background: color-mix(in srgb, var(--muted) 15%, transparent); color: var(--muted); }
+
+    /* Category cards are buttons: they open a panel below instead of leaving the page. */
+    button.card { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+    button.card[aria-expanded="true"] { border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+    button.card .go::after { content: " ▾"; }
+    button.card[aria-expanded="true"] .go::after { content: " ▴"; }
+
+    .panel { margin-top: 36px; padding-top: 32px; border-top: 1px solid var(--line); }
+    .panel[hidden] { display: none; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .panel-head h2 { margin: 0; font-size: 22px; outline: none; }
+    .panel-head h2 .icon { font-size: 22px; margin-right: 8px; }
+    .close { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+      color: var(--muted); cursor: pointer; font: inherit; font-size: 14px; }
+    .close:hover { border-color: var(--accent); color: var(--accent); }
+    .empty { color: var(--muted); padding: 28px 24px; text-align: center;
+      border: 1px dashed var(--line); border-radius: var(--radius); }
+    .empty p { margin: 0; }
+
     footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 52px; }
+    @media (prefers-reduced-motion: reduce) { .card { transition: none; } a.card:hover, button.card:hover { transform: none; } }
   </style>
 </head>
 <body>
@@ -53,85 +77,183 @@
     <header>
       <div class="mark">🎲</div>
       <h1>Pip's Projects</h1>
-      <p class="tagline">Tools, sites, and experiments — pick a card to dive in.</p>
+      <p class="tagline">Tools, sites, and experiments — pick a category to dive in.</p>
     </header>
 
-    <div class="grid">
-      <a class="card" href="https://charactergen.pipsprojects.com">
-        <span class="badge live">Live</span>
-        <span class="icon">⚔️</span>
-        <h2>PF1e Character Generator</h2>
-        <p>Build and manage Pathfinder 1st Edition characters — auto-computed stats, saved to your account.</p>
-        <span class="go">Open →</span>
-      </a>
+    <div class="grid" id="categories">
+      <button class="card cat" type="button" data-cat="rpg" aria-expanded="false" aria-controls="panel-rpg">
+        <span class="icon">🐉</span>
+        <h2>RPG Projects</h2>
+        <p>Pathfinder tools for building characters, looking up rules, running the table, and drawing the map.</p>
+        <span class="go">4 projects</span>
+      </button>
 
-      <a class="card" href="https://codex.pipsprojects.com">
-        <span class="badge live">Live</span>
-        <span class="icon">📖</span>
-        <h2>PF1e Codex</h2>
-        <p>A fast, searchable Pathfinder First Edition rules reference with spells, feats, monsters, classes, items, and more.</p>
-        <span class="go">Open →</span>
-      </a>
+      <button class="card cat" type="button" data-cat="football" aria-expanded="false" aria-controls="panel-football">
+        <span class="icon">🏈</span>
+        <h2>Fantasy Football Projects</h2>
+        <p>Auction-day command centers and live draft boards for keeper leagues.</p>
+        <span class="go">2 projects</span>
+      </button>
 
-      <a class="card" href="https://ancestry.pipsprojects.com">
+      <button class="card cat" type="button" data-cat="law" aria-expanded="false" aria-controls="panel-law">
+        <span class="badge soon">Coming soon</span>
+        <span class="icon">⚖️</span>
+        <h2>Pippenger Law Projects</h2>
+        <p>Tools for the law practice. Nothing published here yet.</p>
+        <span class="go">0 projects</span>
+      </button>
+
+      <a class="card" href="https://ancestry.pipsprojects.com" target="_blank" rel="noopener">
         <span class="badge live">Live</span>
         <span class="icon">🌳</span>
         <h2>Pippenger Family Tree</h2>
         <p>An interactive genealogy of the Pippenger family — people, photos, stories, and recipes.</p>
-        <span class="go">Open →</span>
+        <span class="go">Open ↗</span>
       </a>
-
-      <a class="card" href="https://tabletop.pipsprojects.com">
-        <span class="badge live">Live</span>
-        <span class="icon">🗺️</span>
-        <h2>Tabletop Hub</h2>
-        <p>A home base for tabletop tools — maps, tokens, and game-night resources.</p>
-        <span class="go">Open →</span>
-      </a>
-
-      <a class="card" href="https://vttmaps.pipsprojects.com">
-        <span class="badge wip">Beta</span>
-        <span class="icon">🧭</span>
-        <h2>Pip's VTT Maps</h2>
-        <p>Battle maps with line-of-sight fog, sound that follows the party, composites, handouts, and a true-scale table view — with free tokens and sounds that arrive already credited.</p>
-        <span class="go">Open →</span>
-      </a>
-
-      <article class="card">
-        <span class="badge wip">Beta</span>
-        <span class="icon">🏈</span>
-        <h2>Thunder Bowl 2026</h2>
-        <p>A fast, offline-capable auction command center with keeper strategy, dynamic budgets, and a live public draft board.</p>
-        <nav class="card-actions" aria-label="Thunder Bowl access">
-          <a class="go" href="/thunder-bowl/">Pip's Access →</a>
-          <a class="go" href="/thunder-bowl/auctioneer/">Auctioneer Access →</a>
-          <a class="go" href="/thunder-bowl/draft-board/">Draft Board →</a>
-          <a class="go" href="/thunder-bowl/season/">In-season GM →</a>
-        </nav>
-      </article>
-
-      <article class="card">
-        <span class="badge wip">Beta</span>
-        <span class="icon">🔨</span>
-        <h2>Pip's Draft Day Tool</h2>
-        <p>A customizable auction-day console with league setup, keeper support, salary tracking, and a live read-only board.</p>
-        <nav class="card-actions" aria-label="Pip's Draft Day Tool access">
-          <a class="go" href="/draft-day/">Create / Manage →</a>
-          <a class="go" href="/draft-day/auctioneer/">Auctioneer →</a>
-          <a class="go" href="/draft-day/board/">Draft Board →</a>
-        </nav>
-      </article>
-
-      <div class="card soon">
-        <span class="icon">✨</span>
-        <h2>More to come</h2>
-        <p>New projects will show up here as they're ready.</p>
-        <span class="go">Stay tuned</span>
-      </div>
     </div>
+
+    <section class="panel" id="panel-rpg" data-cat="rpg" hidden aria-labelledby="panel-rpg-title">
+      <div class="panel-head">
+        <h2 id="panel-rpg-title" tabindex="-1"><span class="icon">🐉</span>RPG Projects</h2>
+        <button class="close" type="button">Close</button>
+      </div>
+      <div class="grid">
+        <a class="card" href="https://charactergen.pipsprojects.com" target="_blank" rel="noopener">
+          <span class="badge live">Live</span>
+          <span class="icon">⚔️</span>
+          <h2>PF1e Character Generator</h2>
+          <p>Build and manage Pathfinder 1st Edition characters — auto-computed stats, saved to your account.</p>
+          <span class="go">Open ↗</span>
+        </a>
+
+        <a class="card" href="https://codex.pipsprojects.com" target="_blank" rel="noopener">
+          <span class="badge live">Live</span>
+          <span class="icon">📖</span>
+          <h2>PF1e Codex</h2>
+          <p>A fast, searchable Pathfinder First Edition rules reference with spells, feats, monsters, classes, items, and more.</p>
+          <span class="go">Open ↗</span>
+        </a>
+
+        <a class="card" href="https://tabletop.pipsprojects.com" target="_blank" rel="noopener">
+          <span class="badge live">Live</span>
+          <span class="icon">🗺️</span>
+          <h2>Tabletop Hub</h2>
+          <p>A home base for tabletop tools — maps, tokens, and game-night resources.</p>
+          <span class="go">Open ↗</span>
+        </a>
+
+        <a class="card" href="https://vttmaps.pipsprojects.com" target="_blank" rel="noopener">
+          <span class="badge wip">Beta</span>
+          <span class="icon">🧭</span>
+          <h2>Pip's VTT Maps</h2>
+          <p>Battle maps with line-of-sight fog, sound that follows the party, composites, handouts, and a true-scale table view — with free tokens and sounds that arrive already credited.</p>
+          <span class="go">Open ↗</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-football" data-cat="football" hidden aria-labelledby="panel-football-title">
+      <div class="panel-head">
+        <h2 id="panel-football-title" tabindex="-1"><span class="icon">🏈</span>Fantasy Football Projects</h2>
+        <button class="close" type="button">Close</button>
+      </div>
+      <div class="grid">
+        <article class="card">
+          <span class="badge wip">Beta</span>
+          <span class="icon">🏆</span>
+          <h2>Thunder Bowl 2026</h2>
+          <p>A fast, offline-capable auction command center with keeper strategy, dynamic budgets, and a live public draft board.</p>
+          <nav class="card-actions" aria-label="Thunder Bowl access">
+            <a class="go" href="/thunder-bowl/" target="_blank" rel="noopener">Pip's Access ↗</a>
+            <a class="go" href="/thunder-bowl/auctioneer/" target="_blank" rel="noopener">Auctioneer Access ↗</a>
+            <a class="go" href="/thunder-bowl/draft-board/" target="_blank" rel="noopener">Draft Board ↗</a>
+            <a class="go" href="/thunder-bowl/season/" target="_blank" rel="noopener">In-season GM ↗</a>
+          </nav>
+        </article>
+
+        <article class="card">
+          <span class="badge wip">Beta</span>
+          <span class="icon">🔨</span>
+          <h2>Pip's Draft Day Tool</h2>
+          <p>A customizable auction-day console with league setup, keeper support, salary tracking, and a live read-only board.</p>
+          <nav class="card-actions" aria-label="Pip's Draft Day Tool access">
+            <a class="go" href="/draft-day/" target="_blank" rel="noopener">Create / Manage ↗</a>
+            <a class="go" href="/draft-day/auctioneer/" target="_blank" rel="noopener">Auctioneer ↗</a>
+            <a class="go" href="/draft-day/board/" target="_blank" rel="noopener">Draft Board ↗</a>
+          </nav>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-law" data-cat="law" hidden aria-labelledby="panel-law-title">
+      <div class="panel-head">
+        <h2 id="panel-law-title" tabindex="-1"><span class="icon">⚖️</span>Pippenger Law Projects</h2>
+        <button class="close" type="button">Close</button>
+      </div>
+      <div class="empty">
+        <p>Nothing here yet. Law-practice tools will show up as they're ready.</p>
+      </div>
+    </section>
 
     <footer>© <span id="yr"></span> Pip's Projects</footer>
   </div>
-  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    (function () {
+      var cats = Array.prototype.slice.call(document.querySelectorAll('button.cat'));
+      var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function panelFor(id) { return document.getElementById('panel-' + id); }
+      function setHash(h) {
+        try { history.replaceState(null, '', h || location.pathname + location.search); } catch (e) { /* file:/data: preview */ }
+      }
+      function buttonFor(id) { return cats.filter(function (b) { return b.dataset.cat === id; })[0]; }
+
+      function open(id, moveFocus) {
+        var panel = panelFor(id);
+        if (!panel) return;
+        cats.forEach(function (b) { b.setAttribute('aria-expanded', String(b.dataset.cat === id)); });
+        panels.forEach(function (p) { p.hidden = (p !== panel); });
+        if (moveFocus) {
+          panel.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          panel.querySelector('h2').focus({ preventScroll: true });
+        }
+        setHash('#' + id);
+      }
+
+      function closeAll(returnTo) {
+        cats.forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+        panels.forEach(function (p) { p.hidden = true; });
+        if (returnTo) returnTo.focus();
+        setHash('');
+      }
+
+      cats.forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (b.getAttribute('aria-expanded') === 'true') closeAll(b);
+          else open(b.dataset.cat, true);
+        });
+      });
+
+      panels.forEach(function (p) {
+        p.querySelector('.close').addEventListener('click', function () { closeAll(buttonFor(p.dataset.cat)); });
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var openBtn = cats.filter(function (b) { return b.getAttribute('aria-expanded') === 'true'; })[0];
+        if (openBtn) closeAll(openBtn);
+      });
+
+      var initial = location.hash.replace('#', '');
+      if (initial && panelFor(initial)) open(initial, false);
+      window.addEventListener('hashchange', function () {
+        var id = location.hash.replace('#', '');
+        if (id && panelFor(id)) open(id, true); else closeAll(null);
+      });
+    })();
+  </script>
 </body>
 </html>
