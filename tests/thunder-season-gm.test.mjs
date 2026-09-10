@@ -249,10 +249,11 @@ test("an owner weekly FBG row can supply the current week when the dated baselin
 test("the current-week lineup blend uses signed-in FantasyPros and PFF component-stat snapshots", () => {
   const players = rosterPlayers();
   const rows = (points) => players.map((item) => ({ playerId: item.id, week: 1, points, providerAsOf: "2026-09-08T11:30:00.000Z", projectedStats: { rushingYards: points * 10 } }));
+  const roster = rosterRows(players).map((row) => ({ ...row, opponent: "LV", gameTime: "Sun 11:00am MT" }));
   const leagueState = {
     source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
     rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
-    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(players) }], weeklyProjections: rows(20),
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster }], weeklyProjections: rows(20),
   };
   const projectionSnapshot = (source, points) => ({ source, authority: `authenticated ${source} browser-session capture`, providerAsOf: "2026-09-08T11:30:00.000Z", items: rows(points) });
   const result = buildSeasonRecommendationSnapshot({
@@ -261,6 +262,7 @@ test("the current-week lineup blend uses signed-in FantasyPros and PFF component
     fbgSnapshot: projectionSnapshot("Footballguys", 21), fantasyProsSnapshot: projectionSnapshot("FantasyPros", 22), pffSnapshot: projectionSnapshot("PFF", 23),
   });
   const starter = result.lineup.starters[0];
+  assert.equal(starter.kickoffAt, "2026-09-13T17:00:00.000Z");
   assert.deepEqual(starter.sources.map((source) => source.source), projectionSources);
   assert.ok(starter.sources.every((source) => /component stats scored by Thunder Bowl rules/.test(source.input)));
   assert.equal(result.sources.find((source) => source.label === "FantasyPros").asOf, "2026-09-08T11:30:00.000Z");
@@ -811,6 +813,7 @@ test("private season shell supports full and per-source updates without auction 
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
+  assert.equal((html.match(/Game \/ kickoff \(Denver\)/g) || []).length, 2);
   for (const label of ["Start/Sit", "Waiver Wire", "Trades", "Player Stats", "News", "Admin"]) assert.match(html, new RegExp(`>${label}<`));
   for (const key of ["name", "leagueStatus", "opponent", "bye", "sourceCount", "points", "range", "passingYards", "passingTouchdowns", "interceptionsThrown", "rushingAttempts", "rushingYards", "rushingTouchdowns", "receptions", "receivingYards", "receivingTouchdowns", "fumblesLost", "fieldGoalsMade", "extraPointsMade", "defensiveSacks", "defensiveInterceptions", "defensiveFumblesRecovered", "defensiveTouchdowns"]) assert.match(html, new RegExp(`data-player-sort="${key}"`));
   assert.match(html, /Click any column heading to sort/);
@@ -933,10 +936,11 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v41/);
+  assert.match(worker, /thunder-bowl-season-v42/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260901k/);
-  assert.match(worker, /season\.mjs\?v=20260909a/);
+  assert.match(worker, /season\.mjs\?v=20260910a/);
+  assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260909a/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260909a/);

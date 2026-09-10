@@ -6,6 +6,7 @@ import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260905a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
 import { sortTradeProposals } from "./season-trade-ranking.mjs?v=20260901a";
 import { renderManagement } from "./season-management-ui.mjs?v=20260905a";
+import { formatDenverKickoff } from "./season-kickoff.mjs?v=20260910a";
 
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
@@ -611,7 +612,10 @@ function lineupRow(row, slotLabel, kind, value, { toggle = null, alternativeFor 
     if (alternativeFor) playerCell.append(element("span", "subtext free-agent-comparison", `CBS-confirmed free agent · ${signed(row.delta)} vs ${alternativeFor}`));
     const teamStatus = document.createElement("td");
     teamStatus.append(element("span", "", row.nflTeam || "—"), element("span", "subtext", row.injury?.status || "Active"));
-    const game = element("td", "", row.opponent || (row.bye === value.week ? "BYE" : "TBD"));
+    const game = document.createElement("td");
+    const isBye = row.bye === value.week;
+    game.append(element("span", "", row.opponent || (isBye ? "BYE" : "Matchup TBD")));
+    if (!isBye) game.append(element("span", "subtext kickoff-time", formatDenverKickoff(row, value.week, value.season) || "Start time TBD"));
     const range = element("td", "", `${number(row.floor)}–${number(row.ceiling)}`);
     const points = element("td", "player-name", number(row.points));
     const action = document.createElement("td");

@@ -1,7 +1,7 @@
 import { STARTER_REQUIREMENTS } from "../../../public/thunder-bowl/state-engine.mjs";
 import { PREMIUM_PROJECTION_SOURCES, projectionSourceWeights } from "../../../public/thunder-bowl/projection-lab.mjs";
 import { ageMinutes } from "./season-time.mjs";
-import { sourceAudit } from "./season-management.mjs";
+import { kickoffAt, sourceAudit } from "./season-management.mjs";
 
 const USER_TEAM_ID = "dogs-of-war";
 const POSITIONS = Object.keys(STARTER_REQUIREMENTS);
@@ -191,14 +191,16 @@ export function optimizeExactLineup(roster, { week, playerById, projectionRows =
   return { starters, bench, missingSlots, total };
 }
 
-function lineupPublicRow(entry, { includeGameDetails = true, adviceTeamId = USER_TEAM_ID, adviceTeamName = "Dogs of War" } = {}) {
+function lineupPublicRow(entry, { includeGameDetails = true, adviceTeamId = USER_TEAM_ID, adviceTeamName = "Dogs of War", week = null, season = 2026 } = {}) {
+  const gameTime = includeGameDetails ? entry.gameTime : null;
   return {
     playerId: entry.playerId,
     name: entry.player.name,
     position: entry.player.position,
     nflTeam: entry.player.nflTeam,
     opponent: includeGameDetails ? entry.opponent : null,
-    gameTime: includeGameDetails ? entry.gameTime : null,
+    gameTime,
+    kickoffAt: gameTime ? kickoffAt(gameTime, week, season) : null,
     bye: entry.bye ?? entry.player.weeklyProjection?.byeWeek ?? null,
     points: entry.projection.points,
     floor: entry.projection.floor,
@@ -1106,7 +1108,7 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
       opponent: cbs?.opponent ?? roster.opponent ?? null,
       gameTime: cbs?.gameTime ?? roster.gameTime ?? null,
       bye: roster.bye ?? player.weeklyProjection?.byeWeek ?? null,
-    }, { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: team.teamId, adviceTeamName: team.teamName });
+    }, { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: team.teamId, adviceTeamName: team.teamName, week, season: pack.season });
   };
   const teams = captured.teams.map((team) => {
     const starters = team.starters.map((row) => publicRow(row, team)).filter(Boolean);
@@ -1262,7 +1264,7 @@ export function buildSeasonRecommendationSnapshot({
   const optimized = optimizeExactLineup(lineupTeam.roster, { week, playerById, projectionRows, cbsRows, statuses });
   const lineupOpponent = scheduleOpponent(leagueState, lineupTeamId, week);
   const userOpponent = scheduleOpponent(leagueState, USER_TEAM_ID, week);
-  const lineupRowOptions = { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: lineupTeam.teamId, adviceTeamName: lineupTeam.teamName };
+  const lineupRowOptions = { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: lineupTeam.teamId, adviceTeamName: lineupTeam.teamName, week, season: pack.season };
   const starterIds = new Set(optimized.starters.map((entry) => entry.playerId));
   const confirmedAvailable = new Set(leagueRostersReady(leagueState) ? leagueState.availablePlayerIds || [] : []);
   const freeAgentEvidenceCache = new Map();
