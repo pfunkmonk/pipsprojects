@@ -140,6 +140,45 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     })),
     pageUrls: [...snapshot.fabState.pageUrls],
   } : null;
+  const leagueSchedule = {
+    schemaVersion: snapshot.leagueSchedule.schemaVersion,
+    source: snapshot.leagueSchedule.source,
+    modelEffect: snapshot.leagueSchedule.modelEffect,
+    capturedAt: snapshot.leagueSchedule.capturedAt,
+    season: snapshot.leagueSchedule.season,
+    headToHeadWeeks: [...snapshot.leagueSchedule.headToHeadWeeks],
+    allPlayWeeks: [...snapshot.leagueSchedule.allPlayWeeks],
+    matchupCount: snapshot.leagueSchedule.matchupCount,
+    matchups: snapshot.leagueSchedule.matchups.map((row) => ({ ...row })),
+    pageUrls: [...snapshot.leagueSchedule.pageUrls],
+  };
+  const canonicalRosterByCbsId = new Map(teams.flatMap((team) => team.roster.map((player) => [player.cbsPlayerId, player])));
+  const scoringPreview = snapshot.scoringPreview ? {
+    schemaVersion: snapshot.scoringPreview.schemaVersion,
+    source: snapshot.scoringPreview.source,
+    modelEffect: snapshot.scoringPreview.modelEffect,
+    capturedAt: snapshot.scoringPreview.capturedAt,
+    season: snapshot.scoringPreview.season,
+    week: snapshot.scoringPreview.week,
+    status: snapshot.scoringPreview.status,
+    pageUrl: snapshot.scoringPreview.pageUrl,
+    pageTitle: snapshot.scoringPreview.pageTitle,
+    teams: snapshot.scoringPreview.teams.map((team) => ({
+      teamId: team.teamId,
+      teamName: team.teamName,
+      cbsTeamId: team.cbsTeamId,
+      starters: team.starters.map((row) => ({
+        playerId: canonicalRosterByCbsId.get(row.cbsPlayerId)?.playerId,
+        cbsPlayerId: row.cbsPlayerId,
+      })),
+      bench: team.bench.map((row) => ({
+        playerId: canonicalRosterByCbsId.get(row.cbsPlayerId)?.playerId,
+        cbsPlayerId: row.cbsPlayerId,
+      })),
+      coverage: structuredClone(team.coverage),
+    })),
+    errors: [...snapshot.scoringPreview.errors],
+  } : null;
   return {
     schemaVersion: 1,
     season: pack.season,
@@ -170,6 +209,8 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     unmatchedProjectionCount,
     weeklyProjections,
     fabState,
+    leagueSchedule,
+    scoringPreview,
   };
 }
 
@@ -206,6 +247,30 @@ export function validateCanonicalCbsLeagueState(value, pack) {
       }
     }
   }
+  const leagueSchedule = value.leagueSchedule ?? null;
+  if (leagueSchedule !== null) {
+    if (leagueSchedule.schemaVersion !== 1 || leagueSchedule.season !== pack.season || leagueSchedule.source !== "CBS Sports authenticated Thunder Bowl league schedule" || leagueSchedule.modelEffect !== "opponent_identification_only" || !Number.isFinite(Date.parse(leagueSchedule.capturedAt))) throw new Error("CBS league schedule state failed its source contract.");
+    if (!Array.isArray(leagueSchedule.matchups) || leagueSchedule.matchups.length !== 78 || leagueSchedule.matchupCount !== 78 || JSON.stringify(leagueSchedule.headToHeadWeeks) !== JSON.stringify(Array.from({ length: 13 }, (_, index) => index + 1)) || JSON.stringify(leagueSchedule.allPlayWeeks) !== JSON.stringify([14])) throw new Error("CBS league schedule coverage is invalid.");
+    const teamIds = new Set(value.teams.map((team) => team.teamId));
+    for (let week = 1; week <= 13; week += 1) {
+      const rows = leagueSchedule.matchups.filter((row) => row.week === week);
+      const seen = new Set(rows.flatMap((row) => [row.teamAId, row.teamBId]));
+      if (rows.length !== 6 || seen.size !== 12 || [...seen].some((teamId) => !teamIds.has(teamId))) throw new Error(`CBS league schedule Week ${week} coverage is invalid.`);
+    }
+  }
+  const scoringPreview = value.scoringPreview ?? null;
+  if (scoringPreview !== null) {
+    if (scoringPreview.schemaVersion !== 1 || scoringPreview.season !== pack.season || scoringPreview.source !== "CBS Sports authenticated Thunder Bowl scoring preview" || scoringPreview.modelEffect !== "submitted_lineup_authority_only" || !["COMPLETE", "PARTIAL"].includes(scoringPreview.status) || !Number.isFinite(Date.parse(scoringPreview.capturedAt))) throw new Error("CBS scoring-preview state failed its source contract.");
+    const rosterByTeam = new Map(value.teams.map((team) => [team.teamId, new Set(team.roster.map((row) => row.playerId))]));
+    if (!Array.isArray(scoringPreview.teams) || scoringPreview.teams.length > 2) throw new Error("CBS scoring-preview team coverage is invalid.");
+    for (const team of scoringPreview.teams) {
+      const roster = rosterByTeam.get(team.teamId);
+      const rows = [...(team.starters || []), ...(team.bench || [])];
+      if (!roster || rows.some((row) => !knownIds.has(row.playerId) || !roster.has(row.playerId)) || new Set(rows.map((row) => row.playerId)).size !== rows.length) throw new Error("CBS scoring-preview players do not reconcile with their rosters.");
+      if (scoringPreview.status === "COMPLETE" && (team.starters.length !== 8 || rows.length !== roster.size || team.coverage?.exactStarters !== true || team.coverage?.completeRoster !== true)) throw new Error("CBS scoring-preview lineup coverage is incomplete.");
+    }
+    if (scoringPreview.status === "COMPLETE" && (scoringPreview.teams.length !== 2 || scoringPreview.errors?.length)) throw new Error("CBS scoring-preview state is marked complete without complete coverage.");
+  }
   return {
     ...value,
     rosterMinimum: readiness.rosterMinimum,
@@ -220,5 +285,7 @@ export function validateCanonicalCbsLeagueState(value, pack) {
     projectionCount: weeklyProjections.length,
     weeklyProjections,
     fabState,
+    leagueSchedule,
+    scoringPreview,
   };
 }

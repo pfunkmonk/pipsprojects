@@ -69,8 +69,14 @@ test("combined research snapshot is cached, provenance-complete, and value neutr
   assert.equal(snapshot.depthChart.teamCount, 32);
   assert.equal(snapshot.schemaVersion, 3);
   assert.equal(snapshot.fbgNews.currentItemCount, 12);
+  assert.equal(snapshot.fbgNews.archiveWindowDays, 550);
+  assert.equal(snapshot.cbsNews.archiveWindowDays, 550);
   assert.equal(snapshot.cbsNews.archiveItemCount, 5);
   assert.equal(snapshot.cbsNews.sourceUrls.length, CBS_NEWS_URLS.length);
+  const legacy = structuredClone(snapshot);
+  legacy.fbgNews.archiveWindowDays = 45;
+  legacy.cbsNews.archiveWindowDays = 45;
+  assert.equal(validateResearchSnapshot(legacy), legacy);
   assert.deepEqual(researchCacheKeys("2026-08-04T20:01:00Z"), researchCacheKeys("2026-08-04T20:29:59Z"));
   assert.notDeepEqual(researchCacheKeys("2026-08-04T20:29:59Z"), researchCacheKeys("2026-08-04T20:30:00Z"));
   snapshot.cbsNews.items[0].recommendedBid = 44;
@@ -96,6 +102,13 @@ test("Footballguys news uses the same bounded rolling archive contract", () => {
   assert.deepEqual(secondCapture.map((item) => item.playerNames[0]), ["James Cook", "Chase Brown"]);
   assert.equal(secondCapture[1].firstSeenAt, "2026-08-04T20:00:00Z");
   assert.equal(secondCapture[1].lastSeenAt, "2026-08-04T20:00:00Z");
+});
+
+test("CBS and Footballguys history survives beyond the former 45-day rolling limit", () => {
+  const [cbs] = mergeCbsNewsArchive(parseCbsPlayerNews(cbsFixture("RB", "Chase Brown"), "RB"), [], "2026-08-04T20:00:00Z");
+  const [fbg] = mergeFootballguysNewsArchive(parseFootballguysNews(fbgNewsFixture("Chase Brown")).slice(0, 1), [], "2026-08-04T20:00:00Z");
+  assert.equal(mergeCbsNewsArchive([], [cbs], "2026-12-15T20:00:00Z").length, 1);
+  assert.equal(mergeFootballguysNewsArchive([], [fbg], "2026-12-15T20:00:00Z").length, 1);
 });
 
 test("the internal research endpoint rejects unauthenticated requests before external work", async () => {

@@ -3,6 +3,7 @@ import { getStore } from "@netlify/blobs";
 import { validateCanonicalCbsLeagueState } from "./cbs-season-source.mjs";
 import { validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
 import { validateSupplementalWeeklySnapshot } from "./supplemental-season-source.mjs";
+import { SEASON_AI_PROMPT_VERSION, validateAiSection, validateSeasonAiAdviceEnvelope } from "./season-ai-advice.mjs";
 
 const STORE_NAME = "thunder-bowl-2026-season";
 
@@ -140,6 +141,53 @@ export async function saveSeasonPlan(value, { archiveTuesday = false } = {}) {
     archived = write.modified;
   }
   return { plan, archived };
+}
+
+export async function readLatestSeasonAiAdvice(section) {
+  const safeSection = validateAiSection(section);
+  const value = await readJson(`ai-advice/v1/latest/${safeSection}`);
+  if (value && value.promptVersion !== SEASON_AI_PROMPT_VERSION) return null;
+  return value ? validateSeasonAiAdviceEnvelope(value) : null;
+}
+
+export async function readSeasonAiAdviceForPlan(section, sourceFingerprint) {
+  const safeSection = validateAiSection(section);
+  if (!/^[a-f0-9]{64}$/.test(sourceFingerprint || "")) throw new Error("AI advice source fingerprint is invalid.");
+  const value = await readJson(`ai-advice/v1/history/${safeSection}/${sourceFingerprint}`);
+  if (value && value.promptVersion !== SEASON_AI_PROMPT_VERSION) return null;
+  return value ? validateSeasonAiAdviceEnvelope(value) : null;
+}
+
+export async function saveSeasonAiAdvice(value) {
+  const advice = validateSeasonAiAdviceEnvelope(value);
+  await store().setJSON(`ai-advice/v1/history/${advice.section}/${advice.sourceFingerprint}`, advice, { onlyIfNew: true });
+  await store().setJSON(`ai-advice/v1/latest/${advice.section}`, advice);
+  return advice;
+}
+
+function validateSeasonAiJob(value) {
+  if (!value || value.schemaVersion !== 1 || value.kind !== "thunder-bowl-season-ai-job") throw new Error("Stored AI job is invalid.");
+  const section = validateAiSection(value.section);
+  if (!/^[a-f0-9]{64}$/.test(value.sourceFingerprint || "")) throw new Error("Stored AI job provenance is invalid.");
+  if (!/^[a-f0-9-]{20,64}$/i.test(value.jobId || "")) throw new Error("Stored AI job identity is invalid.");
+  if (!["RUNNING", "COMPLETED", "FAILED"].includes(value.status)) throw new Error("Stored AI job status is invalid.");
+  if (!Number.isFinite(Date.parse(value.startedAt)) || !Number.isFinite(Date.parse(value.updatedAt))) throw new Error("Stored AI job timing is invalid.");
+  if (value.completedAt !== null && !Number.isFinite(Date.parse(value.completedAt))) throw new Error("Stored AI job completion timing is invalid.");
+  if (value.error !== null && (typeof value.error !== "string" || value.error.length < 3 || value.error.length > 400)) throw new Error("Stored AI job error is invalid.");
+  return { ...value, section };
+}
+
+export async function readLatestSeasonAiJob(section) {
+  const safeSection = validateAiSection(section);
+  const value = await readJson(`ai-advice/v1/jobs/latest/${safeSection}`);
+  return value ? validateSeasonAiJob(value) : null;
+}
+
+export async function saveSeasonAiJob(value) {
+  const job = validateSeasonAiJob(value);
+  await store().setJSON(`ai-advice/v1/jobs/history/${job.section}/${job.sourceFingerprint}/${job.jobId}`, job);
+  await store().setJSON(`ai-advice/v1/jobs/latest/${job.section}`, job);
+  return job;
 }
 
 export async function claimScheduledRun(idempotencyKey, capturedAt = new Date().toISOString()) {

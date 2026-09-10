@@ -1,17 +1,21 @@
 import { normalizeCbsProjectionRows, normalizeCbsTeamRows } from "./cbs-normalize.mjs";
+import { normalizeCbsDraftDaySetupPages } from "./cbs-draft-day-setup.mjs";
 import { normalizeCbsFabPages } from "./cbs-fab-normalize.mjs";
+import { cbsScheduleUrlMatches, renderedCbsScheduleReady } from "./cbs-schedule-readiness.mjs";
+import { pffProjectionTableReady } from "./pff-projection-readiness.mjs";
 
 const TEAMS = [
-  ["angry-face", 1, "Angry Face"], ["orange-crush", 2, "Orange Crush"],
+  ["angry-face", 1, "Angry Face", ["Muther Humpers"]], ["orange-crush", 2, "Orange Crush"],
   ["big-head", 3, "Big Head"], ["dogs-of-war", 4, "Dogs of War"],
   ["t-dogs", 5, "T-Dogs"], ["super-suckers", 6, "Super Suckers"],
   ["three-amigos", 7, "Three Amigos"], ["goon-skwad", 8, "Goon Skwad"],
   ["el-guapo", 9, "El Guapo"], ["crime-and-punishment", 10, "Crime and Punishment"],
   ["the-hobbits", 11, "The Hobbits"], ["the-bungles", 12, "The Bungles"],
-].map(([teamId, cbsTeamId, name]) => ({ teamId, cbsTeamId, name }));
+].map(([teamId, cbsTeamId, name, aliases = []]) => ({ teamId, cbsTeamId, name, aliases }));
 
 const CBS_ORIGIN = "https://berrymvp.football.cbssports.com";
 const REPORT_URL = `${CBS_ORIGIN}/teams/roster-report/all/2026/`;
+const ROSTER_URL_PREFIXES = [`${CBS_ORIGIN}/teams/roster-report/all/2026`, `${CBS_ORIGIN}/teams/all`];
 const FBG_ORIGIN = "https://www.footballguys.com";
 const FBG_CAPTURE_SOURCE = "Footballguys authenticated weekly projections download";
 const FANTASYPROS_ORIGIN = "https://www.fantasypros.com";
@@ -22,29 +26,33 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
+const HELPER_VERSION = "0.10.4";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function cbsPageHasContent(tabId, pageKind) {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: (kind) => {
-      const tables = [...document.querySelectorAll("table")];
-      if (kind === "roster") {
-        const teamTableCount = tables.filter((table) => /\sPlayers$/.test((table.querySelector("tr")?.innerText || "").replace(/\s+/g, " ").trim())).length;
-        return teamTableCount >= 12;
-      }
-      const projectionTable = tables.find((table) => /\bFPTS\b/.test(table.innerText || ""));
-      return Boolean(projectionTable?.querySelector('a.playerLink[href*="/players/playerpage/"]'));
-    },
-    args: [pageKind],
-  });
-  return results[0]?.result === true;
+async function cbsPageHasContent(tabId, pageKind, expectedPlayerNames = []) {
+  return (await readCbsPage(tabId, "has-content", { pageKind, expectedPlayerNames })) === true;
 }
 
-async function waitForCbsContent(tabId, expectedUrlPrefix, pageKind, label, timeoutMs = PAGE_READY_TIMEOUT_MS) {
+async function readCbsPage(tabId, kind, args = {}, timeoutMs = 5_000) {
+  const response = await Promise.race([
+    chrome.tabs.sendMessage(tabId, {
+      source: "thunder-bowl-helper-worker",
+      action: "read-cbs-page",
+      kind,
+      args,
+    }),
+    delay(timeoutMs).then(() => {
+      throw new Error("CBS " + kind + " reader timed out.");
+    }),
+  ]);
+  if (!response?.ok || response.readerVersion !== HELPER_VERSION) throw new Error(response?.error || "CBS page reader version does not match the active helper.");
+  return response.value;
+}
+
+async function waitForCbsContent(tabId, expectedUrlPrefix, pageKind, label, timeoutMs = PAGE_READY_TIMEOUT_MS, expectedPlayerNames = []) {
   const startedAt = Date.now();
   const deadline = Date.now() + timeoutMs;
   let sawExpectedPage = false;
@@ -56,12 +64,13 @@ async function waitForCbsContent(tabId, expectedUrlPrefix, pageKind, label, time
       throw new Error("CBS tab closed before capture completed.");
     }
     const pageUrl = tab.url || tab.pendingUrl || "";
-    if (pageUrl.startsWith(expectedUrlPrefix)) {
+    const expectedPrefixes = Array.isArray(expectedUrlPrefix) ? expectedUrlPrefix : [expectedUrlPrefix];
+    if (expectedPrefixes.some((prefix) => pageUrl.startsWith(prefix))) {
       sawExpectedPage = true;
       try {
-        if (await cbsPageHasContent(tabId, pageKind)) return;
+        if (await cbsPageHasContent(tabId, pageKind, expectedPlayerNames)) return;
       } catch {
-        // Edge can briefly reject script injection between navigation commits.
+        // Edge can briefly report no content-script receiver between navigation commits.
       }
     } else if (sawExpectedPage || (Date.now() - startedAt > 1_500 && pageUrl && pageUrl !== "about:blank" && !pageUrl.startsWith(CBS_ORIGIN) && tab.status === "complete")) {
       throw new Error(`CBS redirected away from the ${label}. Sign in to Thunder Bowl on CBS in this browser, then retry.`);
@@ -72,160 +81,256 @@ async function waitForCbsContent(tabId, expectedUrlPrefix, pageKind, label, time
 }
 
 async function rawRosterTables(tabId) {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: () => [...document.querySelectorAll("table")].map((table) => {
-      const heading = (table.querySelector("tr")?.innerText || "").replace(/\s+/g, " ").trim();
-      const teamName = heading.match(/^(.+?)\s+Players$/)?.[1] || "";
-      const rows = [...table.querySelectorAll("tr")].map((row) => {
-        const playerLink = [...row.querySelectorAll("a[href]")].find((link) => /playerpage|\/players\/\d+/i.test(link.getAttribute("href") || ""));
-        const id = (playerLink?.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "";
-        return {
-          cbsPlayerId: id,
-          name: (playerLink?.textContent || "").trim(),
-          cells: [...row.querySelectorAll("th,td")].map((cell) => (cell.innerText || cell.textContent || "").replace(/\s+/g, " ").trim()),
-          newsTitles: [...row.querySelectorAll("[title]")].map((element) => element.getAttribute("title")).filter(Boolean),
-          markerClasses: [...row.querySelectorAll("[class]")].flatMap((element) => [...element.classList]).filter((name) => /inj|status|question|doubt|out|ir|pup/i.test(name)),
-        };
-      });
-      return { teamName, rows };
-    }).filter((table) => table.teamName),
-  });
-  return results[0]?.result || [];
+  return await readCbsPage(tabId, "roster-tables") || [];
+}
+
+async function renderedSchedulePage(tabId, timeoutMs = 5_000) {
+  return await readCbsPage(tabId, "schedule-page", {
+    cbsOrigin: CBS_ORIGIN,
+    teamNames: TEAMS.flatMap((team) => [team.name, ...team.aliases]),
+  }, timeoutMs);
+}
+
+async function waitForRenderedSchedulePage(tabId, expectedUrl, timeoutMs = 12_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch {
+      return null;
+    }
+    const url = tab.url || tab.pendingUrl || "";
+    if (url && !url.startsWith(CBS_ORIGIN) && url !== "about:blank" && tab.status === "complete") return null;
+    if (cbsScheduleUrlMatches(url, expectedUrl)) {
+      try {
+        const captured = await renderedSchedulePage(tabId);
+        if (renderedCbsScheduleReady(captured, url, expectedUrl, TEAMS.flatMap((team) => [team.name, ...team.aliases]))) return captured;
+      } catch {
+        // The new CBS document can commit before its content reader reaches document_idle.
+      }
+    }
+    await delay(PAGE_POLL_INTERVAL_MS);
+  }
+  return null;
+}
+
+function rawScheduleEvidence(pages, capturedAt) {
+  return {
+    schemaVersion: 1,
+    capturedAt,
+    pages: pages.slice(0, 30).map((page) => ({
+      url: page?.url || "",
+      title: page?.title || "",
+      text: String(page?.text || "").slice(0, 250_000),
+      tables: Array.isArray(page?.tables) ? page.tables : [],
+      blocks: Array.isArray(page?.blocks) ? page.blocks : [],
+    })),
+  };
+}
+
+async function captureCbsSchedule(tabId) {
+  const capturedAt = new Date().toISOString();
+  const fullScheduleUrl = `${CBS_ORIGIN}/schedule/full`;
+  const captured = await waitForRenderedSchedulePage(tabId, fullScheduleUrl, 30_000);
+  if (!captured?.page) throw new Error("CBS full schedule did not finish rendering within 30 seconds.");
+  return { rawLeagueSchedule: rawScheduleEvidence([captured.page], capturedAt) };
 }
 
 async function captureCbsFabPages(tabId, week) {
-  const results = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: async (expectedWeek, cbsOrigin) => {
-      const relevant = /fab|waiver|claim|transaction|standings|rules|settings|add-drop/i;
-      const paths = [
-        "/", "/rules", "/settings", "/standings", "/transactions", "/transactions/add-drop",
-        "/transactions/waivers", "/transactions/fab", "/transactions/fab-budget",
-        "/transactions/fab-order", "/transactions/report",
-      ];
-      const queue = new Set(paths.map((path) => new URL(path, cbsOrigin).href));
-      for (const link of document.querySelectorAll("a[href]")) {
-        try {
-          const url = new URL(link.href, location.href);
-          if (url.origin === cbsOrigin && relevant.test(`${link.textContent || ""} ${url.pathname}`)) queue.add(url.href);
-        } catch {
-          // Ignore malformed navigation links.
-        }
-      }
-      async function fetchPage(requestedUrl) {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 8_000);
-          const response = await fetch(requestedUrl, { credentials: "include", cache: "no-store", signal: controller.signal, headers: { Accept: "text/html" } });
-          clearTimeout(timeout);
-          if (!response.ok || new URL(response.url).origin !== cbsOrigin) return null;
-          const html = await response.text();
-          if (html.length < 500 || html.length > 3_000_000) return null;
-          const documentCopy = new DOMParser().parseFromString(html, "text/html");
-          const text = (documentCopy.body?.innerText || documentCopy.body?.textContent || "").replace(/\s+/g, " ").trim();
-          if (/sign in to continue|forgot your password/i.test(text) && !/Angry Face|Dogs of War|Orange Crush/.test(text)) return null;
-          const tables = [...documentCopy.querySelectorAll("table")].map((table) => {
-            const headerRow = table.querySelector("thead tr:last-child") || table.querySelector("tr");
-            const headers = [...(headerRow?.querySelectorAll("th,td") || [])].map((cell) => (cell.textContent || "").replace(/\s+/g, " ").trim());
-            const rows = [...table.querySelectorAll("tbody tr, tr")]
-              .filter((row) => row !== headerRow)
-              .map((row) => [...row.querySelectorAll("th,td")].map((cell) => (cell.textContent || "").replace(/\s+/g, " ").trim()))
-              .filter((row) => row.length);
-            return { headers, rows };
-          }).filter((table) => table.rows.length);
-          if (!relevant.test(`${documentCopy.title || ""} ${response.url} ${text}`) && !/Angry Face|Dogs of War|Orange Crush/.test(text)) return null;
-          const discovered = [];
-          for (const link of documentCopy.querySelectorAll("a[href]")) {
-            try {
-              const url = new URL(link.href, response.url);
-              if (url.origin === cbsOrigin && relevant.test(`${link.textContent || ""} ${url.pathname}`)) discovered.push(url.href);
-            } catch {
-              // Ignore malformed navigation links.
-            }
-          }
-          return { page: { url: response.url, title: documentCopy.title || "", text: text.slice(0, 200_000), tables }, discovered };
-        } catch {
-          // A missing optional CBS report must not discard roster/projection data.
-          return null;
-        }
-      }
-      const pages = [];
-      const visited = new Set();
-      for (let round = 0; round < 2; round += 1) {
-        const batch = [...queue].filter((url) => !visited.has(url)).slice(0, 24);
-        if (!batch.length) break;
-        batch.forEach((url) => visited.add(url));
-        const captured = await Promise.all(batch.map(fetchPage));
-        for (const result of captured.filter(Boolean)) {
-          pages.push(result.page);
-          for (const url of result.discovered) if (queue.size < 40) queue.add(url);
-        }
-      }
-      return { week: expectedWeek, pages };
-    },
-    args: [week, CBS_ORIGIN],
-  });
-  return normalizeCbsFabPages(results[0]?.result?.pages || [], week, new Date().toISOString());
+  const result = await readCbsPage(tabId, "fab-pages", { week, cbsOrigin: CBS_ORIGIN }, 18_000);
+  if (!result?.pages?.length) return null;
+  const normalized = normalizeCbsFabPages(result.pages, week, new Date().toISOString());
+  const coverage = normalized.coverage;
+  return coverage.budgetTeams || coverage.orderTeams || coverage.recordTeams || coverage.pickupRows ? normalized : null;
+}
+
+async function captureCbsFabPagesWithinDeadline(tabId, week, timeoutMs = 20_000) {
+  return Promise.race([
+    captureCbsFabPages(tabId, week).catch(() => null),
+    delay(timeoutMs).then(() => null),
+  ]);
+}
+
+async function captureCbsScoringPreviewRaw(tabId, week, teams) {
+  const capturedAt = new Date().toISOString();
+  const pageUrl = `${CBS_ORIGIN}/scoring/preview`;
+  const expectedPlayers = teams.flatMap((team) => team.players.map((player) => ({ cbsPlayerId: player.cbsPlayerId, name: player.name })));
+  try {
+    await chrome.tabs.update(tabId, { url: pageUrl, active: false });
+    await waitForCbsContent(tabId, pageUrl, "scoring-preview", "scoring preview", 30_000, expectedPlayers.map((player) => player.name));
+    const page = await readCbsPage(tabId, "scoring-preview-rows", { rosterPlayers: expectedPlayers }) || {};
+    return { schemaVersion: 1, capturedAt, week, rows: page.rows || [], pageUrl: page.pageUrl || pageUrl, pageTitle: page.pageTitle || "", captureError: null };
+  } catch (error) {
+    return { schemaVersion: 1, capturedAt, week, rows: [], pageUrl, pageTitle: "", captureError: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 async function rawProjectionTable(tabId, position, week) {
   const reportUrl = `${CBS_ORIGIN}/stats/stats-main/all:${position}/${week}:p/standard/projections`;
   await chrome.tabs.update(tabId, { url: reportUrl, active: false });
-  await waitForCbsContent(tabId, reportUrl, "projection", `${position} projection table`);
-  const results = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: (expectedPosition) => {
-      const table = [...document.querySelectorAll("table")].find((node) => /FPTS/.test(node.innerText || ""));
-      if (!table) return [];
-      return [...table.querySelectorAll("tr")].map((row) => {
-        const link = row.querySelector('a.playerLink[href*="/players/playerpage/"]');
-        const id = (link?.getAttribute("href") || "").match(/playerpage\/(\d+)/)?.[1] || "";
-        const identity = link?.getAttribute("aria-label") || "";
-        const identityMatch = identity.match(/\s(QB|RB|WR|TE|K|DST)\s+([A-Z]{2,3})\s*$/i);
-        return {
-          cbsPlayerId: id,
-          name: (link?.textContent || "").trim(),
-          nflTeam: identityMatch?.[1]?.toUpperCase() === expectedPosition ? identityMatch[2].toUpperCase() : "",
-          cells: [...row.querySelectorAll("th,td")].map((cell) => (cell.innerText || cell.textContent || "").replace(/\s+/g, " ").trim()),
-        };
-      });
-    },
-    args: [position],
-  });
-  return normalizeCbsProjectionRows(position, results[0]?.result || [], week);
+  await waitForCbsContent(tabId, reportUrl, "projection", `${position} projection table`, 15_000);
+  const rows = await readCbsPage(tabId, "projection-rows", { position });
+  return normalizeCbsProjectionRows(position, rows || [], week);
 }
 
-async function captureRosters(week) {
+async function withTemporaryCbsTab(url, task) {
   let tabId = null;
   try {
-    const tab = await chrome.tabs.create({ url: REPORT_URL, active: false });
+    const tab = await chrome.tabs.create({ url, active: false });
+    if (!Number.isSafeInteger(tab?.id)) throw new Error("The helper could not open its temporary CBS capture tab.");
     tabId = tab.id;
-    await waitForCbsContent(tabId, REPORT_URL, "roster", "all-team roster report");
+    return await task(tabId);
+  } finally {
+    if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
+  }
+}
+
+function validCbsLeagueOrigin(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && /^[a-z0-9-]+\.football\.cbssports\.com$/i.test(url.hostname) ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+async function mostRecentCbsLeagueOrigin() {
+  const tabs = await chrome.tabs.query({ url: "https://*.football.cbssports.com/*" });
+  const candidates = tabs
+    .map((tab) => ({ origin: validCbsLeagueOrigin(tab.url || tab.pendingUrl), lastAccessed: Number(tab.lastAccessed) || 0 }))
+    .filter((tab) => tab.origin)
+    .sort((left, right) => right.lastAccessed - left.lastAccessed);
+  if (!candidates.length) throw new Error("Open the CBS football league you want to import in this browser, then try Sync from CBS again.");
+  return candidates[0].origin;
+}
+
+async function waitForSetupPage(tabId, expectedUrl, setupKind, timeoutMs = 20_000) {
+  const expectedOrigin = new URL(expectedUrl).origin;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    let tab;
+    try { tab = await chrome.tabs.get(tabId); }
+    catch { throw new Error("The temporary CBS setup tab closed before the import finished."); }
+    const pageUrl = tab.url || tab.pendingUrl || "";
+    if (pageUrl && pageUrl !== "about:blank" && validCbsLeagueOrigin(pageUrl) !== expectedOrigin && tab.status === "complete") {
+      throw new Error("CBS redirected away from the selected football league. Sign in to that league in this browser, then retry.");
+    }
+    if (validCbsLeagueOrigin(pageUrl) === expectedOrigin && tab.status === "complete") {
+      try {
+        const page = await readCbsPage(tabId, "setup-page", { setupKind });
+        if (page?.url && validCbsLeagueOrigin(page.url) === expectedOrigin) return page;
+      } catch {
+        // CBS can finish navigation just before the content reader reconnects.
+      }
+    }
+    await delay(PAGE_POLL_INTERVAL_MS);
+  }
+  throw new Error(`CBS ${setupKind} settings did not become readable within ${Math.round(timeoutMs / 1000)} seconds.`);
+}
+
+async function captureDraftDayCbsSetup() {
+  const origin = await mostRecentCbsLeagueOrigin();
+  const specs = [
+    ["home", "/"],
+    ["standings", "/standings"],
+    ["roster", "/setup/league-settings/team-rosters"],
+    ["policies", "/setup/league-settings/player-policies"],
+    ["draft", "/setup/league-settings/draft-management/config"],
+    ["order", "/setup/league-settings/draft-management/order"],
+  ];
+  const results = await Promise.all(specs.map(async ([kind, path]) => {
+    const url = `${origin}${path}`;
+    try {
+      const page = await withTemporaryCbsTab(url, (tabId) => waitForSetupPage(tabId, url, kind));
+      return { kind, page };
+    } catch (error) {
+      return { kind, error: error instanceof Error ? error.message : String(error) };
+    }
+  }));
+  const pages = results.flatMap((result) => result.page ? [result.page] : []);
+  const skipped = results.flatMap((result) => result.error ? [result.kind] : []);
+  const setup = normalizeCbsDraftDaySetupPages(pages, new Date().toISOString());
+  if (skipped.length) setup.review.push(`CBS could not read ${skipped.join(", ")} ${skipped.length === 1 ? "page" : "pages"}`);
+  return setup;
+}
+
+async function captureCbsRosterBase(week) {
+  return withTemporaryCbsTab(REPORT_URL, async (tabId) => {
+    await waitForCbsContent(tabId, ROSTER_URL_PREFIXES, "roster", "all-team roster report");
+    const rosterPageUrl = (await chrome.tabs.get(tabId)).url || REPORT_URL;
     const reportTables = await rawRosterTables(tabId);
     const byTeam = new Map(reportTables.map((table) => [table.teamName, table.rows]));
-    const missing = TEAMS.filter((team) => !byTeam.has(team.name));
+    const rowsForTeam = (team) => [team.name, ...team.aliases].map((name) => byTeam.get(name)).find(Boolean);
+    const missing = TEAMS.filter((team) => !rowsForTeam(team));
     if (missing.length) throw new Error(`CBS roster report is missing ${missing.map((team) => team.name).join(", ")}.`);
-    const teams = TEAMS.map((team) => normalizeCbsTeamRows(team, byTeam.get(team.name)));
+    const teams = TEAMS.map((team) => normalizeCbsTeamRows(team, rowsForTeam(team)));
     const playerCount = teams.reduce((sum, team) => sum + team.players.length, 0);
-    const fabState = await captureCbsFabPages(tabId, week);
-    const weeklyProjections = [];
-    for (const position of POSITIONS) weeklyProjections.push(...await rawProjectionTable(tabId, position, week));
     return {
       schemaVersion: 1,
       source: "CBS Sports authenticated Thunder Bowl all-team roster report",
       modelEffect: "none",
       capturedAt: new Date().toISOString(),
       season: 2026,
-      pageUrl: REPORT_URL,
+      pageUrl: rosterPageUrl,
       teamCount: teams.length,
       playerCount,
       teams,
       projectionWeek: week,
-      projectionCount: weeklyProjections.length,
-      weeklyProjections,
-      fabState,
+      projectionCount: 0,
     };
+  });
+}
+
+async function captureCbsScheduleStage() {
+  return withTemporaryCbsTab(`${CBS_ORIGIN}/schedule/full`, async (tabId) => {
+    const scheduleCapture = await captureCbsSchedule(tabId);
+    if (!scheduleCapture.rawLeagueSchedule?.pages?.length) throw new Error("CBS returned no rendered full-schedule page.");
+    return scheduleCapture.rawLeagueSchedule;
+  });
+}
+
+async function captureCbsFabStage(week) {
+  return withTemporaryCbsTab(REPORT_URL, async (tabId) => {
+    await waitForCbsContent(tabId, ROSTER_URL_PREFIXES, "roster", "all-team roster report");
+    return captureCbsFabPagesWithinDeadline(tabId, week);
+  });
+}
+
+function previewTeams(input) {
+  if (!Array.isArray(input) || input.length !== TEAMS.length) throw new Error("CBS scoring-preview capture received incomplete roster context.");
+  const expectedNames = new Set(TEAMS.map((team) => team.name));
+  let playerCount = 0;
+  const teams = input.map((team) => {
+    if (!expectedNames.has(team?.name) || !Array.isArray(team?.players) || team.players.length < 1 || team.players.length > 14) throw new Error("CBS scoring-preview capture received invalid roster context.");
+    playerCount += team.players.length;
+    return {
+      name: team.name,
+      players: team.players.map((player) => ({
+        cbsPlayerId: String(player?.cbsPlayerId || ""),
+        name: String(player?.name || ""),
+      })),
+    };
+  });
+  if (playerCount < 96 || teams.some((team) => team.players.some((player) => !/^\d{1,10}$/.test(player.cbsPlayerId) || player.name.length < 2 || player.name.length > 80))) throw new Error("CBS scoring-preview capture received unsafe player coverage.");
+  return teams;
+}
+
+async function captureCbsPreviewStage(week, teams) {
+  const safeTeams = previewTeams(teams);
+  return withTemporaryCbsTab(`${CBS_ORIGIN}/scoring/preview`, (tabId) => captureCbsScoringPreviewRaw(tabId, week, safeTeams));
+}
+
+async function captureCbsPosition(week, position) {
+  if (!POSITIONS.includes(position)) throw new Error("CBS projection capture requested an invalid position.");
+  let tabId = null;
+  try {
+    const reportUrl = `${CBS_ORIGIN}/stats/stats-main/all:${position}/${week}:p/standard/projections`;
+    const tab = await chrome.tabs.create({ url: reportUrl, active: false });
+    tabId = tab.id;
+    const rows = await rawProjectionTable(tabId, position, week);
+    if (!rows.length) throw new Error(`CBS returned no ${position} projection rows.`);
+    return { position, rows };
   } finally {
     if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
   }
@@ -489,24 +594,29 @@ async function waitForPffContent(tabId, timeoutMs = PAGE_READY_TIMEOUT_MS) {
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId },
-          func: () => ({
-            signedIn: [...document.querySelectorAll("a")].some((link) => (link.textContent || "").trim() === "Sign out"),
-            heading: document.querySelector("main h1, h1")?.textContent?.trim() || "",
-            hasGrid: Boolean(document.querySelector('main [role="grid"]')),
-          }),
+          func: () => {
+            const text = (node) => (node?.innerText || node?.textContent || "").replace(/\s+/g, " ").trim();
+            const rows = [...document.querySelectorAll('main [role="row"]')];
+            return {
+              heading: text(document.querySelector("main h1, h1")),
+              playerLinkCount: document.querySelectorAll('main a[href*="/nfl/players/"]').length,
+              identityRowCount: rows.filter((row) => row.querySelector('a[href*="/nfl/players/"]')).length,
+              statRowCount: rows.filter((row) => row.querySelectorAll('[role="gridcell"]').length >= 15).length,
+              columnLabels: [...document.querySelectorAll('main [role="columnheader"], main th')].map(text),
+            };
+          },
         });
         const state = results[0]?.result;
-        if (state?.signedIn && state.heading === "Fantasy Football Projections" && state.hasGrid) return;
-        if (tab.status === "complete" && state?.heading && !state.signedIn) throw new Error("PFF is not signed in in this browser. Sign into PFF, then retry.");
+        if (pffProjectionTableReady(state)) return;
       } catch (error) {
-        if (/not signed in/.test(error?.message || "")) throw error;
+        if (/tab closed/.test(error?.message || "")) throw error;
       }
     } else if (currentUrl && currentUrl !== "about:blank" && tab.status === "complete") {
       throw new Error("PFF redirected away from the fantasy projections. Sign into PFF in this browser, then retry.");
     }
     await delay(PAGE_POLL_INTERVAL_MS);
   }
-  throw new Error("PFF projections did not become ready within 30 seconds.");
+  throw new Error("PFF projection rows did not become ready within 30 seconds. Keep the PFF projections page open, then retry.");
 }
 
 async function rawPffWeeklyTables(tabId) {
@@ -618,7 +728,13 @@ async function rawPffWeeklyTables(tabId) {
         return captured;
       }
 
-      if (![...document.querySelectorAll("a")].some((link) => text(link) === "Sign out")) throw new Error("PFF is not signed in.");
+      const projectionRows = [...document.querySelectorAll('main [role="row"]')];
+      const projectionViewReady = (
+        text(document.querySelector("main h1, h1")).toUpperCase() === "FANTASY FOOTBALL PROJECTIONS"
+        && projectionRows.filter((row) => row.querySelector('a[href*="/nfl/players/"]')).length >= 20
+        && projectionRows.filter((row) => row.querySelectorAll('[role="gridcell"]').length >= 15).length >= 20
+      );
+      if (!projectionViewReady) throw new Error("PFF projection rows are not available on the loaded page.");
       await openFilters();
       await choose("Timeframe", "This Week");
       await choose("Positions", "Offense");
@@ -690,22 +806,47 @@ async function capturePffProjections(week) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const origin = (() => { try { return new URL(sender.url).origin; } catch { return ""; } })();
-  const allowedActions = ["capture-cbs-rosters", "capture-fbg-projections", "capture-fantasypros-projections", "capture-pff-projections"];
-  if (!ALLOWED_APP_ORIGINS.has(origin) || !allowedActions.includes(message?.action)) return false;
+  if (ALLOWED_APP_ORIGINS.has(origin) && message?.action === "helper-version") {
+    sendResponse({ ok: true, helperVersion: HELPER_VERSION });
+    return false;
+  }
+  const allowedActions = ["capture-draft-day-cbs-setup", "capture-cbs-roster-base", "capture-cbs-schedule", "capture-cbs-fab", "capture-cbs-preview", "capture-cbs-position", "capture-fbg-projections", "capture-fantasypros-projections", "capture-pff-projections"];
+  if (!ALLOWED_APP_ORIGINS.has(origin) || !allowedActions.includes(message?.action) || message?.expectedHelperVersion !== HELPER_VERSION) return false;
   const week = Number(message.week);
-  if (!Number.isSafeInteger(week) || week < 1 || week > 18) {
+  if (message.action !== "capture-draft-day-cbs-setup" && (!Number.isSafeInteger(week) || week < 1 || week > 18)) {
     sendResponse({ ok: false, error: "The In-Season GM requested an invalid NFL week." });
     return false;
   }
-  const task = message.action === "capture-fbg-projections"
+  const position = String(message.position || "").toUpperCase();
+  const task = message.action === "capture-draft-day-cbs-setup"
+    ? captureDraftDayCbsSetup()
+    : message.action === "capture-cbs-roster-base"
+    ? captureCbsRosterBase(week)
+    : message.action === "capture-cbs-schedule"
+      ? captureCbsScheduleStage()
+      : message.action === "capture-cbs-fab"
+        ? captureCbsFabStage(week)
+        : message.action === "capture-cbs-preview"
+          ? captureCbsPreviewStage(week, message.teams)
+    : message.action === "capture-cbs-position"
+      ? captureCbsPosition(week, position)
+      : message.action === "capture-fbg-projections"
     ? captureFbgProjections(week)
     : message.action === "capture-fantasypros-projections"
       ? captureFantasyProsProjections(week)
       : message.action === "capture-pff-projections"
         ? capturePffProjections(week)
-        : captureRosters(week);
+        : Promise.reject(new Error("The helper received an unsupported capture action."));
   task
-    .then((value) => sendResponse(message.action === "capture-cbs-rosters" ? { ok: true, snapshot: value } : { ok: true, capture: value }))
-    .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Premium projection capture failed safely." }));
+    .then((value) => {
+      if (message.action === "capture-draft-day-cbs-setup") sendResponse({ ok: true, helperVersion: HELPER_VERSION, setup: value });
+      else if (message.action === "capture-cbs-roster-base") sendResponse({ ok: true, helperVersion: HELPER_VERSION, snapshot: value });
+      else if (message.action === "capture-cbs-schedule") sendResponse({ ok: true, helperVersion: HELPER_VERSION, rawLeagueSchedule: value });
+      else if (message.action === "capture-cbs-fab") sendResponse({ ok: true, helperVersion: HELPER_VERSION, fabState: value });
+      else if (message.action === "capture-cbs-preview") sendResponse({ ok: true, helperVersion: HELPER_VERSION, rawScoringPreview: value });
+      else if (message.action === "capture-cbs-position") sendResponse({ ok: true, helperVersion: HELPER_VERSION, position: value.position, rows: value.rows });
+      else sendResponse({ ok: true, helperVersion: HELPER_VERSION, capture: value });
+    })
+    .catch((error) => sendResponse({ ok: false, helperVersion: HELPER_VERSION, error: error instanceof Error ? error.message : "The requested capture failed safely." }));
   return true;
 });

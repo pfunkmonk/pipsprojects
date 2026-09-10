@@ -6,13 +6,13 @@
   <meta name="referrer" content="no-referrer" />
   <meta name="theme-color" content="#071a31" />
   <title>Thunder Bowl In-Season GM</title>
-  <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and IR-stash command center." />
+  <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and player-stat command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260901a" />
+  <link rel="stylesheet" href="./season.css?v=20260905a" />
 </head>
 <body>
-  <a class="skip-link" href="#season-main">Skip to recommendations</a>
+  <a class="skip-link" href="#season-main">Skip to weekly workspace</a>
 
   <main id="login-view" class="login-shell" aria-labelledby="login-title">
     <section class="login-card">
@@ -35,71 +35,172 @@
         <span id="freshness-state" class="state-chip">LOADING</span>
         <span id="generated-label">Plan not loaded</span>
       </div>
-      <div class="header-actions">
-        <button id="refresh-plan" class="button primary" type="button">Update everything</button>
-      </div>
     </header>
 
-    <section id="source-strip" class="source-strip" aria-label="Source freshness"></section>
+    <nav class="season-tabs" aria-label="In-season GM sections" role="tablist">
+      <button id="tab-button-start-sit" class="season-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-start-sit" data-tab="start-sit">Start/Sit</button>
+      <button id="tab-button-scoring-preview" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-scoring-preview" tabindex="-1" data-tab="scoring-preview">Scoring Preview</button>
+      <button id="tab-button-waivers" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-waivers" tabindex="-1" data-tab="waivers">Waiver Wire</button>
+      <button id="tab-button-trades" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-trades" tabindex="-1" data-tab="trades">Trades</button>
+      <button id="tab-button-player-stats" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-player-stats" tabindex="-1" data-tab="player-stats">Player Stats</button>
+      <button id="tab-button-news" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-news" tabindex="-1" data-tab="news">News</button>
+      <button id="tab-button-admin" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-admin" tabindex="-1" data-tab="admin">Admin</button>
+    </nav>
+
     <section id="offline-banner" class="alert danger" hidden><strong>OFFLINE — STALE RECOVERY SNAPSHOT</strong><span>Recommendations cannot update or verify availability until this device reconnects.</span></section>
-    <section id="alerts" class="alerts" aria-live="polite"></section>
+    <p id="action-status" class="status-line global-status" role="status" aria-live="polite"></p>
 
-    <section class="sync-panel" aria-labelledby="sync-title">
-      <div class="sync-intro"><p class="eyebrow">Flexible weekly updates</p><h2 id="sync-title">Update everything—or only the source that changed</h2><p id="sync-copy">Use the main button for a complete refresh, or update one source below when you know only that provider has posted new stats. Every projection source supplies raw components that are scored with Thunder Bowl rules.</p></div>
-      <div class="update-source-grid" aria-label="One-click update sources">
-        <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small><button id="update-cbs-only" class="source-update-button" type="button">Update CBS</button></div></article>
-        <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small><button id="update-fbg-only" class="source-update-button" type="button">Update FBG</button></div></article>
-        <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small><button id="update-fp-only" class="source-update-button" type="button">Update FantasyPros</button></div></article>
-        <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small><button id="update-pff-only" class="source-update-button" type="button">Update PFF</button></div></article>
-        <article id="update-news-source" class="update-source"><span aria-hidden="true">5</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small><button id="update-news-only" class="source-update-button" type="button">Update injuries/news</button></div></article>
-      </div>
-      <div class="setup-and-recovery">
-        <details id="helper-setup" class="setup-details">
-          <summary>First-time setup: connect all four signed-in sources once</summary>
-          <div class="setup-copy">
-            <p>The helper reads only the required weekly component-stat tables after you press <strong>Update everything</strong>. It uses your normal signed-in CBS, Footballguys, FantasyPros, and PFF sessions and never receives or stores any password.</p>
-            <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong> in Chrome or <strong>edge://extensions</strong> in Edge, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into CBS, Footballguys, FantasyPros, and PFF in the same browser profile, then reload this page.</li></ol>
-            <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.7.9.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a><a class="button" href="https://www.fantasypros.com/nfl/projections/qb.php?week=1" target="_blank" rel="noopener noreferrer">Open FantasyPros</a><a class="button" href="https://www.pff.com/fantasy/projections" target="_blank" rel="noopener noreferrer">Open PFF</a></div>
+    <main id="season-main" class="workspace">
+      <section id="tab-start-sit" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-start-sit">
+        <section class="panel lineup-panel" aria-labelledby="lineup-title">
+          <header class="panel-head"><div><p class="eyebrow">Exact legal lineup</p><h2 id="lineup-title">Start / sit plan</h2></div><div class="panel-head-tools"><strong id="lineup-total">— pts</strong><div class="ai-controls"><button id="ai-run-lineup" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-lineup" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <div class="lineup-week-toolbar">
+            <div class="lineup-view-controls">
+              <label for="lineup-team">View team<select id="lineup-team" aria-describedby="lineup-week-note"><option>Loading teams…</option></select></label>
+              <label for="lineup-week">View lineup for<select id="lineup-week" aria-describedby="lineup-week-note"><option>Loading weeks…</option></select></label>
+            </div>
+            <p id="lineup-week-note">The current week loads by default.</p>
           </div>
-        </details>
-        <details class="recovery-details">
-          <summary>Advanced recovery tools</summary>
-          <p>These file controls are emergency fallbacks. Normal weekly updates do not require JSON or CSV files.</p>
-          <div class="sync-actions">
-            <label class="button file-button">Import recovery CBS JSON<input id="cbs-file" type="file" accept="application/json,.json" /></label>
-            <label class="button file-button">Import recovery FBG CSV<input id="fbg-file" type="file" accept="text/csv,.csv" /></label>
-            <button id="export-plan" class="button" type="button">Export plan JSON</button>
+          <div class="table-wrap"><table><thead><tr><th>Slot</th><th>Player</th><th>Team / status</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="starter-rows"></tbody></table></div>
+          <div id="lineup-summary" class="compact-list"></div>
+          <details class="bench-details" open><summary>Bench players</summary><div class="table-wrap"><table><thead><tr><th>Pos.</th><th>Player</th><th>Team / status</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="bench-rows"></tbody></table></div></details>
+          <div id="swap-list" class="compact-list"></div>
+        </section>
+      </section>
+
+      <section id="tab-scoring-preview" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-scoring-preview" hidden>
+        <section class="panel scoring-preview-panel" aria-labelledby="scoring-preview-title">
+          <header class="panel-head"><div><p class="eyebrow">CBS submitted lineups · Thunder Bowl projections</p><h2 id="scoring-preview-title">Scoring Preview</h2></div><div class="panel-head-tools"><strong id="scoring-preview-week">Week —</strong><span id="scoring-preview-updated">Waiting for CBS</span></div></header>
+          <p id="scoring-preview-authority" class="panel-intro">CBS determines the submitted starters and reserves. Our four-source component-stat blend and Thunder Bowl scoring determine the projections.</p>
+          <div id="scoring-preview-content" class="scoring-preview-content"></div>
+        </section>
+      </section>
+
+      <section id="tab-waivers" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-waivers" hidden>
+        <section class="panel waiver-panel" aria-labelledby="waiver-title">
+          <header class="panel-head"><div><p class="eyebrow">CBS-confirmed · $50 FAB-aware</p><h2 id="waiver-title">Waiver priorities &amp; bids</h2></div><div class="panel-head-tools"><span id="waiver-result-count">Loading recommendations</span><div class="ai-controls"><button id="ai-run-waivers" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-waivers" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <div class="filter-bar" aria-label="Waiver recommendation filters">
+            <label for="waiver-position">Pickup position<select id="waiver-position"><option value="ALL">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DST</option></select></label>
+            <label for="waiver-sort">Sort by<select id="waiver-sort"><option value="priority">Overall priority</option><option value="week">This week gain</option><option value="nextThree">Next 3 weeks</option><option value="ros">Rest of season</option><option value="bid">Recommended bid</option></select></label>
           </div>
-        </details>
-      </div>
-      <p id="action-status" class="status-line" role="status" aria-live="polite"></p>
-    </section>
+          <div id="waiver-list" class="card-list recommendation-grid"></div>
+        </section>
 
-    <main id="season-main" class="dashboard">
-      <section class="panel lineup-panel" aria-labelledby="lineup-title">
-        <header class="panel-head"><div><p class="eyebrow">Exact legal lineup</p><h2 id="lineup-title">Start / sit plan</h2></div><strong id="lineup-total">— pts</strong></header>
-        <div class="table-wrap"><table><thead><tr><th>Slot</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="starter-rows"></tbody></table></div>
-        <div id="swap-list" class="compact-list"></div>
-        <details class="bench-details"><summary>Bench players</summary><div class="table-wrap"><table><thead><tr><th>Pos.</th><th>Player</th><th>Game</th><th>Range</th><th>Proj.</th><th>Actions</th></tr></thead><tbody id="bench-rows"></tbody></table></div></details>
+        <section class="panel watch-panel" aria-labelledby="watch-title">
+          <header class="panel-head"><div><p class="eyebrow">Updates as the week changes</p><h2 id="watch-title">League watch</h2></div><span>Moves · injuries</span></header>
+          <div class="watch-grid">
+            <section><h3>Manager adds &amp; drops</h3><div id="move-list" class="compact-list"></div></section>
+            <section><h3>Injury report</h3><div id="injury-list" class="compact-list"></div></section>
+          </div>
+        </section>
+
+        <section class="panel stash-watch-panel" aria-labelledby="stash-watch-title">
+          <header class="panel-head"><div><p class="eyebrow">One free IR slot · long-term keeper leverage</p><h2 id="stash-watch-title">Stash Watch</h2></div><div class="panel-head-tools"><span>2027 keeper surplus · cap-trade value</span><div class="ai-controls"><button id="ai-run-stash-watch" class="ai-button" type="button">Find IR gems with AI</button><button id="ai-view-stash-watch" class="ai-button saved" type="button" disabled>No saved stash analysis</button></div></div></header>
+          <p class="panel-intro stash-watch-intro">Deep-search CBS-confirmed IR and PUP players for an overlooked long-term asset. This is the one place where a cheap winning FAB bid and resulting salary matter now: the analysis prioritizes healthy scoring upside, evidence of a possible 2026 return, and 2027 keeper or next-draft salary-cap trade value—not a small Week 1 gain. Results are saved so they can be reopened and copied without rerunning AI.</p>
+          <div id="ir-list" class="compact-list stash-watch-list"></div>
+        </section>
       </section>
 
-      <section class="panel waiver-panel" aria-labelledby="waiver-title">
-        <header class="panel-head"><div><p class="eyebrow">CBS-confirmed · $50 FAB-aware</p><h2 id="waiver-title">Waiver priorities &amp; bids</h2></div><span>Up to 5</span></header>
-        <div id="waiver-list" class="card-list"></div>
+      <section id="tab-trades" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-trades" hidden>
+        <section class="panel trade-panel" aria-labelledby="trade-title">
+          <header class="panel-head"><div><p class="eyebrow">Two-sided current-season value</p><h2 id="trade-title">Recommended trade ideas</h2></div><div class="panel-head-tools"><span>Impact for both teams</span><div class="ai-controls"><button id="ai-run-trades" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-trades" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <div id="trade-board-summary" class="trade-board-summary"></div>
+          <div id="trade-list" class="card-list recommendation-grid"></div>
+        </section>
+
+        <section class="panel trade-finder-panel" aria-labelledby="trade-finder-title">
+          <header class="panel-head"><div><p class="eyebrow">AI league-wide search</p><h2 id="trade-finder-title">Discover other trade packages</h2></div><div class="panel-head-tools"><span>All 12 rosters · all governed projections</span><div class="ai-controls"><button id="ai-run-trade-finder" class="ai-button" type="button">Find new trades with AI</button><button id="ai-view-trade-finder" class="ai-button saved" type="button" disabled>No saved search</button></div></div></header>
+          <p class="panel-intro">Search beyond the current one-for-one trade rail for rational one-, two-, or three-team packages. The analysis weighs every roster and player projection, no-flex depth, current news, Weeks 1, 2, 12, and 13 for division play, and Weeks 15–17 for the playoffs. Results are saved so you can reopen and copy them without paying to run the search again.</p>
+        </section>
+
+        <section class="panel trade-builder-panel" aria-labelledby="trade-builder-title">
+          <header class="panel-head"><div><p class="eyebrow">Build any package</p><h2 id="trade-builder-title">Analyze a proposed trade</h2></div><label class="inline-select" for="trade-team-count">Teams<select id="trade-team-count"><option value="2">2 teams</option><option value="3">3 teams</option></select></label></header>
+          <p class="panel-intro">Choose every player leaving each roster and where that package goes. The analyzer validates 8–14 player rosters and a legal starting lineup, then measures the weekly, division, playoff, and rest-of-season impact for every team.</p>
+          <div id="trade-team-rows" class="trade-team-rows"></div>
+          <div class="builder-actions"><button id="analyze-trade" class="button primary" type="button">Analyze this trade</button><button id="clear-trade" class="button" type="button">Clear</button></div>
+          <div id="trade-analysis-result" class="trade-analysis-result" aria-live="polite"></div>
+        </section>
       </section>
 
-      <section class="panel trade-panel" aria-labelledby="trade-title">
-        <header class="panel-head"><div><p class="eyebrow">Two-sided current-season value</p><h2 id="trade-title">Trade ideas</h2></div><span>Explore, don’t assume</span></header>
-        <div id="trade-list" class="card-list"></div>
+      <section id="tab-player-stats" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-player-stats" hidden>
+        <section class="panel player-stats-panel" aria-labelledby="player-stats-title">
+          <header class="panel-head"><div><p class="eyebrow">Four-source Thunder Bowl scoring</p><h2 id="player-stats-title">Player stats &amp; projections</h2></div><span id="player-stats-count">Loading players</span></header>
+          <div class="stats-controls">
+            <label class="search-control" for="player-search">Search<input id="player-search" type="search" placeholder="Player or NFL team" autocomplete="off" /></label>
+            <fieldset><legend>Position</legend><div id="player-position-filters" class="filter-pills"><button type="button" class="active" data-position="ALL">All</button><button type="button" data-position="QB">QB</button><button type="button" data-position="RB">RB</button><button type="button" data-position="WR">WR</button><button type="button" data-position="TE">TE</button><button type="button" data-position="K">K</button><button type="button" data-position="DST">DST</button></div></fieldset>
+            <label for="player-availability">Player status<select id="player-availability"><option value="FREE_AGENT">Free agents</option><option value="ALL">All players</option><option value="MY_TEAM">My team</option><option value="ROSTERED">Rostered players</option></select></label>
+            <p class="sort-help">Click any column heading to sort. Click it again to reverse the order.</p>
+          </div>
+          <div class="table-wrap player-stats-wrap"><table class="player-stats-table"><thead><tr>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="name">Player <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="leagueStatus">Avail. <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="opponent">Opp. <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="bye">Bye <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="sourceCount">Sources <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="descending"><button class="sort-header active" type="button" data-player-sort="points">Proj. <span aria-hidden="true">▼</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="range">Range <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="passingYards">Pass Yds <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="passingTouchdowns">Pass TD <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="interceptionsThrown">INT <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="rushingAttempts">Rush Att <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="rushingYards">Rush Yds <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="rushingTouchdowns">Rush TD <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="receptions">Rec <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="receivingYards">Rec Yds <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="receivingTouchdowns">Rec TD <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="fumblesLost">Fum Lost <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="fieldGoalsMade">FG <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="extraPointsMade">XP <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="defensiveSacks">Sacks <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="defensiveInterceptions">DST INT <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="defensiveFumblesRecovered">FR <span aria-hidden="true">↕</span></button></th>
+            <th aria-sort="none"><button class="sort-header" type="button" data-player-sort="defensiveTouchdowns">DST TD <span aria-hidden="true">↕</span></button></th>
+            <th>News</th>
+          </tr></thead><tbody id="player-stats-rows"></tbody></table></div>
+          <div class="pagination"><button id="player-prev" class="button" type="button">Previous</button><span id="player-page-label">Page 1</span><button id="player-next" class="button" type="button">Next</button></div>
+        </section>
       </section>
 
-      <section class="panel watch-panel" aria-labelledby="watch-title">
-        <header class="panel-head"><div><p class="eyebrow">Updates as the week changes</p><h2 id="watch-title">Week watch</h2></div><span>Moves · injuries · IR</span></header>
-        <div class="watch-grid">
-          <section><h3>Manager adds &amp; drops</h3><div id="move-list" class="compact-list"></div></section>
-          <section><h3>Injury report</h3><div id="injury-list" class="compact-list"></div></section>
-          <section><h3>IR return &amp; keeper stashes</h3><div id="ir-list" class="compact-list"></div></section>
-        </div>
+      <section id="tab-news" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-news" hidden>
+        <section class="panel news-panel" aria-labelledby="team-news-title">
+          <header class="panel-head"><div><p class="eyebrow">Saved Dogs of War history</p><h2 id="team-news-title">My team news</h2></div><div class="panel-head-tools"><span id="team-news-count">Loading saved history</span><button id="refresh-team-news" class="button" type="button">Refresh all news</button></div></header>
+          <p class="panel-intro">Every RotoWire, CBS, and Footballguys story matched to a player on your current roster appears newest first. Updates add to the private season archive instead of replacing earlier news.</p>
+          <p id="team-news-updated" class="news-history-status" role="status" aria-live="polite">Loading the private server archive…</p>
+          <div id="team-news-list" class="team-news-feed" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <section id="tab-admin" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-admin" hidden>
+        <section class="sync-panel" aria-labelledby="sync-title">
+          <div class="admin-intro"><div class="sync-intro"><p class="eyebrow">Data &amp; setup</p><h2 id="sync-title">Update everything—or only the source that changed</h2><p id="sync-copy">Run a complete refresh, or update one source when you know only that provider has posted new component stats. All projections are rescored with Thunder Bowl rules.</p></div><button id="refresh-plan" class="button primary" type="button">Update everything</button></div>
+          <section id="source-strip" class="source-strip" aria-label="Source freshness"></section>
+          <section id="alerts" class="alerts" aria-live="polite"></section>
+          <div class="update-source-grid" aria-label="One-click update sources">
+            <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS lineups, schedule, rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small><button id="update-cbs-only" class="source-update-button" type="button">Update CBS</button></div></article>
+            <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small><button id="update-fbg-only" class="source-update-button" type="button">Update FBG</button></div></article>
+            <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small><button id="update-fp-only" class="source-update-button" type="button">Update FantasyPros</button></div></article>
+            <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small><button id="update-pff-only" class="source-update-button" type="button">Update PFF</button></div></article>
+            <article id="update-news-source" class="update-source"><span aria-hidden="true">5</span><div><strong>Injuries, news &amp; IR</strong><small id="update-news-state">Ready to refresh</small><button id="update-news-only" class="source-update-button" type="button">Update injuries/news</button></div></article>
+          </div>
+          <div class="setup-and-recovery">
+            <details id="helper-setup" class="setup-details">
+              <summary>First-time setup: connect all four signed-in sources once</summary>
+              <div class="setup-copy">
+                <p>The helper reads the CBS submitted scoring-preview lineups, league schedule, and required weekly component-stat tables only after you press <strong>Update everything</strong>. It uses your normal signed-in CBS, Footballguys, FantasyPros, and PFF sessions and never receives or stores any password.</p>
+                <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong> in Chrome or <strong>edge://extensions</strong> in Edge, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into CBS, Footballguys, FantasyPros, and PFF in the same browser profile, then reload this page.</li></ol>
+                <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.10.4.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a><a class="button" href="https://www.fantasypros.com/nfl/projections/qb.php?week=1" target="_blank" rel="noopener noreferrer">Open FantasyPros</a><a class="button" href="https://www.pff.com/fantasy/projections" target="_blank" rel="noopener noreferrer">Open PFF</a></div>
+              </div>
+            </details>
+            <details class="recovery-details">
+              <summary>Advanced recovery tools</summary>
+              <p>These file controls are emergency fallbacks. Normal weekly updates do not require JSON or CSV files.</p>
+              <div class="sync-actions"><label class="button file-button">Import recovery CBS JSON<input id="cbs-file" type="file" accept="application/json,.json" /></label><label class="button file-button">Import recovery FBG CSV<input id="fbg-file" type="file" accept="text/csv,.csv" /></label><button id="export-plan" class="button" type="button">Export plan JSON</button></div>
+              <label for="cbs-json-paste">Paste captured CBS JSON</label>
+              <textarea id="cbs-json-paste" rows="4" spellcheck="false" placeholder="Paste a CBS capture here for direct app-side validation and import."></textarea>
+              <div class="sync-actions"><button id="import-cbs-json-paste" class="button" type="button">Import pasted CBS data</button></div>
+            </details>
+          </div>
+        </section>
       </section>
     </main>
   </div>
@@ -109,6 +210,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260901b"></script>
+    <script type="module" src="./season.mjs?v=20260909a"></script>
 </body>
 </html>

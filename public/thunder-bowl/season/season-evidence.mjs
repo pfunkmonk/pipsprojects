@@ -18,10 +18,10 @@ function signedPoints(value) {
 }
 
 function confidence(value) {
-  if (!finite(value)) return "Confidence is not available because the current sources do not provide enough comparable evidence.";
+  if (!finite(value)) return "Source agreement is unavailable because there is insufficient comparable evidence.";
   const percent = Math.round(Number(value) * 100);
   const label = percent >= 75 ? "High" : percent >= 55 ? "Moderate" : "Cautious";
-  return `${label} confidence (${percent}%).`;
+  return `${label} source agreement (index ${Number(value).toFixed(2)}). This is not a calibrated probability of success.`;
 }
 
 function dateTime(value) {
@@ -40,7 +40,7 @@ function section(title, items) {
 function projectionOverview(row) {
   if (!finite(row?.points)) return "There is no safe current-week projection for this player, so missing data is not treated as zero.";
   const range = finite(row.floor) && finite(row.ceiling)
-    ? ` The reasonable range is ${decimal(row.floor)}–${decimal(row.ceiling)} points.`
+    ? ` The illustrative projection band is ${decimal(row.floor)}–${decimal(row.ceiling)} points, not a validated prediction interval.`
     : "";
   return `The current Thunder Bowl projection is ${points(row.points)}.${range}`;
 }
@@ -85,14 +85,17 @@ function injuryItems(injury) {
 function playerExplanation(value, kind, week) {
   const position = clean(value.position) || "required";
   const name = clean(value.name) || "This player";
+  const adviceTeam = clean(value.adviceTeamName) || "Dogs of War";
   const weekLabel = finite(week) ? `Week ${week}` : "the current week";
   const critical = /injured reserve|\bir\b|pup|physically unable|\bout\b/i.test(clean(value.injury?.status));
   const summary = kind === "starter"
     ? `${name} is recommended in a required ${position} slot because this is one of your highest eligible ${weekLabel} projections at that position.`
+    : kind === "free-agent"
+      ? `${name} is a CBS-confirmed free agent worth comparing because the ${points(value.points)} projection is ${signedPoints(value.delta)} above ${value.starterName || "the displayed starter"} for ${weekLabel}.`
     : critical
       ? `${name} is on the bench because the registered ${value.injury.status} designation prevents the advisor from treating this player as a safe starter.`
       : finite(value.points)
-        ? `${name} is on the bench because another eligible ${position} on your roster has the stronger current-week projection.`
+        ? `${name} is on ${adviceTeam}'s bench because another eligible ${position} on that roster has the stronger current-week projection.`
         : `${name} is on the bench because a safe current-week projection is missing; the advisor does not turn missing data into zero.`;
   return {
     summary,
@@ -100,10 +103,32 @@ function playerExplanation(value, kind, week) {
       section("Expected output", [projectionOverview(value), confidence(value.confidence), matchup({ ...value, week })]),
       section("Why the lineup chose this", [
         kind === "starter"
-          ? `The optimizer filled the exact legal lineup—1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST—with the strongest eligible projections on your roster.`
+          ? `The optimizer filled ${adviceTeam}'s exact legal lineup—1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST—with the strongest eligible projections on that roster.`
+          : kind === "free-agent"
+            ? `${name} is not on ${adviceTeam}. CBS confirms the player is currently available, so this row is a pickup comparison—not an instruction to place the player directly into the lineup.`
           : `The optimizer compares players only against the required starters at the same position; bench points do not count toward the lineup total.`,
+        kind === "free-agent" ? "Any pickup still has to satisfy the 14-player maximum, use a legal drop when necessary, and justify its FAB cost; this comparison does not override the governed Waiver Wire tab." : "",
         "Players with a critical status or no usable projection are excluded from starting consideration.",
       ]),
+      section("Projection sources", projectionSourceItems(value.sources)),
+      section("Health check", injuryItems(value.injury)),
+    ],
+  };
+}
+
+function scoringPreviewPlayerExplanation(value, role, week) {
+  const name = clean(value.name) || "This player";
+  const team = clean(value.adviceTeamName) || "this team";
+  const isStarter = role === "scoring-preview-starter";
+  return {
+    summary: `${name} appears here because CBS lists the player as ${isStarter ? "a submitted starter" : "a reserve"} for ${team} in Week ${week || "the current week"}; the displayed ${points(value.points)} comes from Thunder Bowl projections, not CBS's fantasy-points total.`,
+    sections: [
+      section("CBS lineup status", [
+        `CBS is the authority for whether ${name} is currently submitted as ${isStarter ? "a starter" : "a reserve"}.`,
+        "The preview does not optimize or silently replace either team's submitted CBS lineup.",
+        "Updating CBS captures both teams' current starters and reserves again.",
+      ]),
+      section("Expected output", [projectionOverview(value), confidence(value.confidence), matchup({ ...value, week })]),
       section("Projection sources", projectionSourceItems(value.sources)),
       section("Health check", injuryItems(value.injury)),
     ],
@@ -113,13 +138,27 @@ function playerExplanation(value, kind, week) {
 function swapExplanation(value, week) {
   const edge = signedPoints(value.delta);
   const weekLabel = finite(week) ? `Week ${week}` : "current-week";
+  const strength = clean(value.strength) || "UNRATED";
+  const summary = strength === "TOSS-UP"
+    ? `${value.start} remains the optimizer's narrow choice over ${value.sit}, but the ${edge.replace(/^\+/, "")} edge is a toss-up—not a firm start/sit directive.`
+    : strength === "LEAN"
+      ? `${value.start} is a modest lean over ${value.sit}; the ${edge.replace(/^\+/, "")} edge is useful but not decisive.`
+      : `${value.start} is a strong start over ${value.sit} because the ${edge.replace(/^\+/, "")} edge clears the governed strong-call gate.`;
   return {
-    summary: `${value.start} is preferred over ${value.sit} at ${value.position} because ${value.start}'s ${weekLabel} projection is ${edge.replace(/^\+/, "")} higher than ${value.sit}'s.`,
+    summary,
     sections: [
-      section("Why make this start/sit choice", [
+      section("Strength of this call", [
         clean(value.reason) || `${value.start} has the stronger registered projection.`,
         `The estimated lineup edge is ${edge}.`,
+        finite(value.materialityThreshold) ? `Edges below ${points(value.materialityThreshold)} are treated as projection-error toss-ups.` : "",
+        finite(value.strongThreshold) ? `A call normally needs at least ${points(value.strongThreshold)} to qualify as strong.` : "",
+        finite(value.sourceDisagreement) ? `The largest registered provider spread for these players is ${points(value.sourceDisagreement)}.` : "",
+        value.rangesOverlap ? "The players' displayed projection ranges overlap, so the lower-projected player still has a plausible path to finishing higher." : "",
         confidence(value.confidence),
+      ]),
+      section("Risk and lineup flexibility", [
+        value.starterInjury?.status ? `${value.start} carries a ${value.starterInjury.status} designation; recheck the latest news before lock.` : "No registered injury designation weakens the selected starter.",
+        clean(value.timingRisk) || "No earlier-game flexibility penalty is registered for this comparison.",
       ]),
       section("Rules applied", [
         `This is a position-for-position comparison at ${value.position}, so it preserves the required legal lineup.`,
@@ -131,7 +170,7 @@ function swapExplanation(value, week) {
 
 function waiverExplanation(value, week) {
   const add = value.add || {};
-  const drop = value.drop || {};
+  const drop = value.drop || null;
   const gains = value.gains || {};
   const evidence = value.evidence || {};
   const role = evidence.role;
@@ -141,7 +180,7 @@ function waiverExplanation(value, week) {
   const alternatives = Array.isArray(value.alternatives) ? value.alternatives : [];
   const weekLabel = finite(week) ? `Week ${week}` : "Current week";
   return {
-    summary: `The advisor ranks ${add.name} as a ${value.verdict || "waiver"} option because adding ${add.name} for ${drop.name} keeps the roster legal and produces the best tested lineup improvement among the available choices.`,
+    summary: `The advisor ranks ${add.name} as a ${value.verdict || "waiver"} option because ${drop ? `adding ${add.name} for ${drop.name}` : `adding ${add.name} into an open roster spot`} keeps the roster legal and clears the meaningful-improvement gate.`,
     sections: [
       section("Projected effect", [
         `${weekLabel}: ${signedPoints(gains.week)}.`,
@@ -151,13 +190,16 @@ function waiverExplanation(value, week) {
       ]),
       section("Why this player and this drop", [
         clean(value.reason),
-        finite(value.dropProjectionLoss) ? `Removing ${drop.name} by itself loses about ${points(value.dropProjectionLoss)} per rest-of-season optimal lineup, the smallest projected-points loss among the legal drops tested.` : `${drop.name} produces the smallest projected-points loss among the legal drops tested.`,
+        drop && finite(value.dropValue?.week) ? `${drop.name} is projected for ${points(value.dropValue.week)} in ${weekLabel}, ${points(value.dropValue.nextThree)} per game over the next three weeks, and ${points(value.dropValue.restOfSeason)} per game over the rest of the season. That depth value is counted even if ${drop.name} is not currently starting.` : "No player must be dropped because the roster has an open spot.",
+        drop && finite(value.depthDelta?.week) ? `The added player's own projection minus the dropped player's projection is ${signedPoints(value.depthDelta.week)} for ${weekLabel}; this is separate from the starting-lineup change above.` : "",
         evidence.range && finite(evidence.range.median) ? `${add.name}'s ${weekLabel} projection is ${points(evidence.range.median)}, with a ${decimal(evidence.range.floor)}–${decimal(evidence.range.ceiling)} range.` : "",
         confidence(value.confidence),
       ]),
       section("Availability and roster rules", [
         `${add.name} was confirmed available by the authenticated CBS all-team roster snapshot${availability.asOf ? ` captured ${dateTime(availability.asOf)}` : ""}.`,
         "The advisor tested the move against the league's eight required starters and 14-player maximum.",
+        clean(evidence.rosterFit?.rationale),
+        "An extra K or DST, or a third QB, is rejected unless it replaces the same position or solves a documented current-week availability need.",
         "The player ranking uses current-season projected lineup value and roster legality; roster salary and contract are excluded.",
       ]),
       section("Blind-auction bid plan", finite(fab.recommended) ? [
@@ -195,8 +237,14 @@ function tradeExplanation(value) {
   const rival = value.rival?.teamName || "the other team";
   const dogs = value.dogsDeltas || {};
   const theirs = value.rivalDeltas || {};
+  const verdict = String(value.verdict || "PASS").toUpperCase();
+  const playerEvidence = [...(value.sends || []), ...(value.receives || [])];
   return {
-    summary: `The advisor says to ${String(value.verdict || "explore").toLowerCase()} sending ${send} for ${receive} because Dogs of War improves its modeled rest-of-season lineup while ${rival} receives a package close enough to be rational for both sides.`,
+    summary: verdict === "OFFER"
+      ? `This is an OFFER because sending ${send} for ${receive} produces a meaningful, evidence-backed Dogs of War gain and a credible multi-horizon incentive for ${rival}.`
+      : verdict === "MONITOR"
+        ? `Keep ${send} for ${receive} on the MONITOR list, but do not send it yet; the edge, evidence, or rival incentive is not strong enough.`
+        : `PASS on sending ${send} for ${receive}; the modeled edge or ${rival}'s acceptance case does not clear the governed trade gate.`,
     sections: [
       section("Why it helps Dogs of War", [
         deltaItem("Next three weeks", dogs.nextThree),
@@ -207,13 +255,24 @@ function tradeExplanation(value) {
       ]),
       section(`Why ${rival} might accept`, [
         clean(value.whyRivalAccepts),
+        deltaItem(`${rival}'s Week`, theirs.week),
         deltaItem(`${rival}'s rest of season`, theirs.restOfSeason),
         deltaItem(`${rival}'s next three weeks`, theirs.nextThree),
+        deltaItem(`${rival}'s division weeks`, theirs.division),
+        deltaItem(`${rival}'s playoff weeks`, theirs.playoffs),
       ]),
+      section("Direct player evidence", playerEvidence.flatMap((player) => [
+        `${player.name}: ${finite(player.weekProjection?.points) ? points(player.weekProjection.points) : "no safe current projection"}; ${player.injury?.status || "Active"}; ${Number(player.weekProjection?.directSourceCount || 0)} fresh signed-in component-stat source${Number(player.weekProjection?.directSourceCount || 0) === 1 ? "" : "s"}.`,
+        ...(player.news || []).length
+          ? (player.news || []).slice(0, 2).map((item) => `${clean(item.source) || "News"}: ${clean(item.summary) || clean(item.title)}`)
+          : [`No current CBS or Footballguys news item matched ${player.name}; use the News button to recheck the all-player cache.`],
+      ])),
       section("Roster and lineup checks", [
         "The comparison keeps both teams on a legal starter path and evaluates exact weekly starting lineups; bench totals are excluded.",
+        clean(value.rosterContext?.positionalRisk),
+        `Dogs of War's outgoing player is currently classified as ${clean(value.rosterContext?.dogs?.outgoingRole) || "unknown"} depth. Both rosters remain ${value.rosterContext?.dogs?.afterSize || "within the legal"} players after the proposed exchange.`,
         "The advisor compares current-season production and roster fit only.",
-        "Only one-for-one trades are tested. Multi-player formats remain blocked until their post-trade 8–14 player roster handling is configured.",
+        "The automated idea rail tests one-for-one trades. The separate proposal analyzer supports multi-player and two- or three-team packages.",
       ]),
       section("Main risk", [clean(value.primaryRisk)]),
     ],
@@ -267,20 +326,21 @@ function injuryExplanation(value) {
 function irExplanation(value, week) {
   const action = clean(value.action) || "MONITOR";
   const keeperEvaluationActive = value.keeperEvaluationActive === true && finite(week) && Number(week) >= 13;
+  const acquisition = value.acquisitionSalaryEvidence || {};
   return {
-    summary: `${value.name} is a ${action.toLowerCase()} because reserve-list evidence is confirmed and the player's healthy rest-of-season projection and ${String(value.keeperUpside || "speculative").toLowerCase()} keeper upside justify continued attention.`,
+    summary: `${value.name} is a ${action.toLowerCase()} because reserve-list evidence is confirmed and the player's healthy scoring profile and ${String(value.keeperUpside || "speculative").toLowerCase()} keeper upside justify a long-term look. This is a watch item, not a claimed return date or guaranteed bargain.`,
     sections: [
       section("Why this action", [
         clean(value.reason),
         `League status: ${clean(value.leagueStatus) || "unconfirmed"}; recommended action: ${action}.`,
         finite(value.healthyRosAverage) ? `If healthy, the governed rest-of-season average is ${points(value.healthyRosAverage)} per week.` : "A dependable healthy rest-of-season average is not available.",
       ]),
-      section(keeperEvaluationActive ? "Late-season keeper and roster value" : "Current-season stash value", [
+      section(keeperEvaluationActive ? "Keeper salary and long-term value" : "Long-term stash and salary value", [
         `Keeper upside: ${clean(value.keeperUpside) || "speculative"}.`,
         finite(value.preInjuryVbd) ? `Pre-injury value above replacement: ${decimal(value.preInjuryVbd)}.` : "",
-        keeperEvaluationActive
-          ? finite(value.keeperCost) ? `Current recorded keeper salary: $${Number(value.keeperCost).toFixed(0)}.` : "No keeper salary is attached to this available or unpriced player."
-          : "Salary is intentionally excluded until the Week 13 keeper-review window.",
+        finite(value.currentSalary) ? `Current recorded CBS salary: $${Number(value.currentSalary).toFixed(0)}.` : "No current roster salary is attached to this player.",
+        acquisition.known === false ? `For a free agent, the winning FAB bid becomes the salary. $${Number(acquisition.minimumPossible || 1).toFixed(0)} is only the minimum possible bid, not an expected winning price.` : clean(acquisition.basis),
+        "Salary is used here because Stash Watch explicitly evaluates next-season keeper and salary-cap trade value; it remains excluded from ordinary waivers and current-season trades.",
       ]),
       section("Return uncertainty", [
         clean(value.returnOutlook),
@@ -303,7 +363,8 @@ function genericExplanation(value) {
 }
 
 export function buildEvidenceExplanation(kind, value, { week = null } = {}) {
-  if (kind === "starter" || kind === "bench") return playerExplanation(value || {}, kind, week);
+  if (kind === "scoring-preview-starter" || kind === "scoring-preview-bench") return scoringPreviewPlayerExplanation(value || {}, kind, week);
+  if (kind === "starter" || kind === "bench" || kind === "free-agent") return playerExplanation(value || {}, kind, week);
   if (kind === "swap") return swapExplanation(value || {}, week);
   if (kind === "waiver") return waiverExplanation(value || {}, week);
   if (kind === "trade") return tradeExplanation(value || {});

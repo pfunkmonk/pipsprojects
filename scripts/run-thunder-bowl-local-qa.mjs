@@ -4,6 +4,8 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mergeEventStreams, replayDraft, toPublicSnapshot, validateDraftPack } from "../public/thunder-bowl/state-engine.mjs";
 import { buildSeasonRecommendationSnapshot } from "../netlify/functions/_lib/season-recommendations.mjs";
+import { buildManagement } from "../netlify/functions/_lib/season-management.mjs";
+import { mergeManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const publicRoot = join(projectRoot, "public");
@@ -62,6 +64,8 @@ function qaSeasonPlan() {
 }
 
 const seasonPlan = qaSeasonPlan();
+let managementRecords = [];
+seasonPlan.management = buildManagement(seasonPlan);
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -148,6 +152,14 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === "/api/thunder-bowl/season/refresh" && request.method === "POST") {
       const body = await requestBody(request);
+      if (body.action === "import-management") {
+        try {
+          managementRecords = mergeManagementRecords(managementRecords, validateManagementRecords(body.records, pack, seasonPlan.league.teams));
+          seasonPlan.management = buildManagement(seasonPlan, { records: managementRecords });
+          json(response, 200, { plan: seasonPlan });
+        } catch (error) { json(response, 400, { error: error.message }); }
+        return;
+      }
       if (body.action !== "refresh-public") {
         json(response, 400, { error: "Local QA accepts only the public refresh action." });
         return;

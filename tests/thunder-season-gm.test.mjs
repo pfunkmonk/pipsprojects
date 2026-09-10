@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgAuthenticatedWeeklyCapture, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
-import { buildSeasonSetupSnapshot } from "../netlify/functions/_lib/season-service.mjs";
+import { buildSeasonSetupSnapshot, normalizeSeasonViewingTeam, normalizeSeasonViewingWeek, retainPriorCbsOptionalEvidence } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
 import {
+  analyzeTradeProposal,
   buildInjuryWatch,
   buildSeasonRecommendationSnapshot,
+  classifyTradeIdea,
   optimizeExactLineup,
   recommendTrades,
   recommendWaivers,
@@ -130,6 +132,43 @@ test("official Footballguys weekly downloads use consensus stat lines and exact 
   assert.equal(snapshot.consensusRowCount, 2);
 });
 
+test("CBS optional evidence falls back only to safe same-week data", () => {
+  const priorFab = { week: 1, status: "COMPLETE" };
+  const priorRows = [{ playerId: "qb-one", week: 1, points: 20 }];
+  const prior = { fabState: priorFab, projectionWeek: 1, projectionCount: 1, unmatchedProjectionCount: 2, weeklyProjections: priorRows };
+  const retained = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 0, fabState: null }, prior);
+  assert.equal(retained.fabState, priorFab);
+  assert.equal(retained.weeklyProjections, priorRows);
+  assert.equal(retained.projectionCount, 1);
+  assert.equal(retained.unmatchedProjectionCount, 2);
+
+  const currentFab = { week: 1, status: "PARTIAL" };
+  const currentRows = [{ playerId: "qb-two", week: 1, points: 18 }];
+  const current = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 1, fabState: currentFab, weeklyProjections: currentRows }, prior);
+  assert.equal(current.fabState, currentFab);
+  assert.equal(current.weeklyProjections, currentRows);
+
+  const nextWeek = retainPriorCbsOptionalEvidence({ projectionWeek: 2, projectionCount: 0, fabState: null }, prior);
+  assert.equal(nextWeek.fabState, null);
+  assert.equal(nextWeek.weeklyProjections, undefined);
+});
+
+test("lineup outlooks allow only the current week and the next two weeks", () => {
+  assert.equal(normalizeSeasonViewingWeek(null, 1), 1);
+  assert.equal(normalizeSeasonViewingWeek("2", 1), 2);
+  assert.equal(normalizeSeasonViewingWeek(3, 1), 3);
+  assert.throws(() => normalizeSeasonViewingWeek(4, 1), /between Week 1 and Week 3/);
+  assert.throws(() => normalizeSeasonViewingWeek(0, 1), /between Week 1 and Week 3/);
+  assert.equal(normalizeSeasonViewingWeek(18, 18), 18);
+});
+
+test("lineup team selection accepts every governed CBS team and rejects unknown teams", () => {
+  assert.equal(normalizeSeasonViewingTeam(null), "dogs-of-war");
+  assert.equal(normalizeSeasonViewingTeam("t-dogs"), "t-dogs");
+  assert.equal(normalizeSeasonViewingTeam("THE-HOBBITS"), "the-hobbits");
+  assert.throws(() => normalizeSeasonViewingTeam("not-a-team"), /12 CBS Thunder Bowl teams/);
+});
+
 test("authenticated Footballguys PRO captures require the Thunder Bowl account view and preserve raw-stat authority", async () => {
   const fullPack = await readSeasonPack();
   const supported = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
@@ -228,6 +267,172 @@ test("the current-week lineup blend uses signed-in FantasyPros and PFF component
   assert.equal(result.sources.find((source) => source.label === "PFF").asOf, "2026-09-08T11:30:00.000Z");
 });
 
+test("an upcoming-week lineup uses the four-source schedule-shaped outlook without reusing current game details", () => {
+  const players = rosterPlayers();
+  const roster = rosterRows(players).map((row) => ({ ...row, opponent: "LV", gameTime: "2026-09-10T00:00:00.000Z" }));
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster }], weeklyProjections: [],
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "future-pack", asOf: "2026-09-08T11:00:00.000Z", players, sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState,
+    week: 2,
+    currentWeek: 1,
+    generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+  assert.equal(result.viewing.mode, "FORECAST");
+  assert.equal(result.viewing.currentWeek, 1);
+  assert.equal(result.viewing.selectedWeek, 2);
+  assert.equal(result.viewing.maxSelectableWeek, 3);
+  assert.match(result.lineup.decisionSummary.headline, /projected Week 2 lineup/i);
+  assert.deepEqual(result.lineup.starters[0].sources.map((source) => source.source), projectionSources);
+  assert.ok(result.lineup.starters[0].sources.every((source) => source.input === "governed early-outlook weekly shape"));
+  assert.equal(result.lineup.starters[0].opponent, null);
+  assert.equal(result.lineup.starters[0].gameTime, null);
+});
+
+test("every starter exposes only higher-projected CBS-confirmed free agents at the same position", () => {
+  const roster = rosterPlayers();
+  const betterQuarterback = player("qb-free-better", "QB", 24, { name: "Better Free QB" });
+  const lowerQuarterback = player("qb-free-lower", "QB", 18, { name: "Lower Free QB" });
+  const rosterEntries = rosterRows(roster).map((row) => ({ ...row, opponent: "LV" }));
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [betterQuarterback.id, lowerQuarterback.id], projectionWeek: 1, projectionCount: 100,
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterEntries }], weeklyProjections: [],
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "starter-free-agents", asOf: "2026-09-08T11:00:00.000Z", players: [...roster, betterQuarterback, lowerQuarterback], sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState,
+    week: 1,
+    generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+  const startingQuarterback = result.lineup.starters.find((row) => row.position === "QB");
+  const alternatives = result.lineup.freeAgentAlternatives[startingQuarterback.playerId];
+  assert.deepEqual(alternatives.map((row) => row.name), ["Better Free QB"]);
+  assert.equal(alternatives[0].leagueStatus, "FREE AGENT");
+  assert.equal(alternatives[0].starterName, startingQuarterback.name);
+  assert.ok(alternatives[0].delta > 0);
+  assert.ok(Object.values(result.lineup.freeAgentAlternatives).flat().every((row) => row.position === result.lineup.starters.find((starter) => starter.playerId === row.starterPlayerId).position));
+});
+
+test("Start/Sit can optimize any CBS roster and carries the selected team's scheduled opponent", () => {
+  const dogs = rosterPlayers();
+  const rivals = rosterPlayers().map((row, index) => ({ ...structuredClone(row), id: `rival-${row.id}`, name: `Rival ${index + 1}` }));
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) },
+      { teamId: "t-dogs", teamName: "T-Dogs", roster: rosterRows(rivals) },
+    ],
+    weeklyProjections: [],
+    leagueSchedule: {
+      source: "CBS Sports authenticated Thunder Bowl league schedule", capturedAt: "2026-09-08T11:25:00.000Z", headToHeadWeeks: [1], allPlayWeeks: [14], matchupCount: 1,
+      matchups: [{ week: 1, teamAId: "dogs-of-war", teamAName: "Dogs of War", teamBId: "t-dogs", teamBName: "T-Dogs" }],
+    },
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "alternate-team-lineup", asOf: "2026-09-08T11:00:00.000Z", players: [...dogs, ...rivals], sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState,
+    week: 1,
+    lineupTeamId: "t-dogs",
+    generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+  assert.equal(result.lineup.teamId, "t-dogs");
+  assert.equal(result.lineup.teamName, "T-Dogs");
+  assert.equal(result.lineup.opponent.teamId, "dogs-of-war");
+  assert.equal(result.viewing.userOpponentTeamId, "t-dogs");
+  assert.ok(result.lineup.starters.every((row) => row.playerId.startsWith("rival-") && row.adviceTeamName === "T-Dogs"));
+  assert.equal(result.schedule.selectedTeam[0].opponent.teamName, "Dogs of War");
+});
+
+test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bowl projections for points", () => {
+  const dogs = rosterPlayers();
+  const rivals = rosterPlayers().map((row, index) => ({ ...structuredClone(row), id: `preview-rival-${row.id}`, name: `Preview Rival ${index + 1}` }));
+  const dogsStarterIds = ["qb-two", "rb-one", "rb-two", "wr-one", "wr-two", "te-one", "k-one", "dst-one"];
+  const rivalStarterIds = ["preview-rival-qb-one", "preview-rival-rb-one", "preview-rival-rb-two", "preview-rival-wr-one", "preview-rival-wr-two", "preview-rival-te-one", "preview-rival-k-one", "preview-rival-dst-one"];
+  const previewTeam = (teamId, teamName, roster, starterIds) => ({
+    teamId,
+    teamName,
+    starters: starterIds.map((playerId) => ({ playerId, cbsPlayerId: `cbs-${playerId}` })),
+    bench: roster.filter((row) => !starterIds.includes(row.id)).map((row) => ({ playerId: row.id, cbsPlayerId: `cbs-${row.id}` })),
+    coverage: { exactStarters: true, completeRoster: true },
+  });
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) },
+      { teamId: "three-amigos", teamName: "Three Amigos", roster: rosterRows(rivals) },
+    ],
+    weeklyProjections: [],
+    leagueSchedule: {
+      source: "CBS Sports authenticated Thunder Bowl league schedule", capturedAt: "2026-09-08T11:25:00.000Z", headToHeadWeeks: [1], allPlayWeeks: [14], matchupCount: 1,
+      matchups: [{ week: 1, teamAId: "dogs-of-war", teamAName: "Dogs of War", teamBId: "three-amigos", teamBName: "Three Amigos" }],
+    },
+    scoringPreview: {
+      schemaVersion: 1, source: "CBS Sports authenticated Thunder Bowl scoring preview", modelEffect: "submitted_lineup_authority_only", status: "COMPLETE",
+      season: 2026, week: 1, capturedAt: "2026-09-08T11:29:00.000Z", pageUrl: "https://berrymvp.football.cbssports.com/scoring/preview", errors: [],
+      teams: [previewTeam("dogs-of-war", "Dogs of War", dogs, dogsStarterIds), previewTeam("three-amigos", "Three Amigos", rivals, rivalStarterIds)],
+    },
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "scoring-preview", asOf: "2026-09-08T11:00:00.000Z", players: [...dogs, ...rivals], sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState,
+    week: 1,
+    generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+  assert.equal(result.scoringPreview.status, "COMPLETE");
+  assert.equal(result.scoringPreview.teams.length, 2);
+  assert.equal(result.scoringPreview.teams[0].starters.find((row) => row.position === "QB").playerId, "qb-two");
+  assert.equal(result.lineup.starters.find((row) => row.position === "QB").playerId, "qb-one");
+  assert.equal(result.scoringPreview.teams[0].bench.length, 6);
+  assert.ok(Number.isFinite(result.scoringPreview.teams[0].total));
+  assert.match(result.scoringPreview.authorityNote, /CBS determines/);
+});
+
+test("start-sit analysis separates strong calls, leans, toss-ups, and injury monitors", () => {
+  const roster = [
+    player("hurts", "QB", 23.1, { name: "Jalen Hurts" }), player("caleb", "QB", 20.4, { name: "Caleb Williams" }),
+    player("bijan", "RB", 19.9, { name: "Bijan Robinson" }), player("brown", "RB", 16.2, { name: "Chase Brown" }),
+    player("judkins", "RB", 11.9, { name: "Quinshon Judkins" }), player("pollard", "RB", 10.9, { name: "Tony Pollard" }),
+    player("flowers", "WR", 14.3, { name: "Zay Flowers" }), player("adams", "WR", 12.7, { name: "Davante Adams" }),
+    player("odunze", "WR", 12.1, { name: "Rome Odunze" }), player("moore", "WR", 11.4, { name: "DJ Moore" }), player("concepcion", "WR", 9.3, { name: "KC Concepcion" }),
+    player("fannin", "TE", 11.6, { name: "Harold Fannin Jr." }), player("myers", "K", 8.4, { name: "Jason Myers" }), player("steelers", "DST", 12.4, { name: "Pittsburgh Steelers" }),
+  ];
+  const leagueState = {
+    source: "CBS",
+    authority: "authenticated league roster and availability authority",
+    capturedAt: "2026-09-01T14:55:00.000Z",
+    rostersReady: true,
+    legalTeamCount: 12,
+    teamCount: 12,
+    availablePlayerIds: [],
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(roster) }],
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "start-sit-strength", asOf: "2026-09-01T14:55:00.000Z", players: roster, sources: [], weeklyContext: { asOf: "2026-09-01T14:55:00.000Z" } },
+    leagueState,
+    week: 1,
+    generatedAt: "2026-09-01T15:00:00.000Z",
+    statusSnapshot: { capturedAt: "2026-09-01T14:58:00.000Z", updates: [{ playerId: "flowers", severity: "watch", status: "Questionable", injuryStatus: "Questionable", newsUpdated: "2026-09-01T14:58:00.000Z" }] },
+  });
+  const decisions = new Map(result.lineup.swaps.map((row) => [row.sit, row]));
+  assert.equal(decisions.get("Rome Odunze").strength, "TOSS-UP");
+  assert.equal(decisions.get("Rome Odunze").verdict, "PASS");
+  assert.equal(decisions.get("Rome Odunze").actionable, false);
+  assert.equal(decisions.get("DJ Moore").strength, "LEAN");
+  assert.equal(decisions.get("KC Concepcion").strength, "STRONG");
+  assert.equal(decisions.get("Caleb Williams").strength, "STRONG");
+  assert.equal(result.lineup.decisionSummary.verdict, "KEEP");
+  assert.equal(result.lineup.decisionSummary.counts.tossUp, 1);
+  assert.equal(result.lineup.monitors[0].name, "Zay Flowers");
+  assert.match(result.lineup.monitors[0].reason, /rechecked before/);
+});
+
 test("waiver recommendations remain blocked until CBS supplies authenticated availability", () => {
   const players = rosterPlayers();
   const result = recommendWaivers({
@@ -278,7 +483,43 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.ok(result.recommendations[0].fab.recommended >= 1);
   assert.ok(result.recommendations[0].fab.maximum >= result.recommendations[0].fab.recommended);
   assert.ok(result.recommendations[0].fab.budgetAfter < 50);
+  assert.ok(result.recommendations[0].dropValue.week > 0);
+  assert.equal(result.recommendations[0].dropProjectionLoss, result.recommendations[0].dropValue.week);
+  assert.match(result.recommendations[0].reason, /bench\/depth points/);
   assert.doesNotMatch(JSON.stringify(result.recommendations), /contract|keeper/i);
+});
+
+test("a full legal roster holds FAB for tiny duplicate QB, K, and DST gains", () => {
+  const roster = rosterPlayers();
+  roster.find((item) => item.id === "qb-one").name = "Jalen Hurts";
+  roster.find((item) => item.id === "qb-two").name = "Caleb Williams";
+  roster.find((item) => item.id === "rb-three").name = "Tony Pollard";
+  roster.find((item) => item.id === "rb-three").weeklyProjection.points = Array.from({ length: 18 }, (_, index) => index === 5 ? null : 10.9);
+  roster.find((item) => item.id === "k-one").name = "Jason Myers";
+  roster.find((item) => item.id === "dst-one").name = "Pittsburgh Steelers";
+  const freeAgents = [
+    player("qb-tiny", "QB", 20.2),
+    player("k-tiny", "K", 8.2),
+    player("dst-tiny", "DST", 7.3),
+  ];
+  const result = recommendWaivers({
+    pack: { players: [...roster, ...freeAgents] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-08T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: freeAgents.map((item) => item.id),
+      fabState: fabState(),
+    },
+    week: 1,
+  });
+  assert.deepEqual(result.recommendations, []);
+  assert.equal(result.hold.verdict, "HOLD");
+  assert.equal(result.hold.confidence, "HIGH");
+  assert.equal(result.hold.roster.size, 14);
+  assert.match(result.hold.reason, /Hold FAB and roster depth/);
+  assert.match(result.hold.reason, /Duplicate QB, K, or DST/);
 });
 
 test("CBS FAB-not-started evidence uses the confirmed $50 opening balance without inventing tie order", () => {
@@ -373,7 +614,35 @@ test("waiver and trade recommendations are invariant to salary and contract data
   const changed = recommendTrades({ pack, leagueState: changedLeague, week: 1 });
   assert.ok(base.recommendations.length > 0);
   assert.deepEqual(changed, base);
+  assert.ok(["OFFER", "MONITOR", "PASS"].includes(base.recommendations[0].verdict));
+  assert.ok(base.recommendations[0].receives[0].weekProjection);
+  assert.ok(base.recommendations[0].rosterContext.rival.beforeCounts);
   assert.doesNotMatch(JSON.stringify(base.recommendations), /salary|contract|keeper/i);
+});
+
+test("trade classification passes thin or one-sided ideas and reserves OFFER for strong mutual value", () => {
+  const thin = classifyTradeIdea({
+    dogsDeltas: { week: 0.1, nextThree: 0.2, restOfSeason: 0.3, division: 0.1, playoffs: 0.2 },
+    rivalDeltas: { week: -0.5, nextThree: -0.8, restOfSeason: 0.2, division: -0.6, playoffs: -0.7 },
+    evidenceComplete: false,
+    week: 1,
+  });
+  assert.equal(thin.verdict, "PASS");
+  assert.equal(thin.confidence, "HIGH");
+  const plausible = classifyTradeIdea({
+    dogsDeltas: { week: 0, nextThree: 0.2, restOfSeason: 0.6, division: 0.3, playoffs: 0.5 },
+    rivalDeltas: { week: 0, nextThree: 0, restOfSeason: 0, division: -0.1, playoffs: 0 },
+    evidenceComplete: true,
+    week: 1,
+  });
+  assert.equal(plausible.verdict, "MONITOR");
+  const strong = classifyTradeIdea({
+    dogsDeltas: { week: 0.8, nextThree: 0.9, restOfSeason: 1.5, division: 0.8, playoffs: 1 },
+    rivalDeltas: { week: 0.4, nextThree: 0.4, restOfSeason: 0.6, division: 0.4, playoffs: 0.4 },
+    evidenceComplete: true,
+    week: 1,
+  });
+  assert.equal(strong.verdict, "OFFER");
 });
 
 test("CBS snapshot diffs distinguish pickups, drops, and owner changes without inferring transaction type", () => {
@@ -396,6 +665,9 @@ test("IR watch reports only evidence-backed reserve statuses and does not invent
   assert.equal(result.irTargets[0].keeperUpside, "HIGH");
   assert.equal(result.irTargets[0].keeperEvaluationActive, false);
   assert.equal(result.irTargets[0].keeperCost, null);
+  assert.equal(result.irTargets[0].longTermStashAnalysisActive, true);
+  assert.equal(result.irTargets[0].acquisitionSalaryEvidence.known, false);
+  assert.equal(result.irTargets[0].acquisitionSalaryEvidence.minimumPossible, 1);
 });
 
 test("keeper salary remains gated until the Week 13 keeper-review window", () => {
@@ -412,6 +684,8 @@ test("keeper salary remains gated until the Week 13 keeper-review window", () =>
   const late = buildInjuryWatch({ pack: { players: [target] }, leagueState, week: 13, statusSnapshot }).irTargets[0];
   assert.equal(early.keeperEvaluationActive, false);
   assert.equal(early.keeperCost, null);
+  assert.equal(early.currentSalary, 7);
+  assert.equal(early.longTermStashAnalysisActive, true);
   assert.equal(late.keeperEvaluationActive, true);
   assert.equal(late.keeperCost, 7);
 });
@@ -429,8 +703,97 @@ test("combined plans are deterministic for identical sources and disclose baseli
   assert.ok(left.alerts.some((message) => message.includes("CBS league data has not been synced")));
 });
 
+test("the proposed trade analyzer supports legal multi-player three-team packages", () => {
+  const makeTeam = (prefix, base) => [
+    player(`${prefix}-qb`, "QB", base + 8),
+    player(`${prefix}-rb-one`, "RB", base + 5),
+    player(`${prefix}-rb-two`, "RB", base + 3),
+    player(`${prefix}-wr-one`, "WR", base + 4),
+    player(`${prefix}-wr-two`, "WR", base + 2),
+    player(`${prefix}-te`, "TE", base + 1),
+    player(`${prefix}-k`, "K", base),
+    player(`${prefix}-dst`, "DST", base - 1),
+  ];
+  const dogs = makeTeam("dogs", 8);
+  const orange = makeTeam("orange", 9);
+  const hobbits = makeTeam("hobbits", 10);
+  const pack = { players: [...dogs, ...orange, ...hobbits] };
+  const leagueState = {
+    authority: "authenticated CBS private league report",
+    rostersReady: true,
+    availablePlayerIds: [],
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) },
+      { teamId: "orange-crush", teamName: "Orange Crush", roster: rosterRows(orange) },
+      { teamId: "the-hobbits", teamName: "The Hobbits", roster: rosterRows(hobbits) },
+    ],
+  };
+  const result = analyzeTradeProposal({
+    pack,
+    leagueState,
+    week: 1,
+    transfers: [
+      { fromTeamId: "dogs-of-war", toTeamId: "orange-crush", playerIds: ["dogs-rb-two"] },
+      { fromTeamId: "orange-crush", toTeamId: "the-hobbits", playerIds: ["orange-rb-two"] },
+      { fromTeamId: "the-hobbits", toTeamId: "dogs-of-war", playerIds: ["hobbits-rb-two"] },
+    ],
+  });
+  assert.equal(result.teams.length, 3);
+  assert.equal(result.teams.every((team) => team.afterRosterSize === 8), true);
+  assert.ok(["GOOD IDEA", "POSSIBLE", "UNLIKELY", "DECLINE"].includes(result.verdict));
+  assert.match(result.method, /Exact legal optimal lineups/);
+});
+
+test("a full 717-player weekly rebuild stays below the production response timeout", async () => {
+  const pack = await readSeasonPack();
+  const teamIds = ["dogs-of-war", "angry-face", "orange-crush", "big-head", "t-dogs", "super-suckers", "three-amigos", "goon-skwad", "el-guapo", "crime-and-punishment", "the-hobbits", "the-bungles"];
+  const pools = new Map(["QB", "RB", "WR", "TE", "K", "DST"].map((position) => [position, pack.players.filter((candidate) => candidate.position === position)]));
+  const cursors = new Map([...pools].map(([position]) => [position, 0]));
+  const used = new Set();
+  const take = (position) => {
+    const pool = pools.get(position);
+    const index = cursors.get(position);
+    const candidate = pool[index];
+    cursors.set(position, index + 1);
+    used.add(candidate.id);
+    return candidate;
+  };
+  const teams = teamIds.map((teamId) => {
+    const required = [take("QB"), take("RB"), take("RB"), take("WR"), take("WR"), take("TE"), take("K"), take("DST")];
+    return { teamId, teamName: teamId === "dogs-of-war" ? "Dogs of War" : teamId, roster: rosterRows(required) };
+  });
+  const extras = pack.players.filter((candidate) => !used.has(candidate.id));
+  let extraIndex = 0;
+  for (const team of teams) {
+    while (team.roster.length < 14) {
+      const candidate = extras[extraIndex++];
+      used.add(candidate.id);
+      team.roster.push(...rosterRows([candidate]));
+    }
+  }
+  const leagueState = {
+    source: "authenticated CBS all-team report",
+    authority: "authenticated CBS private league report",
+    capturedAt: "2026-09-08T12:00:00.000Z",
+    rostersReady: true,
+    teamCount: 12,
+    legalTeamCount: 12,
+    teams,
+    availablePlayerIds: pack.players.filter((candidate) => !used.has(candidate.id)).map((candidate) => candidate.id),
+    weeklyProjections: [],
+    fabState: fabState(),
+  };
+  const started = performance.now();
+  const result = buildSeasonRecommendationSnapshot({ pack, leagueState, week: 1, generatedAt: "2026-09-08T12:00:00.000Z" });
+  const elapsed = performance.now() - started;
+  assert.equal(result.playerStats.length, 717);
+  assert.equal(result.league.teams.length, 12);
+  assert.ok(result.playerStats.every((row) => Object.hasOwn(row, "divisionAverage") && Object.hasOwn(row, "playoffAverage")));
+  assert.ok(elapsed < 12_000, `full weekly rebuild took ${elapsed.toFixed(0)} ms`);
+});
+
 test("private season shell supports full and per-source updates without auction navigation or caching", async () => {
-  const [html, source, css, worker, rootWorker, manifest, netlify, refreshHandler] = await Promise.all([
+  const [html, source, css, worker, rootWorker, manifest, netlify, refreshHandler, snapshotHandler, aiHandler, backgroundAiHandler, seasonService, seasonStore] = await Promise.all([
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.css", import.meta.url), "utf8"),
@@ -439,18 +802,56 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../public/thunder-bowl/season/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-refresh.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-snapshot.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-ai-advice.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-ai-advice-background.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "helper-setup", "helper-download", "fbg-file", "starter-rows", "bench-rows", "waiver-list", "trade-list", "move-list", "injury-list", "ir-list", "evidence-dialog", "evidence-eyebrow"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
+  assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
+  for (const label of ["Start/Sit", "Waiver Wire", "Trades", "Player Stats", "News", "Admin"]) assert.match(html, new RegExp(`>${label}<`));
+  for (const key of ["name", "leagueStatus", "opponent", "bye", "sourceCount", "points", "range", "passingYards", "passingTouchdowns", "interceptionsThrown", "rushingAttempts", "rushingYards", "rushingTouchdowns", "receptions", "receivingYards", "receivingTouchdowns", "fumblesLost", "fieldGoalsMade", "extraPointsMade", "defensiveSacks", "defensiveInterceptions", "defensiveFumblesRecovered", "defensiveTouchdowns"]) assert.match(html, new RegExp(`data-player-sort="${key}"`));
+  assert.match(html, /Click any column heading to sort/);
+  assert.match(source, /function comparePlayerStats/);
+  assert.match(source, /playerStatsView\.direction === "asc"/);
+  assert.match(source, /button\[data-player-sort\]/);
+  assert.match(source, /async function loadLineupSelection/);
+  assert.match(source, /starter-alternatives-toggle/);
+  assert.match(source, /value\.lineup\.freeAgentAlternatives/);
+  assert.match(source, /CBS-confirmed free agent/);
+  assert.match(source, /url\.searchParams\.set\("week", String\(week\)\)/);
+  assert.match(source, /url\.searchParams\.set\("team", teamId\)/);
+  assert.match(source, /userOpponentTeamId/);
+  assert.match(source, /Dogs' Week \$\{value\.week\} opponent/);
+  assert.match(source, /Current week AI only/);
+  assert.match(snapshotHandler, /searchParams\.get\("week"\)/);
+  assert.match(snapshotHandler, /searchParams\.get\("team"\)/);
+  assert.match(seasonService, /normalizeSeasonViewingWeek/);
+  assert.match(seasonService, /normalizeSeasonViewingTeam/);
+  assert.match(seasonService, /season: pack\.season,\s*week,\s*lineupTeamId,\s*packId: pack\.packId/);
+  assert.doesNotMatch(seasonService, /captureFootballguysSource[\s\S]*?return \{\s*week,\s*lineupTeamId,/);
+  assert.doesNotMatch(html, /id="player-sort"/);
   assert.match(html, />Update everything</);
   assert.match(html, /Two-sided current-season value/);
   for (const label of ["Update CBS", "Update FBG", "Update FantasyPros", "Update PFF", "Update injuries/news"]) assert.match(html, new RegExp(`>${label}<`));
   assert.match(html, /Advanced recovery tools/);
+  assert.match(html, /Paste captured CBS JSON/);
+  assert.match(source, /CBS pasted-data import failed validation/);
+  assert.match(source, /action: "sync-cbs", snapshot/);
   assert.doesNotMatch(html, /auction room|auction command center/i);
   assert.match(html, /\.\/manifest\.webmanifest/);
   assert.match(source, /action: "capture-cbs"/);
+  assert.equal((source.match(/requestCbsRosterCapture\(\{ timeoutMs: 300_000/g) || []).length, 2);
+  assert.match(seasonService, /function retainPriorCbsOptionalEvidence/);
+  assert.match(seasonService, /prior\.fabState\?\.week === captured\.projectionWeek/);
+  assert.match(seasonService, /captured\.projectionCount === 0/);
+  assert.match(seasonService, /prior\.projectionWeek === captured\.projectionWeek/);
+  assert.equal((seasonService.match(/const snapshot = retainPriorCbsOptionalEvidence\(captured, prior\)/g) || []).length, 2);
   assert.match(source, /requestFbgProjectionCapture/);
   assert.match(source, /action: "capture-fbg"/);
-  assert.match(source, /action: "refresh-news"/);
+  assert.match(refreshHandler, /input\.action === "refresh-news"/);
   assert.match(source, /provider: "fantasyPros"/);
   assert.match(source, /provider: "pff"/);
   assert.match(source, /action: "capture-fantasypros"/);
@@ -458,22 +859,71 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /action: "rebuild-plan"/);
   assert.match(refreshHandler, /input\.action === "rebuild-plan"/);
   assert.match(refreshHandler, /return json\(await refreshSeasonPlan\(\)\)/);
+  assert.match(aiHandler, /verifySession\(request\)/);
+  assert.match(aiHandler, /assertSameOrigin\(request\)/);
+  assert.match(aiHandler, /analyzeCurrentSeasonSectionWithAi/);
+  assert.match(backgroundAiHandler, /runCurrentSeasonSectionWithAiInBackground/);
+  assert.match(backgroundAiHandler, /background: true/);
+  assert.match(backgroundAiHandler, /verifySession\(request\)/);
+  assert.match(netlify, /\/api\/thunder-bowl\/season\/ai-advice/);
+  assert.match(netlify, /\/api\/thunder-bowl\/season\/ai-advice-background/);
+  assert.match(netlify, /\/api\/thunder-bowl\/season\/trade-analysis/);
+  assert.match(seasonService, /readSeasonAiAdviceForPlan\(safeSection, plan\.sourceFingerprint\)/);
+  assert.match(seasonService, /if \(existing\) return \{ advice: existing, cached: true, stale: false \}/);
+  assert.match(seasonService, /const configured = String\(process\.env\.OPEN_API_KEY \|\| ""\)\.trim\(\)/);
+  assert.match(seasonService, /configured\.match\(\/sk-\[A-Za-z0-9_-\]\{20,\}\//);
+  assert.match(seasonService, /apiKey: configuredOpenAiKey\(\)/);
+  assert.doesNotMatch(seasonService, /process\.env\.OPENAI_API_KEY/);
+  assert.match(seasonService, /model: process\.env\.OPENAI_MODEL \|\| "gpt-5\.6-sol"/);
+  assert.match(seasonStore, /ai-advice\/v1\/history\/\$\{advice\.section\}\/\$\{advice\.sourceFingerprint\}/);
+  assert.match(seasonStore, /ai-advice\/v1\/latest\/\$\{advice\.section\}/);
+  assert.match(seasonStore, /ai-advice\/v1\/jobs\/latest\/\$\{safeSection\}/);
+  assert.match(source, /AI_ADVICE_BACKGROUND_URL = "\/api\/thunder-bowl\/season\/ai-advice-background"/);
+  assert.match(source, /crypto\.randomUUID\(\)/);
+  assert.match(source, /index\.jobsBySection\?\.\[section\]/);
+  assert.match(source, /still running safely in the background/);
   assert.match(source, /CBS was saved successfully/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
   assert.doesNotMatch(source, /metric\("Salary"/);
   assert.match(source, /buildEvidenceExplanation/);
   assert.match(source, /collectLatestPlayerNews/);
-  assert.match(source, /\/api\/thunder-bowl\/news\?force=1/);
-  assert.match(source, /\/api\/thunder-bowl\/research\?force=1/);
+  assert.match(source, /buildTeamNewsFeed/);
+  assert.match(source, /NEWS_STORED_URL = "\/api\/thunder-bowl\/news\?stored=1"/);
+  assert.match(source, /RESEARCH_STORED_URL = "\/api\/thunder-bowl\/research\?stored=1"/);
+  assert.match(source, /loadSavedPlayerNewsFromServer/);
+  assert.match(source, /const STATUS_REFRESH_URL = "\/api\/thunder-bowl\/status\?force=1"/);
+  assert.match(source, /const NEWS_REFRESH_URL = "\/api\/thunder-bowl\/news\?force=1"/);
+  assert.match(source, /const RESEARCH_REFRESH_URL = "\/api\/thunder-bowl\/research\?force=1"/);
+  assert.match(source, /PLAYER_NEWS_CACHE_KEY = "seasonAllPlayerNewsV1"/);
+  assert.match(source, /refreshInjuriesAndAllPlayerNews/);
+  assert.match(source, /privateJson\(STATUS_REFRESH_URL\)/);
+  assert.match(source, /privateJson\(NEWS_REFRESH_URL\)/);
+  assert.match(source, /privateJson\(RESEARCH_REFRESH_URL\)/);
+  assert.match(source, /const rebuilt = await postAction\(\{ action: "rebuild-plan" \}\)/);
+  assert.match(source, /injuryNews: \{/);
+  assert.match(source, /collectLatestPlayerNews\(player\.name, cached\.newsSnapshot, cached\.researchSnapshot\)/);
+  assert.match(refreshHandler, /\["status", "research", "news"\]/);
+  assert.match(refreshHandler, /newsSnapshot: publicSources\.newsSnapshot/);
+  assert.match(seasonService, /currentNewsSnapshot\(\{ force: true \}\)/);
+  assert.match(seasonService, /news: \{ ok: !newsRefreshError/);
   assert.match(source, /Latest news for \$\{player\.name\}/);
+  assert.match(source, /Run AI analysis/);
+  assert.match(source, /View saved advice/);
+  assert.match(source, /Copy advice/);
+  assert.match(source, /sortTradeProposals/);
+  assert.match(source, /"trade-finder": "League-wide trade finder"/);
+  assert.match(source, /"stash-watch": "Stash Watch"/);
+  assert.match(source, /Find IR gems with AI/);
+  assert.match(source, /2027 salary-cap trade leverage/);
+  assert.match(source, /data\.cached/);
   assert.match(source, /recommendationNewsButtons\(\[row\.add, row\.drop\]\)/);
   assert.match(source, /recommendationNewsButtons\(\[\.\.\.row\.sends, \.\.\.row\.receives\]\)/);
   assert.match(source, /News: \$\{player\.name\}/);
   assert.match(source, /Recommended blind bid/);
   assert.match(source, /Do not exceed/);
   assert.match(source, /Remaining after a win/);
-  for (const kind of ["starter", "bench", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
+  for (const kind of ["starter", "bench", "free-agent", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
   assert.match(html, /maxlength="100"/);
@@ -483,13 +933,16 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v7/);
+  assert.match(worker, /thunder-bowl-season-v41/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.mjs\?v=20260901b/);
-  assert.match(worker, /season-news\.mjs\?v=20260831a/);
-  assert.match(worker, /fbg-session-capture\.mjs\?v=20260831a/);
-  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260831a/);
-  assert.match(worker, /season-evidence\.mjs\?v=20260831c/);
+  assert.match(worker, /season\.css\?v=20260901k/);
+  assert.match(worker, /season\.mjs\?v=20260909a/);
+  assert.match(worker, /season-news\.mjs\?v=20260901b/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260909a/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260909a/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260901i/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260909a/);
+  assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);
   assert.doesNotMatch(rootWorker, /\/thunder-bowl\/season\/index\.html/);

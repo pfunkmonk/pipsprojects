@@ -5,8 +5,9 @@ const STORE_NAME = "thunder-bowl-2026-news";
 export const SOURCE_URL = "https://www.rotowire.com/rss/news.php?sport=NFL";
 const NEWS_SCHEMA_VERSION = 2;
 const CACHE_MINUTES = 10;
-const ARCHIVE_WINDOW_DAYS = 45;
-const ARCHIVE_MAX_ITEMS = 1_000;
+const ARCHIVE_WINDOW_DAYS = 550;
+const LEGACY_ARCHIVE_WINDOW_DAYS = 45;
+const ARCHIVE_MAX_ITEMS = 5_000;
 
 function store() {
   return getStore({ name: STORE_NAME, consistency: "strong" });
@@ -102,7 +103,7 @@ export function validateNewsSnapshot(value) {
   if (!value || value.schemaVersion !== NEWS_SCHEMA_VERSION || value.source !== "RotoWire NFL player news RSS" || value.sourceUrl !== SOURCE_URL || value.modelEffect !== "none") {
     throw new Error("Stored player-news snapshot has an invalid source contract.");
   }
-  if (!Number.isFinite(Date.parse(value.capturedAt)) || value.refreshMinutes !== CACHE_MINUTES || value.archiveWindowDays !== ARCHIVE_WINDOW_DAYS || !Number.isSafeInteger(value.currentItemCount) || value.currentItemCount < 1 || !Number.isSafeInteger(value.archiveItemCount) || value.archiveItemCount !== value.items?.length || value.archiveItemCount > ARCHIVE_MAX_ITEMS || !/^[a-f0-9]{64}$/.test(value.rawSha256 || "") || !Array.isArray(value.items)) {
+  if (!Number.isFinite(Date.parse(value.capturedAt)) || value.refreshMinutes !== CACHE_MINUTES || ![LEGACY_ARCHIVE_WINDOW_DAYS, ARCHIVE_WINDOW_DAYS].includes(value.archiveWindowDays) || !Number.isSafeInteger(value.currentItemCount) || value.currentItemCount < 1 || !Number.isSafeInteger(value.archiveItemCount) || value.archiveItemCount !== value.items?.length || value.archiveItemCount > ARCHIVE_MAX_ITEMS || !/^[a-f0-9]{64}$/.test(value.rawSha256 || "") || !Array.isArray(value.items)) {
     throw new Error("Stored player-news snapshot has invalid provenance.");
   }
   const ids = new Set();
@@ -131,6 +132,10 @@ export function newsCacheKeys(at = new Date().toISOString()) {
 async function readStored(key) {
   const entry = await store().getWithMetadata(key, { consistency: "strong", type: "json" });
   return entry?.data ? validateNewsSnapshot(entry.data) : null;
+}
+
+export async function savedNewsSnapshot() {
+  return readStored(newsCacheKeys().latestKey);
 }
 
 export async function currentNewsSnapshot({ force = false } = {}) {

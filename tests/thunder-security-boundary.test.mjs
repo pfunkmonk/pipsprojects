@@ -14,8 +14,11 @@ import promoteHandler from "../netlify/functions/thunder-pack-promote.mjs";
 import replayHandler from "../netlify/functions/thunder-replay-2025-pack.mjs";
 import researchHandler from "../netlify/functions/thunder-research.mjs";
 import statusHandler from "../netlify/functions/thunder-status.mjs";
+import seasonAiAdviceHandler from "../netlify/functions/thunder-season-ai-advice.mjs";
+import seasonAiAdviceBackgroundHandler from "../netlify/functions/thunder-season-ai-advice-background.mjs";
 import seasonRefreshHandler from "../netlify/functions/thunder-season-refresh.mjs";
 import seasonSnapshotHandler from "../netlify/functions/thunder-season-snapshot.mjs";
+import seasonTradeAnalysisHandler from "../netlify/functions/thunder-season-trade-analysis.mjs";
 
 const secret = "boundary-test-secret-that-is-longer-than-thirty-two-characters";
 process.env.THUNDER_BOWL_ACCESS_CODE = "private-test-code";
@@ -43,8 +46,11 @@ const privateEndpoints = [
   ["2025 replay", replayHandler, "GET"],
   ["research", researchHandler, "GET"],
   ["status", statusHandler, "GET"],
+  ["season AI advice", seasonAiAdviceHandler, "GET"],
+  ["season background AI advice", seasonAiAdviceBackgroundHandler, "POST"],
   ["season refresh", seasonRefreshHandler, "POST"],
   ["season snapshot", seasonSnapshotHandler, "GET"],
+  ["season trade analysis", seasonTradeAnalysisHandler, "POST"],
 ];
 
 test("Auctioneer and Draft Board role cookies cannot open any private analytics endpoint", async () => {
@@ -105,8 +111,11 @@ test("the endpoint inventory fails closed when a new Thunder Bowl function is ad
     "thunder-public.mjs",
     "thunder-replay-2025-pack.mjs",
     "thunder-research.mjs",
+    "thunder-season-ai-advice-background.mjs",
+    "thunder-season-ai-advice.mjs",
     "thunder-season-refresh.mjs",
     "thunder-season-snapshot.mjs",
+    "thunder-season-trade-analysis.mjs",
     "thunder-season-tuesday-collector.mjs",
     "thunder-season-watch-collector.mjs",
     "thunder-status.mjs",
@@ -116,7 +125,7 @@ test("the endpoint inventory fails closed when a new Thunder Bowl function is ad
     .sort();
   assert.deepEqual(actual, expected);
 
-  const privateFiles = ["thunder-admin.mjs", "thunder-ledger.mjs", "thunder-news.mjs", "thunder-pack-promote.mjs", "thunder-pack.mjs", "thunder-replay-2025-pack.mjs", "thunder-research.mjs", "thunder-season-refresh.mjs", "thunder-season-snapshot.mjs", "thunder-status.mjs"];
+  const privateFiles = ["thunder-admin.mjs", "thunder-ledger.mjs", "thunder-news.mjs", "thunder-pack-promote.mjs", "thunder-pack.mjs", "thunder-replay-2025-pack.mjs", "thunder-research.mjs", "thunder-season-ai-advice.mjs", "thunder-season-ai-advice-background.mjs", "thunder-season-refresh.mjs", "thunder-season-snapshot.mjs", "thunder-season-trade-analysis.mjs", "thunder-status.mjs"];
   for (const name of privateFiles) {
     const source = await readFile(new URL(`../netlify/functions/${name}`, import.meta.url), "utf8");
     assert.match(source, /verifySession\(request\)/, `${name} must enforce the private session at the server boundary`);

@@ -1,11 +1,11 @@
 const TEAM_CATALOG = Object.freeze([
-  ["angry-face", 1, "Angry Face"], ["orange-crush", 2, "Orange Crush"],
+  ["angry-face", 1, "Angry Face", ["Muther Humpers"]], ["orange-crush", 2, "Orange Crush"],
   ["big-head", 3, "Big Head"], ["dogs-of-war", 4, "Dogs of War"],
   ["t-dogs", 5, "T-Dogs"], ["super-suckers", 6, "Super Suckers"],
   ["three-amigos", 7, "Three Amigos"], ["goon-skwad", 8, "Goon Skwad"],
   ["el-guapo", 9, "El Guapo"], ["crime-and-punishment", 10, "Crime and Punishment"],
   ["the-hobbits", 11, "The Hobbits"], ["the-bungles", 12, "The Bungles"],
-].map(([teamId, cbsTeamId, name]) => ({ teamId, cbsTeamId, name })));
+].map(([teamId, cbsTeamId, name, aliases = []]) => ({ teamId, cbsTeamId, name, aliases })));
 
 export const THUNDER_BOWL_FAB_RULES = Object.freeze({
   startingBudget: 50,
@@ -33,8 +33,9 @@ function pageRows(page) {
   })));
 }
 
-function teamRow(page, teamName) {
-  return pageRows(page).find((row) => row.cells.some((cell) => clean(cell) === teamName)) || null;
+function teamRow(page, team) {
+  const names = new Set([team.name, ...team.aliases]);
+  return pageRows(page).find((row) => row.cells.some((cell) => names.has(clean(cell)))) || null;
 }
 
 function columnValue(row, heading) {
@@ -64,7 +65,7 @@ function findPage(pages, patterns) {
   return pages
     .filter((page) => patterns.some((pattern) => pattern.test(`${page.title || ""} ${page.text || ""} ${page.url || ""}`)))
     .sort((left, right) => {
-      const coverage = (page) => TEAM_CATALOG.filter((team) => teamRow(page, team.name)).length;
+      const coverage = (page) => TEAM_CATALOG.filter((team) => teamRow(page, team)).length;
       return coverage(right) - coverage(left);
     })[0] || null;
 }
@@ -76,7 +77,7 @@ function pickupCounts(pages, week) {
   for (const page of transactionPages) {
     for (const row of pageRows(page)) {
       if (!/\b(awarded|won|added|claimed|acquired)\b/i.test(row.text) || /\b(unsuccessful|failed|dropped|released)\b/i.test(row.text)) continue;
-      const team = TEAM_CATALOG.find((candidate) => row.cells.some((cell) => cell === candidate.name));
+      const team = TEAM_CATALOG.find((candidate) => row.cells.some((cell) => [candidate.name, ...candidate.aliases].includes(cell)));
       if (!team) continue;
       counts.set(team.teamId, counts.get(team.teamId) + 1);
       evidenceRows += 1;
@@ -98,16 +99,17 @@ export function normalizeCbsFabPages(pages = [], week = 1, capturedAt = new Date
   const standingsPage = findPage(safePages, [/standings/i, /overall.{0,20}record/i]);
   const pickups = pickupCounts(safePages, week);
   const teams = TEAM_CATALOG.map((team) => {
-    const budgetRow = teamRow(budgetPage, team.name);
-    const orderRow = teamRow(orderPage, team.name);
-    const standingsRow = teamRow(standingsPage, team.name);
+    const { aliases: _aliases, ...canonicalTeam } = team;
+    const budgetRow = teamRow(budgetPage, team);
+    const orderRow = teamRow(orderPage, team);
+    const standingsRow = teamRow(standingsPage, team);
     const remainingBudget = money(columnValue(budgetRow, /remaining|available|balance|budget/i))
       ?? money((budgetRow?.cells || []).find((cell) => /\$/.test(cell)));
     const fabOrder = order(columnValue(orderRow, /order|priority|rank/i))
       ?? order((orderRow?.cells || []).find((cell) => /^\d{1,2}(?:st|nd|rd|th)?$/i.test(cell)));
     const teamRecord = record(columnValue(standingsRow, /record|overall/i)) ?? record(standingsRow?.text);
     return {
-      ...team,
+      ...canonicalTeam,
       remainingBudget,
       fabOrder,
       record: teamRecord,

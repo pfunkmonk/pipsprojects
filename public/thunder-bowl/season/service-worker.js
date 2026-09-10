@@ -1,16 +1,19 @@
-const CACHE_VERSION = "thunder-bowl-season-v7";
+const CACHE_VERSION = "thunder-bowl-season-v41";
 const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/favicon.svg?v=20260831a",
   "/thunder-bowl/season/manifest.webmanifest?v=20260831a",
-  "/thunder-bowl/season/season.css?v=20260901a",
-  "/thunder-bowl/season/season.mjs?v=20260901b",
-  "/thunder-bowl/season/season-evidence.mjs?v=20260831c",
-  "/thunder-bowl/season/season-news.mjs?v=20260831a",
-  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260831e",
-  "/thunder-bowl/fbg-session-capture.mjs?v=20260831a",
-  "/thunder-bowl/supplemental-session-capture.mjs?v=20260831a",
+  "/thunder-bowl/season/season.css?v=20260901k",
+  "/thunder-bowl/season/season.mjs?v=20260909a",
+  "/thunder-bowl/season/season-evidence.mjs?v=20260901i",
+  "/thunder-bowl/season/season-news.mjs?v=20260901b",
+  "/thunder-bowl/season/season-trade-ranking.mjs?v=20260901a",
+  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260909a",
+  "/thunder-bowl/cbs-schedule-normalize.mjs",
+  "/thunder-bowl/cbs-scoring-preview-normalize.mjs",
+  "/thunder-bowl/fbg-session-capture.mjs?v=20260909a",
+  "/thunder-bowl/supplemental-session-capture.mjs?v=20260909a",
   "/thunder-bowl/storage.mjs?v=20260823a",
 ];
 
@@ -54,6 +57,8 @@ self.addEventListener("fetch", (event) => {
   }
   if (url.pathname.startsWith("/thunder-bowl/season/") || [
     "/thunder-bowl/cbs-roster-snapshot.mjs",
+    "/thunder-bowl/cbs-schedule-normalize.mjs",
+    "/thunder-bowl/cbs-scoring-preview-normalize.mjs",
     "/thunder-bowl/fbg-session-capture.mjs",
     "/thunder-bowl/supplemental-session-capture.mjs",
     "/thunder-bowl/storage.mjs",

@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.7.9",
-  "description": "User-triggered, read-only CBS, Footballguys, FantasyPros, and PFF weekly data capture for Thunder Bowl.",
+  "version": "0.10.4",
+  "description": "User-triggered, read-only CBS league setup and four-source fantasy-football data capture for Pip's tools.",
   "permissions": ["scripting", "tabs"],
   "host_permissions": [
-    "https://berrymvp.football.cbssports.com/*",
+    "https://*.football.cbssports.com/*",
     "https://www.footballguys.com/*",
     "https://www.fantasypros.com/*",
     "https://www.pff.com/*"
@@ -18,10 +18,17 @@
     {
       "matches": [
         "https://pipsprojects.com/thunder-bowl/*",
-        "http://localhost:8888/thunder-bowl/*"
+        "https://pipsprojects.com/draft-day/*",
+        "http://localhost:8888/thunder-bowl/*",
+        "http://localhost:8888/draft-day/*"
       ],
       "js": ["page-bridge.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://*.football.cbssports.com/*"],
+      "js": ["cbs-page-reader.js"],
+      "run_at": "document_idle"
     }
   ],
   "action": {

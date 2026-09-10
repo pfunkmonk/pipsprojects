@@ -1,4 +1,6 @@
-export const FBG_CAPTURE_PROTOCOL_VERSION = 1;
+export const FBG_CAPTURE_PROTOCOL_VERSION = 2;
+export const FBG_REQUIRED_HELPER_VERSION = "0.10.4";
+export const FBG_COMPATIBLE_HELPER_VERSIONS = Object.freeze([FBG_REQUIRED_HELPER_VERSION, "0.10.3"]);
 export const FBG_CAPTURE_REQUEST = "THUNDER_BOWL_FBG_CAPTURE_REQUEST";
 export const FBG_CAPTURE_RESPONSE = "THUNDER_BOWL_FBG_CAPTURE_RESPONSE";
 export const FBG_APP_SOURCE = "thunder-bowl-app";
@@ -47,19 +49,22 @@ export function requestFbgProjectionCapture({ targetWindow = window, origin = wi
     function onMessage(event) {
       const data = event.data;
       if (event.source !== targetWindow || event.origin !== origin || !isPlainObject(data)) return;
-      if (data.source !== FBG_HELPER_SOURCE || data.type !== FBG_CAPTURE_RESPONSE || data.protocolVersion !== FBG_CAPTURE_PROTOCOL_VERSION || data.requestId !== requestId) return;
+      if (data.source !== FBG_HELPER_SOURCE || data.type !== FBG_CAPTURE_RESPONSE || data.protocolVersion !== FBG_CAPTURE_PROTOCOL_VERSION || !FBG_COMPATIBLE_HELPER_VERSIONS.includes(data.helperVersion) || data.requestId !== requestId) return;
       clearTimeout(timeout);
       targetWindow.removeEventListener("message", onMessage);
       if (!data.ok) reject(new Error(typeof data.error === "string" ? data.error : "Footballguys helper could not capture the member projections."));
       else resolve(validateFbgSessionCapture(data.capture, { expectedWeek: week }));
     }
     targetWindow.addEventListener("message", onMessage);
-    targetWindow.postMessage({
-      source: FBG_APP_SOURCE,
-      type: FBG_CAPTURE_REQUEST,
-      protocolVersion: FBG_CAPTURE_PROTOCOL_VERSION,
-      requestId,
-      week,
-    }, origin);
+    for (const expectedHelperVersion of FBG_COMPATIBLE_HELPER_VERSIONS) {
+      targetWindow.postMessage({
+        source: FBG_APP_SOURCE,
+        type: FBG_CAPTURE_REQUEST,
+        protocolVersion: FBG_CAPTURE_PROTOCOL_VERSION,
+        expectedHelperVersion,
+        requestId,
+        week,
+      }, origin);
+    }
   });
 }

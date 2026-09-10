@@ -4,8 +4,9 @@ import { createHash } from "node:crypto";
 const STORE_NAME = "thunder-bowl-2026-research";
 const SCHEMA_VERSION = 3;
 const CACHE_MINUTES = 30;
-const CBS_ARCHIVE_WINDOW_DAYS = 45;
-const CBS_ARCHIVE_MAX_ITEMS = 1_500;
+const CBS_ARCHIVE_WINDOW_DAYS = 550;
+const LEGACY_ARCHIVE_WINDOW_DAYS = 45;
+const CBS_ARCHIVE_MAX_ITEMS = 5_000;
 export const FBG_DEPTH_URL = "https://www.footballguys.com/depth-charts";
 export const FBG_NEWS_URL = "https://www.footballguys.com/news.php?pos=sp";
 export const CBS_NEWS_URLS = ["QB", "RB", "WR", "TE", "K"].map((position) => `https://www.cbssports.com/fantasy/football/players/news/${position}/`);
@@ -234,8 +235,8 @@ export function buildResearchSnapshot({ fbgHtml, fbgNewsHtml, cbsPages, priorSna
 export function validateResearchSnapshot(value) {
   if (!value || value.schemaVersion !== SCHEMA_VERSION || value.modelEffect !== "none" || value.refreshMinutes !== CACHE_MINUTES || !Number.isFinite(Date.parse(value.capturedAt))) throw new Error("Research snapshot failed its source contract.");
   if (value.depthChart?.sourceUrl !== FBG_DEPTH_URL || value.depthChart?.teamCount !== 32 || !/^[a-f0-9]{64}$/.test(value.depthChart?.rawSha256 || "") || !Array.isArray(value.depthChart?.entries) || value.depthChart.entries.length < 400) throw new Error("Research depth-chart provenance is invalid.");
-  if (value.fbgNews?.sourceUrl !== FBG_NEWS_URL || !/^[a-f0-9]{64}$/.test(value.fbgNews?.rawSha256 || "") || value.fbgNews?.archiveWindowDays !== CBS_ARCHIVE_WINDOW_DAYS || !Number.isSafeInteger(value.fbgNews?.currentItemCount) || value.fbgNews.currentItemCount < 10 || !Number.isSafeInteger(value.fbgNews?.archiveItemCount) || value.fbgNews.archiveItemCount !== value.fbgNews?.items?.length || value.fbgNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.fbgNews?.items)) throw new Error("Research Footballguys-news provenance is invalid.");
-  if (!Array.isArray(value.cbsNews?.sourceUrls) || value.cbsNews.sourceUrls.join("|") !== CBS_NEWS_URLS.join("|") || !/^[a-f0-9]{64}$/.test(value.cbsNews?.rawSha256 || "") || value.cbsNews?.archiveWindowDays !== CBS_ARCHIVE_WINDOW_DAYS || !Number.isSafeInteger(value.cbsNews?.currentItemCount) || value.cbsNews.currentItemCount < 1 || !Number.isSafeInteger(value.cbsNews?.archiveItemCount) || value.cbsNews.archiveItemCount !== value.cbsNews?.items?.length || value.cbsNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.cbsNews?.items)) throw new Error("Research CBS-news provenance is invalid.");
+  if (value.fbgNews?.sourceUrl !== FBG_NEWS_URL || !/^[a-f0-9]{64}$/.test(value.fbgNews?.rawSha256 || "") || ![LEGACY_ARCHIVE_WINDOW_DAYS, CBS_ARCHIVE_WINDOW_DAYS].includes(value.fbgNews?.archiveWindowDays) || !Number.isSafeInteger(value.fbgNews?.currentItemCount) || value.fbgNews.currentItemCount < 10 || !Number.isSafeInteger(value.fbgNews?.archiveItemCount) || value.fbgNews.archiveItemCount !== value.fbgNews?.items?.length || value.fbgNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.fbgNews?.items)) throw new Error("Research Footballguys-news provenance is invalid.");
+  if (!Array.isArray(value.cbsNews?.sourceUrls) || value.cbsNews.sourceUrls.join("|") !== CBS_NEWS_URLS.join("|") || !/^[a-f0-9]{64}$/.test(value.cbsNews?.rawSha256 || "") || ![LEGACY_ARCHIVE_WINDOW_DAYS, CBS_ARCHIVE_WINDOW_DAYS].includes(value.cbsNews?.archiveWindowDays) || !Number.isSafeInteger(value.cbsNews?.currentItemCount) || value.cbsNews.currentItemCount < 1 || !Number.isSafeInteger(value.cbsNews?.archiveItemCount) || value.cbsNews.archiveItemCount !== value.cbsNews?.items?.length || value.cbsNews.archiveItemCount > CBS_ARCHIVE_MAX_ITEMS || !Array.isArray(value.cbsNews?.items)) throw new Error("Research CBS-news provenance is invalid.");
   for (const entry of value.depthChart.entries) {
     if (!entry.playerName || !entry.nflTeam || !["QB", "RB", "WR", "TE", "K"].includes(entry.position) || !Number.isInteger(entry.depthOrder) || entry.depthOrder < 1) throw new Error("Research depth-chart entry is invalid.");
     safeUrl(entry.url, ["footballguys.com", "www.footballguys.com"]);
@@ -264,6 +265,10 @@ export function researchCacheKeys(at = new Date().toISOString()) {
 async function readStored(key) {
   const entry = await store().getWithMetadata(key, { consistency: "strong", type: "json" });
   return entry?.data ? validateResearchSnapshot(entry.data) : null;
+}
+
+export async function savedResearchSnapshot() {
+  return readStored(researchCacheKeys().latestKey);
 }
 
 async function sourceHtml(url) {

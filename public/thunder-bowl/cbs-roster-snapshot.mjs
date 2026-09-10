@@ -1,4 +1,6 @@
-export const CBS_CAPTURE_PROTOCOL_VERSION = 1;
+export const CBS_CAPTURE_PROTOCOL_VERSION = 2;
+export const CBS_REQUIRED_HELPER_VERSION = "0.10.4";
+export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION, "0.10.3"]);
 export const CBS_CAPTURE_REQUEST = "THUNDER_BOWL_CBS_CAPTURE_REQUEST";
 export const CBS_CAPTURE_RESPONSE = "THUNDER_BOWL_CBS_CAPTURE_RESPONSE";
 export const CBS_APP_SOURCE = "thunder-bowl-app";
@@ -30,6 +32,9 @@ export const CBS_TEAM_CATALOG = Object.freeze([
 const TEAM_BY_NAME = new Map(CBS_TEAM_CATALOG.map((team) => [team.name, team]));
 const VALID_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 const VALID_FAB_NIGHTS = ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+const CBS_SCHEDULE_SOURCE = "CBS Sports authenticated Thunder Bowl league schedule";
+const CBS_SCORING_PREVIEW_SOURCE = "CBS Sports authenticated Thunder Bowl scoring preview";
+const CBS_HEAD_TO_HEAD_WEEKS = Array.from({ length: 13 }, (_, index) => index + 1);
 
 export function cbsTeamRosterReadiness(players = []) {
   const counts = Object.fromEntries(Object.keys(CBS_STARTER_REQUIREMENTS).map((position) => [position, 0]));
@@ -113,6 +118,37 @@ function validateProjectionRow(row, week) {
   assert(row.opponent === null || typeof row.opponent === "string", `${row.name} has an invalid projection opponent.`);
 }
 
+function materializeRawCbsEvidence(input) {
+  if (!isPlainObject(input?.rawLeagueSchedule)) return input;
+  const rawSchedule = input.rawLeagueSchedule;
+  assert(rawSchedule.schemaVersion === 1 && Number.isFinite(Date.parse(rawSchedule.capturedAt)), "Raw CBS schedule capture has invalid timing.");
+  assert(Array.isArray(rawSchedule.pages) && rawSchedule.pages.length >= 1 && rawSchedule.pages.length <= 30, "Raw CBS schedule capture has invalid page coverage.");
+  for (const page of rawSchedule.pages) {
+    assert(isPlainObject(page) && new URL(page.url).origin === "https://berrymvp.football.cbssports.com", "Raw CBS schedule capture came from the wrong origin.");
+    assert(typeof page.title === "string" && page.title.length <= 300 && typeof page.text === "string" && page.text.length <= 5_000, "Raw CBS schedule capture contains oversized page text.");
+    assert(Array.isArray(page.tables) && page.tables.length <= 30 && Array.isArray(page.blocks) && page.blocks.length <= 500, "Raw CBS schedule capture contains malformed page sections.");
+  }
+  const leagueSchedule = normalizeCbsSchedulePages(rawSchedule.pages, rawSchedule.capturedAt);
+  let scoringPreview = input.scoringPreview;
+  if (isPlainObject(input.rawScoringPreview)) {
+    const rawPreview = input.rawScoringPreview;
+    assert(rawPreview.schemaVersion === 1 && rawPreview.week === input.projectionWeek && Number.isFinite(Date.parse(rawPreview.capturedAt)), "Raw CBS scoring preview has invalid timing.");
+    assert(Array.isArray(rawPreview.rows) && rawPreview.rows.length <= 1_000, "Raw CBS scoring preview has invalid player coverage.");
+    scoringPreview = normalizeCbsScoringPreviewRows({
+      rows: rawPreview.rows,
+      teams: input.teams,
+      leagueSchedule,
+      week: rawPreview.week,
+      capturedAt: rawPreview.capturedAt,
+      pageUrl: rawPreview.pageUrl,
+      pageTitle: rawPreview.pageTitle,
+      captureError: rawPreview.captureError,
+    });
+  }
+  const { rawLeagueSchedule: _rawLeagueSchedule, rawScoringPreview: _rawScoringPreview, ...rest } = input;
+  return { ...rest, leagueSchedule, ...(scoringPreview ? { scoringPreview } : {}) };
+}
+
 function validateFabState(value, week) {
   assert(isPlainObject(value) && value.schemaVersion === 1, "CBS FAB capture has an unsupported schema.");
   assert(value.source === "CBS Sports authenticated Thunder Bowl FAB, standings, and transaction pages", "CBS FAB capture has an unexpected source.");
@@ -140,7 +176,65 @@ function validateFabState(value, week) {
   assert(Array.isArray(value.pageUrls) && value.pageUrls.every((pageUrl) => new URL(pageUrl).origin === "https://berrymvp.football.cbssports.com"), "CBS FAB capture contains an invalid source page.");
 }
 
+function validateLeagueSchedule(value, season) {
+  assert(isPlainObject(value) && value.schemaVersion === 1, "CBS league schedule has an unsupported schema.");
+  assert(value.source === CBS_SCHEDULE_SOURCE && value.modelEffect === "opponent_identification_only", "CBS league schedule has an unexpected authority boundary.");
+  assert(value.season === season && Number.isFinite(Date.parse(value.capturedAt)), "CBS league schedule has invalid timing or season data.");
+  assert(JSON.stringify(value.headToHeadWeeks) === JSON.stringify(CBS_HEAD_TO_HEAD_WEEKS) && JSON.stringify(value.allPlayWeeks) === JSON.stringify([14]), "CBS league schedule has the wrong scoring periods.");
+  assert(Array.isArray(value.matchups) && value.matchups.length === 78 && value.matchupCount === value.matchups.length, "CBS league schedule must contain six matchups for Weeks 1–13.");
+  const knownTeams = new Map(CBS_TEAM_CATALOG.map((team) => [team.teamId, team]));
+  for (const week of CBS_HEAD_TO_HEAD_WEEKS) {
+    const rows = value.matchups.filter((row) => row.week === week);
+    const seen = new Set();
+    assert(rows.length === 6, `CBS league schedule Week ${week} must contain six matchups.`);
+    for (const row of rows) {
+      const left = knownTeams.get(row.teamAId);
+      const right = knownTeams.get(row.teamBId);
+      assert(left && right && left.teamId !== right.teamId && row.teamAName === left.name && row.teamBName === right.name, `CBS league schedule Week ${week} contains an unknown matchup.`);
+      assert(!seen.has(left.teamId) && !seen.has(right.teamId), `CBS league schedule Week ${week} repeats a team.`);
+      seen.add(left.teamId);
+      seen.add(right.teamId);
+    }
+    assert(seen.size === CBS_TEAM_CATALOG.length, `CBS league schedule Week ${week} does not cover all teams.`);
+  }
+  assert(Array.isArray(value.pageUrls) && value.pageUrls.length >= 1 && value.pageUrls.every((pageUrl) => new URL(pageUrl).origin === "https://berrymvp.football.cbssports.com"), "CBS league schedule contains an invalid source page.");
+}
+
+function validateScoringPreview(value, snapshot, season) {
+  assert(isPlainObject(value) && value.schemaVersion === 1, "CBS scoring preview has an unsupported schema.");
+  assert(value.source === CBS_SCORING_PREVIEW_SOURCE && value.modelEffect === "submitted_lineup_authority_only", "CBS scoring preview has an unexpected authority boundary.");
+  assert(value.season === season && value.week === snapshot.projectionWeek && Number.isFinite(Date.parse(value.capturedAt)), "CBS scoring preview has invalid timing or season data.");
+  assert(["COMPLETE", "PARTIAL"].includes(value.status), "CBS scoring preview has an invalid status.");
+  assert(value.pageUrl === null || new URL(value.pageUrl).origin === "https://berrymvp.football.cbssports.com", "CBS scoring preview came from the wrong origin.");
+  assert(Array.isArray(value.teams) && value.teams.length <= 2, "CBS scoring preview contains too many teams.");
+  assert(Array.isArray(value.errors) && value.errors.length <= 10 && value.errors.every((error) => typeof error === "string" && error.length <= 500), "CBS scoring preview contains invalid capture diagnostics.");
+  const rosterByTeam = new Map(snapshot.teams.map((team) => [team.teamId, new Map(team.players.map((player) => [player.cbsPlayerId, player]))]));
+  const seenTeams = new Set();
+  for (const team of value.teams) {
+    const expected = CBS_TEAM_CATALOG.find((candidate) => candidate.teamId === team.teamId);
+    assert(expected && expected.name === team.teamName && expected.cbsTeamId === team.cbsTeamId && !seenTeams.has(team.teamId), "CBS scoring preview contains an unknown or repeated team.");
+    seenTeams.add(team.teamId);
+    const roster = rosterByTeam.get(team.teamId);
+    const rows = [...(team.starters || []), ...(team.bench || [])];
+    const seenPlayers = new Set();
+    for (const player of rows) {
+      const rosterPlayer = roster?.get(player.cbsPlayerId);
+      assert(rosterPlayer && rosterPlayer.name === player.name && rosterPlayer.position === player.position && rosterPlayer.nflTeam === player.nflTeam, `${player.name || "A scoring-preview player"} does not reconcile with the CBS roster report.`);
+      assert(!seenPlayers.has(player.cbsPlayerId), `${player.name} appears more than once in the CBS scoring preview.`);
+      seenPlayers.add(player.cbsPlayerId);
+    }
+    assert(isPlainObject(team.coverage), `${team.teamName} has invalid scoring-preview coverage.`);
+    if (value.status === "COMPLETE") {
+      assert(team.starters.length === CBS_ROSTER_MINIMUM_SIZE && rows.length === roster.size && team.coverage.exactStarters === true && team.coverage.completeRoster === true, `${team.teamName} has incomplete CBS scoring-preview coverage.`);
+      const counts = Object.fromEntries(Object.keys(CBS_STARTER_REQUIREMENTS).map((position) => [position, team.starters.filter((player) => player.position === position).length]));
+      assert(JSON.stringify(counts) === JSON.stringify(CBS_STARTER_REQUIREMENTS), `${team.teamName} has an invalid submitted CBS lineup.`);
+    }
+  }
+  if (value.status === "COMPLETE") assert(value.teams.length === 2 && value.errors.length === 0, "A complete CBS scoring preview must contain both teams without capture errors.");
+}
+
 export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {}) {
+  input = materializeRawCbsEvidence(input);
   assert(isPlainObject(input), "CBS roster capture is not an object.");
   assert(input.schemaVersion === 1, "CBS roster capture has an unsupported schema.");
   assert(input.source === CBS_SNAPSHOT_SOURCE, "CBS roster capture has an unexpected source.");
@@ -149,7 +243,7 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
   assert(input.season === expectedSeason, `CBS roster capture is for ${input.season || "an unknown season"}, not ${expectedSeason}.`);
   const pageUrl = new URL(input.pageUrl);
   assert(pageUrl.origin === "https://berrymvp.football.cbssports.com", "CBS roster capture came from the wrong origin.");
-  assert(pageUrl.pathname === "/teams/all" || pageUrl.pathname === `/teams/roster-report/all/${expectedSeason}/`, "CBS roster capture came from an unexpected report.");
+  assert(["/teams/all", "/teams/all/", `/teams/roster-report/all/${expectedSeason}`, `/teams/roster-report/all/${expectedSeason}/`].includes(pageUrl.pathname), "CBS roster capture came from an unexpected report.");
   assert(Array.isArray(input.teams) && input.teams.length === CBS_TEAM_CATALOG.length, "CBS roster capture must contain all 12 teams.");
 
   const seenTeams = new Set();
@@ -172,6 +266,9 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
   assert(seenTeams.size === CBS_TEAM_CATALOG.length, "CBS roster capture is missing a known team.");
   assert(input.teamCount === CBS_TEAM_CATALOG.length, "CBS roster capture team count does not match its rows.");
   assert(input.playerCount === playerCount, "CBS roster capture player count does not match its rows.");
+  assert(input.leagueSchedule !== undefined, "CBS league schedule is missing. Install the current Thunder Bowl Data Helper, reload the site, and update CBS again.");
+  validateLeagueSchedule(input.leagueSchedule, expectedSeason);
+  if (input.scoringPreview !== undefined) validateScoringPreview(input.scoringPreview, input, expectedSeason);
   if (input.weeklyProjections !== undefined) {
     assert(Number.isSafeInteger(input.projectionWeek) && input.projectionWeek >= 1 && input.projectionWeek <= 18, "CBS weekly projections require a valid week.");
     assert(Array.isArray(input.weeklyProjections) && input.weeklyProjections.length === input.projectionCount && input.weeklyProjections.length >= 100 && input.weeklyProjections.length <= 600, "CBS weekly projection coverage is unsafe.");
@@ -222,19 +319,24 @@ export function requestCbsRosterCapture({ targetWindow = window, origin = window
     function onMessage(event) {
       const data = event.data;
       if (event.source !== targetWindow || event.origin !== origin || !isPlainObject(data)) return;
-      if (data.source !== CBS_HELPER_SOURCE || data.type !== CBS_CAPTURE_RESPONSE || data.protocolVersion !== CBS_CAPTURE_PROTOCOL_VERSION || data.requestId !== requestId) return;
+      if (data.source !== CBS_HELPER_SOURCE || data.type !== CBS_CAPTURE_RESPONSE || data.protocolVersion !== CBS_CAPTURE_PROTOCOL_VERSION || !CBS_COMPATIBLE_HELPER_VERSIONS.includes(data.helperVersion) || data.requestId !== requestId) return;
       clearTimeout(timeout);
       targetWindow.removeEventListener("message", onMessage);
       if (!data.ok) reject(new Error(typeof data.error === "string" ? data.error : "CBS helper could not capture the roster report."));
       else resolve(validateCbsRosterSnapshot(data.snapshot));
     }
     targetWindow.addEventListener("message", onMessage);
-    targetWindow.postMessage({
-      source: CBS_APP_SOURCE,
-      type: CBS_CAPTURE_REQUEST,
-      protocolVersion: CBS_CAPTURE_PROTOCOL_VERSION,
-      requestId,
-      week,
-    }, origin);
+    for (const expectedHelperVersion of CBS_COMPATIBLE_HELPER_VERSIONS) {
+      targetWindow.postMessage({
+        source: CBS_APP_SOURCE,
+        type: CBS_CAPTURE_REQUEST,
+        protocolVersion: CBS_CAPTURE_PROTOCOL_VERSION,
+        expectedHelperVersion,
+        requestId,
+        week,
+      }, origin);
+    }
   });
 }
+import { normalizeCbsSchedulePages } from "./cbs-schedule-normalize.mjs";
+import { normalizeCbsScoringPreviewRows } from "./cbs-scoring-preview-normalize.mjs";

@@ -43,9 +43,11 @@ test("news snapshot is provenance-complete, cached in ten-minute buckets, and va
   assert.equal(validateNewsSnapshot(snapshot), snapshot);
   assert.equal(snapshot.modelEffect, "none");
   assert.equal(snapshot.refreshMinutes, 10);
+  assert.equal(snapshot.archiveWindowDays, 550);
   assert.equal(snapshot.schemaVersion, 2);
   assert.equal(snapshot.archiveItemCount, 2);
   assert.match(snapshot.rawSha256, /^[a-f0-9]{64}$/);
+  assert.equal(validateNewsSnapshot({ ...snapshot, archiveWindowDays: 45 }).archiveWindowDays, 45);
   assert.deepEqual(newsCacheKeys("2026-08-04T04:15:00Z"), newsCacheKeys("2026-08-04T04:19:59Z"));
   assert.notDeepEqual(newsCacheKeys("2026-08-04T04:15:00Z"), newsCacheKeys("2026-08-04T04:20:00Z"));
   for (const item of snapshot.items) {
@@ -60,6 +62,12 @@ test("RotoWire items accumulate across refreshes for the draft-morning archive",
   const later = { ...parseRotoWireNews(fixture)[1], id: "later-item", publishedAt: "2026-08-04T20:00:00Z" };
   const archived = mergeNewsArchive([later], [first], "2026-08-04T21:00:00Z");
   assert.deepEqual(archived.map((item) => item.id), ["later-item", "nfl-gibbs-1"]);
+});
+
+test("RotoWire history survives beyond the former 45-day rolling limit", () => {
+  const first = parseRotoWireNews(fixture)[0];
+  const archived = mergeNewsArchive([], [first], "2026-12-15T21:00:00Z");
+  assert.equal(archived[0].id, "nfl-gibbs-1");
 });
 
 test("news validation rejects hostile links and value-bearing payloads", () => {

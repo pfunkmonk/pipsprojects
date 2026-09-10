@@ -6,6 +6,7 @@ import {
   capturePffSource,
   importCbsLeagueSnapshot,
   importFbgWeeklyCsv,
+  importManagementEvidence,
   refreshFootballguysSource,
   refreshSeasonPlan,
   refreshSeasonPublicSources,
@@ -39,6 +40,10 @@ export default async function handler(request) {
     if (!verifySession(request)) return json({ error: "Authentication required." }, 401);
     assertSameOrigin(request);
     const input = await body(request);
+    if (input.action === "import-management") {
+      exactKeys(input, ["action", "records"]);
+      return json(await importManagementEvidence(input.records));
+    }
     if (input.action === "refresh-public") {
       exactKeys(input, ["action"]);
       return json(await refreshSeasonPlan({ forcePublic: true, refreshFootballguys: true }));
@@ -86,7 +91,7 @@ export default async function handler(request) {
     if (input.action === "refresh-news") {
       exactKeys(input, ["action"]);
       const publicSources = await refreshSeasonPublicSources();
-      const failures = ["status", "research"]
+      const failures = ["status", "research", "news"]
         .filter((source) => !publicSources.sourceRefresh[source].ok)
         .map((source) => `${source}: ${publicSources.sourceRefresh[source].error}`);
       if (failures.length) {
@@ -96,6 +101,7 @@ export default async function handler(request) {
         publicSourceOverrides: {
           statusSnapshot: publicSources.statusSnapshot,
           researchSnapshot: publicSources.researchSnapshot,
+          newsSnapshot: publicSources.newsSnapshot,
         },
       }));
     }

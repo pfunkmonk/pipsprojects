@@ -1,4 +1,6 @@
-export const SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION = 1;
+export const SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION = 2;
+export const SUPPLEMENTAL_REQUIRED_HELPER_VERSION = "0.10.4";
+export const SUPPLEMENTAL_COMPATIBLE_HELPER_VERSIONS = Object.freeze([SUPPLEMENTAL_REQUIRED_HELPER_VERSION, "0.10.3"]);
 export const SUPPLEMENTAL_APP_SOURCE = "thunder-bowl-app";
 export const SUPPLEMENTAL_HELPER_SOURCE = "thunder-bowl-cbs-helper";
 
@@ -74,19 +76,22 @@ export function requestSupplementalProjectionCapture({
     function onMessage(event) {
       const data = event.data;
       if (event.source !== targetWindow || event.origin !== origin || !isPlainObject(data)) return;
-      if (data.source !== SUPPLEMENTAL_HELPER_SOURCE || data.type !== config.response || data.protocolVersion !== SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION || data.requestId !== requestId) return;
+      if (data.source !== SUPPLEMENTAL_HELPER_SOURCE || data.type !== config.response || data.protocolVersion !== SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION || !SUPPLEMENTAL_COMPATIBLE_HELPER_VERSIONS.includes(data.helperVersion) || data.requestId !== requestId) return;
       clearTimeout(timeout);
       targetWindow.removeEventListener("message", onMessage);
       if (!data.ok) reject(new Error(typeof data.error === "string" ? data.error : `${provider} helper capture failed.`));
       else resolve(validateSupplementalSessionCapture(data.capture, { provider, expectedWeek: week }));
     }
     targetWindow.addEventListener("message", onMessage);
-    targetWindow.postMessage({
-      source: SUPPLEMENTAL_APP_SOURCE,
-      type: config.request,
-      protocolVersion: SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION,
-      requestId,
-      week,
-    }, origin);
+    for (const expectedHelperVersion of SUPPLEMENTAL_COMPATIBLE_HELPER_VERSIONS) {
+      targetWindow.postMessage({
+        source: SUPPLEMENTAL_APP_SOURCE,
+        type: config.request,
+        protocolVersion: SUPPLEMENTAL_CAPTURE_PROTOCOL_VERSION,
+        expectedHelperVersion,
+        requestId,
+        week,
+      }, origin);
+    }
   });
 }
