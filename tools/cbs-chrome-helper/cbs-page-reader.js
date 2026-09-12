@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.4";
+  const READER_VERSION = "0.10.5";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
@@ -16,6 +16,12 @@
       const playerLinks = document.querySelectorAll('a[href*="/players/playerpage/"],a[href*="/players/"]');
       const rosterNameHits = expectedPlayerNames.filter((name) => body.includes(name)).length;
       return /Scoring Preview/i.test(body) && (playerLinks.length >= 8 || rosterNameHits >= 8);
+    }
+    if (pageKind === "scoring-live") {
+      const body = document.body?.innerText || "";
+      const playerRows = document.querySelectorAll("#matchupDetailsRegion .playerLayoutContainer");
+      const matchupTiles = document.querySelectorAll("#atlRegion .atlItem");
+      return /(?:GameTracker|PLAYER MINUTES REMAINING|PMR:)/i.test(body) && playerRows.length >= 16 && matchupTiles.length >= 1;
     }
     const projectionTable = tables.find((table) => /\bFPTS\b/.test(table.innerText || ""));
     return Boolean(projectionTable?.querySelector('a.playerLink[href*="/players/playerpage/"]'));
@@ -121,6 +127,80 @@
       add({ cbsPlayerId: player.cbsPlayerId, name: player.name, node });
     }
     return { rows, pageUrl: location.href, pageTitle: document.title || "" };
+  }
+
+  function finiteScore(value) {
+    const normalized = clean(value).replace(/,/g, "");
+    if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
+    const score = Number(normalized);
+    return Number.isFinite(score) && score >= -100 && score <= 200 ? score : null;
+  }
+
+  function currentLiveScoringRows(rosterPlayers, matchupIndex) {
+    const knownIds = new Set(rosterPlayers.map((player) => String(player.cbsPlayerId || "")));
+    const rows = [];
+    for (const node of document.querySelectorAll("#matchupDetailsRegion .playerLayoutContainer")) {
+      const link = node.querySelector('a[href*="/players/playerpage/"],a[href*="/players/"]');
+      const cbsPlayerId = (link?.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "";
+      if (!knownIds.has(cbsPlayerId)) continue;
+      const ancestorClasses = [];
+      for (let parent = node.parentElement; parent && parent.id !== "matchupDetailsRegion"; parent = parent.parentElement) ancestorClasses.push(String(parent.className || ""));
+      const context = ancestorClasses.join(" ");
+      const role = /bench/i.test(context) ? "BENCH" : "STARTER";
+      const teamSide = /home/i.test(context) ? "HOME" : /away/i.test(context) ? "AWAY" : null;
+      const gameText = clean(node.children[1]?.innerText || node.children[1]?.textContent);
+      const statsText = clean(node.querySelector(".playerStatsContainer")?.innerText || node.querySelector(".playerStatsContainer")?.textContent);
+      const actualPoints = finiteScore(node.querySelector(".playerScoresContainer .playerScore")?.innerText || node.querySelector(".playerScoresContainer .playerScore")?.textContent);
+      const cbsLiveProjection = finiteScore(node.querySelector(".playerScoresContainer .projScore")?.innerText || node.querySelector(".playerScoresContainer .projScore")?.textContent);
+      const final = /playerCellFinaled/i.test(node.className || "") || /\bFINAL\b/i.test(gameText);
+      rows.push({
+        cbsPlayerId,
+        name: clean(link?.textContent),
+        role,
+        teamSide,
+        matchupIndex,
+        actualPoints,
+        scoreStatus: final ? "FINAL" : actualPoints !== null ? "LIVE" : "NOT_STARTED",
+        cbsLiveProjection,
+        gameText: gameText.slice(0, 300),
+        statsText: statsText.slice(0, 500),
+        top: node.getBoundingClientRect().top,
+      });
+    }
+    return rows;
+  }
+
+  async function scoringLiveRows(rosterPlayers) {
+    const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+    const tiles = [...document.querySelectorAll("#atlRegion .atlItem")].filter((tile) => tile.getBoundingClientRect().width > 0 && tile.getBoundingClientRect().height > 0);
+    const originalIndex = Math.max(0, tiles.findIndex((tile) => tile.classList.contains("selected")));
+    const allRows = [];
+    const signature = () => [...document.querySelectorAll("#matchupDetailsRegion .playerLayoutContainer a.playerLink")]
+      .map((link) => (link.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "")
+      .filter(Boolean).join("|");
+    try {
+      for (let matchupIndex = 0; matchupIndex < tiles.length; matchupIndex += 1) {
+        const tile = tiles[matchupIndex];
+        const before = signature();
+        const wasSelected = tile.classList.contains("selected");
+        if (!wasSelected) tile.click();
+        const deadline = Date.now() + 6_000;
+        while (Date.now() < deadline) {
+          const current = signature();
+          if (tile.classList.contains("selected") && current && (wasSelected || current !== before)) break;
+          await pause(100);
+        }
+        const captured = currentLiveScoringRows(rosterPlayers, matchupIndex);
+        if (captured.length < 16) throw new Error(`CBS live scoring matchup ${matchupIndex + 1} did not finish rendering.`);
+        allRows.push(...captured);
+      }
+    } finally {
+      if (tiles[originalIndex] && !tiles[originalIndex].classList.contains("selected")) {
+        tiles[originalIndex].click();
+        await pause(150);
+      }
+    }
+    return { rows: allRows, allMatchups: tiles.length >= 6, matchupCount: tiles.length, pageUrl: location.href, pageTitle: document.title || "" };
   }
 
   function projectionRows(expectedPosition) {
@@ -332,6 +412,12 @@
     if (message?.source !== REQUEST_SOURCE || message?.action !== "read-cbs-page") return false;
     if (message.kind === "fab-pages") {
       fabPages(message.args?.week, message.args?.cbsOrigin)
+        .then((value) => sendResponse({ ok: true, readerVersion: READER_VERSION, value }))
+        .catch((error) => sendResponse({ ok: false, readerVersion: READER_VERSION, error: error instanceof Error ? error.message : String(error) }));
+      return true;
+    }
+    if (message.kind === "scoring-live-rows") {
+      scoringLiveRows(message.args?.rosterPlayers || [])
         .then((value) => sendResponse({ ok: true, readerVersion: READER_VERSION, value }))
         .catch((error) => sendResponse({ ok: false, readerVersion: READER_VERSION, error: error instanceof Error ? error.message : String(error) }));
       return true;

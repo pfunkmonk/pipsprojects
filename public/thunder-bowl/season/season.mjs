@@ -1,8 +1,8 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260909a";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260909a";
-import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260909a";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260912b";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260912b";
+import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260912b";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
-import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260905a";
+import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260912b";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
 import { sortTradeProposals } from "./season-trade-ranking.mjs?v=20260901a";
 import { renderManagement } from "./season-management-ui.mjs?v=20260912b";
@@ -756,11 +756,21 @@ function scoringPreviewPlayer(row, role, week) {
     element("span", "", `${row.position} · ${row.nflTeam || "NFL team pending"} · ${row.injury?.status || "Active"}`),
     element("small", "", `${row.opponent || (row.bye === week ? "BYE" : "Matchup pending")}${row.gameTime ? ` · ${row.gameTime}` : ""}`),
   );
+  if (row.liveStats) identity.append(element("small", "scoring-live-stats", row.liveStats));
   const projection = element("div", "scoring-player-projection");
-  projection.append(
-    element("strong", "", number(row.points)),
-    element("span", "", `${number(row.floor)}–${number(row.ceiling)} range`),
-  );
+  if (Number.isFinite(row.actualPoints)) {
+    projection.classList.add(row.scoreStatus === "FINAL" ? "final" : "live");
+    projection.append(
+      element("strong", "", number(row.actualPoints)),
+      element("span", "scoring-actual-label", `${row.scoreStatus === "FINAL" ? "FINAL" : "LIVE"} ACTUAL`),
+      element("small", "", `Projected ${number(row.points)} · ${number(row.floor)}–${number(row.ceiling)}`),
+    );
+  } else {
+    projection.append(
+      element("strong", "", number(row.points)),
+      element("span", "", `${number(row.floor)}–${number(row.ceiling)} projected range`),
+    );
+  }
   const actions = element("div", "row-actions scoring-player-actions");
   actions.append(newsButton(row), evidenceButton(`${row.name} Week ${week} scoring preview`, row, `scoring-preview-${role}`, "Why?", week));
   card.append(identity, projection, actions);
@@ -768,7 +778,7 @@ function scoringPreviewPlayer(row, role, week) {
 }
 
 function renderScoringPreview(value) {
-  const preview = value.scoringPreview || { status: "UNAVAILABLE", errors: ["Update CBS with the newest Data Helper to capture both submitted lineups."] };
+  const preview = value.scoringPreview || { status: "UNAVAILABLE", errors: ["Update CBS with the newest Data Helper to capture submitted lineups and current scores."] };
   const selector = byId("scoring-preview-matchup");
   const selectedTeamId = preview.selectedTeamId || value.viewing?.selectedTeamId || value.league?.userTeamId || "";
   selector.replaceChildren();
@@ -781,15 +791,15 @@ function renderScoringPreview(value) {
   selector.disabled = offlineMode || selector.options.length === 0;
   byId("scoring-preview-week").textContent = `Week ${preview.week || value.week}`;
   const allSubmitted = preview.teams?.length === 2 && preview.teams.every((team) => team.submitted);
-  byId("scoring-preview-updated").textContent = preview.asOf ? `${allSubmitted ? "CBS lineups" : "CBS rosters"} captured ${dateTime(preview.asOf)}` : "CBS data not captured";
-  byId("scoring-preview-authority").textContent = preview.authorityNote || "CBS determines the submitted starters and reserves. Our four-source component-stat blend and Thunder Bowl scoring determine the projections.";
+  byId("scoring-preview-updated").textContent = preview.asOf ? `${allSubmitted ? "CBS lineups/scores" : "CBS rosters"} captured ${dateTime(preview.asOf)}` : "CBS data not captured";
+  byId("scoring-preview-authority").textContent = preview.authorityNote || "CBS determines submitted lineups and live or final scoring. Frozen four-source projections remain visible for an honest forecast-versus-result comparison.";
   const target = byId("scoring-preview-content");
   target.replaceChildren();
   if (preview.status !== "COMPLETE" || preview.teams?.length !== 2) {
     const unavailable = element("section", "scoring-preview-unavailable");
-    unavailable.append(element("h3", "", "Current CBS lineups are not safely available yet"));
+    unavailable.append(element("h3", "", "Current CBS lineups and scores are not safely available yet"));
     const list = element("ul", "evidence-list");
-    for (const message of preview.errors?.length ? preview.errors : ["Update CBS to capture Dogs of War and the current opponent."]) list.append(element("li", "", message));
+    for (const message of preview.errors?.length ? preview.errors : ["Update CBS to capture every league matchup, submitted lineup, and current score."]) list.append(element("li", "", message));
     const action = element("button", "button primary", "Go to Admin and update CBS");
     action.type = "button";
     action.addEventListener("click", () => activateTab("admin", { focus: true }));
@@ -801,16 +811,23 @@ function renderScoringPreview(value) {
   const scoreboard = element("section", "scoring-scoreboard");
   const teamScore = (team, alignment) => {
     const node = element("div", `scoring-team-score ${alignment}`);
+    const hasActual = Number.isFinite(team.actualPoints);
     node.append(
       element("span", "", team.teamName),
-      element("strong", "", number(team.total)),
-      element("small", "", team.submitted ? "CBS submitted · Thunder Bowl projected points" : "Projected legal lineup · Thunder Bowl points"),
+      element("strong", hasActual ? (team.actualStatus === "FINAL" ? "final" : "live") : "", number(hasActual ? team.actualPoints : team.total)),
+      element("small", "", hasActual
+        ? `${team.actualStatus === "FINAL" ? "CBS final" : "CBS live score"} · projected ${number(team.total)}`
+        : team.submitted ? "CBS submitted · Thunder Bowl projected points" : "Projected legal lineup · Thunder Bowl points"),
     );
     return node;
   };
   const middle = element("div", "scoring-edge");
   const favorite = preview.favoriteTeamId ? preview.teams.find((team) => team.teamId === preview.favoriteTeamId) : null;
-  middle.append(element("strong", "", preview.edge === "EVEN" ? "EVEN" : `${preview.edge} EDGE`), element("span", "", favorite && Number.isFinite(preview.projectedMargin) ? `${favorite.teamName} by ${Math.abs(preview.projectedMargin).toFixed(1)}` : "No dependable projected edge"));
+  const actualLeader = Number.isFinite(preview.actualMargin) && preview.actualMargin !== 0 ? (preview.actualMargin > 0 ? left : right) : null;
+  middle.append(
+    element("strong", "", Number.isFinite(preview.actualMargin) ? (preview.actualMargin === 0 ? "TIED LIVE" : "CURRENT SCORE") : preview.edge === "EVEN" ? "EVEN" : `${preview.edge} EDGE`),
+    element("span", "", actualLeader ? `${actualLeader.teamName} by ${Math.abs(preview.actualMargin).toFixed(1)}` : favorite && Number.isFinite(preview.projectedMargin) ? `${favorite.teamName} projected by ${Math.abs(preview.projectedMargin).toFixed(1)}` : "No dependable projected edge"),
+  );
   scoreboard.append(teamScore(left, "left"), middle, teamScore(right, "right"));
   target.append(scoreboard);
 

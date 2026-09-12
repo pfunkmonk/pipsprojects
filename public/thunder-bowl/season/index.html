@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and player-stat command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260912a" />
+  <link rel="stylesheet" href="./season.css?v=20260912b" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to weekly workspace</a>
@@ -39,7 +39,7 @@
 
     <nav class="season-tabs" aria-label="In-season GM sections" role="tablist">
       <button id="tab-button-start-sit" class="season-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-start-sit" data-tab="start-sit">Start/Sit</button>
-      <button id="tab-button-scoring-preview" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-scoring-preview" tabindex="-1" data-tab="scoring-preview">Scoring Preview</button>
+      <button id="tab-button-scoring-preview" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-scoring-preview" tabindex="-1" data-tab="scoring-preview">Scoring Preview / Results</button>
       <button id="tab-button-waivers" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-waivers" tabindex="-1" data-tab="waivers">Waiver Wire</button>
       <button id="tab-button-trades" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-trades" tabindex="-1" data-tab="trades">Trades</button>
       <button id="tab-button-player-stats" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-player-stats" tabindex="-1" data-tab="player-stats">Player Stats</button>
@@ -70,12 +70,12 @@
 
       <section id="tab-scoring-preview" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-scoring-preview" hidden>
         <section class="panel scoring-preview-panel" aria-labelledby="scoring-preview-title">
-          <header class="panel-head"><div><p class="eyebrow">CBS submitted lineups · Thunder Bowl projections</p><h2 id="scoring-preview-title">Scoring Preview</h2></div><div class="panel-head-tools"><strong id="scoring-preview-week">Week —</strong><span id="scoring-preview-updated">Waiting for CBS</span></div></header>
+          <header class="panel-head"><div><p class="eyebrow">CBS lineups and live scores · frozen Thunder Bowl projections</p><h2 id="scoring-preview-title">Scoring Preview / Results</h2></div><div class="panel-head-tools"><strong id="scoring-preview-week">Week —</strong><span id="scoring-preview-updated">Waiting for CBS</span></div></header>
           <div class="scoring-preview-controls">
             <label for="scoring-preview-matchup">View matchup</label>
             <select id="scoring-preview-matchup" class="inline-select" aria-label="Choose a league matchup"></select>
           </div>
-          <p id="scoring-preview-authority" class="panel-intro">CBS determines the submitted starters and reserves. Our four-source component-stat blend and Thunder Bowl scoring determine the projections.</p>
+          <p id="scoring-preview-authority" class="panel-intro">CBS determines submitted lineups and live or final scoring. Frozen four-source projections remain visible for an honest forecast-versus-result comparison.</p>
           <div id="scoring-preview-content" class="scoring-preview-content"></div>
         </section>
       </section>
@@ -180,7 +180,7 @@
           <section id="source-strip" class="source-strip" aria-label="Source freshness"></section>
           <section id="alerts" class="alerts" aria-live="polite"></section>
           <div class="update-source-grid" aria-label="One-click update sources">
-            <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS lineups, schedule, rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small><button id="update-cbs-only" class="source-update-button" type="button">Update CBS</button></div></article>
+            <article id="update-cbs-source" class="update-source"><span aria-hidden="true">1</span><div><strong>CBS lineups, live scores, schedule, rosters &amp; moves</strong><small id="update-cbs-state">Ready to check</small><button id="update-cbs-only" class="source-update-button" type="button">Update CBS</button></div></article>
             <article id="update-fbg-source" class="update-source"><span aria-hidden="true">2</span><div><strong>FBG member projections</strong><small id="update-fbg-state">Ready to capture</small><button id="update-fbg-only" class="source-update-button" type="button">Update FBG</button></div></article>
             <article id="update-fp-source" class="update-source"><span aria-hidden="true">3</span><div><strong>FantasyPros projections</strong><small id="update-fp-state">Ready to capture</small><button id="update-fp-only" class="source-update-button" type="button">Update FantasyPros</button></div></article>
             <article id="update-pff-source" class="update-source"><span aria-hidden="true">4</span><div><strong>PFF projections</strong><small id="update-pff-state">Ready to capture</small><button id="update-pff-only" class="source-update-button" type="button">Update PFF</button></div></article>
@@ -192,7 +192,7 @@
               <div class="setup-copy">
                 <p>The helper reads the CBS submitted scoring-preview lineups, league schedule, and required weekly component-stat tables only after you press <strong>Update everything</strong>. It uses your normal signed-in CBS, Footballguys, FantasyPros, and PFF sessions and never receives or stores any password.</p>
                 <ol><li>Download and unzip the helper.</li><li>Open <strong>chrome://extensions</strong> in Chrome or <strong>edge://extensions</strong> in Edge, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the unzipped folder.</li><li>Sign into CBS, Footballguys, FantasyPros, and PFF in the same browser profile, then reload this page.</li></ol>
-                <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.10.4.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a><a class="button" href="https://www.fantasypros.com/nfl/projections/qb.php?week=1" target="_blank" rel="noopener noreferrer">Open FantasyPros</a><a class="button" href="https://www.pff.com/fantasy/projections" target="_blank" rel="noopener noreferrer">Open PFF</a></div>
+                <div class="sync-actions"><a id="helper-download" class="button primary" href="../helper/thunder-bowl-data-helper-v0.10.5.zip" download>Download updated helper</a><a class="button" href="https://berrymvp.football.cbssports.com/" target="_blank" rel="noopener noreferrer">Open CBS</a><a class="button" href="https://www.footballguys.com/projections/duration/weekly?week=1&amp;pos=qb" target="_blank" rel="noopener noreferrer">Open Footballguys</a><a class="button" href="https://www.fantasypros.com/nfl/projections/qb.php?week=1" target="_blank" rel="noopener noreferrer">Open FantasyPros</a><a class="button" href="https://www.pff.com/fantasy/projections" target="_blank" rel="noopener noreferrer">Open PFF</a></div>
               </div>
             </details>
             <details class="recovery-details">
@@ -214,6 +214,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-    <script type="module" src="./season.mjs?v=20260912b"></script>
+  <script type="module" src="./season.mjs?v=20260912c"></script>
 </body>
 </html>

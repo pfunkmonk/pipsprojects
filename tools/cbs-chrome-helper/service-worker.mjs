@@ -26,7 +26,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.4";
+const HELPER_VERSION = "0.10.5";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -154,15 +154,15 @@ async function captureCbsFabPagesWithinDeadline(tabId, week, timeoutMs = 20_000)
 
 async function captureCbsScoringPreviewRaw(tabId, week, teams) {
   const capturedAt = new Date().toISOString();
-  const pageUrl = `${CBS_ORIGIN}/scoring/preview`;
+  const pageUrl = `${CBS_ORIGIN}/scoring/live/${week}/`;
   const expectedPlayers = teams.flatMap((team) => team.players.map((player) => ({ cbsPlayerId: player.cbsPlayerId, name: player.name })));
   try {
     await chrome.tabs.update(tabId, { url: pageUrl, active: false });
-    await waitForCbsContent(tabId, pageUrl, "scoring-preview", "scoring preview", 30_000, expectedPlayers.map((player) => player.name));
-    const page = await readCbsPage(tabId, "scoring-preview-rows", { rosterPlayers: expectedPlayers }) || {};
-    return { schemaVersion: 1, capturedAt, week, rows: page.rows || [], pageUrl: page.pageUrl || pageUrl, pageTitle: page.pageTitle || "", captureError: null };
+    await waitForCbsContent(tabId, [`${CBS_ORIGIN}/scoring/live`, pageUrl], "scoring-live", "live scoring page", 30_000, expectedPlayers.map((player) => player.name));
+    const page = await readCbsPage(tabId, "scoring-live-rows", { rosterPlayers: expectedPlayers }, 45_000) || {};
+    return { schemaVersion: 1, capturedAt, week, rows: page.rows || [], allMatchups: page.allMatchups === true, matchupCount: page.matchupCount || 0, pageUrl: page.pageUrl || pageUrl, pageTitle: page.pageTitle || "", captureError: null };
   } catch (error) {
-    return { schemaVersion: 1, capturedAt, week, rows: [], pageUrl, pageTitle: "", captureError: error instanceof Error ? error.message : String(error) };
+    return { schemaVersion: 1, capturedAt, week, rows: [], allMatchups: false, matchupCount: 0, pageUrl, pageTitle: "", captureError: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -318,7 +318,7 @@ function previewTeams(input) {
 
 async function captureCbsPreviewStage(week, teams) {
   const safeTeams = previewTeams(teams);
-  return withTemporaryCbsTab(`${CBS_ORIGIN}/scoring/preview`, (tabId) => captureCbsScoringPreviewRaw(tabId, week, safeTeams));
+  return withTemporaryCbsTab(`${CBS_ORIGIN}/scoring/live/${week}/`, (tabId) => captureCbsScoringPreviewRaw(tabId, week, safeTeams));
 }
 
 async function captureCbsPosition(week, position) {

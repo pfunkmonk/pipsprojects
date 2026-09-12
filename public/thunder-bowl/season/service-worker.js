@@ -1,20 +1,20 @@
-const CACHE_VERSION = "thunder-bowl-season-v44";
+const CACHE_VERSION = "thunder-bowl-season-v45";
 const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/favicon.svg?v=20260831a",
   "/thunder-bowl/season/manifest.webmanifest?v=20260831a",
-  "/thunder-bowl/season/season.css?v=20260912a",
-  "/thunder-bowl/season/season.mjs?v=20260912b",
+  "/thunder-bowl/season/season.css?v=20260912b",
+  "/thunder-bowl/season/season.mjs?v=20260912c",
   "/thunder-bowl/season/season-kickoff.mjs?v=20260910a",
-  "/thunder-bowl/season/season-evidence.mjs?v=20260901i",
+  "/thunder-bowl/season/season-evidence.mjs?v=20260912b",
   "/thunder-bowl/season/season-news.mjs?v=20260901b",
   "/thunder-bowl/season/season-trade-ranking.mjs?v=20260901a",
-  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260909a",
+  "/thunder-bowl/cbs-roster-snapshot.mjs?v=20260912b",
   "/thunder-bowl/cbs-schedule-normalize.mjs",
   "/thunder-bowl/cbs-scoring-preview-normalize.mjs",
-  "/thunder-bowl/fbg-session-capture.mjs?v=20260909a",
-  "/thunder-bowl/supplemental-session-capture.mjs?v=20260909a",
+  "/thunder-bowl/fbg-session-capture.mjs?v=20260912b",
+  "/thunder-bowl/supplemental-session-capture.mjs?v=20260912b",
   "/thunder-bowl/storage.mjs?v=20260823a",
 ];
 

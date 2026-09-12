@@ -1110,12 +1110,12 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
   if (!opponentTeam) return unavailable(["The scheduled opponent is not present in the current CBS roster data."]);
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const lineupDetails = new Map((leagueState.teams || []).flatMap((team) => (team.roster || []).map((row) => [row.playerId, row])));
-  const publicRow = (row, team) => {
+  const publicRow = (row, team, capturedRow = null) => {
     const player = playerById.get(row.playerId);
     const roster = lineupDetails.get(row.playerId) || {};
     const cbs = cbsRows.get(`${row.playerId}|${week}`) || null;
     if (!player) return null;
-    return lineupPublicRow({
+    const projectionRow = lineupPublicRow({
       ...roster,
       playerId: row.playerId,
       player,
@@ -1125,21 +1125,44 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
       gameTime: cbs?.gameTime ?? roster.gameTime ?? null,
       bye: roster.bye ?? player.weeklyProjection?.byeWeek ?? null,
     }, { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: team.teamId, adviceTeamName: team.teamName, week, season: pack.season });
+    return {
+      ...projectionRow,
+      actualPoints: capturedRow?.actualPoints ?? null,
+      scoreStatus: capturedRow?.scoreStatus || "NOT_STARTED",
+      cbsLiveProjection: capturedRow?.cbsLiveProjection ?? null,
+      liveStats: capturedRow?.statsText || null,
+      cbsGameState: capturedRow?.gameText || null,
+    };
   };
-  const capturedTeams = new Map(captured?.week === week && captured?.status === "COMPLETE" ? captured.teams.map((team) => [team.teamId, team]) : []);
+  const capturedTeams = new Map(captured?.week === week ? (captured.teams || [])
+    .filter((team) => team.coverage?.exactStarters === true && team.coverage?.completeRoster === true)
+    .map((team) => [team.teamId, team]) : []);
   const buildTeam = (team) => {
     const capturedTeam = capturedTeams.get(team.teamId);
     const optimized = capturedTeam ? null : optimizeExactLineup(team.roster, { week, playerById, projectionRows, cbsRows, statuses });
     const starters = capturedTeam
-      ? capturedTeam.starters.map((row) => publicRow(row, team)).filter(Boolean)
+      ? capturedTeam.starters.map((row) => publicRow(row, team, row)).filter(Boolean)
       : optimized.starters.map((entry) => publicRow(entry, team)).filter(Boolean);
     const bench = capturedTeam
-      ? capturedTeam.bench.map((row) => publicRow(row, team)).filter(Boolean)
+      ? capturedTeam.bench.map((row) => publicRow(row, team, row)).filter(Boolean)
       : optimized.bench.map((entry) => publicRow(entry, team)).filter(Boolean);
     const total = starters.length === 8 && starters.every((row) => Number.isFinite(row.points))
       ? round(starters.reduce((sum, row) => sum + row.points, 0))
       : null;
-    return { teamId: team.teamId, teamName: team.teamName, total, starters, bench, submitted: Boolean(capturedTeam), lineupBasis: capturedTeam ? "CBS_SUBMITTED" : "PROJECTED_FROM_CBS_ROSTER" };
+    const actualPoints = Number.isFinite(capturedTeam?.actuals?.currentPoints) ? capturedTeam.actuals.currentPoints : null;
+    return {
+      teamId: team.teamId,
+      teamName: team.teamName,
+      total,
+      actualPoints,
+      actualStatus: capturedTeam?.actuals?.status || "PREGAME",
+      actualKnownStarters: capturedTeam?.actuals?.knownStarters || 0,
+      actualFinalStarters: capturedTeam?.actuals?.finalStarters || 0,
+      starters,
+      bench,
+      submitted: Boolean(capturedTeam),
+      lineupBasis: capturedTeam ? "CBS_SUBMITTED" : "PROJECTED_FROM_CBS_ROSTER",
+    };
   };
   const teams = [buildTeam(selectedTeam), buildTeam(opponentTeam)];
   const [left, right] = teams;
@@ -1159,9 +1182,10 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
     projectedMargin: margin,
     favoriteTeamId: margin === null || margin === 0 ? null : margin > 0 ? left.teamId : right.teamId,
     edge,
+    actualMargin: Number.isFinite(left?.actualPoints) && Number.isFinite(right?.actualPoints) ? round(left.actualPoints - right.actualPoints) : null,
     errors: [],
     authorityNote: allSubmitted
-      ? "CBS determines the submitted starters and reserves; both lineups were captured from CBS. Thunder Bowl component-stat projections and league scoring determine the points shown here."
+      ? "CBS determines the submitted starters and reserves and supplies live or final Thunder Bowl scores. Pregame projections remain frozen separately so actual performance can be audited without rewriting the forecast."
       : "This matchup uses the latest CBS rosters and projected exact legal lineups. Any team not marked CBS submitted is an optimized preview—not confirmation of the lineup saved at CBS. Thunder Bowl component-stat projections and league scoring determine the points shown here.",
   };
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgAuthenticatedWeeklyCapture, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
-import { buildSeasonSetupSnapshot, normalizeSeasonViewingTeam, normalizeSeasonViewingWeek, retainPriorCbsOptionalEvidence } from "../netlify/functions/_lib/season-service.mjs";
+import { buildSeasonSetupSnapshot, cbsFinalScoreRecords, normalizeSeasonViewingTeam, normalizeSeasonViewingWeek, retainPriorCbsOptionalEvidence } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
 import {
   analyzeTradeProposal,
@@ -365,11 +365,15 @@ test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bow
   const rivals = rosterPlayers().map((row, index) => ({ ...structuredClone(row), id: `preview-rival-${row.id}`, name: `Preview Rival ${index + 1}` }));
   const dogsStarterIds = ["qb-two", "rb-one", "rb-two", "wr-one", "wr-two", "te-one", "k-one", "dst-one"];
   const rivalStarterIds = ["preview-rival-qb-one", "preview-rival-rb-one", "preview-rival-rb-two", "preview-rival-wr-one", "preview-rival-wr-two", "preview-rival-te-one", "preview-rival-k-one", "preview-rival-dst-one"];
-  const previewTeam = (teamId, teamName, roster, starterIds) => ({
+  const previewTeam = (teamId, teamName, roster, starterIds, actualPoints) => ({
     teamId,
     teamName,
-    starters: starterIds.map((playerId) => ({ playerId, cbsPlayerId: `cbs-${playerId}` })),
-    bench: roster.filter((row) => !starterIds.includes(row.id)).map((row) => ({ playerId: row.id, cbsPlayerId: `cbs-${row.id}` })),
+    starters: starterIds.map((playerId, index) => ({
+      playerId, cbsPlayerId: `cbs-${playerId}`, actualPoints: index === 0 ? actualPoints : null,
+      scoreStatus: index === 0 ? "FINAL" : "NOT_STARTED", cbsLiveProjection: 20, gameText: index === 0 ? "FINAL" : "Sun 11:00 AM MT", statsText: index === 0 ? "Passing: 250 Yds, 2 TD" : null,
+    })),
+    bench: roster.filter((row) => !starterIds.includes(row.id)).map((row) => ({ playerId: row.id, cbsPlayerId: `cbs-${row.id}`, actualPoints: null, scoreStatus: "NOT_STARTED" })),
+    actuals: { currentPoints: actualPoints, knownStarters: 1, finalStarters: 1, liveStarters: 0, status: "LIVE" },
     coverage: { exactStarters: true, completeRoster: true },
   });
   const leagueState = {
@@ -385,9 +389,9 @@ test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bow
       matchups: [{ week: 1, teamAId: "dogs-of-war", teamAName: "Dogs of War", teamBId: "three-amigos", teamBName: "Three Amigos" }],
     },
     scoringPreview: {
-      schemaVersion: 1, source: "CBS Sports authenticated Thunder Bowl scoring preview", modelEffect: "submitted_lineup_authority_only", status: "COMPLETE",
-      season: 2026, week: 1, capturedAt: "2026-09-08T11:29:00.000Z", pageUrl: "https://berrymvp.football.cbssports.com/scoring/preview", errors: [],
-      teams: [previewTeam("dogs-of-war", "Dogs of War", dogs, dogsStarterIds), previewTeam("three-amigos", "Three Amigos", rivals, rivalStarterIds)],
+      schemaVersion: 1, source: "CBS Sports authenticated Thunder Bowl scoring preview", modelEffect: "submitted_lineup_and_actual_score_authority", status: "COMPLETE", coverageScope: "MATCHUP",
+      season: 2026, week: 1, capturedAt: "2026-09-08T11:29:00.000Z", pageUrl: "https://berrymvp.football.cbssports.com/scoring/live/1/", errors: [],
+      teams: [previewTeam("dogs-of-war", "Dogs of War", dogs, dogsStarterIds, 17.5), previewTeam("three-amigos", "Three Amigos", rivals, rivalStarterIds, 14.2)],
     },
   };
   const result = buildSeasonRecommendationSnapshot({
@@ -402,7 +406,32 @@ test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bow
   assert.equal(result.lineup.starters.find((row) => row.position === "QB").playerId, "qb-one");
   assert.equal(result.scoringPreview.teams[0].bench.length, 6);
   assert.ok(Number.isFinite(result.scoringPreview.teams[0].total));
+  assert.equal(result.scoringPreview.teams[0].actualPoints, 17.5);
+  assert.equal(result.scoringPreview.teams[0].starters[0].actualPoints, 17.5);
+  assert.equal(result.scoringPreview.teams[0].starters[0].liveStats, "Passing: 250 Yds, 2 TD");
+  assert.equal(result.scoringPreview.actualMargin, 3.3);
   assert.match(result.scoringPreview.authorityNote, /CBS determines/);
+});
+
+test("CBS final player scores become trusted result evidence without accepting ordinary current-week imports", () => {
+  const dogs = rosterPlayers();
+  const pack = { season: 2026, players: dogs };
+  const snapshot = {
+    teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) }],
+    scoringPreview: {
+      modelEffect: "submitted_lineup_and_actual_score_authority", week: 1, capturedAt: "2026-09-12T12:00:00.000Z",
+      pageUrl: "https://berrymvp.football.cbssports.com/scoring/live/1/",
+      teams: [{ teamId: "dogs-of-war", starters: [
+        { playerId: "qb-one", actualPoints: 24.7, scoreStatus: "FINAL" },
+        { playerId: "rb-one", actualPoints: 7.1, scoreStatus: "LIVE" },
+      ], bench: [] }],
+    },
+  };
+  const records = cbsFinalScoreRecords(snapshot, pack, new Date("2026-09-12T12:01:00.000Z"));
+  assert.equal(records.length, 1);
+  assert.equal(records[0].playerId, "qb-one");
+  assert.equal(records[0].points, 24.7);
+  assert.equal(records[0].final, true);
 });
 
 test("Scoring Preview can show any scheduled matchup without claiming projected lineups were submitted", () => {
@@ -971,16 +1000,16 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v44/);
+  assert.match(worker, /thunder-bowl-season-v45/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.css\?v=20260912a/);
-  assert.match(worker, /season\.mjs\?v=20260912b/);
+  assert.match(worker, /season\.css\?v=20260912b/);
+  assert.match(worker, /season\.mjs\?v=20260912c/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
-  assert.match(worker, /fbg-session-capture\.mjs\?v=20260909a/);
-  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260909a/);
-  assert.match(worker, /season-evidence\.mjs\?v=20260901i/);
-  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260909a/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260912b/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912b/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260912b/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260912b/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);

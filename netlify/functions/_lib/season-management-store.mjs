@@ -14,7 +14,7 @@ const fields = {
   "ir-slot": [],
 };
 
-export function validateManagementRecords(input, pack, teams, now = new Date().toISOString()) {
+export function validateManagementRecords(input, pack, teams, now = new Date().toISOString(), { allowCurrentCbsFinals = false } = {}) {
   if (!Array.isArray(input) || !input.length || input.length > 2000) fail("Import must contain 1–2000 evidence rows.");
   const playerIds = new Set(pack.players.map((p) => p.id));
   const teamIds = new Set(teams.map((t) => t.teamId));
@@ -33,7 +33,8 @@ export function validateManagementRecords(input, pack, teams, now = new Date().t
       if (!fields.usage.some((k) => r[k] != null)) fail(`${label}: at least one observed workload metric is required.`);
       for (const k of fields.usage) if (r[k] != null) number(k, k.endsWith("Share") ? 100 : 100);
     }
-    if (["usage", "result"].includes(r.kind) && Date.parse(r.observedAt) < Date.UTC(2026, 8, 8 + r.week * 7)) fail(`${label}: workload and actual scores require a completed regular-season week.`);
+    const trustedCurrentCbsFinal = allowCurrentCbsFinals && r.kind === "result" && r.final === true && url.hostname === "berrymvp.football.cbssports.com" && /^\/scoring\/live(?:\/|$)/.test(url.pathname);
+    if (["usage", "result"].includes(r.kind) && Date.parse(r.observedAt) < Date.UTC(2026, 8, 8 + r.week * 7) && !trustedCurrentCbsFinal) fail(`${label}: workload and actual scores require a completed regular-season week.`);
     if (r.kind === "bid") {
       number("amount", 50);
       if (!Number.isInteger(r.amount) || !teamIds.has(r.teamId) || !["WON", "LOST"].includes(r.outcome) || !/^[\w.:-]{1,100}$/.test(r.transactionId || "")) fail(`${label}: invalid bid, team, transaction ID or outcome.`);

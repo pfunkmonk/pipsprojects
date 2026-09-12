@@ -163,6 +163,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     status: snapshot.scoringPreview.status,
     pageUrl: snapshot.scoringPreview.pageUrl,
     pageTitle: snapshot.scoringPreview.pageTitle,
+    coverageScope: snapshot.scoringPreview.coverageScope || "MATCHUP",
     teams: snapshot.scoringPreview.teams.map((team) => ({
       teamId: team.teamId,
       teamName: team.teamName,
@@ -170,11 +171,24 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
       starters: team.starters.map((row) => ({
         playerId: canonicalRosterByCbsId.get(row.cbsPlayerId)?.playerId,
         cbsPlayerId: row.cbsPlayerId,
+        actualPoints: row.actualPoints ?? null,
+        scoreStatus: row.scoreStatus || "NOT_STARTED",
+        cbsLiveProjection: row.cbsLiveProjection ?? null,
+        gameText: row.gameText || null,
+        statsText: row.statsText || null,
+        matchupIndex: row.matchupIndex ?? null,
       })),
       bench: team.bench.map((row) => ({
         playerId: canonicalRosterByCbsId.get(row.cbsPlayerId)?.playerId,
         cbsPlayerId: row.cbsPlayerId,
+        actualPoints: row.actualPoints ?? null,
+        scoreStatus: row.scoreStatus || "NOT_STARTED",
+        cbsLiveProjection: row.cbsLiveProjection ?? null,
+        gameText: row.gameText || null,
+        statsText: row.statsText || null,
+        matchupIndex: row.matchupIndex ?? null,
       })),
+      actuals: structuredClone(team.actuals || { currentPoints: null, knownStarters: 0, finalStarters: 0, liveStarters: 0, status: "PREGAME" }),
       coverage: structuredClone(team.coverage),
     })),
     errors: [...snapshot.scoringPreview.errors],
@@ -260,16 +274,23 @@ export function validateCanonicalCbsLeagueState(value, pack) {
   }
   const scoringPreview = value.scoringPreview ?? null;
   if (scoringPreview !== null) {
-    if (scoringPreview.schemaVersion !== 1 || scoringPreview.season !== pack.season || scoringPreview.source !== "CBS Sports authenticated Thunder Bowl scoring preview" || scoringPreview.modelEffect !== "submitted_lineup_authority_only" || !["COMPLETE", "PARTIAL"].includes(scoringPreview.status) || !Number.isFinite(Date.parse(scoringPreview.capturedAt))) throw new Error("CBS scoring-preview state failed its source contract.");
+    if (scoringPreview.schemaVersion !== 1 || scoringPreview.season !== pack.season || scoringPreview.source !== "CBS Sports authenticated Thunder Bowl scoring preview" || !["submitted_lineup_authority_only", "submitted_lineup_and_actual_score_authority"].includes(scoringPreview.modelEffect) || !["COMPLETE", "PARTIAL"].includes(scoringPreview.status) || !Number.isFinite(Date.parse(scoringPreview.capturedAt))) throw new Error("CBS scoring-preview state failed its source contract.");
     const rosterByTeam = new Map(value.teams.map((team) => [team.teamId, new Set(team.roster.map((row) => row.playerId))]));
-    if (!Array.isArray(scoringPreview.teams) || scoringPreview.teams.length > 2) throw new Error("CBS scoring-preview team coverage is invalid.");
+    const coverageScope = scoringPreview.coverageScope || "MATCHUP";
+    if (!["MATCHUP", "LEAGUE"].includes(coverageScope) || !Array.isArray(scoringPreview.teams) || scoringPreview.teams.length > 12) throw new Error("CBS scoring-preview team coverage is invalid.");
     for (const team of scoringPreview.teams) {
       const roster = rosterByTeam.get(team.teamId);
       const rows = [...(team.starters || []), ...(team.bench || [])];
       if (!roster || rows.some((row) => !knownIds.has(row.playerId) || !roster.has(row.playerId)) || new Set(rows.map((row) => row.playerId)).size !== rows.length) throw new Error("CBS scoring-preview players do not reconcile with their rosters.");
+      if (rows.some((row) => {
+        const actualPoints = row.actualPoints ?? null;
+        const scoreStatus = row.scoreStatus || "NOT_STARTED";
+        return !["NOT_STARTED", "LIVE", "FINAL"].includes(scoreStatus) || (actualPoints !== null && (!Number.isFinite(actualPoints) || actualPoints < -100 || actualPoints > 200)) || (scoreStatus === "NOT_STARTED" ? actualPoints !== null : !Number.isFinite(actualPoints));
+      })) throw new Error("CBS scoring-preview actual scores are invalid.");
       if (scoringPreview.status === "COMPLETE" && (team.starters.length !== 8 || rows.length !== roster.size || team.coverage?.exactStarters !== true || team.coverage?.completeRoster !== true)) throw new Error("CBS scoring-preview lineup coverage is incomplete.");
     }
-    if (scoringPreview.status === "COMPLETE" && (scoringPreview.teams.length !== 2 || scoringPreview.errors?.length)) throw new Error("CBS scoring-preview state is marked complete without complete coverage.");
+    const expectedTeams = coverageScope === "LEAGUE" ? 12 : 2;
+    if (scoringPreview.status === "COMPLETE" && (scoringPreview.teams.length !== expectedTeams || scoringPreview.errors?.length)) throw new Error("CBS scoring-preview state is marked complete without complete coverage.");
   }
   return {
     ...value,

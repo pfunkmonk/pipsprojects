@@ -531,6 +531,32 @@ export function retainPriorCbsOptionalEvidence(captured, prior) {
   return snapshot;
 }
 
+export function cbsFinalScoreRecords(snapshot, pack, now = new Date()) {
+  const preview = snapshot?.scoringPreview;
+  if (!preview?.pageUrl || preview.modelEffect !== "submitted_lineup_and_actual_score_authority") return [];
+  const observedAt = new Date(preview.capturedAt).toISOString();
+  const candidates = (preview.teams || []).flatMap((team) => [...(team.starters || []), ...(team.bench || [])])
+    .filter((row) => row.scoreStatus === "FINAL" && Number.isFinite(row.actualPoints))
+    .map((row) => ({
+      kind: "result",
+      playerId: row.playerId,
+      season: pack.season,
+      week: preview.week,
+      observedAt,
+      sourceUrl: preview.pageUrl,
+      points: row.actualPoints,
+      final: true,
+    }));
+  if (!candidates.length) return [];
+  return validateManagementRecords(candidates, pack, snapshot.teams || [], new Date(now).toISOString(), { allowCurrentCbsFinals: true });
+}
+
+async function archiveCbsFinalScores(snapshot, pack, now) {
+  const records = cbsFinalScoreRecords(snapshot, pack, now);
+  if (records.length) await saveManagementRecords(records);
+  return records.length;
+}
+
 export async function captureCbsLeagueSource(input, { now = new Date() } = {}) {
   const pack = await readSeasonPack();
   const week = seasonWeekForDate(now);
@@ -538,7 +564,8 @@ export async function captureCbsLeagueSource(input, { now = new Date() } = {}) {
   const prior = await readLatestCbsLeagueState(pack);
   const snapshot = retainPriorCbsOptionalEvidence(captured, prior);
   const saved = await saveCbsLeagueState(snapshot, pack, { week });
-  return { source: { changed: saved.changed, capturedAt: snapshot.capturedAt, leagueMoves: saved.leagueMoves } };
+  const finalScoresArchived = await archiveCbsFinalScores(snapshot, pack, now);
+  return { source: { changed: saved.changed, capturedAt: snapshot.capturedAt, leagueMoves: saved.leagueMoves, finalScoresArchived } };
 }
 
 export async function importFbgWeeklyCsv(text, { now = new Date() } = {}) {
@@ -558,6 +585,7 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
   const prior = await readLatestCbsLeagueState(pack);
   const snapshot = retainPriorCbsOptionalEvidence(captured, prior);
   const cbsSaved = await saveCbsLeagueState(snapshot, pack, { week });
+  const finalScoresArchived = await archiveCbsFinalScores(snapshot, pack, now);
   const refreshed = await refreshSeasonPlan({ now, forcePublic: true, refreshFootballguys: true });
   const publicFailures = Object.entries(refreshed.sourceRefresh)
     .filter(([source]) => ["status", "research", "news"].includes(source))
@@ -589,6 +617,7 @@ export async function updateSeasonEverything(input, { now = new Date() } = {}) {
       scoringPreviewStatus: snapshot.scoringPreview?.status || "UNAVAILABLE",
       scoringPreviewCapturedAt: snapshot.scoringPreview?.capturedAt || null,
       scoringPreviewTeams: snapshot.scoringPreview?.teams?.length || 0,
+      finalScoresArchived,
       // Backward-compatible aliases for older clients.
       rosterTarget: snapshot.rosterMaximum,
       completeTeams: snapshot.legalTeamCount,

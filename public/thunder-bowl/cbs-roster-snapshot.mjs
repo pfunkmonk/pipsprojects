@@ -1,6 +1,6 @@
 export const CBS_CAPTURE_PROTOCOL_VERSION = 2;
-export const CBS_REQUIRED_HELPER_VERSION = "0.10.4";
-export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION, "0.10.3"]);
+export const CBS_REQUIRED_HELPER_VERSION = "0.10.5";
+export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION, "0.10.4"]);
 export const CBS_CAPTURE_REQUEST = "THUNDER_BOWL_CBS_CAPTURE_REQUEST";
 export const CBS_CAPTURE_RESPONSE = "THUNDER_BOWL_CBS_CAPTURE_RESPONSE";
 export const CBS_APP_SOURCE = "thunder-bowl-app";
@@ -143,6 +143,7 @@ function materializeRawCbsEvidence(input) {
       pageUrl: rawPreview.pageUrl,
       pageTitle: rawPreview.pageTitle,
       captureError: rawPreview.captureError,
+      allMatchups: rawPreview.allMatchups === true,
     });
   }
   const { rawLeagueSchedule: _rawLeagueSchedule, rawScoringPreview: _rawScoringPreview, ...rest } = input;
@@ -202,11 +203,13 @@ function validateLeagueSchedule(value, season) {
 
 function validateScoringPreview(value, snapshot, season) {
   assert(isPlainObject(value) && value.schemaVersion === 1, "CBS scoring preview has an unsupported schema.");
-  assert(value.source === CBS_SCORING_PREVIEW_SOURCE && value.modelEffect === "submitted_lineup_authority_only", "CBS scoring preview has an unexpected authority boundary.");
+  assert(value.source === CBS_SCORING_PREVIEW_SOURCE && ["submitted_lineup_authority_only", "submitted_lineup_and_actual_score_authority"].includes(value.modelEffect), "CBS scoring preview has an unexpected authority boundary.");
   assert(value.season === season && value.week === snapshot.projectionWeek && Number.isFinite(Date.parse(value.capturedAt)), "CBS scoring preview has invalid timing or season data.");
   assert(["COMPLETE", "PARTIAL"].includes(value.status), "CBS scoring preview has an invalid status.");
   assert(value.pageUrl === null || new URL(value.pageUrl).origin === "https://berrymvp.football.cbssports.com", "CBS scoring preview came from the wrong origin.");
-  assert(Array.isArray(value.teams) && value.teams.length <= 2, "CBS scoring preview contains too many teams.");
+  const coverageScope = value.coverageScope || "MATCHUP";
+  assert(["MATCHUP", "LEAGUE"].includes(coverageScope), "CBS scoring preview has an invalid coverage scope.");
+  assert(Array.isArray(value.teams) && value.teams.length <= CBS_TEAM_CATALOG.length, "CBS scoring preview contains too many teams.");
   assert(Array.isArray(value.errors) && value.errors.length <= 10 && value.errors.every((error) => typeof error === "string" && error.length <= 500), "CBS scoring preview contains invalid capture diagnostics.");
   const rosterByTeam = new Map(snapshot.teams.map((team) => [team.teamId, new Map(team.players.map((player) => [player.cbsPlayerId, player]))]));
   const seenTeams = new Set();
@@ -222,6 +225,14 @@ function validateScoringPreview(value, snapshot, season) {
       assert(rosterPlayer && rosterPlayer.name === player.name && rosterPlayer.position === player.position && rosterPlayer.nflTeam === player.nflTeam, `${player.name || "A scoring-preview player"} does not reconcile with the CBS roster report.`);
       assert(!seenPlayers.has(player.cbsPlayerId), `${player.name} appears more than once in the CBS scoring preview.`);
       seenPlayers.add(player.cbsPlayerId);
+      const actualPoints = player.actualPoints ?? null;
+      const scoreStatus = player.scoreStatus || "NOT_STARTED";
+      assert(actualPoints === null || (Number.isFinite(actualPoints) && actualPoints >= -100 && actualPoints <= 200), `${player.name} has an invalid CBS actual score.`);
+      assert(["NOT_STARTED", "LIVE", "FINAL"].includes(scoreStatus), `${player.name} has an invalid CBS scoring status.`);
+      assert(scoreStatus === "NOT_STARTED" ? actualPoints === null : Number.isFinite(actualPoints), `${player.name} has inconsistent CBS scoring evidence.`);
+      assert(player.cbsLiveProjection == null || (Number.isFinite(player.cbsLiveProjection) && player.cbsLiveProjection >= -100 && player.cbsLiveProjection <= 200), `${player.name} has an invalid CBS live projection.`);
+      assert(player.gameText == null || (typeof player.gameText === "string" && player.gameText.length <= 300), `${player.name} has invalid CBS game text.`);
+      assert(player.statsText == null || (typeof player.statsText === "string" && player.statsText.length <= 500), `${player.name} has invalid CBS live statistics.`);
     }
     assert(isPlainObject(team.coverage), `${team.teamName} has invalid scoring-preview coverage.`);
     if (value.status === "COMPLETE") {
@@ -230,7 +241,10 @@ function validateScoringPreview(value, snapshot, season) {
       assert(JSON.stringify(counts) === JSON.stringify(CBS_STARTER_REQUIREMENTS), `${team.teamName} has an invalid submitted CBS lineup.`);
     }
   }
-  if (value.status === "COMPLETE") assert(value.teams.length === 2 && value.errors.length === 0, "A complete CBS scoring preview must contain both teams without capture errors.");
+  if (value.status === "COMPLETE") {
+    const expectedTeams = coverageScope === "LEAGUE" ? CBS_TEAM_CATALOG.length : 2;
+    assert(value.teams.length === expectedTeams && value.errors.length === 0, `A complete CBS scoring preview must contain all ${expectedTeams} expected teams without capture errors.`);
+  }
 }
 
 export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {}) {

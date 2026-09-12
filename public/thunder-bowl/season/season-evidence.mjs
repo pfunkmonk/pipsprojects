@@ -120,14 +120,20 @@ function scoringPreviewPlayerExplanation(value, role, week) {
   const name = clean(value.name) || "This player";
   const team = clean(value.adviceTeamName) || "this team";
   const isStarter = role === "scoring-preview-starter";
+  const hasActual = finite(value.actualPoints);
   return {
-    summary: `${name} appears here because CBS lists the player as ${isStarter ? "a submitted starter" : "a reserve"} for ${team} in Week ${week || "the current week"}; the displayed ${points(value.points)} comes from Thunder Bowl projections, not CBS's fantasy-points total.`,
+    summary: `${name} appears here because CBS lists the player as ${isStarter ? "a submitted starter" : "a reserve"} for ${team} in Week ${week || "the current week"}; ${hasActual ? `CBS currently reports ${points(value.actualPoints)} as the player's ${value.scoreStatus === "FINAL" ? "final" : "live"} Thunder Bowl score, while the frozen forecast was ${points(value.points)}.` : `the displayed ${points(value.points)} is the frozen Thunder Bowl projection.`}`,
     sections: [
       section("CBS lineup status", [
         `CBS is the authority for whether ${name} is currently submitted as ${isStarter ? "a starter" : "a reserve"}.`,
         "The preview does not optimize or silently replace either team's submitted CBS lineup.",
-        "Updating CBS captures both teams' current starters and reserves again.",
+        "Updating CBS captures all league matchups, submitted starters and reserves, plus any live or final player scores.",
       ]),
+      section("Result status", hasActual ? [
+        `CBS score status: ${value.scoreStatus === "FINAL" ? "final" : "live/in progress"}.`,
+        clean(value.liveStats) || "CBS has not displayed a component-stat summary for this player.",
+        "Final scores are archived for accuracy calibration; live scores are displayed but cannot train the projection model.",
+      ] : ["The player has not recorded a CBS score yet; only the frozen pregame projection is shown."]),
       section("Expected output", [projectionOverview(value), confidence(value.confidence), matchup({ ...value, week })]),
       section("Projection sources", projectionSourceItems(value.sources)),
       section("Health check", injuryItems(value.injury)),
