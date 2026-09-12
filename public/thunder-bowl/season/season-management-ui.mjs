@@ -143,6 +143,19 @@ export function renderManagement(plan, options = {}) {
   note(stash, `${label(m.stash.occupancy)}. ${m.stash.note}`);
   if (!m.stash.candidates.length) note(stash, "No captured IR candidate currently qualifies for this comparison.");
   for (const p of m.stash.candidates) card(stash, `${p.name} · ${p.position} ${p.nflTeam} · bye ${p.bye ?? "—"} · ${p.currentSlot ? "current occupant" : label(p.verdict)}`, `Keeper cost: ${fmt(p.keeperCost)}; estimated next-year value: ${fmt(p.nextYearValue)}; estimated surplus: ${fmt(p.estimatedSurplus)}; improvement over occupant: ${fmt(p.improvementOverOccupant)}. ${p.returnEvidence || "Return / CBS eligibility evidence still needs verification."}`);
+  const calibration = plan.model?.projectionCalibration;
+  const model = panel("admin", "management-calibration", "Adaptive projection model");
+  if (!calibration) note(model, "No calibration state is attached to this saved plan. Refresh the current week to rebuild it safely.");
+  else {
+    note(model, `${calibration.active ? "Adaptive position weights are active." : "Governed baseline weights remain active until enough completed-week evidence exists."} Training cutoff: Week ${calibration.trainingCutoffWeek}. Eligible archived weeks: ${calibration.eligibleArchiveWeeks.join(", ") || "none"}. ${calibration.note}`);
+    const rows = Object.entries(calibration.positions).flatMap(([position, details]) => details.sources.map((source) => [
+      position, source.source, source.eligible ? "Eligible" : "Building sample", source.sampleCount, source.weekCount,
+      `${(source.baselineWeight * 100).toFixed(1)}%`, `${(source.weight * 100).toFixed(1)}%`, `${source.change >= 0 ? "+" : ""}${(source.change * 100).toFixed(1)} pts`,
+      fmt(source.meanAbsoluteError), fmt(source.meanError), fmt(source.rootMeanSquaredError),
+    ]));
+    table(model, ["Pos.", "Provider", "Status", "Players", "Weeks", "Baseline", "Active", "Change", "MAE", "Bias", "RMSE"], rows);
+    note(model, `Safeguards: at least ${calibration.safeguards.minimumSamples} player-games across ${calibration.safeguards.minimumWeeks} weeks; recent-week decay ${calibration.safeguards.recencyDecay}; prior strength ${calibration.safeguards.priorStrength}; maximum source movement ${(calibration.safeguards.maxAbsoluteShift * 100).toFixed(0)} percentage points; maximum evidence influence ${(calibration.safeguards.maximumEvidenceInfluence * 100).toFixed(0)}%.`);
+  }
   const outcomes = panel("admin", "management-outcomes", "Recommendation scorecard — frozen decisions vs actuals");
   note(outcomes, m.outcomes.note);
   if (!m.outcomes.projectionWeeks?.length) note(outcomes, "No weekly all-player projection archive exists yet. The next current-week refresh with captured kickoff times will freeze one automatically.");

@@ -11,6 +11,7 @@ import {
   buildSeasonRecommendationSnapshot,
   classifyTradeIdea,
   optimizeExactLineup,
+  projectionWeightsForPosition,
   recommendTrades,
   recommendWaivers,
   simulateFabTieClaims,
@@ -256,15 +257,22 @@ test("the current-week lineup blend uses signed-in FantasyPros and PFF component
     teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster }], weeklyProjections: rows(20),
   };
   const projectionSnapshot = (source, points) => ({ source, authority: `authenticated ${source} browser-session capture`, providerAsOf: "2026-09-08T11:30:00.000Z", items: rows(points) });
+  const weights = { Footballguys: 0.1, CBS: 0.1, FantasyPros: 0.1, PFF: 0.7 };
+  const projectionCalibration = { active: true, positions: Object.fromEntries(["QB", "RB", "WR", "TE", "K", "DST"].map((position) => [position, { active: true, weights }])) };
   const result = buildSeasonRecommendationSnapshot({
     pack: { season: 2026, packId: "test-pack", asOf: "2026-09-08T11:00:00.000Z", players, sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
     leagueState, week: 1, generatedAt: "2026-09-08T12:00:00.000Z",
     fbgSnapshot: projectionSnapshot("Footballguys", 21), fantasyProsSnapshot: projectionSnapshot("FantasyPros", 22), pffSnapshot: projectionSnapshot("PFF", 23),
+    projectionCalibration,
   });
   const starter = result.lineup.starters[0];
   assert.equal(starter.kickoffAt, "2026-09-13T17:00:00.000Z");
   assert.deepEqual(starter.sources.map((source) => source.source), projectionSources);
   assert.ok(starter.sources.every((source) => /component stats scored by Thunder Bowl rules/.test(source.input)));
+  assert.equal(starter.points, 22.4);
+  const partialWeights = projectionWeightsForPosition(["CBS", "PFF"], "QB", projectionCalibration);
+  assert.ok(Math.abs(partialWeights.CBS - 0.125) < 1e-10 && Math.abs(partialWeights.PFF - 0.875) < 1e-10);
+  assert.equal(result.model.projectionCalibration, projectionCalibration);
   assert.equal(result.sources.find((source) => source.label === "FantasyPros").asOf, "2026-09-08T11:30:00.000Z");
   assert.equal(result.sources.find((source) => source.label === "PFF").asOf, "2026-09-08T11:30:00.000Z");
 });
@@ -963,10 +971,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v43/);
+  assert.match(worker, /thunder-bowl-season-v44/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912a/);
-  assert.match(worker, /season\.mjs\?v=20260912a/);
+  assert.match(worker, /season\.mjs\?v=20260912b/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260909a/);

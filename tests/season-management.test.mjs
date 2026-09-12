@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildGameDay, buildManagement, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
+import { buildGameDay, buildManagement, buildProjectionCalibration, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, mergeManagementRecords, readManagementState, saveManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
 import { evidenceFromCsv, parseEvidenceCsv } from "../public/thunder-bowl/season/season-management-ui.mjs";
 
@@ -105,6 +105,27 @@ test("weekly projection archive freezes every projected player and ranks direct 
   assert.equal(report.providers[0].rank, 1);
   assert.ok(report.providers.find((provider) => provider.source === "PFF").meanAbsoluteError > 0);
   assert.equal(weeklyProjectionArchive(plan, "2026-09-14T00:00:00Z").auditEligible, false);
+});
+test("adaptive calibration is position-specific, conservative, and cannot see target-week results", () => {
+  const archives = [1, 2].map((week) => ({
+    season: 2026, week, auditEligible: true,
+    players: Array.from({ length: 40 }, (_, index) => ({ playerId: `w${week}-qb${index}`, position: "QB", points: 20,
+      sources: [
+        { source: "CBS", points: 21, basis: "DIRECT_WEEKLY" }, { source: "Footballguys", points: 23, basis: "DIRECT_WEEKLY" },
+        { source: "FantasyPros", points: 24, basis: "DIRECT_WEEKLY" }, { source: "PFF", points: 26, basis: "DIRECT_WEEKLY" },
+      ] })),
+  }));
+  const records = archives.flatMap((archive) => archive.players.map((player) => ({ kind: "result", final: true, week: archive.week, playerId: player.playerId, points: 20 })));
+  const calibration = buildProjectionCalibration(archives, records, 3);
+  assert.equal(calibration.active, true);
+  assert.equal(calibration.positions.QB.active, true);
+  assert.ok(calibration.positions.QB.weights.CBS > calibration.positions.QB.sources.find((row) => row.source === "CBS").baselineWeight);
+  assert.ok(calibration.positions.QB.weights.PFF < calibration.positions.QB.sources.find((row) => row.source === "PFF").baselineWeight);
+  assert.ok(Math.abs(calibration.positions.QB.sources.find((row) => row.source === "CBS").change) <= 0.05);
+  assert.equal(calibration.positions.RB.active, false);
+  const targetWeekArchive = { ...structuredClone(archives[0]), week: 3, players: archives[0].players.map((player) => ({ ...player, playerId: `leak-${player.playerId}` })) };
+  const targetWeekResults = targetWeekArchive.players.map((player) => ({ kind: "result", final: true, week: 3, playerId: player.playerId, points: 26 }));
+  assert.deepEqual(buildProjectionCalibration([...archives, targetWeekArchive], [...records, ...targetWeekResults], 3), calibration);
 });
 test("CSV supports quoted commas/newlines and rejects ambiguous or malformed input", () => {
   assert.deepEqual(parseEvidenceCsv('a,b\r\n"x,y","two\nlines"'), [["a", "b"], ["x,y", "two\nlines"]]);

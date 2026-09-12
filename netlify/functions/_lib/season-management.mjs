@@ -1,9 +1,12 @@
+import { PREMIUM_PROJECTION_SOURCES, projectionSourceWeights } from "../../../public/thunder-bowl/projection-lab.mjs";
+
 // Evidence-only management tools. No forecasts are promoted to observed results.
 const SLOTS = { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 };
 const HOUR = 3_600_000;
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
 const mean = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 const round = (x) => finite(x) ? Math.round(x * 100) / 100 : null;
+const round4 = (x) => finite(x) ? Math.round(x * 10_000) / 10_000 : null;
 const unavailable = (p) => /\b(out|ir|pup|suspended|doubtful)\b|injured reserve|physically unable/i.test(p?.injury?.status || "");
 
 export function sourceAudit({ leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, week, now }) {
@@ -195,6 +198,81 @@ export function weeklyProjectionArchive(plan, capturedAt) {
     sourceFingerprint: plan.sourceFingerprint,
     players,
   };
+}
+
+export function buildProjectionCalibration(projectionArchives = [], records = [], targetWeek = 1) {
+  const baseline = projectionSourceWeights(PREMIUM_PROJECTION_SOURCES);
+  const minimumSamples = 30;
+  const minimumWeeks = 2;
+  const priorStrength = 30;
+  const recencyDecay = 0.8;
+  const maxAbsoluteShift = 0.05;
+  const positions = {};
+  const eligibleArchives = projectionArchives.filter((archive) => archive.auditEligible && archive.week < targetWeek);
+  const actualByWeek = new Map();
+  for (const row of records) {
+    if (row.kind !== "result" || row.final !== true || row.week >= targetWeek || !finite(row.points)) continue;
+    if (!actualByWeek.has(row.week)) actualByWeek.set(row.week, new Map());
+    actualByWeek.get(row.week).set(row.playerId, row.points);
+  }
+  for (const position of Object.keys(SLOTS)) {
+    const samplesBySource = new Map(PREMIUM_PROJECTION_SOURCES.map((source) => [source, []]));
+    for (const archive of eligibleArchives) {
+      const actual = actualByWeek.get(archive.week);
+      if (!actual) continue;
+      const recencyWeight = recencyDecay ** Math.max(0, targetWeek - archive.week - 1);
+      for (const player of archive.players || []) {
+        if (player.position !== position || !actual.has(player.playerId)) continue;
+        for (const source of player.sources || []) {
+          if (source.basis !== "DIRECT_WEEKLY" || !samplesBySource.has(source.source) || !finite(source.points)) continue;
+          samplesBySource.get(source.source).push({ week: archive.week, error: source.points - actual.get(player.playerId), weight: recencyWeight });
+        }
+      }
+    }
+    const sourceMetrics = Object.fromEntries(PREMIUM_PROJECTION_SOURCES.map((source) => {
+      const samples = samplesBySource.get(source);
+      const weightTotal = samples.reduce((sum, sample) => sum + sample.weight, 0);
+      const weighted = (selector) => weightTotal ? samples.reduce((sum, sample) => sum + selector(sample) * sample.weight, 0) / weightTotal : null;
+      return [source, { source, sampleCount: samples.length, weekCount: new Set(samples.map((sample) => sample.week)).size,
+        meanAbsoluteError: round(weighted((sample) => Math.abs(sample.error))), meanError: round(weighted((sample) => sample.error)),
+        rootMeanSquaredError: round(weightTotal ? Math.sqrt(weighted((sample) => sample.error ** 2)) : null) }];
+    }));
+    const observedMae = Object.values(sourceMetrics).map((row) => row.meanAbsoluteError).filter(finite);
+    const pooledMae = mean(observedMae);
+    const eligible = Object.values(sourceMetrics).filter((row) => row.sampleCount >= minimumSamples && row.weekCount >= minimumWeeks && finite(row.meanAbsoluteError));
+    const raw = Object.fromEntries(PREMIUM_PROJECTION_SOURCES.map((source) => {
+      const metric = sourceMetrics[source];
+      if (!eligible.includes(metric) || !finite(pooledMae)) return [source, baseline[source]];
+      const shrunkMae = (metric.meanAbsoluteError * metric.sampleCount + pooledMae * priorStrength) / (metric.sampleCount + priorStrength);
+      return [source, baseline[source] * pooledMae / Math.max(0.25, shrunkMae)];
+    }));
+    const rawTotal = Object.values(raw).reduce((sum, value) => sum + value, 0);
+    const canAdapt = eligible.length >= 2;
+    const evidenceConfidence = canAdapt ? Math.min(0.75, Math.min(...eligible.map((row) => row.sampleCount / 120), ...eligible.map((row) => row.weekCount / 4))) : 0;
+    const provisional = Object.fromEntries(PREMIUM_PROJECTION_SOURCES.map((source) => {
+      const target = raw[source] / rawTotal;
+      const moved = baseline[source] + (target - baseline[source]) * evidenceConfidence;
+      return [source, Math.max(baseline[source] - maxAbsoluteShift, Math.min(baseline[source] + maxAbsoluteShift, moved))];
+    }));
+    const bounded = { ...provisional };
+    for (let iteration = 0; iteration < 8; iteration++) {
+      const residual = 1 - Object.values(bounded).reduce((sum, value) => sum + value, 0);
+      if (Math.abs(residual) < 1e-10) break;
+      const candidates = PREMIUM_PROJECTION_SOURCES.filter((source) => residual > 0
+        ? bounded[source] < baseline[source] + maxAbsoluteShift - 1e-10
+        : bounded[source] > baseline[source] - maxAbsoluteShift + 1e-10);
+      if (!candidates.length) break;
+      const share = residual / candidates.length;
+      for (const source of candidates) bounded[source] = Math.max(baseline[source] - maxAbsoluteShift, Math.min(baseline[source] + maxAbsoluteShift, bounded[source] + share));
+    }
+    const weights = Object.fromEntries(PREMIUM_PROJECTION_SOURCES.map((source) => [source, round4(bounded[source])]));
+    positions[position] = { active: canAdapt, pooledMae: round(pooledMae), evidenceConfidence: round(evidenceConfidence), weights,
+      sources: PREMIUM_PROJECTION_SOURCES.map((source) => ({ ...sourceMetrics[source], baselineWeight: round4(baseline[source]), weight: weights[source], change: round4(weights[source] - baseline[source]), eligible: eligible.includes(sourceMetrics[source]) })) };
+  }
+  return { schemaVersion: 1, model: "position-specific-walk-forward-v1", targetWeek, trainingCutoffWeek: targetWeek - 1,
+    active: Object.values(positions).some((position) => position.active), eligibleArchiveWeeks: eligibleArchives.map((archive) => archive.week).sort((a, b) => a - b),
+    safeguards: { minimumSamples, minimumWeeks, priorStrength, recencyDecay, maxAbsoluteShift, maximumEvidenceInfluence: 0.75 }, positions,
+    note: "Only finalized actuals from earlier weeks and write-once pregame archives are eligible. Recent weeks receive more weight; estimates are shrunk toward the governed baseline and source movement is capped." };
 }
 
 export function outcomeReport(checkpoints, records, projectionArchives = []) {

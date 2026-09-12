@@ -5,7 +5,7 @@ import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflin
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260905a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
 import { sortTradeProposals } from "./season-trade-ranking.mjs?v=20260901a";
-import { renderManagement } from "./season-management-ui.mjs?v=20260912a";
+import { renderManagement } from "./season-management-ui.mjs?v=20260912b";
 import { formatDenverKickoff } from "./season-kickoff.mjs?v=20260910a";
 
 const byId = (id) => document.getElementById(id);

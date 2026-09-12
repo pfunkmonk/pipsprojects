@@ -74,6 +74,16 @@ function projectionRowMaps({ fbgSnapshot = null, fantasyProsSnapshot = null, pff
   return rows;
 }
 
+export function projectionWeightsForPosition(sources, position, calibration = null) {
+  const available = [...new Set(sources)];
+  const positionCalibration = calibration?.positions?.[position];
+  if (!positionCalibration?.active) return projectionSourceWeights(available);
+  const supplied = available.filter((source) => Number.isFinite(positionCalibration.weights?.[source]));
+  const total = supplied.reduce((sum, source) => sum + positionCalibration.weights[source], 0);
+  if (!total) return projectionSourceWeights(available);
+  return Object.freeze(Object.fromEntries(supplied.map((source) => [source, positionCalibration.weights[source] / total])));
+}
+
 function cbsRowMap(leagueState) {
   return new Map((leagueState?.weeklyProjections || []).map((row) => [`${row.playerId}|${row.week}`, row]));
 }
@@ -123,7 +133,7 @@ function playerWeekEvidence(player, week, projectionRows = new Map(), cbsRows = 
     if (baselinePoints === null) return { points: null, sources: [], confidence: null, floor: null, ceiling: null, spread: null };
     return { points: round(baselinePoints), sources: [], confidence: 0.4, floor: round(Math.max(0, baselinePoints - 3)), ceiling: round(baselinePoints + 3), spread: null };
   }
-  const weights = projectionSourceWeights(sourceRows.map((row) => row.source));
+  const weights = projectionWeightsForPosition(sourceRows.map((row) => row.source), player.position, projectionRows.calibration);
   const points = sourceRows.reduce((sum, row) => sum + row.points * weights[row.source], 0);
   const low = Math.min(...sourceRows.map((row) => row.points));
   const high = Math.max(...sourceRows.map((row) => row.points));
@@ -847,7 +857,7 @@ function tradeImpact(beforeRoster, afterRoster, weeks, context) {
   return { before: round(before), after: round(after), delta: before === null || after === null ? null : round(after - before) };
 }
 
-export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, transfers = [] }) {
+export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, projectionCalibration = null, transfers = [] }) {
   if (!leagueRostersReady(leagueState)) throw new Error(incompleteRosterMessage(leagueState, "Trade analysis"));
   if (!Array.isArray(transfers) || transfers.length < 2 || transfers.length > 3) throw new Error("Choose two or three outgoing team packages.");
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
@@ -884,6 +894,7 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
   }
 
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
+  projectionRows.calibration = projectionCalibration;
   const context = { playerById, projectionRows, cbsRows: cbsRowMap(leagueState), statuses: statusMap(statusSnapshot), currentWeek: week, evidenceCache: new Map(), lineupCache: new Map() };
   const horizons = {
     week: [week],
@@ -1268,10 +1279,12 @@ export function buildSeasonRecommendationSnapshot({
   leagueMoves = [],
   generatedAt = new Date().toISOString(),
   lineupTeamId = USER_TEAM_ID,
+  projectionCalibration = null,
 }) {
   const isForecast = week > currentWeek;
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot, allowSeasonShapes: isForecast });
+  projectionRows.calibration = projectionCalibration;
   const cbsRows = cbsRowMap(leagueState);
   const statuses = statusMap(statusSnapshot);
   const lineupTeam = rosterTeam(leagueState, lineupTeamId);
@@ -1448,6 +1461,7 @@ export function buildSeasonRecommendationSnapshot({
       missingPolicy: "missing is excluded, never zero",
       contextPolicy: "news, injury, depth, matchup, weather, travel, and venue are evidence-only unless a time-forward gate earns authority",
       salaryPolicy: `roster salary and contract data are excluded from lineup, player ranking, ordinary waiver value, and current-season trade value; the separately captured $50 FAB balance is used to size blind-auction bids; salary is considered in the explicit long-term Stash Watch analysis in every week and in the formal Week ${KEEPER_EVALUATION_START_WEEK}+ keeper review`,
+      projectionCalibration,
     },
   };
 }

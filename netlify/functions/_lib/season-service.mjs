@@ -26,10 +26,10 @@ import {
 } from "./season-store.mjs";
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot } from "./status-store.mjs";
-import { buildManagement } from "./season-management.mjs";
+import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
-const RECOMMENDATION_ENGINE_VERSION = 14;
+const RECOMMENDATION_ENGINE_VERSION = 15;
 const USER_TEAM_ID = "dogs-of-war";
 
 export function normalizeSeasonViewingWeek(value, currentWeek) {
@@ -43,6 +43,16 @@ export function normalizeSeasonViewingWeek(value, currentWeek) {
     throw error;
   }
   return week;
+}
+
+async function projectionCalibrationForWeek(week) {
+  try {
+    const state = await readManagementState();
+    return buildProjectionCalibration(state.projectionArchives, state.records, week);
+  } catch (error) {
+    console.error("Projection calibration history unavailable", error.message);
+    return buildProjectionCalibration([], [], week);
+  }
 }
 
 export function normalizeSeasonViewingTeam(value) {
@@ -59,7 +69,7 @@ function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot }) {
+function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration = null }) {
   return sha256({
     schemaVersion: 1,
     recommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION,
@@ -73,6 +83,7 @@ function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueStat
     pff: pffSnapshot?.rawSha256 || null,
     research: researchSnapshot?.capturedAt || null,
     status: statusSnapshot?.rawSha256 || statusSnapshot?.capturedAt || null,
+    projectionCalibration,
   });
 }
 
@@ -215,6 +226,7 @@ export async function refreshSeasonPlan({
   const researchRefreshError = researchResult.error?.message || researchSnapshot?.refreshError || null;
   const newsSnapshot = newsResult.value || null;
   const newsRefreshError = newsResult.error?.message || newsSnapshot?.refreshError || null;
+  const projectionCalibration = await projectionCalibrationForWeek(week);
   const plan = buildSeasonRecommendationSnapshot({
     pack,
     leagueState,
@@ -226,8 +238,9 @@ export async function refreshSeasonPlan({
     statusSnapshot,
     leagueMoves,
     generatedAt,
+    projectionCalibration,
   });
-  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot });
+  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration });
   plan.recommendationEngineVersion = RECOMMENDATION_ENGINE_VERSION;
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
   if (statusRefreshError) plan.alerts.push(`Injury refresh failed; last-known safe status evidence remains in use (${statusRefreshError}).`);
@@ -311,7 +324,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
 async function buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }) {
   const generatedAt = new Date(now).toISOString();
   const pack = await readSeasonPack();
-  const [leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves] = await Promise.all([
+  const [leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves, projectionCalibration] = await Promise.all([
     liveLeagueState(pack),
     readLatestFbgWeeklySnapshot(pack, week),
     readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros"),
@@ -319,6 +332,7 @@ async function buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }) 
     currentStatusSnapshot(pack, { force: false }).catch(() => null),
     currentResearchSnapshot({ force: false }).catch(() => null),
     readLeagueMoves(week),
+    projectionCalibrationForWeek(week),
   ]);
   const plan = buildSeasonRecommendationSnapshot({
     pack,
@@ -333,8 +347,9 @@ async function buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }) 
     leagueMoves,
     generatedAt,
     lineupTeamId,
+    projectionCalibration,
   });
-  plan.sourceFingerprint = sourceFingerprint({ pack, week, lineupTeamId, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot });
+  plan.sourceFingerprint = sourceFingerprint({ pack, week, lineupTeamId, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration });
   plan.recommendationEngineVersion = RECOMMENDATION_ENGINE_VERSION;
   return plan;
 }
@@ -402,20 +417,21 @@ export async function importManagementEvidence(records, { now = new Date() } = {
   const league = await liveLeagueState(pack);
   const normalized = validateManagementRecords(records, pack, league.teams, new Date(now).toISOString());
   await saveManagementRecords(normalized);
-  return { plan: await getCurrentSeasonSnapshot({ now }), imported: normalized.length };
+  return { plan: (await refreshSeasonPlan({ now })).plan, imported: normalized.length };
 }
 
 export async function analyzeProposedSeasonTrade(transfers, { now = new Date() } = {}) {
   const pack = await readSeasonPack();
   const week = seasonWeekForDate(now);
-  const [leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot] = await Promise.all([
+  const [leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, projectionCalibration] = await Promise.all([
     liveLeagueState(pack),
     readLatestFbgWeeklySnapshot(pack, week),
     readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros"),
     readLatestSupplementalWeeklySnapshot(pack, week, "pff"),
     currentStatusSnapshot(pack, { force: false }).catch(() => null),
+    projectionCalibrationForWeek(week),
   ]);
-  return analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, transfers });
+  return analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, projectionCalibration, transfers });
 }
 
 export async function getSavedSeasonAiAdvice({ now = new Date() } = {}) {
