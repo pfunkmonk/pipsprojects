@@ -135,22 +135,27 @@ test("official Footballguys weekly downloads use consensus stat lines and exact 
 
 test("CBS optional evidence falls back only to safe same-week data", () => {
   const priorFab = { week: 1, status: "COMPLETE" };
+  const priorPreview = { week: 1, status: "COMPLETE", teams: [{ teamId: "dogs-of-war" }] };
   const priorRows = [{ playerId: "qb-one", week: 1, points: 20 }];
-  const prior = { fabState: priorFab, projectionWeek: 1, projectionCount: 1, unmatchedProjectionCount: 2, weeklyProjections: priorRows };
-  const retained = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 0, fabState: null }, prior);
+  const prior = { fabState: priorFab, scoringPreview: priorPreview, projectionWeek: 1, projectionCount: 1, unmatchedProjectionCount: 2, weeklyProjections: priorRows };
+  const retained = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 0, fabState: null, scoringPreview: { week: 1, status: "PARTIAL", teams: [] } }, prior);
   assert.equal(retained.fabState, priorFab);
+  assert.equal(retained.scoringPreview, priorPreview);
   assert.equal(retained.weeklyProjections, priorRows);
   assert.equal(retained.projectionCount, 1);
   assert.equal(retained.unmatchedProjectionCount, 2);
 
   const currentFab = { week: 1, status: "PARTIAL" };
   const currentRows = [{ playerId: "qb-two", week: 1, points: 18 }];
-  const current = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 1, fabState: currentFab, weeklyProjections: currentRows }, prior);
+  const currentPreview = { week: 1, status: "PARTIAL", teams: [{ coverage: { exactStarters: true, completeRoster: true } }] };
+  const current = retainPriorCbsOptionalEvidence({ projectionWeek: 1, projectionCount: 1, fabState: currentFab, scoringPreview: currentPreview, weeklyProjections: currentRows }, prior);
   assert.equal(current.fabState, currentFab);
+  assert.equal(current.scoringPreview, currentPreview);
   assert.equal(current.weeklyProjections, currentRows);
 
   const nextWeek = retainPriorCbsOptionalEvidence({ projectionWeek: 2, projectionCount: 0, fabState: null }, prior);
   assert.equal(nextWeek.fabState, null);
+  assert.equal(nextWeek.scoringPreview, undefined);
   assert.equal(nextWeek.weeklyProjections, undefined);
 });
 
@@ -1000,16 +1005,16 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v45/);
+  assert.match(worker, /thunder-bowl-season-v46/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260912c/);
+  assert.match(worker, /season\.mjs\?v=20260912d/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
-  assert.match(worker, /fbg-session-capture\.mjs\?v=20260912b/);
-  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912b/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912c/);
   assert.match(worker, /season-evidence\.mjs\?v=20260912b/);
-  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260912b/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260912c/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);

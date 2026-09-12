@@ -518,6 +518,8 @@ export function retainPriorCbsOptionalEvidence(captured, prior) {
   if (!prior) return captured;
   const snapshot = { ...captured };
   if (!captured.fabState && prior.fabState?.week === captured.projectionWeek) snapshot.fabState = prior.fabState;
+  const capturedPreviewTeams = captured.scoringPreview?.teams?.filter((team) => team.coverage?.exactStarters === true && team.coverage?.completeRoster === true).length || 0;
+  if (capturedPreviewTeams === 0 && prior.scoringPreview?.week === captured.projectionWeek) snapshot.scoringPreview = prior.scoringPreview;
   if (
     captured.projectionCount === 0
     && prior.projectionCount > 0

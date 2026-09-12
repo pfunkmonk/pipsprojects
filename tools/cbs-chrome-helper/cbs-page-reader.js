@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.5";
+  const READER_VERSION = "0.10.6";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
@@ -160,7 +160,7 @@
         teamSide,
         matchupIndex,
         actualPoints,
-        scoreStatus: final ? "FINAL" : actualPoints !== null ? "LIVE" : "NOT_STARTED",
+        scoreStatus: actualPoints === null ? "NOT_STARTED" : final ? "FINAL" : "LIVE",
         cbsLiveProjection,
         gameText: gameText.slice(0, 300),
         statsText: statsText.slice(0, 500),
@@ -175,6 +175,7 @@
     const tiles = [...document.querySelectorAll("#atlRegion .atlItem")].filter((tile) => tile.getBoundingClientRect().width > 0 && tile.getBoundingClientRect().height > 0);
     const originalIndex = Math.max(0, tiles.findIndex((tile) => tile.classList.contains("selected")));
     const allRows = [];
+    const captureErrors = [];
     const signature = () => [...document.querySelectorAll("#matchupDetailsRegion .playerLayoutContainer a.playerLink")]
       .map((link) => (link.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "")
       .filter(Boolean).join("|");
@@ -191,7 +192,7 @@
           await pause(100);
         }
         const captured = currentLiveScoringRows(rosterPlayers, matchupIndex);
-        if (captured.length < 16) throw new Error(`CBS live scoring matchup ${matchupIndex + 1} did not finish rendering.`);
+        if (captured.length < 16) captureErrors.push(`CBS live scoring matchup ${matchupIndex + 1} did not finish rendering.`);
         allRows.push(...captured);
       }
     } finally {
@@ -200,7 +201,15 @@
         await pause(150);
       }
     }
-    return { rows: allRows, allMatchups: tiles.length >= 6, matchupCount: tiles.length, pageUrl: location.href, pageTitle: document.title || "" };
+    if (!allRows.length && !captureErrors.length) captureErrors.push("CBS live scoring returned no player rows.");
+    return {
+      rows: allRows,
+      allMatchups: tiles.length >= 6,
+      matchupCount: tiles.length,
+      pageUrl: location.href,
+      pageTitle: document.title || "",
+      captureError: captureErrors.join(" ") || null,
+    };
   }
 
   function projectionRows(expectedPosition) {
