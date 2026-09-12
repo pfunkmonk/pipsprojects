@@ -1,4 +1,4 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260912c";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260912d";
 import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260912c";
 import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260912c";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";

@@ -9,7 +9,7 @@ import { normalizeCbsSchedulePages, scheduleOpponent } from "../tools/cbs-chrome
 import { cbsScheduleUrlMatches, renderedCbsScheduleReady } from "../tools/cbs-chrome-helper/cbs-schedule-readiness.mjs";
 import { normalizeCbsScoringPreviewRows } from "../tools/cbs-chrome-helper/cbs-scoring-preview-normalize.mjs";
 import { pffProjectionTableReady } from "../tools/cbs-chrome-helper/pff-projection-readiness.mjs";
-import { cbsLeagueRosterReadiness, compareCbsRosterSnapshots, validateCbsRosterSnapshot } from "../public/thunder-bowl/cbs-roster-snapshot.mjs";
+import { cbsLeagueRosterReadiness, compareCbsRosterSnapshots, requestCbsRosterCapture, validateCbsRosterSnapshot } from "../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { canonicalizeCbsLeagueSnapshot, validateCanonicalCbsLeagueState } from "../netlify/functions/_lib/cbs-season-source.mjs";
 import { scoreThunderBowlProjectedStats } from "../netlify/functions/_lib/thunder-bowl-scoring.mjs";
 
@@ -825,6 +825,70 @@ test("the app materializes raw CBS schedule pages before enforcing the roster sn
   assert.equal(normalized.leagueSchedule.matchupCount, 78);
   assert.equal(normalized.rawLeagueSchedule, undefined);
   assert.equal(normalized.leagueSchedule.matchups.filter((row) => row.week === 1).length, 6);
+});
+
+test("league-wide CBS scoring diagnostics remain bounded without rejecting valid partial captures", () => {
+  const teams = scheduleTeams.map(([teamId, name], teamIndex) => normalizeCbsTeamRows(
+    { teamId, cbsTeamId: teamIndex + 1, name },
+    [rawPlayer(61000 + teamIndex, `${name} Quarterback`)],
+  ));
+  const snapshot = {
+    schemaVersion: 1,
+    source: "CBS Sports authenticated Thunder Bowl all-team roster report",
+    modelEffect: "none",
+    capturedAt: "2026-09-12T18:30:00.000Z",
+    season: 2026,
+    pageUrl: "https://berrymvp.football.cbssports.com/teams/roster-report/all/2026/",
+    teamCount: 12,
+    playerCount: 12,
+    teams,
+    projectionWeek: 1,
+    leagueSchedule: rawLeagueSchedule(),
+  };
+  snapshot.scoringPreview = normalizeCbsScoringPreviewRows({
+    rows: [],
+    teams,
+    leagueSchedule: snapshot.leagueSchedule,
+    week: 1,
+    capturedAt: "2026-09-12T18:30:00.000Z",
+    pageUrl: "https://berrymvp.football.cbssports.com/scoring/live/1/",
+    pageTitle: "Thunder Bowl Live Scoring",
+    captureError: "CBS returned partial live-scoring rows.",
+    allMatchups: true,
+  });
+  const normalized = validateCbsRosterSnapshot(snapshot);
+  assert.equal(normalized.scoringPreview.status, "PARTIAL");
+  assert.equal(normalized.scoringPreview.errors.length, 25);
+});
+
+test("CBS capture rejects an invalid helper response immediately instead of hanging until timeout", async () => {
+  const listeners = new Set();
+  const fakeWindow = {
+    addEventListener(type, listener) { if (type === "message") listeners.add(listener); },
+    removeEventListener(type, listener) { if (type === "message") listeners.delete(listener); },
+    postMessage(message, origin) {
+      if (message.source !== "thunder-bowl-app" || message.expectedHelperVersion !== "0.10.6") return;
+      queueMicrotask(() => {
+        for (const listener of [...listeners]) listener({
+          source: fakeWindow,
+          origin,
+          data: {
+            source: "thunder-bowl-cbs-helper",
+            type: "THUNDER_BOWL_CBS_CAPTURE_RESPONSE",
+            protocolVersion: 2,
+            helperVersion: "0.10.6",
+            requestId: message.requestId,
+            ok: true,
+            snapshot: {},
+          },
+        });
+      });
+    },
+  };
+  await assert.rejects(
+    requestCbsRosterCapture({ targetWindow: fakeWindow, origin: "https://pipsprojects.com", timeoutMs: 1_000, week: 1 }),
+    /unsupported schema/,
+  );
 });
 
 test("CBS comparison detects moves and contract changes without adding model authority", () => {

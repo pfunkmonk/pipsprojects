@@ -35,6 +35,7 @@ const VALID_FAB_NIGHTS = ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDA
 const CBS_SCHEDULE_SOURCE = "CBS Sports authenticated Thunder Bowl league schedule";
 const CBS_SCORING_PREVIEW_SOURCE = "CBS Sports authenticated Thunder Bowl scoring preview";
 const CBS_HEAD_TO_HEAD_WEEKS = Array.from({ length: 13 }, (_, index) => index + 1);
+const CBS_SCORING_PREVIEW_MAX_ERRORS = 40;
 
 export function cbsTeamRosterReadiness(players = []) {
   const counts = Object.fromEntries(Object.keys(CBS_STARTER_REQUIREMENTS).map((position) => [position, 0]));
@@ -210,7 +211,10 @@ function validateScoringPreview(value, snapshot, season) {
   const coverageScope = value.coverageScope || "MATCHUP";
   assert(["MATCHUP", "LEAGUE"].includes(coverageScope), "CBS scoring preview has an invalid coverage scope.");
   assert(Array.isArray(value.teams) && value.teams.length <= CBS_TEAM_CATALOG.length, "CBS scoring preview contains too many teams.");
-  assert(Array.isArray(value.errors) && value.errors.length <= 10 && value.errors.every((error) => typeof error === "string" && error.length <= 500), "CBS scoring preview contains invalid capture diagnostics.");
+  // A league-wide capture can legitimately report two coverage diagnostics for
+  // each of the 12 teams, plus page-level diagnostics. Keep the strings tightly
+  // bounded, but allow the complete league audit to reach the validator.
+  assert(Array.isArray(value.errors) && value.errors.length <= CBS_SCORING_PREVIEW_MAX_ERRORS && value.errors.every((error) => typeof error === "string" && error.length <= 500), "CBS scoring preview contains invalid capture diagnostics.");
   const rosterByTeam = new Map(snapshot.teams.map((team) => [team.teamId, new Map(team.players.map((player) => [player.cbsPlayerId, player]))]));
   const seenTeams = new Set();
   for (const team of value.teams) {
@@ -336,8 +340,15 @@ export function requestCbsRosterCapture({ targetWindow = window, origin = window
       if (data.source !== CBS_HELPER_SOURCE || data.type !== CBS_CAPTURE_RESPONSE || data.protocolVersion !== CBS_CAPTURE_PROTOCOL_VERSION || !CBS_COMPATIBLE_HELPER_VERSIONS.includes(data.helperVersion) || data.requestId !== requestId) return;
       clearTimeout(timeout);
       targetWindow.removeEventListener("message", onMessage);
-      if (!data.ok) reject(new Error(typeof data.error === "string" ? data.error : "CBS helper could not capture the roster report."));
-      else resolve(validateCbsRosterSnapshot(data.snapshot));
+      if (!data.ok) {
+        reject(new Error(typeof data.error === "string" ? data.error : "CBS helper could not capture the roster report."));
+        return;
+      }
+      try {
+        resolve(validateCbsRosterSnapshot(data.snapshot));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error("CBS returned an unreadable roster snapshot."));
+      }
     }
     targetWindow.addEventListener("message", onMessage);
     for (const expectedHelperVersion of CBS_COMPATIBLE_HELPER_VERSIONS) {
