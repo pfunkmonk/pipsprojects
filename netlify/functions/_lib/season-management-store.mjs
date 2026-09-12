@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
-import { decisionCheckpoint } from "./season-management.mjs";
+import { decisionCheckpoint, weeklyProjectionArchive } from "./season-management.mjs";
 
 const db = () => getStore({ name: "thunder-bowl-2026-season", consistency: "strong" });
 const key = "management/v1/evidence";
@@ -61,7 +61,11 @@ export function mergeManagementRecords(previous, incoming) {
 }
 
 export async function readManagementState(store = db()) {
-  return await store.get(key, { type: "json" }) || { records: [], checkpoints: [] };
+  const [state, ...projectionArchives] = await Promise.all([
+    store.get(key, { type: "json" }),
+    ...Array.from({ length: 18 }, (_, index) => store.get(`management/v1/projection-archives/2026/week-${index + 1}`, { type: "json" })),
+  ]);
+  return { ...(state || { records: [], checkpoints: [] }), projectionArchives: projectionArchives.filter(Boolean) };
 }
 
 async function updateState(transform, store = db()) {
@@ -85,4 +89,12 @@ export async function archiveManagementCheckpoint(plan, now = new Date().toISOSt
   if (!checkpoint) return null;
   const id = hash([plan.season, plan.week, plan.sourceFingerprint]);
   return updateState((old) => old.checkpoints.some((c) => c.id === id) ? old : { ...old, checkpoints: [...old.checkpoints, { ...checkpoint, id }] }, store);
+}
+
+export async function archiveWeeklyProjections(plan, now = new Date().toISOString(), store = db()) {
+  const archive = weeklyProjectionArchive(plan, now);
+  if (!archive) return null;
+  const archiveKey = `management/v1/projection-archives/${plan.season}/week-${plan.week}`;
+  const result = await store.setJSON(archiveKey, archive, { onlyIfNew: true });
+  return result.modified ? archive : store.get(archiveKey, { type: "json" });
 }

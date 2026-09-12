@@ -27,9 +27,9 @@ import {
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot } from "./status-store.mjs";
 import { buildManagement } from "./season-management.mjs";
-import { archiveManagementCheckpoint, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
+import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
-const RECOMMENDATION_ENGINE_VERSION = 13;
+const RECOMMENDATION_ENGINE_VERSION = 14;
 const USER_TEAM_ID = "dogs-of-war";
 
 export function normalizeSeasonViewingWeek(value, currentWeek) {
@@ -238,6 +238,7 @@ export async function refreshSeasonPlan({
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
   try {
+    await archiveWeeklyProjections(plan, generatedAt);
     await archiveManagementCheckpoint(plan, generatedAt);
   } catch (error) {
     console.error("Decision checkpoint could not be archived", error.message);

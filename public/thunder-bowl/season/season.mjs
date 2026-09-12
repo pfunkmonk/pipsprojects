@@ -5,7 +5,7 @@ import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflin
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260905a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
 import { sortTradeProposals } from "./season-trade-ranking.mjs?v=20260901a";
-import { renderManagement } from "./season-management-ui.mjs?v=20260905a";
+import { renderManagement } from "./season-management-ui.mjs?v=20260912a";
 import { formatDenverKickoff } from "./season-kickoff.mjs?v=20260910a";
 
 const byId = (id) => document.getElementById(id);
@@ -769,8 +769,19 @@ function scoringPreviewPlayer(row, role, week) {
 
 function renderScoringPreview(value) {
   const preview = value.scoringPreview || { status: "UNAVAILABLE", errors: ["Update CBS with the newest Data Helper to capture both submitted lineups."] };
+  const selector = byId("scoring-preview-matchup");
+  const selectedTeamId = preview.selectedTeamId || value.viewing?.selectedTeamId || value.league?.userTeamId || "";
+  selector.replaceChildren();
+  for (const matchup of value.schedule?.matchups || []) {
+    const option = element("option", "", `${matchup.teamAName} vs ${matchup.teamBName}`);
+    option.value = matchup.teamAId;
+    option.selected = matchup.teamAId === selectedTeamId || matchup.teamBId === selectedTeamId;
+    selector.append(option);
+  }
+  selector.disabled = offlineMode || selector.options.length === 0;
   byId("scoring-preview-week").textContent = `Week ${preview.week || value.week}`;
-  byId("scoring-preview-updated").textContent = preview.asOf ? `CBS lineup captured ${dateTime(preview.asOf)}` : "CBS lineup not captured";
+  const allSubmitted = preview.teams?.length === 2 && preview.teams.every((team) => team.submitted);
+  byId("scoring-preview-updated").textContent = preview.asOf ? `${allSubmitted ? "CBS lineups" : "CBS rosters"} captured ${dateTime(preview.asOf)}` : "CBS data not captured";
   byId("scoring-preview-authority").textContent = preview.authorityNote || "CBS determines the submitted starters and reserves. Our four-source component-stat blend and Thunder Bowl scoring determine the projections.";
   const target = byId("scoring-preview-content");
   target.replaceChildren();
@@ -790,7 +801,11 @@ function renderScoringPreview(value) {
   const scoreboard = element("section", "scoring-scoreboard");
   const teamScore = (team, alignment) => {
     const node = element("div", `scoring-team-score ${alignment}`);
-    node.append(element("span", "", team.teamName), element("strong", "", number(team.total)), element("small", "", "Thunder Bowl projected points"));
+    node.append(
+      element("span", "", team.teamName),
+      element("strong", "", number(team.total)),
+      element("small", "", team.submitted ? "CBS submitted · Thunder Bowl projected points" : "Projected legal lineup · Thunder Bowl points"),
+    );
     return node;
   };
   const middle = element("div", "scoring-edge");
@@ -827,6 +842,30 @@ function renderScoringPreview(value) {
   }
   reserves.append(reserveColumns);
   target.append(reserves);
+}
+
+async function loadScoringPreviewMatchup() {
+  const selector = byId("scoring-preview-matchup");
+  const teamId = selector.value;
+  if (!plan || !teamId) return;
+  if (offlineMode) {
+    setStatus("Changing matchups requires an online connection.", true);
+    return;
+  }
+  selector.disabled = true;
+  const label = selector.selectedOptions[0]?.textContent || "selected matchup";
+  setStatus(`Loading ${label}…`);
+  try {
+    const outlook = await loadSnapshot(plan.week, teamId);
+    if (outlook.scoringPreview?.selectedTeamId !== teamId) throw new Error("The server returned the wrong scoring-preview matchup.");
+    renderScoringPreview(outlook);
+    setStatus(`Showing ${label}. CBS-submitted labels distinguish captured lineups from projected legal lineups.`);
+  } catch (error) {
+    renderScoringPreview(plan);
+    setStatus(errorMessage(error), true);
+  } finally {
+    byId("scoring-preview-matchup").disabled = offlineMode || byId("scoring-preview-matchup").options.length === 0;
+  }
 }
 
 function metric(label, value) {
@@ -1499,6 +1538,7 @@ window.addEventListener("hashchange", () => activateTab(location.hash.slice(1), 
 
 byId("lineup-week").addEventListener("change", loadLineupSelection);
 byId("lineup-team").addEventListener("change", loadLineupSelection);
+byId("scoring-preview-matchup").addEventListener("change", loadScoringPreviewMatchup);
 byId("waiver-position").addEventListener("change", (event) => {
   waiverView.position = event.target.value;
   if (plan) renderWaivers(plan);

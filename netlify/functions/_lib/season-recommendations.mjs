@@ -1030,6 +1030,8 @@ function buildPlayerStats({ pack, leagueState, week, projectionRows, cbsRows, st
       position: player.position,
       nflTeam: player.nflTeam,
       opponent: currentCbs?.opponent || null,
+      gameTime: currentCbs?.gameTime || null,
+      kickoffAt: currentCbs?.gameTime ? kickoffAt(currentCbs.gameTime, week, pack.season) : null,
       bye: player.weeklyProjection?.byeWeek ?? null,
       leagueStatus,
       ownerTeamId: owner?.teamId || null,
@@ -1077,7 +1079,7 @@ function buildPublicLeague(pack, leagueState, week, projectionRows, cbsRows) {
   };
 }
 
-function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows, statuses }) {
+function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows, statuses, selectedTeamId = USER_TEAM_ID }) {
   const captured = leagueState.scoringPreview || null;
   const unavailable = (errors) => ({
     status: captured?.status || "UNAVAILABLE",
@@ -1089,9 +1091,12 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
     errors,
     authorityNote: "CBS determines which players are submitted as starters or reserves. Thunder Bowl component-stat projections and league scoring determine the points shown here.",
   });
-  if (!captured) return unavailable(["Update CBS with the current Data Helper to capture the submitted starters and reserves."]);
-  if (captured.week !== week) return unavailable([`The last CBS scoring preview is for Week ${captured.week}. Update CBS to capture Week ${week}.`]);
-  if (captured.status !== "COMPLETE") return unavailable(captured.errors?.length ? [...captured.errors] : ["CBS did not return complete submitted-lineup coverage for both teams."]);
+  const selectedTeam = rosterTeam(leagueState, selectedTeamId);
+  const opponent = scheduleOpponent(leagueState, selectedTeamId, week);
+  if (!selectedTeam) return unavailable(["The selected team is not present in the current CBS roster data."]);
+  if (!opponent || opponent.allPlay || !opponent.teamId) return unavailable([opponent?.allPlay ? `Week ${week} is an all-play week, so there is no single head-to-head matchup.` : `No Week ${week} opponent is stored for ${selectedTeam.teamName}.`]);
+  const opponentTeam = rosterTeam(leagueState, opponent.teamId);
+  if (!opponentTeam) return unavailable(["The scheduled opponent is not present in the current CBS roster data."]);
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const lineupDetails = new Map((leagueState.teams || []).flatMap((team) => (team.roster || []).map((row) => [row.playerId, row])));
   const publicRow = (row, team) => {
@@ -1110,33 +1115,43 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
       bye: roster.bye ?? player.weeklyProjection?.byeWeek ?? null,
     }, { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: team.teamId, adviceTeamName: team.teamName, week, season: pack.season });
   };
-  const teams = captured.teams.map((team) => {
-    const starters = team.starters.map((row) => publicRow(row, team)).filter(Boolean);
-    const bench = team.bench.map((row) => publicRow(row, team)).filter(Boolean);
+  const capturedTeams = new Map(captured?.week === week && captured?.status === "COMPLETE" ? captured.teams.map((team) => [team.teamId, team]) : []);
+  const buildTeam = (team) => {
+    const capturedTeam = capturedTeams.get(team.teamId);
+    const optimized = capturedTeam ? null : optimizeExactLineup(team.roster, { week, playerById, projectionRows, cbsRows, statuses });
+    const starters = capturedTeam
+      ? capturedTeam.starters.map((row) => publicRow(row, team)).filter(Boolean)
+      : optimized.starters.map((entry) => publicRow(entry, team)).filter(Boolean);
+    const bench = capturedTeam
+      ? capturedTeam.bench.map((row) => publicRow(row, team)).filter(Boolean)
+      : optimized.bench.map((entry) => publicRow(entry, team)).filter(Boolean);
     const total = starters.length === 8 && starters.every((row) => Number.isFinite(row.points))
       ? round(starters.reduce((sum, row) => sum + row.points, 0))
       : null;
-    return { teamId: team.teamId, teamName: team.teamName, total, starters, bench };
-  });
-  const dogs = teams.find((team) => team.teamId === USER_TEAM_ID) || teams[0];
-  const opponent = teams.find((team) => team.teamId !== USER_TEAM_ID) || teams[1];
-  const margin = Number.isFinite(dogs?.total) && Number.isFinite(opponent?.total) ? round(dogs.total - opponent.total) : null;
+    return { teamId: team.teamId, teamName: team.teamName, total, starters, bench, submitted: Boolean(capturedTeam), lineupBasis: capturedTeam ? "CBS_SUBMITTED" : "PROJECTED_FROM_CBS_ROSTER" };
+  };
+  const teams = [buildTeam(selectedTeam), buildTeam(opponentTeam)];
+  const [left, right] = teams;
+  const margin = Number.isFinite(left?.total) && Number.isFinite(right?.total) ? round(left.total - right.total) : null;
   const absoluteMargin = Number.isFinite(margin) ? Math.abs(margin) : null;
   const edge = absoluteMargin === null ? "UNAVAILABLE" : absoluteMargin < 2 ? "EVEN" : absoluteMargin < 6 ? "SLIGHT" : absoluteMargin < 12 ? "MODERATE" : "STRONG";
+  const allSubmitted = teams.every((team) => team.submitted);
   return {
     status: "COMPLETE",
     week,
-    asOf: captured.capturedAt,
-    source: captured.source,
-    pageUrl: captured.pageUrl,
-    teams: [dogs, opponent].filter(Boolean),
-    dogsTeamId: dogs?.teamId || USER_TEAM_ID,
-    opponentTeamId: opponent?.teamId || null,
+    asOf: captured?.capturedAt || leagueState.capturedAt || null,
+    source: allSubmitted ? captured.source : leagueState.source,
+    pageUrl: allSubmitted ? captured.pageUrl : null,
+    teams,
+    selectedTeamId: left.teamId,
+    opponentTeamId: right.teamId,
     projectedMargin: margin,
-    favoriteTeamId: margin === null || margin === 0 ? null : margin > 0 ? dogs.teamId : opponent.teamId,
+    favoriteTeamId: margin === null || margin === 0 ? null : margin > 0 ? left.teamId : right.teamId,
     edge,
     errors: [],
-    authorityNote: "CBS determines which players are submitted as starters or reserves. Thunder Bowl component-stat projections and league scoring determine the points shown here.",
+    authorityNote: allSubmitted
+      ? "CBS determines the submitted starters and reserves; both lineups were captured from CBS. Thunder Bowl component-stat projections and league scoring determine the points shown here."
+      : "This matchup uses the latest CBS rosters and projected exact legal lineups. Any team not marked CBS submitted is an optimized preview—not confirmation of the lineup saved at CBS. Thunder Bowl component-stat projections and league scoring determine the points shown here.",
   };
 }
 
@@ -1330,7 +1345,7 @@ export function buildSeasonRecommendationSnapshot({
   const watch = buildInjuryWatch({ pack, leagueState, week, statusSnapshot, researchSnapshot, fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   const playerStats = buildPlayerStats({ pack, leagueState, week, projectionRows, cbsRows, statuses });
   const league = buildPublicLeague(pack, leagueState, week, projectionRows, cbsRows);
-  const scoringPreview = buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows, statuses });
+  const scoringPreview = buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows, statuses, selectedTeamId: lineupTeamId });
   const freshness = sourceState({ leagueState, pack, week, currentWeek, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, now: generatedAt });
   const directProjectionSources = [
     includeGameDetails && (leagueState.projectionCount ?? leagueState.weeklyProjections?.length ?? 0) >= 100 ? "CBS" : null,
@@ -1422,6 +1437,9 @@ export function buildSeasonRecommendationSnapshot({
       userTeam: teamSchedule(leagueState, USER_TEAM_ID),
       selectedTeamId: lineupTeam.teamId,
       selectedTeam: teamSchedule(leagueState, lineupTeam.teamId),
+      matchups: (leagueState.leagueSchedule?.matchups || [])
+        .filter((row) => row.week === week)
+        .map((row) => ({ week: row.week, teamAId: row.teamAId, teamAName: row.teamAName, teamBId: row.teamBId, teamBName: row.teamBName })),
     },
     model: {
       deterministic: true,

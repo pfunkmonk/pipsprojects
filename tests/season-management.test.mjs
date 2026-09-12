@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildGameDay, buildManagement, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
-import { archiveManagementCheckpoint, mergeManagementRecords, readManagementState, saveManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
+import { buildGameDay, buildManagement, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
+import { archiveManagementCheckpoint, archiveWeeklyProjections, mergeManagementRecords, readManagementState, saveManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
 import { evidenceFromCsv, parseEvidenceCsv } from "../public/thunder-bowl/season/season-management-ui.mjs";
 
 const now = "2026-09-08T12:00:00.000Z";
@@ -91,6 +91,21 @@ test("outcome scorecard selects latest eligible pregame checkpoint and compares 
   const late = { ...c, capturedAt: "2026-09-14T00:00:00Z", roster: [] };
   const report = outcomeReport([c, late], results); assert.equal(report.weeks[0].recommendedActualTotal, 80); assert.equal(report.weeks[0].hindsightGap, 10); assert.equal(report.providers[0].sampleCount, 9);
 });
+test("weekly projection archive freezes every projected player and ranks direct providers against final actuals", () => {
+  const plan = fixture();
+  plan.playerStats[0].sources.push({ source: "PFF", points: 14, basis: "DIRECT_WEEKLY" });
+  const archive = weeklyProjectionArchive(plan, now);
+  assert.equal(archive.auditEligible, true);
+  assert.equal(archive.players.length, plan.playerStats.length);
+  const results = archive.players.map((player) => ({ kind: "result", season: 2026, week: 1, playerId: player.playerId, points: player.points, final: true }));
+  const report = outcomeReport([], results, [archive]);
+  assert.equal(report.projectionWeeks[0].projectedPlayers, plan.playerStats.length);
+  assert.equal(report.projectionWeeks[0].meanAbsoluteError, 0);
+  assert.equal(report.providers[0].source, "CBS");
+  assert.equal(report.providers[0].rank, 1);
+  assert.ok(report.providers.find((provider) => provider.source === "PFF").meanAbsoluteError > 0);
+  assert.equal(weeklyProjectionArchive(plan, "2026-09-14T00:00:00Z").auditEligible, false);
+});
 test("CSV supports quoted commas/newlines and rejects ambiguous or malformed input", () => {
   assert.deepEqual(parseEvidenceCsv('a,b\r\n"x,y","two\nlines"'), [["a", "b"], ["x,y", "two\nlines"]]);
   assert.throws(() => parseEvidenceCsv('a\n"broken'), /unclosed/);
@@ -119,6 +134,16 @@ test("private history survives reopening, repeated captures, and concurrent impo
   await archiveManagementCheckpoint(p, now, db); await archiveManagementCheckpoint(p, now, db);
   state = await readManagementState(db); assert.equal(state.checkpoints.length, 1); assert.equal(state.records.length, 2);
   assert.equal(mergeManagementRecords(rows, [{ ...rows[0], observedAt: "2026-01-01T00:00:00Z", amount: 20 }])[0].amount, 1);
+});
+test("weekly projection storage is write-once and survives reopening", async () => {
+  const db = fakeStore(); const plan = fixture();
+  const first = await archiveWeeklyProjections(plan, now, db);
+  plan.playerStats[0].points = 99;
+  const repeated = await archiveWeeklyProjections(plan, "2026-09-08T13:00:00.000Z", db);
+  assert.equal(repeated.capturedAt, first.capturedAt);
+  const state = await readManagementState(db);
+  assert.equal(state.projectionArchives.length, 1);
+  assert.notEqual(state.projectionArchives[0].players[0].points, 99);
 });
 test("management checklist does not say no changes when source freshness has expired", () => {
   const p = fixture(); const m = buildManagement(p, { now: "2026-09-11T12:00:00Z" });

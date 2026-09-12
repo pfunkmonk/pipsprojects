@@ -142,6 +142,9 @@ select,.stats-controls input { min-height:42px; border:1px solid var(--line); bo
 .team-news-item .news-link { justify-self:start; }
 
 .scoring-preview-content { display:grid; gap:1rem; padding:1rem; }
+.scoring-preview-controls { display:flex; align-items:center; gap:.65rem; padding:1rem 1rem 0; }
+.scoring-preview-controls label { color:var(--muted); font-weight:800; }
+.scoring-preview-controls select { min-width:min(28rem, 100%); }
 .scoring-scoreboard { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,.45fr) minmax(0,1fr); align-items:center; gap:1rem; border:1px solid var(--line); border-radius:12px; padding:1rem; background:linear-gradient(135deg,rgba(12,40,72,.88),rgba(4,19,38,.9)); }
 .scoring-team-score { display:grid; gap:.2rem; }
 .scoring-team-score.right { justify-items:end; text-align:right; }

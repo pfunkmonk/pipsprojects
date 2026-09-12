@@ -166,7 +166,38 @@ export function decisionCheckpoint(plan, capturedAt) {
     trades: plan.trades.recommendations.map((r) => ({ sends: r.sends, receives: r.receives, verdict: r.verdict })) };
 }
 
-export function outcomeReport(checkpoints, records) {
+export function weeklyProjectionArchive(plan, capturedAt) {
+  if (plan.viewing?.mode === "FORECAST") return null;
+  const players = (plan.playerStats || []).filter((player) => finite(player.points)).map((player) => ({
+    playerId: player.playerId,
+    name: player.name,
+    position: player.position,
+    nflTeam: player.nflTeam || null,
+    points: player.points,
+    kickoffAt: player.kickoffAt || kickoffAt(player.gameTime, plan.week, plan.season),
+    sources: (player.sources || []).filter((source) => finite(source.points)).map((source) => ({
+      source: source.source,
+      points: source.points,
+      basis: source.basis,
+      asOf: source.asOf || null,
+    })),
+  }));
+  const kickoffs = players.map((player) => player.kickoffAt).filter((value) => Number.isFinite(Date.parse(value))).sort();
+  if (!players.length || !kickoffs.length) return null;
+  const firstKickoff = kickoffs[0];
+  return {
+    schemaVersion: 1,
+    season: plan.season,
+    week: plan.week,
+    capturedAt,
+    firstKickoff,
+    auditEligible: Date.parse(capturedAt) < Date.parse(firstKickoff),
+    sourceFingerprint: plan.sourceFingerprint,
+    players,
+  };
+}
+
+export function outcomeReport(checkpoints, records, projectionArchives = []) {
   const chosen = new Map();
   for (const c of checkpoints.slice().sort((a, b) => a.capturedAt.localeCompare(b.capturedAt))) {
     if (Date.parse(c.capturedAt) < Date.parse(c.firstKickoff)) chosen.set(`${c.season}|${c.week}`, c);
@@ -176,11 +207,6 @@ export function outcomeReport(checkpoints, records) {
     const actual = new Map(records.filter((r) => r.kind === "result" && r.week === c.week && r.final === true).map((r) => [r.playerId, r.points]));
     const scored = c.roster.filter((p) => actual.has(p.playerId));
     const errors = scored.filter((p) => finite(p.points)).map((p) => Math.abs(p.points - actual.get(p.playerId)));
-    for (const p of scored) for (const s of p.sources || []) {
-      if (s.basis !== "DIRECT_WEEKLY" || !finite(s.points)) continue;
-      if (!provider.has(s.source)) provider.set(s.source, []);
-      provider.get(s.source).push(Math.abs(s.points - actual.get(p.playerId)));
-    }
     const complete = scored.length === c.roster.length;
     const starters = c.roster.filter((p) => p.starter);
     const legal = Object.entries(SLOTS).every(([pos, n]) => starters.filter((p) => p.position === pos).length === n);
@@ -188,11 +214,47 @@ export function outcomeReport(checkpoints, records) {
     const best = complete && legal ? Object.entries(SLOTS).reduce((n, [pos, count]) => n + c.roster.filter((p) => p.position === pos).map((p) => actual.get(p.playerId)).sort((a, b) => b - a).slice(0, count).reduce((a, b) => a + b, 0), 0) : null;
     return { week: c.week, capturedAt: c.capturedAt, observedPlayers: scored.length, rosterPlayers: c.roster.length, meanAbsoluteError: round(mean(errors)), recommendedActualTotal: round(selected), hindsightGap: best === null ? null : round(best - selected) };
   });
-  return { weeks: weeks.sort((a, b) => b.week - a.week), providers: [...provider].map(([source, errors]) => ({ source, sampleCount: errors.length, meanAbsoluteError: round(mean(errors)), calibrationReady: errors.length >= 30 })),
-    note: "Latest saved complete pre-first-kickoff roster checkpoint per week. Final Thunder Bowl actuals only; missing scores never count as zero. Hindsight gap is not a claim you could have known the best lineup. Waiver/trade decisions are archived, but causal trade/waiver lift is not inferred from later scores." };
+  const playerAudits = [];
+  const projectionWeeks = projectionArchives.slice().sort((a, b) => a.week - b.week).map((archive) => {
+    const actual = new Map(records.filter((row) => row.kind === "result" && row.season === archive.season && row.week === archive.week && row.final === true).map((row) => [row.playerId, row.points]));
+    const scored = archive.players.filter((player) => actual.has(player.playerId));
+    if (archive.auditEligible) for (const player of scored) playerAudits.push({
+      week: archive.week, playerId: player.playerId, name: player.name, position: player.position,
+      projected: player.points, actual: actual.get(player.playerId), absoluteError: round(Math.abs(player.points - actual.get(player.playerId))),
+      providers: (player.sources || []).filter((source) => source.basis === "DIRECT_WEEKLY").map((source) => ({ source: source.source, projected: source.points, absoluteError: round(Math.abs(source.points - actual.get(player.playerId))) })),
+    });
+    if (archive.auditEligible) for (const player of scored) for (const source of player.sources || []) {
+      if (source.basis !== "DIRECT_WEEKLY" || !finite(source.points)) continue;
+      if (!provider.has(source.source)) provider.set(source.source, []);
+      provider.get(source.source).push(source.points - actual.get(player.playerId));
+    }
+    const blendErrors = archive.auditEligible ? scored.map((player) => Math.abs(player.points - actual.get(player.playerId))) : [];
+    return { week: archive.week, capturedAt: archive.capturedAt, firstKickoff: archive.firstKickoff, auditEligible: archive.auditEligible,
+      projectedPlayers: archive.players.length, observedPlayers: scored.length, meanAbsoluteError: round(mean(blendErrors)) };
+  });
+  // Older installations can still calculate provider error from their roster-only checkpoints.
+  if (!projectionArchives.some((archive) => archive.auditEligible)) for (const c of chosen.values()) {
+    const actual = new Map(records.filter((row) => row.kind === "result" && row.week === c.week && row.final === true).map((row) => [row.playerId, row.points]));
+    for (const player of c.roster.filter((row) => actual.has(row.playerId))) for (const source of player.sources || []) {
+      if (source.basis !== "DIRECT_WEEKLY" || !finite(source.points)) continue;
+      if (!provider.has(source.source)) provider.set(source.source, []);
+      provider.get(source.source).push(source.points - actual.get(player.playerId));
+    }
+  }
+  const providers = [...provider].map(([source, signedErrors]) => ({
+    source,
+    sampleCount: signedErrors.length,
+    meanAbsoluteError: round(mean(signedErrors.map(Math.abs))),
+    meanError: round(mean(signedErrors)),
+    rootMeanSquaredError: round(Math.sqrt(mean(signedErrors.map((error) => error ** 2)))),
+    calibrationReady: signedErrors.length >= 30,
+  })).sort((a, b) => a.meanAbsoluteError - b.meanAbsoluteError || a.source.localeCompare(b.source)).map((row, index) => ({ ...row, rank: index + 1 }));
+  return { weeks: weeks.sort((a, b) => b.week - a.week), projectionWeeks: projectionWeeks.sort((a, b) => b.week - a.week), providers,
+    playerAudits: playerAudits.sort((a, b) => b.week - a.week || b.absoluteError - a.absoluteError || a.name.localeCompare(b.name)),
+    note: "Weekly player and provider projections are frozen before games when possible and never rewritten. Accuracy uses finalized Thunder Bowl actuals only; missing scores never count as zero, and post-kickoff archives are retained but excluded from accuracy. Provider rank is descriptive MAE, not a guarantee. Hindsight gap is not a claim you could have known the best lineup." };
 }
 
-export function buildManagement(plan, { records = [], checkpoints = [], now = new Date().toISOString() } = {}) {
+export function buildManagement(plan, { records = [], checkpoints = [], projectionArchives = [], now = new Date().toISOString() } = {}) {
   const gameDay = buildGameDay(plan, now);
   const market = waiverMarket(plan, records);
   const actions = [];
@@ -226,6 +288,6 @@ export function buildManagement(plan, { records = [], checkpoints = [], now = ne
   return { schemaVersion: 1, asOf: now, sourceAudit: audit, actions: actions.sort((a, b) => a.priority - b.priority), gameDay, waiverMarket: market, tradeFit,
     workload: workloadTrends(records, plan.playerStats, plan.week),
     teamFit: plan.league.teams.map((t) => ({ teamId: t.teamId, teamName: t.teamName, ...rosterFit(t.roster, players, plan.week) })),
-    stash: stashComparison({ ...plan, managementAsOf: now }, records), outcomes: outcomeReport(checkpoints, records),
+    stash: stashComparison({ ...plan, managementAsOf: now }, records), outcomes: outcomeReport(checkpoints, records, projectionArchives),
     confidenceNote: "Source agreement is a heuristic, not a calibrated probability. Projection bands are illustrative, not validated prediction intervals." };
 }

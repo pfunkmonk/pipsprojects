@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and player-stat command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260905a" />
+  <link rel="stylesheet" href="./season.css?v=20260912a" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to weekly workspace</a>
@@ -71,6 +71,10 @@
       <section id="tab-scoring-preview" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-scoring-preview" hidden>
         <section class="panel scoring-preview-panel" aria-labelledby="scoring-preview-title">
           <header class="panel-head"><div><p class="eyebrow">CBS submitted lineups · Thunder Bowl projections</p><h2 id="scoring-preview-title">Scoring Preview</h2></div><div class="panel-head-tools"><strong id="scoring-preview-week">Week —</strong><span id="scoring-preview-updated">Waiting for CBS</span></div></header>
+          <div class="scoring-preview-controls">
+            <label for="scoring-preview-matchup">View matchup</label>
+            <select id="scoring-preview-matchup" class="inline-select" aria-label="Choose a league matchup"></select>
+          </div>
           <p id="scoring-preview-authority" class="panel-intro">CBS determines the submitted starters and reserves. Our four-source component-stat blend and Thunder Bowl scoring determine the projections.</p>
           <div id="scoring-preview-content" class="scoring-preview-content"></div>
         </section>
@@ -210,6 +214,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-    <script type="module" src="./season.mjs?v=20260910a"></script>
+    <script type="module" src="./season.mjs?v=20260912a"></script>
 </body>
 </html>

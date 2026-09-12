@@ -349,6 +349,7 @@ test("Start/Sit can optimize any CBS roster and carries the selected team's sche
   assert.equal(result.viewing.userOpponentTeamId, "t-dogs");
   assert.ok(result.lineup.starters.every((row) => row.playerId.startsWith("rival-") && row.adviceTeamName === "T-Dogs"));
   assert.equal(result.schedule.selectedTeam[0].opponent.teamName, "Dogs of War");
+  assert.equal(result.schedule.matchups[0].teamAName, "Dogs of War");
 });
 
 test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bowl projections for points", () => {
@@ -394,6 +395,32 @@ test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bow
   assert.equal(result.scoringPreview.teams[0].bench.length, 6);
   assert.ok(Number.isFinite(result.scoringPreview.teams[0].total));
   assert.match(result.scoringPreview.authorityNote, /CBS determines/);
+});
+
+test("Scoring Preview can show any scheduled matchup without claiming projected lineups were submitted", () => {
+  const makeRoster = (prefix) => rosterPlayers().map((row, index) => ({ ...structuredClone(row), id: `${prefix}-${row.id}`, name: `${prefix} ${index + 1}` }));
+  const dogs = makeRoster("dogs"), rivals = makeRoster("rivals"), alpha = makeRoster("alpha"), beta = makeRoster("beta");
+  const teams = [
+    ["dogs-of-war", "Dogs of War", dogs], ["rivals", "Rivals", rivals], ["alpha", "Alpha", alpha], ["beta", "Beta", beta],
+  ].map(([teamId, teamName, roster]) => ({ teamId, teamName, roster: rosterRows(roster) }));
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-09-08T11:30:00.000Z",
+    rostersReady: true, legalTeamCount: 4, teamCount: 4, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams, weeklyProjections: [],
+    leagueSchedule: { source: "CBS schedule", capturedAt: "2026-09-08T11:25:00.000Z", headToHeadWeeks: [1], allPlayWeeks: [], matchupCount: 2,
+      matchups: [
+        { week: 1, teamAId: "dogs-of-war", teamAName: "Dogs of War", teamBId: "rivals", teamBName: "Rivals" },
+        { week: 1, teamAId: "alpha", teamAName: "Alpha", teamBId: "beta", teamBName: "Beta" },
+      ] },
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "all-matchups", asOf: "2026-09-08T11:00:00.000Z", players: [...dogs, ...rivals, ...alpha, ...beta], sources: [], weeklyContext: { asOf: "2026-09-08T11:00:00.000Z" } },
+    leagueState, week: 1, lineupTeamId: "alpha", generatedAt: "2026-09-08T12:00:00.000Z",
+  });
+  assert.deepEqual(result.scoringPreview.teams.map((team) => team.teamName), ["Alpha", "Beta"]);
+  assert.ok(result.scoringPreview.teams.every((team) => team.starters.length === 8 && team.submitted === false));
+  assert.match(result.scoringPreview.authorityNote, /not confirmation/i);
+  assert.equal(result.schedule.matchups.length, 2);
 });
 
 test("start-sit analysis separates strong calls, leans, toss-ups, and injury monitors", () => {
@@ -810,7 +837,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
   assert.equal((html.match(/Game \/ kickoff \(Denver\)/g) || []).length, 2);
@@ -936,10 +963,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v42/);
+  assert.match(worker, /thunder-bowl-season-v43/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.css\?v=20260901k/);
-  assert.match(worker, /season\.mjs\?v=20260910a/);
+  assert.match(worker, /season\.css\?v=20260912a/);
+  assert.match(worker, /season\.mjs\?v=20260912a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260909a/);
