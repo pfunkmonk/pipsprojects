@@ -862,6 +862,11 @@ function renderScoringPreview(value) {
   target.append(reserves);
 }
 
+function currentCaptureWeek() {
+  const currentWeek = Number(plan?.viewing?.currentWeek);
+  return Number.isSafeInteger(currentWeek) && currentWeek >= 1 && currentWeek <= 18 ? currentWeek : plan?.week || 1;
+}
+
 async function loadScoringPreviewMatchup() {
   const selector = byId("scoring-preview-matchup");
   const teamId = selector.value;
@@ -1440,12 +1445,13 @@ async function queuePlanRebuild() {
 }
 
 async function watchQueuedPlan(previousFingerprint, source, { timeoutMs = 600_000 } = {}) {
+  const expectedWeek = currentCaptureWeek();
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline && !offlineMode && navigator.onLine) {
     await new Promise((resolve) => setTimeout(resolve, 5_000));
     try {
       const current = await loadSnapshot();
-      if (current.sourceFingerprint !== previousFingerprint) {
+      if (current.week === expectedWeek && current.sourceFingerprint !== previousFingerprint) {
         await renderPlan(current);
         setStatus(`${source} update complete. Week ${current.week} recommendations now use the newly saved data.`);
         return;
@@ -1493,7 +1499,7 @@ async function rebuildAfterSourceSave(source) {
 async function updateCbsOnly() {
   let snapshot;
   try {
-    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: plan?.week || 1 }));
+    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
     await postAction({ action: "capture-cbs", snapshot });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -1505,7 +1511,7 @@ async function updateCbsOnly() {
 
 async function updateFbgOnly() {
   try {
-    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: plan?.week || 1 });
+    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-fbg", capture });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -1516,7 +1522,7 @@ async function updateFbgOnly() {
 
 async function updateSupplementalOnly(provider, label) {
   try {
-    const capture = await requestSupplementalProjectionCapture({ provider, timeoutMs: 180_000, week: plan?.week || 1 });
+    const capture = await requestSupplementalProjectionCapture({ provider, timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: provider === "fantasyPros" ? "capture-fantasypros" : "capture-pff", capture });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -1709,7 +1715,7 @@ byId("refresh-team-news").addEventListener("click", () => runNewsRefresh(byId("r
 byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 5: capturing the CBS submitted lineups, schedule, and all 12 rosters from your signed-in browser session…", async () => {
   let snapshot;
   try {
-    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: plan?.week || 1 }));
+    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
   } catch (error) {
     byId("helper-setup").open = true;
     throw new Error(`${errorMessage(error)} Open “First-time setup” below; after that, this same button updates everything.`);
@@ -1725,7 +1731,7 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
 
   setStatus("CBS saved. Step 2 of 5: reading Footballguys PRO component-stat projections from your signed-in browser session…");
   try {
-    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: plan?.week || 1 });
+    const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-fbg", capture });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -1734,7 +1740,7 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
 
   setStatus("CBS and Footballguys saved. Step 3 of 5: reading FantasyPros component-stat projections from your signed-in Thunder Bowl account…");
   try {
-    const capture = await requestSupplementalProjectionCapture({ provider: "fantasyPros", timeoutMs: 180_000, week: plan?.week || 1 });
+    const capture = await requestSupplementalProjectionCapture({ provider: "fantasyPros", timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-fantasypros", capture });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -1743,7 +1749,7 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
 
   setStatus("CBS, Footballguys, and FantasyPros saved. Step 4 of 5: reading PFF component-stat projections from your signed-in account…");
   try {
-    const capture = await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week: plan?.week || 1 });
+    const capture = await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-pff", capture });
   } catch (error) {
     byId("helper-setup").open = true;
