@@ -1446,12 +1446,13 @@ async function queuePlanRebuild() {
 
 async function watchQueuedPlan(previousFingerprint, source, { timeoutMs = 600_000 } = {}) {
   const expectedWeek = currentCaptureWeek();
+  const previousGeneratedAt = plan?.generatedAt || null;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline && !offlineMode && navigator.onLine) {
     await new Promise((resolve) => setTimeout(resolve, 5_000));
     try {
       const current = await loadSnapshot();
-      if (current.week === expectedWeek && current.sourceFingerprint !== previousFingerprint) {
+      if (current.week === expectedWeek && (current.sourceFingerprint !== previousFingerprint || current.generatedAt !== previousGeneratedAt)) {
         await renderPlan(current);
         setStatus(`${source} update complete. Week ${current.week} recommendations now use the newly saved data.`);
         return;

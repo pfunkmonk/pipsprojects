@@ -32,6 +32,20 @@ import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementSt
 const RECOMMENDATION_ENGINE_VERSION = 16;
 const USER_TEAM_ID = "dogs-of-war";
 
+async function within(value, milliseconds, label) {
+  let timer;
+  try {
+    return await Promise.race([
+      value,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} exceeded ${milliseconds} ms.`)), milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function normalizeSeasonViewingWeek(value, currentWeek) {
   if (!Number.isSafeInteger(currentWeek) || currentWeek < 1 || currentWeek > 18) throw new Error("Current season week is invalid.");
   if (value == null || value === "") return currentWeek;
@@ -264,15 +278,20 @@ export async function refreshSeasonPlan({
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
   try {
-    await Promise.all([
+    await within(Promise.all([
       archiveWeeklyProjections(plan, generatedAt),
       archiveManagementCheckpoint(plan, generatedAt),
-    ]);
+    ]), 8_000, "Decision checkpoint archival");
   } catch (error) {
     console.error("Decision checkpoint could not be archived", error.message);
     saved.plan.alerts.push("This refresh was saved, but its outcome-tracking checkpoint could not be archived.");
   }
-  saved.plan = await attachManagement(saved.plan, generatedAt);
+  try {
+    saved.plan = await within(attachManagement(saved.plan, generatedAt), 5_000, "Management history attachment");
+  } catch (error) {
+    console.error("Management history could not be attached", error.message);
+    saved.plan.alerts.push("The refreshed plan is saved; historical audit panels will load on the next page read.");
+  }
   return {
     ...saved,
     week,
