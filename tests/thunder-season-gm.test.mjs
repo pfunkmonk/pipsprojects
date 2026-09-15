@@ -880,9 +880,10 @@ test("a full 717-player weekly rebuild stays below the production response timeo
 });
 
 test("private season shell supports full and per-source updates without auction navigation or caching", async () => {
-  const [html, source, css, worker, rootWorker, manifest, netlify, refreshHandler, snapshotHandler, aiHandler, backgroundAiHandler, seasonService, seasonStore] = await Promise.all([
+  const [html, source, managementUi, css, worker, rootWorker, manifest, netlify, refreshHandler, snapshotHandler, aiHandler, backgroundAiHandler, seasonService, seasonStore] = await Promise.all([
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../public/thunder-bowl/season/season-management-ui.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.css", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/service-worker.js", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/service-worker.js", import.meta.url), "utf8"),
@@ -1021,16 +1022,18 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v48/);
+  assert.match(worker, /thunder-bowl-season-v49/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260914a/);
+  assert.match(worker, /season\.mjs\?v=20260915a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912c/);
   assert.match(worker, /season-evidence\.mjs\?v=20260914a/);
-  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260912d/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260915a/);
+  assert.match(source, /season-management-ui\.mjs\?v=20260915a/);
+  assert.match(managementUi, /const checkpointState = m\.checkpoints \|\| \{\}/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.match(rootWorker, /thunder-bowl-shell-v140/);

@@ -815,7 +815,7 @@ test("the app materializes raw CBS schedule pages before enforcing the roster sn
       pages: [{
         url: "https://berrymvp.football.cbssports.com/schedule/full",
         title: "Thunder Bowl Full Schedule",
-        text: "Full Schedule",
+        text: `Full Schedule ${"navigation advertisement ".repeat(12_000)}`,
         tables,
         blocks: matchups.map((row) => `${row.teamAName} ${row.teamBName}`),
       }],

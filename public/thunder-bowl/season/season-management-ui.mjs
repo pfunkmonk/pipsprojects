@@ -124,10 +124,11 @@ export function renderManagement(plan, options = {}) {
   table(sources, ["Source", "Status", "Week / rows", "Retrieved", "Published"], m.sourceAudit.map((s) => [s.source, label(s.status), `${s.week ?? "—"} / ${s.rows}`, when(s.retrievedAt), when(s.publishedAt)]));
   note(sources, "A successful retrieval does not mean the provider published new projections. Season-derived player rows are estimates, even when a provider's name appears beside them.");
   const checkpoint = panel("admin", "management-checkpoints", "Required weekly decision checkpoints", { collapsed: false });
-  note(checkpoint, m.checkpoints.note);
-  if (m.checkpoints.early) table(checkpoint, ["Checkpoint", "Status", "Window opens", "Deadline", "Captured"], [
-    ["Before the first weekly kickoff", label(m.checkpoints.early.status), "Now", when(m.checkpoints.early.deadline), when(m.checkpoints.early.capturedAt)],
-    ["Saturday evening / Sunday morning", label(m.checkpoints.final.status), when(m.checkpoints.final.opensAt), when(m.checkpoints.final.deadline), when(m.checkpoints.final.capturedAt)],
+  const checkpointState = m.checkpoints || {};
+  note(checkpoint, checkpointState.note || "This cached plan predates weekly checkpoints. Reconnect and run Update everything to create the current week's audit snapshots.");
+  if (checkpointState.early) table(checkpoint, ["Checkpoint", "Status", "Window opens", "Deadline", "Captured"], [
+    ["Before the first weekly kickoff", label(checkpointState.early.status), "Now", when(checkpointState.early.deadline), when(checkpointState.early.capturedAt)],
+    ["Saturday evening / Sunday morning", label(checkpointState.final?.status), when(checkpointState.final?.opensAt), when(checkpointState.final?.deadline), when(checkpointState.final?.capturedAt)],
   ]);
   else note(checkpoint, "Checkpoint timing is unavailable until CBS supplies complete player kickoff times.");
   const waiver = panel("waivers", "management-market", "League bid history & safe fallback claims");

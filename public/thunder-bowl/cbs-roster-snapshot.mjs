@@ -124,12 +124,17 @@ function materializeRawCbsEvidence(input) {
   const rawSchedule = input.rawLeagueSchedule;
   assert(rawSchedule.schemaVersion === 1 && Number.isFinite(Date.parse(rawSchedule.capturedAt)), "Raw CBS schedule capture has invalid timing.");
   assert(Array.isArray(rawSchedule.pages) && rawSchedule.pages.length >= 1 && rawSchedule.pages.length <= 30, "Raw CBS schedule capture has invalid page coverage.");
-  for (const page of rawSchedule.pages) {
+  const safeSchedulePages = rawSchedule.pages.map((page) => {
     assert(isPlainObject(page) && new URL(page.url).origin === "https://berrymvp.football.cbssports.com", "Raw CBS schedule capture came from the wrong origin.");
-    assert(typeof page.title === "string" && page.title.length <= 300 && typeof page.text === "string" && page.text.length <= 5_000, "Raw CBS schedule capture contains oversized page text.");
+    assert(typeof page.title === "string" && typeof page.text === "string", "Raw CBS schedule capture contains malformed page text.");
     assert(Array.isArray(page.tables) && page.tables.length <= 30 && Array.isArray(page.blocks) && page.blocks.length <= 500, "Raw CBS schedule capture contains malformed page sections.");
-  }
-  const leagueSchedule = normalizeCbsSchedulePages(rawSchedule.pages, rawSchedule.capturedAt);
+    // CBS sometimes injects a large navigation/ad accessibility transcript into
+    // body.innerText. The schedule authority comes from the bounded structured
+    // tables and matchup blocks; retain only a small diagnostic excerpt instead
+    // of rejecting an otherwise valid capture from an existing helper.
+    return { ...page, title: page.title.slice(0, 300), text: page.text.slice(0, 5_000) };
+  });
+  const leagueSchedule = normalizeCbsSchedulePages(safeSchedulePages, rawSchedule.capturedAt);
   let scoringPreview = input.scoringPreview;
   if (isPlainObject(input.rawScoringPreview)) {
     const rawPreview = input.rawScoringPreview;

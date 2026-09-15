@@ -1,11 +1,11 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260912d";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260915a";
 import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260912c";
 import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260912c";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
 import { sortTradeProposals } from "./season-trade-ranking.mjs?v=20260901a";
-import { renderManagement } from "./season-management-ui.mjs?v=20260914a";
+import { renderManagement } from "./season-management-ui.mjs?v=20260915a";
 import { formatDenverKickoff } from "./season-kickoff.mjs?v=20260910a";
 
 const byId = (id) => document.getElementById(id);
