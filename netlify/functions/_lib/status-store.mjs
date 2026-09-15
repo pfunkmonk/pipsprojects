@@ -210,6 +210,12 @@ export function rebindStatusSnapshot(pack, value) {
   return snapshot.packId === pack.packId ? snapshot : { ...snapshot, packId: pack.packId };
 }
 
+export async function savedStatusSnapshot(pack) {
+  const { latestKey } = statusCacheKeys(pack, new Date().toISOString().slice(0, 10));
+  const latest = await readStored(latestKey);
+  return latest ? rebindStatusSnapshot(pack, latest) : null;
+}
+
 export async function currentStatusSnapshot(pack, { force = false } = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const { dailyKey, latestKey } = statusCacheKeys(pack, today);

@@ -3,7 +3,7 @@ import { canonicalizeCbsLeagueSnapshot } from "./cbs-season-source.mjs";
 import { CBS_TEAM_CATALOG } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { downloadFbgWeeklySnapshot, parseFbgAuthenticatedWeeklyCapture, parseFbgWeeklyCsv, validateFbgWeeklySnapshot } from "./fbg-season-source.mjs";
 import { currentNewsSnapshot } from "./news-store.mjs";
-import { currentResearchSnapshot } from "./research-store.mjs";
+import { currentResearchSnapshot, savedResearchSnapshot } from "./research-store.mjs";
 import { analyzeTradeProposal, buildSeasonRecommendationSnapshot } from "./season-recommendations.mjs";
 import { generateSeasonAiAdvice, validateAiSection } from "./season-ai-advice.mjs";
 import { parseFantasyProsAuthenticatedCapture, parsePffAuthenticatedCapture } from "./supplemental-season-source.mjs";
@@ -25,7 +25,7 @@ import {
   saveSupplementalWeeklySnapshot,
 } from "./season-store.mjs";
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
-import { currentStatusSnapshot } from "./status-store.mjs";
+import { currentStatusSnapshot, savedStatusSnapshot } from "./status-store.mjs";
 import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
@@ -211,10 +211,10 @@ export async function refreshSeasonPlan({
     fbgRefreshTask,
     publicSourceOverrides
       ? Promise.resolve({ value: publicSourceOverrides.statusSnapshot })
-      : currentStatusSnapshot(pack, { force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
+      : (forcePublic ? currentStatusSnapshot(pack, { force: true }) : savedStatusSnapshot(pack)).then((value) => ({ value })).catch((error) => ({ error })),
     publicSourceOverrides
       ? Promise.resolve({ value: publicSourceOverrides.researchSnapshot })
-      : currentResearchSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error })),
+      : (forcePublic ? currentResearchSnapshot({ force: true }) : savedResearchSnapshot()).then((value) => ({ value })).catch((error) => ({ error })),
     publicSourceOverrides?.newsSnapshot
       ? Promise.resolve({ value: publicSourceOverrides.newsSnapshot })
       : newsRequested
@@ -344,8 +344,8 @@ async function buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }) 
     readLatestFbgWeeklySnapshot(pack, week),
     readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros"),
     readLatestSupplementalWeeklySnapshot(pack, week, "pff"),
-    currentStatusSnapshot(pack, { force: false }).catch(() => null),
-    currentResearchSnapshot({ force: false }).catch(() => null),
+    savedStatusSnapshot(pack).catch(() => null),
+    savedResearchSnapshot().catch(() => null),
     readLeagueMoves(week),
     projectionCalibrationForWeek(week),
   ]);
