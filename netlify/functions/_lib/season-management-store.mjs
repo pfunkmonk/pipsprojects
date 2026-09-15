@@ -61,10 +61,11 @@ export function mergeManagementRecords(previous, incoming) {
   return [...rows.values()].sort((a, b) => a.observedAt.localeCompare(b.observedAt) || a.id.localeCompare(b.id));
 }
 
-export async function readManagementState(store = db()) {
+export async function readManagementState(store = db(), { throughWeek = 18 } = {}) {
+  const lastWeek = Number.isSafeInteger(throughWeek) ? Math.max(0, Math.min(18, throughWeek)) : 18;
   const [state, ...projectionArchives] = await Promise.all([
     store.get(key, { type: "json" }),
-    ...Array.from({ length: 18 }, (_, index) => store.get(`management/v1/projection-archives/2026/week-${index + 1}`, { type: "json" })),
+    ...Array.from({ length: lastWeek }, (_, index) => store.get(`management/v1/projection-archives/2026/week-${index + 1}`, { type: "json" })),
   ]);
   return { ...(state || { records: [], checkpoints: [] }), projectionArchives: projectionArchives.filter(Boolean) };
 }

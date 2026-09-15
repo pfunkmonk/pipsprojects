@@ -132,14 +132,14 @@ export async function readTuesdayArchive(week) {
 export async function saveSeasonPlan(value, { archiveTuesday = false } = {}) {
   const plan = validatePlan(value);
   const prefix = `plans/v1/${plan.season}/week-${plan.week}`;
-  await store().setJSON(`${prefix}/sources/${plan.sourceFingerprint}`, plan, { onlyIfNew: true });
-  await store().setJSON(`${prefix}/latest`, plan);
-  await store().setJSON("plans/v1/latest", plan);
-  let archived = false;
-  if (archiveTuesday) {
-    const write = await store().setJSON(`${prefix}/tuesday`, plan, { onlyIfNew: true });
-    archived = write.modified;
-  }
+  const storage = store();
+  const [, , , tuesdayWrite] = await Promise.all([
+    storage.setJSON(`${prefix}/sources/${plan.sourceFingerprint}`, plan, { onlyIfNew: true }),
+    storage.setJSON(`${prefix}/latest`, plan),
+    storage.setJSON("plans/v1/latest", plan),
+    archiveTuesday ? storage.setJSON(`${prefix}/tuesday`, plan, { onlyIfNew: true }) : Promise.resolve(null),
+  ]);
+  const archived = Boolean(tuesdayWrite?.modified);
   return { plan, archived };
 }
 

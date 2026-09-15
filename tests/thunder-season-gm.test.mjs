@@ -1015,6 +1015,10 @@ test("private season shell supports full and per-source updates without auction 
   for (const kind of ["starter", "bench", "free-agent", "swap", "waiver", "trade", "move", "injury", "ir"]) assert.match(source, new RegExp(`"${kind}"`));
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
+  assert.match(source, /openCachedPlanWhileRefreshing/);
+  assert.match(source, /saved plan is ready now; checking for the current weekly plan in the background/i);
+  assert.match(source, /method: "GET", credentials: "same-origin", cache: "no-store", signal: AbortSignal\.timeout\(5_000\)/);
+  assert.match(source, /update controls remain active/);
   assert.match(html, /maxlength="100"/);
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /clientX < rect\.left/);
@@ -1022,10 +1026,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v49/);
+  assert.match(worker, /thunder-bowl-season-v50/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260915a/);
+  assert.match(worker, /season\.mjs\?v=20260915b/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);

@@ -199,6 +199,9 @@ test("weekly projection storage is write-once and survives reopening", async () 
   const state = await readManagementState(db);
   assert.equal(state.projectionArchives.length, 1);
   assert.notEqual(state.projectionArchives[0].players[0].points, 99);
+  await db.setJSON("management/v1/projection-archives/2026/week-2", { ...first, week: 2 });
+  const firstWeekOnly = await readManagementState(db, { throughWeek: 1 });
+  assert.deepEqual(firstWeekOnly.projectionArchives.map((archive) => archive.week), [1]);
 });
 test("management checklist does not say no changes when source freshness has expired", () => {
   const p = fixture(); const m = buildManagement(p, { now: "2026-09-11T12:00:00Z" });

@@ -47,7 +47,7 @@ export function normalizeSeasonViewingWeek(value, currentWeek) {
 
 async function projectionCalibrationForWeek(week) {
   try {
-    const state = await readManagementState();
+    const state = await readManagementState(undefined, { throughWeek: week - 1 });
     return buildProjectionCalibration(state.projectionArchives, state.records, week);
   } catch (error) {
     console.error("Projection calibration history unavailable", error.message);
@@ -197,7 +197,17 @@ export async function refreshSeasonPlan({
       .catch((error) => ({ error }))
     : Promise.resolve({ value: null });
   const newsRequested = forcePublic || Boolean(publicSourceOverrides);
-  const [fbgRefreshResult, statusResult, researchResult, newsResult, leagueMoves] = await Promise.all([
+  const [
+    fbgRefreshResult,
+    statusResult,
+    researchResult,
+    newsResult,
+    leagueMoves,
+    storedFbgSnapshot,
+    storedFantasyProsSnapshot,
+    storedPffSnapshot,
+    projectionCalibration,
+  ] = await Promise.all([
     fbgRefreshTask,
     publicSourceOverrides
       ? Promise.resolve({ value: publicSourceOverrides.statusSnapshot })
@@ -211,22 +221,25 @@ export async function refreshSeasonPlan({
         ? currentNewsSnapshot({ force: forcePublic }).then((value) => ({ value })).catch((error) => ({ error }))
         : Promise.resolve({ value: null }),
     readLeagueMoves(week),
+    fbgSnapshotOverride ? Promise.resolve(null) : readLatestFbgWeeklySnapshot(pack, week),
+    fantasyProsSnapshotOverride ? Promise.resolve(null) : readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros"),
+    pffSnapshotOverride ? Promise.resolve(null) : readLatestSupplementalWeeklySnapshot(pack, week, "pff"),
+    projectionCalibrationForWeek(week),
   ]);
   const refreshedFbgSnapshot = fbgRefreshResult.value || null;
   const fbgRefreshError = fbgRefreshResult.error instanceof Error ? fbgRefreshResult.error.message : fbgRefreshResult.error ? String(fbgRefreshResult.error) : null;
   const fbgSnapshot = fbgSnapshotOverride
     ? validateFbgWeeklySnapshot(fbgSnapshotOverride, pack)
-    : refreshedFbgSnapshot || await readLatestFbgWeeklySnapshot(pack, week);
+    : refreshedFbgSnapshot || storedFbgSnapshot;
   if (fbgSnapshot && fbgSnapshot.week !== week) throw new Error(`Footballguys source handoff is for Week ${fbgSnapshot.week}; the dashboard is on Week ${week}.`);
-  const fantasyProsSnapshot = fantasyProsSnapshotOverride || await readLatestSupplementalWeeklySnapshot(pack, week, "fantasyPros");
-  const pffSnapshot = pffSnapshotOverride || await readLatestSupplementalWeeklySnapshot(pack, week, "pff");
+  const fantasyProsSnapshot = fantasyProsSnapshotOverride || storedFantasyProsSnapshot;
+  const pffSnapshot = pffSnapshotOverride || storedPffSnapshot;
   const statusSnapshot = statusResult.value || null;
   const researchSnapshot = researchResult.value || null;
   const statusRefreshError = statusResult.error?.message || statusSnapshot?.refreshError || null;
   const researchRefreshError = researchResult.error?.message || researchSnapshot?.refreshError || null;
   const newsSnapshot = newsResult.value || null;
   const newsRefreshError = newsResult.error?.message || newsSnapshot?.refreshError || null;
-  const projectionCalibration = await projectionCalibrationForWeek(week);
   const plan = buildSeasonRecommendationSnapshot({
     pack,
     leagueState,
@@ -251,8 +264,10 @@ export async function refreshSeasonPlan({
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   const saved = await saveSeasonPlan(plan, { archiveTuesday });
   try {
-    await archiveWeeklyProjections(plan, generatedAt);
-    await archiveManagementCheckpoint(plan, generatedAt);
+    await Promise.all([
+      archiveWeeklyProjections(plan, generatedAt),
+      archiveManagementCheckpoint(plan, generatedAt),
+    ]);
   } catch (error) {
     console.error("Decision checkpoint could not be archived", error.message);
     saved.plan.alerts.push("This refresh was saved, but its outcome-tracking checkpoint could not be archived.");
@@ -360,7 +375,8 @@ export async function getCurrentSeasonSnapshot({ now = new Date(), week: request
   const lineupTeamId = normalizeSeasonViewingTeam(requestedTeamId);
   try {
     if (week > currentWeek || lineupTeamId !== USER_TEAM_ID) return await attachManagement(await buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }), new Date(now).toISOString());
-    const plan = await attachManagement(await getOrCreateCurrentSeasonPlan({ now }), new Date(now).toISOString());
+    const current = await getOrCreateCurrentSeasonPlan({ now });
+    const plan = current.management ? current : await attachManagement(current, new Date(now).toISOString());
     return {
       ...plan,
       viewing: plan.viewing || {
@@ -382,7 +398,7 @@ async function attachManagement(plan, now) {
   const value = structuredClone(plan);
   let state;
   try {
-    state = await readManagementState();
+    state = await readManagementState(undefined, { throughWeek: plan.week });
   } catch (error) {
     console.error("Management history unavailable", error.message);
     value.alerts.push("Management history could not be loaded. Historical bids, workload and results are unavailable for this view.");

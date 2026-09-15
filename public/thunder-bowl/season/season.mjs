@@ -1338,9 +1338,13 @@ async function renderPlan(value, { offline = false } = {}) {
   }
   if (value.updateSummary?.cbs?.ok) byId("helper-setup").open = false;
   if (!offline && !setupRequired) await setMeta(PLAN_CACHE_KEY, value);
-  await loadSavedAiAdviceIndex(value);
-  const savedNews = await loadSavedPlayerNewsFromServer();
-  if (plan === value) renderTeamNews(value, savedNews);
+  // Optional saved AI/news requests must never hold the whole workspace hostage.
+  // Render the governed plan and its action controls first, then hydrate these
+  // secondary panels in the background.
+  void loadSavedAiAdviceIndex(value);
+  void loadSavedPlayerNewsFromServer().then((savedNews) => {
+    if (plan === value) renderTeamNews(value, savedNews);
+  }).catch(() => {});
 }
 
 async function responseJson(response) {
@@ -1358,6 +1362,20 @@ async function loadSnapshot(week = null, teamId = null) {
   if (week !== null) url.searchParams.set("week", String(week));
   if (teamId) url.searchParams.set("team", teamId);
   return responseJson(await fetch(url, { credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(20_000) }));
+}
+
+async function openCachedPlanWhileRefreshing(message) {
+  const cached = await getMeta(PLAN_CACHE_KEY).catch(() => null);
+  if (!cached) return false;
+  await renderPlan(cached, { offline: false });
+  setStatus(message);
+  void loadSnapshot().then(async (current) => {
+    await renderPlan(current);
+    setStatus(`Current Week ${current.week} plan loaded.`);
+  }).catch((error) => {
+    setStatus(`Signed in. The saved plan is available and update controls remain active. The current server plan is still rebuilding (${errorMessage(error)}). Choose Update CBS to refresh the current week now.`, true);
+  });
+  return true;
 }
 
 async function loadLineupSelection() {
@@ -1503,6 +1521,7 @@ async function attemptLogin(event) {
       }
       await saveOfflineVerifier(code);
       byId("access-code").value = "";
+      if (await openCachedPlanWhileRefreshing("Signed in. The saved plan is ready now; checking for the current weekly plan in the background…")) return;
       await renderPlan(await loadSnapshot());
       return;
     }
@@ -1755,8 +1774,18 @@ activateTab(location.hash.slice(1), { updateHash: false });
 
 (async () => {
   if (navigator.onLine) {
-    try { await renderPlan(await loadSnapshot()); return; }
-    catch (error) { if (error.status !== 401) byId("login-status").textContent = "The server is unavailable. Enter the code to try offline recovery."; }
+    try {
+      const auth = await fetch("/api/thunder-bowl/auth", { method: "GET", credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(5_000) });
+      if (auth.ok) {
+        if (await openCachedPlanWhileRefreshing("Signed in. The saved plan is ready now; checking for the current weekly plan in the background…")) return;
+        await renderPlan(await loadSnapshot());
+        return;
+      }
+      if (auth.status === 401) byId("login-status").textContent = "Enter your access code to open the current weekly plan.";
+      else byId("login-status").textContent = "The access service had a temporary problem. Enter the code to retry.";
+    } catch {
+      byId("login-status").textContent = "The access service is slow or unavailable. Enter the code to retry or unlock offline recovery.";
+    }
   } else if (await hasOfflineVerifier()) {
     byId("login-status").textContent = "Offline recovery is available on this device. Enter the code to unlock the stale cached plan.";
   }
