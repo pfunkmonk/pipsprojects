@@ -61,6 +61,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/thunder-bowl/season/rebuild-background"
+  to = "/.netlify/functions/thunder-season-rebuild-background"
+  status = 200
+
+[[redirects]]
   from = "/api/thunder-bowl/season/ai-advice-background"
   to = "/.netlify/functions/thunder-season-ai-advice-background"
   status = 200

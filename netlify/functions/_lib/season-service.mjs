@@ -375,11 +375,18 @@ export async function getCurrentSeasonSnapshot({ now = new Date(), week: request
   const lineupTeamId = normalizeSeasonViewingTeam(requestedTeamId);
   try {
     if (week > currentWeek || lineupTeamId !== USER_TEAM_ID) return await attachManagement(await buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }), new Date(now).toISOString());
-    const current = await getOrCreateCurrentSeasonPlan({ now });
+    // Snapshot reads must stay fast and read-only. A slow recommendation build is
+    // queued separately as a Netlify Background Function, so authentication and
+    // ordinary page loads can never be held hostage by the build duration.
+    const current = await readLatestSeasonPlan() || await getOrCreateCurrentSeasonPlan({ now });
     const plan = current.management ? current : await attachManagement(current, new Date(now).toISOString());
+    if (plan.week !== currentWeek) {
+      plan.state = "STALE";
+      plan.alerts = [`Week ${currentWeek} recommendations are rebuilding in the background. The saved Week ${plan.week} plan remains usable until the new plan is ready.`, ...(plan.alerts || [])];
+    }
     return {
       ...plan,
-      viewing: plan.viewing || {
+      viewing: plan.viewing ? { ...plan.viewing, currentWeek, maxSelectableWeek: Math.min(18, currentWeek + 2) } : {
         currentWeek,
         selectedWeek: currentWeek,
         mode: "CURRENT",

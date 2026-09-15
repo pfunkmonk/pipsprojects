@@ -880,7 +880,7 @@ test("a full 717-player weekly rebuild stays below the production response timeo
 });
 
 test("private season shell supports full and per-source updates without auction navigation or caching", async () => {
-  const [html, source, managementUi, css, worker, rootWorker, manifest, netlify, refreshHandler, snapshotHandler, aiHandler, backgroundAiHandler, seasonService, seasonStore] = await Promise.all([
+  const [html, source, managementUi, css, worker, rootWorker, manifest, netlify, refreshHandler, snapshotHandler, aiHandler, backgroundAiHandler, backgroundRebuildHandler, seasonService, seasonStore] = await Promise.all([
     readFile(new URL("../public/thunder-bowl/season/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/season/season-management-ui.mjs", import.meta.url), "utf8"),
@@ -893,6 +893,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/thunder-season-snapshot.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-ai-advice.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/thunder-season-ai-advice-background.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/functions/thunder-season-rebuild-background.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
@@ -946,6 +947,11 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /action: "capture-fantasypros"/);
   assert.match(source, /action: "capture-pff"/);
   assert.match(source, /action: "rebuild-plan"/);
+  assert.match(source, /REBUILD_BACKGROUND_URL = "\/api\/thunder-bowl\/season\/rebuild-background"/);
+  assert.match(source, /void watchQueuedPlan\(previousFingerprint, source\)/);
+  assert.match(backgroundRebuildHandler, /refreshSeasonPlan\(\)/);
+  assert.match(backgroundRebuildHandler, /verifySession\(request\)/);
+  assert.match(backgroundRebuildHandler, /assertSameOrigin\(request\)/);
   assert.match(refreshHandler, /input\.action === "rebuild-plan"/);
   assert.match(refreshHandler, /return json\(await refreshSeasonPlan\(\)\)/);
   assert.match(aiHandler, /verifySession\(request\)/);
@@ -989,7 +995,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /privateJson\(STATUS_REFRESH_URL\)/);
   assert.match(source, /privateJson\(NEWS_REFRESH_URL\)/);
   assert.match(source, /privateJson\(RESEARCH_REFRESH_URL\)/);
-  assert.match(source, /const rebuilt = await postAction\(\{ action: "rebuild-plan" \}\)/);
+  assert.match(source, /const rebuilt = await rebuildAfterSourceSave\("Injuries\/news"\)/);
   assert.match(source, /injuryNews: \{/);
   assert.match(source, /collectLatestPlayerNews\(player\.name, cached\.newsSnapshot, cached\.researchSnapshot\)/);
   assert.match(refreshHandler, /\["status", "research", "news"\]/);
@@ -1026,10 +1032,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v50/);
+  assert.match(worker, /thunder-bowl-season-v51/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260915b/);
+  assert.match(worker, /season\.mjs\?v=20260915c/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);
@@ -1045,6 +1051,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.equal(JSON.parse(manifest).scope, "/thunder-bowl/season/");
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/refresh"/);
+  assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/rebuild-background"/);
   assert.match(netlify, /for = "\/thunder-bowl\/season\/service-worker\.js"/);
 });
 

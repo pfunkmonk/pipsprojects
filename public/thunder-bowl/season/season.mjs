@@ -11,6 +11,7 @@ import { formatDenverKickoff } from "./season-kickoff.mjs?v=20260910a";
 const byId = (id) => document.getElementById(id);
 const SNAPSHOT_URL = "/api/thunder-bowl/season/snapshot";
 const REFRESH_URL = "/api/thunder-bowl/season/refresh";
+const REBUILD_BACKGROUND_URL = "/api/thunder-bowl/season/rebuild-background";
 const AI_ADVICE_URL = "/api/thunder-bowl/season/ai-advice";
 const AI_ADVICE_BACKGROUND_URL = "/api/thunder-bowl/season/ai-advice-background";
 const TRADE_ANALYSIS_URL = "/api/thunder-bowl/season/trade-analysis";
@@ -414,7 +415,7 @@ async function refreshInjuriesAndAllPlayerNews() {
   const newsSnapshot = newsResult.status === "fulfilled" ? newsResult.value : cached?.newsSnapshot || null;
   const researchSnapshot = researchResult.status === "fulfilled" ? researchResult.value : cached?.researchSnapshot || null;
   if (newsSnapshot || researchSnapshot) await saveAllPlayerNews(newsSnapshot, researchSnapshot);
-  const rebuilt = await postAction({ action: "rebuild-plan" });
+  const rebuilt = await rebuildAfterSourceSave("Injuries/news");
   rebuilt.updateSummary = {
     ...(rebuilt.updateSummary || {}),
     injuryNews: {
@@ -1427,6 +1428,33 @@ async function postAction(payload) {
   }));
 }
 
+async function queuePlanRebuild() {
+  const response = await fetch(REBUILD_BACKGROUND_URL, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "rebuild-plan" }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`The saved data could not be queued for recommendation rebuilding (HTTP ${response.status}).`);
+}
+
+async function watchQueuedPlan(previousFingerprint, source, { timeoutMs = 600_000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && !offlineMode && navigator.onLine) {
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    try {
+      const current = await loadSnapshot();
+      if (current.sourceFingerprint !== previousFingerprint) {
+        await renderPlan(current);
+        setStatus(`${source} update complete. Week ${current.week} recommendations now use the newly saved data.`);
+        return;
+      }
+    } catch { /* The background build is still running; keep the saved plan usable. */ }
+  }
+  if (!offlineMode && navigator.onLine) setStatus(`${source} was saved. Its recommendation rebuild is still running in the background; all controls remain available.`, true);
+}
+
 async function runAction(button, message, task, successMessage = null) {
   setActionControlsDisabled(true);
   button.closest?.(".update-source")?.classList.add("updating");
@@ -1455,11 +1483,11 @@ async function runAction(button, message, task, successMessage = null) {
 }
 
 async function rebuildAfterSourceSave(source) {
-  try {
-    return await postAction({ action: "rebuild-plan" });
-  } catch (error) {
-    throw new Error(`${source} was saved, but the recommendations could not be rebuilt: ${errorMessage(error)}`);
-  }
+  const previousFingerprint = plan?.sourceFingerprint || null;
+  await queuePlanRebuild();
+  const savedPlan = await loadSnapshot();
+  void watchQueuedPlan(previousFingerprint, source);
+  return { ...savedPlan, rebuildQueued: true, rebuildSource: source };
 }
 
 async function updateCbsOnly() {
@@ -1639,25 +1667,33 @@ byId("update-cbs-only").addEventListener("click", () => runAction(
   byId("update-cbs-only"),
   "Updating the CBS submitted lineups, league schedule, all 12 rosters, moves, availability, and weekly component stats…",
   updateCbsOnly,
-  (value) => `CBS updated ${dateTime(value.generatedAt)}. Recommendations now use the latest saved CBS data; the other sources were left unchanged.`,
+  (value) => value.rebuildQueued
+    ? "CBS was saved. Recommendations are rebuilding in the background; the current plan and all update buttons remain usable."
+    : `CBS updated ${dateTime(value.generatedAt)}. Recommendations now use the latest saved CBS data; the other sources were left unchanged.`,
 ));
 byId("update-fbg-only").addEventListener("click", () => runAction(
   byId("update-fbg-only"),
   "Updating Footballguys PRO weekly component projections…",
   updateFbgOnly,
-  (value) => `Footballguys updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+  (value) => value.rebuildQueued
+    ? "Footballguys was saved. Recommendations are rebuilding in the background; the current plan and all update buttons remain usable."
+    : `Footballguys updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
 ));
 byId("update-fp-only").addEventListener("click", () => runAction(
   byId("update-fp-only"),
   "Updating FantasyPros weekly component projections…",
   () => updateSupplementalOnly("fantasyPros", "FantasyPros"),
-  (value) => `FantasyPros updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+  (value) => value.rebuildQueued
+    ? "FantasyPros was saved. Recommendations are rebuilding in the background; the current plan and all update buttons remain usable."
+    : `FantasyPros updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
 ));
 byId("update-pff-only").addEventListener("click", () => runAction(
   byId("update-pff-only"),
   "Updating PFF weekly component projections…",
   () => updateSupplementalOnly("pff", "PFF"),
-  (value) => `PFF updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
+  (value) => value.rebuildQueued
+    ? "PFF was saved. Recommendations are rebuilding in the background; the current plan and all update buttons remain usable."
+    : `PFF updated ${dateTime(value.generatedAt)}. Recommendations were rebuilt without recapturing the other sources.`,
 ));
 function runNewsRefresh(button) {
   return runAction(
