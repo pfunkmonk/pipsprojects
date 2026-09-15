@@ -40,7 +40,9 @@ function section(title, items) {
 function projectionOverview(row) {
   if (!finite(row?.points)) return "There is no safe current-week projection for this player, so missing data is not treated as zero.";
   const range = finite(row.floor) && finite(row.ceiling)
-    ? ` The illustrative projection band is ${decimal(row.floor)}–${decimal(row.ceiling)} points, not a validated prediction interval.`
+    ? row.rangeKind === "CALIBRATED_80"
+      ? ` The ${decimal(row.floor)}–${decimal(row.ceiling)} range is the position's empirical 80% absolute-error band from ${row.intervalSampleCount} completed player-games.`
+      : ` The ${decimal(row.floor)}–${decimal(row.ceiling)} range is the current provider envelope, not a prediction interval.`
     : "";
   return `The current Thunder Bowl projection is ${points(row.points)}.${range}`;
 }
@@ -156,7 +158,7 @@ function swapExplanation(value, week) {
       section("Strength of this call", [
         clean(value.reason) || `${value.start} has the stronger registered projection.`,
         `The estimated lineup edge is ${edge}.`,
-        finite(value.materialityThreshold) ? `Edges below ${points(value.materialityThreshold)} are treated as projection-error toss-ups.` : "",
+        finite(value.materialityThreshold) ? `Edges below ${points(value.materialityThreshold)} are non-actionable projection-error toss-ups.` : "",
         finite(value.strongThreshold) ? `A call normally needs at least ${points(value.strongThreshold)} to qualify as strong.` : "",
         finite(value.sourceDisagreement) ? `The largest registered provider spread for these players is ${points(value.sourceDisagreement)}.` : "",
         value.rangesOverlap ? "The players' displayed projection ranges overlap, so the lower-projected player still has a plausible path to finishing higher." : "",
@@ -164,7 +166,7 @@ function swapExplanation(value, week) {
       ]),
       section("Risk and lineup flexibility", [
         value.starterInjury?.status ? `${value.start} carries a ${value.starterInjury.status} designation; recheck the latest news before lock.` : "No registered injury designation weakens the selected starter.",
-        clean(value.timingRisk) || "No earlier-game flexibility penalty is registered for this comparison.",
+        clean(value.timingRisk) || "No earlier-game flexibility penalty is registered for this comparison; an early starter must clear three points when a viable later alternative exists.",
       ]),
       section("Rules applied", [
         `This is a position-for-position comparison at ${value.position}, so it preserves the required legal lineup.`,

@@ -29,7 +29,7 @@ import { currentStatusSnapshot } from "./status-store.mjs";
 import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
-const RECOMMENDATION_ENGINE_VERSION = 15;
+const RECOMMENDATION_ENGINE_VERSION = 16;
 const USER_TEAM_ID = "dogs-of-war";
 
 export function normalizeSeasonViewingWeek(value, currentWeek) {

@@ -86,10 +86,17 @@ export async function saveManagementRecords(records, store = db()) {
 }
 
 export async function archiveManagementCheckpoint(plan, now = new Date().toISOString(), store = db()) {
-  const checkpoint = decisionCheckpoint(plan, now);
-  if (!checkpoint) return null;
-  const id = hash([plan.season, plan.week, plan.sourceFingerprint]);
-  return updateState((old) => old.checkpoints.some((c) => c.id === id) ? old : { ...old, checkpoints: [...old.checkpoints, { ...checkpoint, id }] }, store);
+  const candidates = ["EARLY", "FINAL"].map((type) => decisionCheckpoint(plan, now, type)).filter(Boolean);
+  if (!candidates.length) return null;
+  return updateState((old) => {
+    const checkpoints = [...old.checkpoints];
+    for (const checkpoint of candidates) {
+      const type = checkpoint.checkpointType || "EARLY";
+      if (checkpoints.some((row) => row.season === plan.season && row.week === plan.week && (row.checkpointType || "EARLY") === type)) continue;
+      checkpoints.push({ ...checkpoint, id: hash([plan.season, plan.week, type]) });
+    }
+    return { ...old, checkpoints };
+  }, store);
 }
 
 export async function archiveWeeklyProjections(plan, now = new Date().toISOString(), store = db()) {

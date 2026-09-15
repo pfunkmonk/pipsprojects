@@ -131,7 +131,8 @@ function playerWeekEvidence(player, week, projectionRows = new Map(), cbsRows = 
   }
   if (!sourceRows.length) {
     if (baselinePoints === null) return { points: null, sources: [], confidence: null, floor: null, ceiling: null, spread: null };
-    return { points: round(baselinePoints), sources: [], confidence: 0.4, floor: round(Math.max(0, baselinePoints - 3)), ceiling: round(baselinePoints + 3), spread: null };
+    return { points: round(baselinePoints), sources: [], confidence: 0.4, floor: null, ceiling: null, spread: null,
+      rangeKind: "UNAVAILABLE", intervalSampleCount: 0 };
   }
   const weights = projectionWeightsForPosition(sourceRows.map((row) => row.source), player.position, projectionRows.calibration);
   const points = sourceRows.reduce((sum, row) => sum + row.points * weights[row.source], 0);
@@ -139,10 +140,14 @@ function playerWeekEvidence(player, week, projectionRows = new Map(), cbsRows = 
   const high = Math.max(...sourceRows.map((row) => row.points));
   const spread = high - low;
   const agreement = Math.max(0.35, Math.min(0.9, 0.9 - spread / Math.max(12, points * 3)));
+  const uncertainty = projectionRows.calibration?.positions?.[player.position]?.uncertainty || null;
+  const calibratedRange = uncertainty?.active && Number.isFinite(uncertainty.halfWidth);
   return {
     points: round(points),
-    floor: round(manualFbg?.floor ?? Math.max(0, points - Math.max(2, spread / 2))),
-    ceiling: round(manualFbg?.ceiling ?? points + Math.max(2, spread / 2)),
+    floor: calibratedRange ? round(Math.max(0, points - uncertainty.halfWidth)) : sourceRows.length > 1 ? round(low) : null,
+    ceiling: calibratedRange ? round(points + uncertainty.halfWidth) : sourceRows.length > 1 ? round(high) : null,
+    rangeKind: calibratedRange ? "CALIBRATED_80" : sourceRows.length > 1 ? "SOURCE_ENVELOPE" : "UNAVAILABLE",
+    intervalSampleCount: calibratedRange ? uncertainty.sampleCount : 0,
     spread: round(spread),
     confidence: round(agreement, 2),
     sources: sourceRows.map((row) => ({ ...row, weight: round(weights[row.source], 4) })),
@@ -178,27 +183,59 @@ function legalStarterPath(roster) {
 
 export function optimizeExactLineup(roster, { week, playerById, projectionRows = null, fbgRows = new Map(), cbsRows = new Map(), statuses = new Map(), evidenceCache = null }) {
   const activeProjectionRows = projectionRows || new Map([["Footballguys", fbgRows]]);
-  const candidates = rosterPlayers(roster, playerById).map((entry) => ({
-    ...entry,
-    projection: cachedPlayerWeekEvidence(entry.player, week, activeProjectionRows, cbsRows, evidenceCache),
-    status: statuses.get(entry.playerId) || null,
-  }));
+  const candidates = rosterPlayers(roster, playerById).map((entry) => {
+    const cbs = cbsRows.get(`${entry.playerId}|${week}`) || null;
+    const gameTime = cbs?.gameTime ?? entry.gameTime ?? null;
+    return {
+      ...entry,
+      opponent: cbs?.opponent ?? entry.opponent ?? null,
+      gameTime,
+      kickoffAt: gameTime ? kickoffAt(gameTime, week) : null,
+      projection: cachedPlayerWeekEvidence(entry.player, week, activeProjectionRows, cbsRows, evidenceCache),
+      status: statuses.get(entry.playerId) || null,
+    };
+  });
   const starters = [];
   const missingSlots = [];
   const bench = [];
+  const optionalitySwaps = [];
   for (const position of POSITIONS) {
     const eligible = candidates
       .filter((entry) => entry.player.position === position && entry.projection.points !== null && !criticalStatus(entry.status))
       .sort((left, right) => right.projection.points - left.projection.points || left.player.name.localeCompare(right.player.name));
     const needed = STARTER_REQUIREMENTS[position];
-    starters.push(...eligible.slice(0, needed));
-    bench.push(...eligible.slice(needed));
+    const selected = eligible.slice(0, needed);
+    const reserves = eligible.slice(needed);
+    // A small projection edge does not justify locking an earlier player and losing
+    // access to later injury/news information. Preserve the later option unless the
+    // early player clears the governed three-point optionality threshold.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      let best = null;
+      for (const early of selected) for (const later of reserves) {
+        const earlyAt = Date.parse(early.kickoffAt || "");
+        const laterAt = Date.parse(later.kickoffAt || "");
+        const edge = early.projection.points - later.projection.points;
+        if (!Number.isFinite(earlyAt) || !Number.isFinite(laterAt) || earlyAt >= laterAt || edge < 0 || edge >= 3) continue;
+        if (!best || edge < best.edge || edge === best.edge && later.projection.points > best.later.projection.points) best = { early, later, edge };
+      }
+      if (best) {
+        selected.splice(selected.indexOf(best.early), 1, best.later);
+        reserves.splice(reserves.indexOf(best.later), 1, best.early);
+        optionalitySwaps.push({ position, earlierPlayerId: best.early.playerId, earlierName: best.early.player.name,
+          laterPlayerId: best.later.playerId, laterName: best.later.player.name, projectedCost: round(best.edge), threshold: 3 });
+        changed = true;
+      }
+    }
+    starters.push(...selected);
+    bench.push(...reserves);
     for (let index = eligible.length; index < needed; index += 1) missingSlots.push(position);
     bench.push(...candidates.filter((entry) => entry.player.position === position && (entry.projection.points === null || criticalStatus(entry.status))));
   }
   starters.sort((left, right) => POSITIONS.indexOf(left.player.position) - POSITIONS.indexOf(right.player.position) || right.projection.points - left.projection.points);
   const total = missingSlots.length ? null : round(starters.reduce((sum, entry) => sum + entry.projection.points, 0));
-  return { starters, bench, missingSlots, total };
+  return { starters, bench, missingSlots, total, optionalitySwaps };
 }
 
 function lineupPublicRow(entry, { includeGameDetails = true, adviceTeamId = USER_TEAM_ID, adviceTeamName = "Dogs of War", week = null, season = 2026 } = {}) {
@@ -216,6 +253,8 @@ function lineupPublicRow(entry, { includeGameDetails = true, adviceTeamId = USER
     floor: entry.projection.floor,
     ceiling: entry.projection.ceiling,
     confidence: entry.projection.confidence,
+    rangeKind: entry.projection.rangeKind || "UNAVAILABLE",
+    intervalSampleCount: entry.projection.intervalSampleCount || 0,
     sourceSpread: entry.projection.spread,
     sources: entry.projection.sources,
     adviceTeamId,
@@ -688,6 +727,8 @@ function tradePlayerEvidence(entry, week, context, researchSnapshot) {
       points: projection.points,
       floor: projection.floor,
       ceiling: projection.ceiling,
+      rangeKind: projection.rangeKind || "UNAVAILABLE",
+      intervalSampleCount: projection.intervalSampleCount || 0,
       confidence: projection.confidence,
       sourceSpread: projection.spread,
       sources: projection.sources,
@@ -1053,6 +1094,8 @@ function buildPlayerStats({ pack, leagueState, week, projectionRows, cbsRows, st
       points: projection.points,
       floor: projection.floor,
       ceiling: projection.ceiling,
+      rangeKind: projection.rangeKind || "UNAVAILABLE",
+      intervalSampleCount: projection.intervalSampleCount || 0,
       confidence: projection.confidence,
       sourceCount: projection.sources.length,
       sources: projection.sources,
@@ -1197,18 +1240,21 @@ function sourceChip(label, timestamp, now, required = false) {
 function startSitDecision(edgeStarter, bench, week) {
   const delta = round(edgeStarter.projection.points - bench.projection.points);
   const sourceDisagreement = round(Math.max(edgeStarter.projection.spread || 0, bench.projection.spread || 0));
-  const materialityThreshold = 1;
-  const strongThreshold = 2;
+  const materialityThreshold = 2;
+  const strongThreshold = 3;
   const highDisagreement = sourceDisagreement > Math.max(strongThreshold, delta * 1.5);
   const strength = delta < materialityThreshold
     ? "TOSS-UP"
     : delta < strongThreshold || highDisagreement
       ? "LEAN"
       : "STRONG";
-  const starterTime = Date.parse(edgeStarter.gameTime || "");
-  const benchTime = Date.parse(bench.gameTime || "");
-  const timingRisk = strength !== "STRONG" && Number.isFinite(starterTime) && Number.isFinite(benchTime) && starterTime < benchTime
-    ? `${edgeStarter.player.name} plays earlier than ${bench.player.name}, so starting ${edgeStarter.player.name} reduces later lineup flexibility.`
+  const starterTime = Date.parse(edgeStarter.kickoffAt || kickoffAt(edgeStarter.gameTime, week) || "");
+  const benchTime = Date.parse(bench.kickoffAt || kickoffAt(bench.gameTime, week) || "");
+  const earlierMarginalPlayer = Number.isFinite(starterTime) && Number.isFinite(benchTime) && starterTime !== benchTime && Math.abs(delta) < strongThreshold
+    ? starterTime < benchTime ? edgeStarter.player.name : bench.player.name : null;
+  const laterFlexiblePlayer = earlierMarginalPlayer ? (starterTime > benchTime ? edgeStarter.player.name : bench.player.name) : null;
+  const timingRisk = earlierMarginalPlayer
+    ? `${earlierMarginalPlayer} plays earlier, but the projection margin is below ${strongThreshold.toFixed(1)} points. Keep ${laterFlexiblePlayer} available for later injury and news information.`
     : null;
   const starterInjury = edgeStarter.status ? {
     severity: edgeStarter.status.severity,
@@ -1223,7 +1269,10 @@ function startSitDecision(edgeStarter, bench, week) {
     && Number.isFinite(bench.projection.ceiling)
     && edgeStarter.projection.floor <= bench.projection.ceiling
     && bench.projection.floor <= edgeStarter.projection.ceiling;
-  const reason = strength === "TOSS-UP"
+  const governedStrength = timingRisk && Math.abs(delta) < strongThreshold ? "TOSS-UP" : strength;
+  const reason = timingRisk
+    ? `${Math.abs(delta).toFixed(1)} projected points does not clear the ${strongThreshold.toFixed(1)}-point early-game optionality gate.`
+    : governedStrength === "TOSS-UP"
     ? `${delta.toFixed(1)} points is below the ${materialityThreshold.toFixed(1)}-point materiality gate, so the optimizer's choice is acceptable but not a dependable edge.`
     : strength === "LEAN"
       ? `${delta.toFixed(1)} points supports a modest lean, but it does not clear the strong-call gate${highDisagreement ? " after accounting for provider disagreement" : ""}.`
@@ -1235,9 +1284,9 @@ function startSitDecision(edgeStarter, bench, week) {
     sitPlayerId: bench.playerId,
     position: bench.player.position,
     delta,
-    verdict: strength === "TOSS-UP" ? "PASS" : "START",
-    strength,
-    actionable: strength !== "TOSS-UP",
+    verdict: governedStrength === "TOSS-UP" ? "PASS" : "START",
+    strength: governedStrength,
+    actionable: governedStrength !== "TOSS-UP",
     confidence: round(Math.min(edgeStarter.projection.confidence ?? 0.4, bench.projection.confidence ?? 0.4), 2),
     materialityThreshold,
     strongThreshold,
@@ -1374,7 +1423,7 @@ export function buildSeasonRecommendationSnapshot({
         : lineupTeamId === USER_TEAM_ID ? `Keep the current Week ${week} lineup` : `Review ${lineupTeam.teamName}'s Week ${week} lineup`,
     reason: optimized.missingSlots.length
       ? `The roster is missing ${optimized.missingSlots.join(", ")} coverage.`
-      : `${decisionCounts.strong} strong start call${decisionCounts.strong === 1 ? "" : "s"}, ${decisionCounts.lean} modest lean${decisionCounts.lean === 1 ? "" : "s"}, and ${decisionCounts.tossUp} toss-up${decisionCounts.tossUp === 1 ? "" : "s"} are registered. Toss-ups are preferences, not directives.${decisionCounts.monitors ? ` ${decisionCounts.monitors} starter status check${decisionCounts.monitors === 1 ? "" : "s"} remain before lock.` : ""}`,
+      : `${decisionCounts.strong} strong start call${decisionCounts.strong === 1 ? "" : "s"}, ${decisionCounts.lean} modest lean${decisionCounts.lean === 1 ? "" : "s"}, and ${decisionCounts.tossUp} non-actionable toss-up${decisionCounts.tossUp === 1 ? "" : "s"} are registered. Edges below 2 points are not directives; an earlier player needs 3 points to justify sacrificing later flexibility.${optimized.optionalitySwaps.length ? ` ${optimized.optionalitySwaps.length} later-game option${optimized.optionalitySwaps.length === 1 ? " was" : "s were"} preserved.` : ""}${decisionCounts.monitors ? ` ${decisionCounts.monitors} starter status check${decisionCounts.monitors === 1 ? "" : "s"} remain before lock.` : ""}`,
     counts: decisionCounts,
   };
   const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves });
@@ -1454,6 +1503,7 @@ export function buildSeasonRecommendationSnapshot({
       total: optimized.total,
       requiredSlots: { ...STARTER_REQUIREMENTS },
       missingSlots: optimized.missingSlots,
+      optionalitySwaps: optimized.optionalitySwaps,
       starters: optimized.starters.map((entry) => lineupPublicRow(entry, lineupRowOptions)),
       bench: optimized.bench.map((entry) => lineupPublicRow(entry, lineupRowOptions)),
       freeAgentAlternatives,

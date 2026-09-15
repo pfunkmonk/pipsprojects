@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildGameDay, buildManagement, buildProjectionCalibration, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
+import { buildGameDay, buildManagement, buildProjectionCalibration, checkpointSchedule, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, mergeManagementRecords, readManagementState, saveManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
 import { evidenceFromCsv, parseEvidenceCsv } from "../public/thunder-bowl/season/season-management-ui.mjs";
 
@@ -79,6 +79,9 @@ test("IR comparison requires explicit fresh slot, eligibility, return and cost e
 });
 test("checkpoints reject future outlooks and retrospective freezes; actuals never fill missing with zero", () => {
   const plan = fixture(); const c = decisionCheckpoint(plan, now); assert.ok(c);
+  assert.equal(c.checkpointType, "EARLY");
+  assert.equal(c.roster[0].injury, null);
+  assert.equal(c.roster[0].kickoffAt, "2026-09-13T17:00:00.000Z");
   assert.equal(decisionCheckpoint(plan, "2026-09-14T00:00:00Z"), null);
   plan.viewing.mode = "FORECAST"; assert.equal(decisionCheckpoint(plan, now), null);
   const report = outcomeReport([c], [{ kind: "result", week: 1, playerId: "p0", points: 0, final: true }]);
@@ -90,6 +93,20 @@ test("outcome scorecard selects latest eligible pregame checkpoint and compares 
   const results = c.roster.map((p) => ({ kind: "result", week: 1, playerId: p.playerId, points: p.playerId === "b" ? 20 : 10, final: true }));
   const late = { ...c, capturedAt: "2026-09-14T00:00:00Z", roster: [] };
   const report = outcomeReport([c, late], results); assert.equal(report.weeks[0].recommendedActualTotal, 80); assert.equal(report.weeks[0].hindsightGap, 10); assert.equal(report.providers[0].sampleCount, 9);
+  assert.deepEqual(report.lineupRegrets.map((row) => [row.position, row.sit, row.start, row.pointsGained]), [["QB", "Player 0", "Backup", 10]]);
+});
+test("the second checkpoint freezes Sunday-morning evidence without rewriting the early checkpoint", () => {
+  const plan = fixture();
+  const early = decisionCheckpoint(plan, now, "EARLY");
+  plan.lineup.starters[0].injury = { status: "Questionable", updatedAt: "2026-09-12T15:00:00Z" };
+  const final = decisionCheckpoint(plan, "2026-09-13T12:00:00Z", "FINAL");
+  assert.ok(early && final);
+  assert.equal(final.checkpointType, "FINAL");
+  assert.equal(early.roster[0].injury, null);
+  assert.equal(final.roster[0].injury.status, "Questionable");
+  const schedule = checkpointSchedule(plan, [early, final], "2026-09-13T12:30:00Z");
+  assert.equal(schedule.early.status, "CAPTURED");
+  assert.equal(schedule.final.status, "CAPTURED");
 });
 test("weekly projection archive freezes every projected player and ranks direct providers against final actuals", () => {
   const plan = fixture();
@@ -97,6 +114,8 @@ test("weekly projection archive freezes every projected player and ranks direct 
   const archive = weeklyProjectionArchive(plan, now);
   assert.equal(archive.auditEligible, true);
   assert.equal(archive.players.length, plan.playerStats.length);
+  assert.equal(archive.players[0].leagueStatus, "DOGS OF WAR");
+  assert.equal(archive.players[0].auditEligible, true);
   const results = archive.players.map((player) => ({ kind: "result", season: 2026, week: 1, playerId: player.playerId, points: player.points, final: true }));
   const report = outcomeReport([], results, [archive]);
   assert.equal(report.projectionWeeks[0].projectedPlayers, plan.playerStats.length);
@@ -105,6 +124,19 @@ test("weekly projection archive freezes every projected player and ranks direct 
   assert.equal(report.providers[0].rank, 1);
   assert.ok(report.providers.find((provider) => provider.source === "PFF").meanAbsoluteError > 0);
   assert.equal(weeklyProjectionArchive(plan, "2026-09-14T00:00:00Z").auditEligible, false);
+});
+test("provider scorecard measures same-roster pairwise accuracy and decision regret", () => {
+  const plan = fixture();
+  for (const player of plan.playerStats) player.ownerTeamId = "dogs-of-war";
+  plan.playerStats.find((player) => player.playerId === "b").sources = [{ source: "CBS", points: 8, basis: "DIRECT_WEEKLY" }];
+  const archive = weeklyProjectionArchive(plan, now);
+  const results = archive.players.map((player) => ({ kind: "result", season: 2026, week: 1, playerId: player.playerId,
+    points: player.playerId === "b" ? 30 : player.playerId === "p0" ? 5 : player.points, final: true }));
+  const report = outcomeReport([], results, [archive]);
+  const cbs = report.providers.find((row) => row.source === "CBS");
+  assert.ok(cbs.decisionCount > 0);
+  assert.ok(cbs.meanDecisionRegret > 0);
+  assert.ok(cbs.decisionAccuracy < 1);
 });
 test("adaptive calibration is position-specific, conservative, and cannot see target-week results", () => {
   const archives = [1, 2].map((week) => ({
@@ -123,6 +155,8 @@ test("adaptive calibration is position-specific, conservative, and cannot see ta
   assert.ok(calibration.positions.QB.weights.PFF < calibration.positions.QB.sources.find((row) => row.source === "PFF").baselineWeight);
   assert.ok(Math.abs(calibration.positions.QB.sources.find((row) => row.source === "CBS").change) <= 0.05);
   assert.equal(calibration.positions.RB.active, false);
+  assert.equal(calibration.positions.QB.uncertainty.active, true);
+  assert.equal(calibration.positions.QB.uncertainty.halfWidth, 0);
   const targetWeekArchive = { ...structuredClone(archives[0]), week: 3, players: archives[0].players.map((player) => ({ ...player, playerId: `leak-${player.playerId}` })) };
   const targetWeekResults = targetWeekArchive.players.map((player) => ({ kind: "result", final: true, week: 3, playerId: player.playerId, points: 26 }));
   assert.deepEqual(buildProjectionCalibration([...archives, targetWeekArchive], [...records, ...targetWeekResults], 3), calibration);

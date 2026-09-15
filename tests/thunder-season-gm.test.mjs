@@ -495,13 +495,29 @@ test("start-sit analysis separates strong calls, leans, toss-ups, and injury mon
   assert.equal(decisions.get("Rome Odunze").strength, "TOSS-UP");
   assert.equal(decisions.get("Rome Odunze").verdict, "PASS");
   assert.equal(decisions.get("Rome Odunze").actionable, false);
-  assert.equal(decisions.get("DJ Moore").strength, "LEAN");
+  assert.equal(decisions.get("DJ Moore").strength, "TOSS-UP");
   assert.equal(decisions.get("KC Concepcion").strength, "STRONG");
-  assert.equal(decisions.get("Caleb Williams").strength, "STRONG");
+  assert.equal(decisions.get("Caleb Williams").strength, "LEAN");
   assert.equal(result.lineup.decisionSummary.verdict, "KEEP");
-  assert.equal(result.lineup.decisionSummary.counts.tossUp, 1);
+  assert.equal(result.lineup.decisionSummary.counts.tossUp, 2);
   assert.equal(result.lineup.monitors[0].name, "Zay Flowers");
   assert.match(result.lineup.monitors[0].reason, /rechecked before/);
+});
+
+test("the optimizer preserves a later WR when an early-game projection edge is under three points", () => {
+  const players = rosterPlayers();
+  const adams = players.find((row) => row.id === "wr-two");
+  const moore = players.find((row) => row.id === "wr-three");
+  adams.name = "Davante Adams"; adams.weeklyProjection.points[0] = 12.9;
+  moore.name = "DJ Moore"; moore.weeklyProjection.points[0] = 11.6;
+  const cbsRows = new Map([
+    [`${adams.id}|1`, { playerId: adams.id, week: 1, points: 12.9, opponent: "SF", gameTime: "Thu 6:35pm MT" }],
+    [`${moore.id}|1`, { playerId: moore.id, week: 1, points: 11.6, opponent: "HOU", gameTime: "Sun 11:00am MT" }],
+  ]);
+  const result = optimizeExactLineup(rosterRows(players), { week: 1, playerById: new Map(players.map((item) => [item.id, item])), cbsRows });
+  assert.ok(result.starters.some((row) => row.playerId === moore.id));
+  assert.ok(result.bench.some((row) => row.playerId === adams.id));
+  assert.deepEqual(result.optionalitySwaps.map((row) => [row.earlierName, row.laterName, row.projectedCost]), [["Davante Adams", "DJ Moore", 1.3]]);
 });
 
 test("waiver recommendations remain blocked until CBS supplies authenticated availability", () => {
@@ -1005,15 +1021,15 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v47/);
+  assert.match(worker, /thunder-bowl-season-v48/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260912e/);
+  assert.match(worker, /season\.mjs\?v=20260914a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);
   assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912c/);
-  assert.match(worker, /season-evidence\.mjs\?v=20260912b/);
+  assert.match(worker, /season-evidence\.mjs\?v=20260914a/);
   assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260912d/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);

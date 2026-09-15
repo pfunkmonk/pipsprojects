@@ -1,5 +1,6 @@
 const el = (tag, text = "", className = "") => { const n = document.createElement(tag); n.textContent = text; if (className) n.className = className; return n; };
 const fmt = (n) => Number.isFinite(n) ? n.toFixed(1) : "Unknown";
+const pct = (n) => Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "Unknown";
 const when = (s) => s && Number.isFinite(Date.parse(s)) ? new Date(s).toLocaleString() : "Not verified";
 const label = (s) => String(s).replaceAll("_", " ").toLowerCase();
 export const IMPORT_COLUMNS = {
@@ -122,6 +123,13 @@ export function renderManagement(plan, options = {}) {
   const sources = panel("admin", "management-sources", "Evidence quality & provenance");
   table(sources, ["Source", "Status", "Week / rows", "Retrieved", "Published"], m.sourceAudit.map((s) => [s.source, label(s.status), `${s.week ?? "—"} / ${s.rows}`, when(s.retrievedAt), when(s.publishedAt)]));
   note(sources, "A successful retrieval does not mean the provider published new projections. Season-derived player rows are estimates, even when a provider's name appears beside them.");
+  const checkpoint = panel("admin", "management-checkpoints", "Required weekly decision checkpoints", { collapsed: false });
+  note(checkpoint, m.checkpoints.note);
+  if (m.checkpoints.early) table(checkpoint, ["Checkpoint", "Status", "Window opens", "Deadline", "Captured"], [
+    ["Before the first weekly kickoff", label(m.checkpoints.early.status), "Now", when(m.checkpoints.early.deadline), when(m.checkpoints.early.capturedAt)],
+    ["Saturday evening / Sunday morning", label(m.checkpoints.final.status), when(m.checkpoints.final.opensAt), when(m.checkpoints.final.deadline), when(m.checkpoints.final.capturedAt)],
+  ]);
+  else note(checkpoint, "Checkpoint timing is unavailable until CBS supplies complete player kickoff times.");
   const waiver = panel("waivers", "management-market", "League bid history & safe fallback claims");
   const market = m.waiverMarket;
   note(waiver, `Recorded bids: ${market.recordedBids} (${market.winningBids} wins, ${market.losingBids} losses). Budget: ${fmt(market.budget)}; protected reserve: ${fmt(market.reserve)}; spendable: $${market.spendable}.`);
@@ -152,17 +160,19 @@ export function renderManagement(plan, options = {}) {
       position, source.source, source.eligible ? "Eligible" : "Building sample", source.sampleCount, source.weekCount,
       `${(source.baselineWeight * 100).toFixed(1)}%`, `${(source.weight * 100).toFixed(1)}%`, `${source.change >= 0 ? "+" : ""}${(source.change * 100).toFixed(1)} pts`,
       fmt(source.meanAbsoluteError), fmt(source.meanError), fmt(source.rootMeanSquaredError),
+      details.uncertainty?.active ? `±${fmt(details.uncertainty.halfWidth)} (80%)` : `Building (${details.uncertainty?.sampleCount || 0}/${calibration.safeguards.minimumSamples})`,
     ]));
-    table(model, ["Pos.", "Provider", "Status", "Players", "Weeks", "Baseline", "Active", "Change", "MAE", "Bias", "RMSE"], rows);
+    table(model, ["Pos.", "Provider", "Status", "Players", "Weeks", "Baseline", "Active", "Change", "MAE", "Bias", "RMSE", "Position range"], rows);
     note(model, `Safeguards: at least ${calibration.safeguards.minimumSamples} player-games across ${calibration.safeguards.minimumWeeks} weeks; recent-week decay ${calibration.safeguards.recencyDecay}; prior strength ${calibration.safeguards.priorStrength}; maximum source movement ${(calibration.safeguards.maxAbsoluteShift * 100).toFixed(0)} percentage points; maximum evidence influence ${(calibration.safeguards.maximumEvidenceInfluence * 100).toFixed(0)}%.`);
   }
   const outcomes = panel("admin", "management-outcomes", "Recommendation scorecard — frozen decisions vs actuals");
   note(outcomes, m.outcomes.note);
   if (!m.outcomes.projectionWeeks?.length) note(outcomes, "No weekly all-player projection archive exists yet. The next current-week refresh with captured kickoff times will freeze one automatically.");
-  table(outcomes, ["Week", "Projection archive", "Audit status", "Players frozen", "Final actuals matched", "Blend MAE"], (m.outcomes.projectionWeeks || []).map((w) => [w.week, when(w.capturedAt), w.auditEligible ? "Pregame — eligible" : "After kickoff — archived, excluded", w.projectedPlayers, w.observedPlayers, fmt(w.meanAbsoluteError)]));
+  table(outcomes, ["Week", "Projection archive", "Audit status", "Players frozen", "Eligible pregame", "Final actuals matched", "Blend MAE"], (m.outcomes.projectionWeeks || []).map((w) => [w.week, when(w.capturedAt), w.auditEligible ? "All pregame — eligible" : w.auditEligiblePlayers ? "Partial — only unlocked players eligible" : "After kickoff — archived, excluded", w.projectedPlayers, w.auditEligiblePlayers || 0, w.observedPlayers, fmt(w.meanAbsoluteError)]));
   if (!m.outcomes.weeks.length) note(outcomes, "No eligible pregame checkpoint yet. Refresh CBS before the first kickoff with complete player game times to establish one. There are no claimed wins or accuracy scores without real results.");
   table(outcomes, ["Week", "Checkpoint", "Final scores", "Projection MAE", "Recommended lineup actual", "Hindsight gap"], m.outcomes.weeks.map((w) => [w.week, when(w.capturedAt), `${w.observedPlayers}/${w.rosterPlayers}`, fmt(w.meanAbsoluteError), fmt(w.recommendedActualTotal), fmt(w.hindsightGap)]));
-  table(outcomes, ["Rank", "Provider", "Observed player-weeks", "MAE", "Bias", "RMSE", "Evidence"], m.outcomes.providers.map((p) => [p.rank, p.source, p.sampleCount, fmt(p.meanAbsoluteError), fmt(p.meanError), fmt(p.rootMeanSquaredError), p.calibrationReady ? "Descriptive ranking—not a calibrated win probability" : "Small sample; do not calibrate from this"]));
+  if (m.outcomes.lineupRegrets?.length) table(outcomes, ["Week", "Position", "Hindsight swap", "Actual scores", "Points left on bench"], m.outcomes.lineupRegrets.map((row) => [row.week, row.position, `${row.sit} → ${row.start}`, `${fmt(row.sitActual)} → ${fmt(row.startActual)}`, fmt(row.pointsGained)]));
+  table(outcomes, ["Rank", "Provider", "Player-weeks", "MAE", "Bias", "RMSE", "Pairwise calls", "Pairwise accuracy", "2+ point calls", "2+ accuracy", "Mean regret", "Evidence"], m.outcomes.providers.map((p) => [p.rank, p.source, p.sampleCount, fmt(p.meanAbsoluteError), fmt(p.meanError), fmt(p.rootMeanSquaredError), p.decisionCount, pct(p.decisionAccuracy), p.materialDecisionCount, pct(p.materialDecisionAccuracy), fmt(p.meanDecisionRegret), p.calibrationReady ? "Descriptive; governed calibration threshold met" : "Small sample; do not reweight from this"]));
   if (m.outcomes.playerAudits?.length) table(outcomes, ["Week", "Player", "Pos.", "Frozen blend", "Actual", "Absolute error", "Direct provider audit"], m.outcomes.playerAudits.slice(0, 100).map((p) => [p.week, p.name, p.position, fmt(p.projected), fmt(p.actual), fmt(p.absoluteError), p.providers.map((provider) => `${provider.source}: ${fmt(provider.projected)} (${fmt(provider.absoluteError)} error)`).join("; ") || "No direct weekly provider row"]));
   importForm(panel("admin", "management-import", "Import verified workload, bids, actuals or IR evidence"), plan, options);
 }
