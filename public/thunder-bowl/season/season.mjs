@@ -917,7 +917,7 @@ function waiverBidAdvice(fab) {
 function renderWaivers(value) {
   const target = byId("waiver-list");
   const all = value.waivers.recommendations || [];
-  const rows = all
+  const eligible = all
     .filter((row) => waiverView.position === "ALL" || row.add.position === waiverView.position)
     .sort((left, right) => {
       if (waiverView.sort === "week") return (right.gains.week ?? -999) - (left.gains.week ?? -999);
@@ -926,7 +926,8 @@ function renderWaivers(value) {
       if (waiverView.sort === "bid") return (right.fab?.recommended ?? -1) - (left.fab?.recommended ?? -1);
       return left.priority - right.priority;
     });
-  byId("waiver-result-count").textContent = `${rows.length} of ${all.length} recommendations`;
+  const rows = eligible.slice(0, 25);
+  byId("waiver-result-count").textContent = `${rows.length} of ${eligible.length} recommendations`;
   if (!rows.length) {
     const hold = value.waivers.hold;
     if (hold) {
@@ -950,7 +951,7 @@ function renderWaivers(value) {
     const header = element("header");
     const title = element("div");
     title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", `${row.drop ? `Drop ${row.drop.name}` : "No drop required"} · ${row.add.position} ${row.add.nflTeam}`));
-    header.append(title, element("span", "verdict", row.verdict));
+    header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, row.verdict));
     card.append(header, element("p", "", row.reason));
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));

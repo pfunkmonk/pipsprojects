@@ -9,6 +9,7 @@ import {
   analyzeTradeProposal,
   buildInjuryWatch,
   buildSeasonRecommendationSnapshot,
+  classifyWaiverEdge,
   classifyTradeIdea,
   optimizeExactLineup,
   projectionWeightsForPosition,
@@ -573,7 +574,8 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.ok(result.recommendations[0].dropValue.week > 0);
   assert.equal(result.recommendations[0].dropProjectionLoss, result.recommendations[0].dropValue.week);
   assert.match(result.recommendations[0].reason, /bench\/depth points/);
-  assert.doesNotMatch(JSON.stringify(result.recommendations), /contract|keeper/i);
+  assert.match(JSON.stringify(result.recommendations), /dropProtection/);
+  assert.ok(result.recommendations.every((row) => row.gains.restOfSeason >= 0 || ["RENTAL", "WATCH"].includes(row.verdict)));
 });
 
 test("a full legal roster holds FAB for tiny duplicate QB, K, and DST gains", () => {
@@ -634,7 +636,7 @@ test("CBS FAB-not-started evidence uses the confirmed $50 opening balance withou
   assert.equal(result.fab.orderAvailable, false);
 });
 
-test("FAB bids preserve K/DST bye and injury reserves without using roster salary", () => {
+test("FAB bids preserve K/DST reserves while high roster salaries never inflate a claim", () => {
   const roster = rosterPlayers();
   const freeAgent = player("wr-upgrade", "WR", 21, { vbd: 100, marketValue: 40 });
   const leagueState = {
@@ -651,7 +653,65 @@ test("FAB bids preserve K/DST bye and injury reserves without using roster salar
   const second = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState: changed, week: 1 });
   assert.ok(first.fab.plannedReserve >= 2);
   assert.ok(first.recommendations[0].fab.maximum <= 20 - first.fab.plannedReserve);
-  assert.deepEqual(second, first);
+  assert.equal(second.recommendations[0].verdict, first.recommendations[0].verdict);
+  assert.deepEqual(second.recommendations[0].fab, first.recommendations[0].fab);
+  assert.equal(second.recommendations[0].policy.dropProtection.protected, false);
+  assert.equal(first.recommendations[0].policy.dropProtection.protected, false);
+});
+
+test("waiver policy downgrades short-term gains with negative ROS to WATCH", () => {
+  const decision = classifyWaiverEdge({
+    addPlayer: player("short-rental", "WR", 14),
+    drop: { ...rosterRows([player("rome", "WR", 13, { name: "Rome Odunze" })])[0], player: player("rome", "WR", 13, { name: "Rome Odunze" }) },
+    currentDelta: { delta: 2.2, resilienceWeeks: 0 },
+    nextThreeDelta: { delta: 1.7, resilienceWeeks: 0 },
+    rosDelta: { delta: -0.1, resilienceWeeks: 0 },
+    addValue: { week: 15.2, nextThree: 14.7, restOfSeason: 12.9 },
+    dropValue: { week: 13, nextThree: 13, restOfSeason: 13 },
+    depthDelta: { week: 2.2, nextThree: 1.7, restOfSeason: -0.1 },
+    immediateNeed: false,
+  });
+  assert.equal(decision.verdict, "WATCH");
+  assert.equal(decision.actionable, false);
+  assert.match(decision.rationale, /rest-of-season/i);
+});
+
+test("waiver policy reserves RENTAL for a true lineup emergency with a major temporary edge", () => {
+  const dropPlayer = player("replaceable", "WR", 10);
+  const decision = classifyWaiverEdge({
+    addPlayer: player("emergency-cover", "WR", 14),
+    drop: { playerId: dropPlayer.id, salary: 12, contractYear: 1, player: dropPlayer },
+    currentDelta: { delta: 3.4, resilienceWeeks: 1 },
+    nextThreeDelta: { delta: 2.2, resilienceWeeks: 1 },
+    rosDelta: { delta: -0.2, resilienceWeeks: 0 },
+    addValue: { week: 14, nextThree: 12.2, restOfSeason: 10.1 },
+    dropValue: { week: 10, nextThree: 10, restOfSeason: 10 },
+    depthDelta: { week: 4, nextThree: 2.2, restOfSeason: 0.1 },
+    immediateNeed: true,
+  });
+  assert.equal(decision.verdict, "RENTAL");
+  assert.equal(decision.actionable, true);
+  assert.match(decision.rationale, /emergency short-term rental/i);
+});
+
+test("waiver policy protects a cheap keeper asset without a material ROS replacement gain", () => {
+  const rome = player("rome", "WR", 13, { name: "Rome Odunze", marketValue: 12 });
+  rome.tier = 3;
+  const decision = classifyWaiverEdge({
+    addPlayer: player("small-upgrade", "WR", 14),
+    drop: { playerId: rome.id, salary: 3, contractYear: 1, player: rome },
+    currentDelta: { delta: 2.4, resilienceWeeks: 0 },
+    nextThreeDelta: { delta: 1.4, resilienceWeeks: 0 },
+    rosDelta: { delta: 0.4, resilienceWeeks: 0 },
+    addValue: { week: 15.4, nextThree: 14.4, restOfSeason: 13.4 },
+    dropValue: { week: 13, nextThree: 13, restOfSeason: 13 },
+    depthDelta: { week: 2.4, nextThree: 1.4, restOfSeason: 0.4 },
+    immediateNeed: false,
+  });
+  assert.equal(decision.verdict, "WATCH");
+  assert.equal(decision.dropProtection.protected, true);
+  assert.equal(decision.dropProtection.blocked, true);
+  assert.match(decision.rationale, /low-cost keeper/i);
 });
 
 test("an earlier tied FAB win lowers that team for a later tied claim in the same overnight run", () => {
@@ -910,6 +970,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /async function loadLineupSelection/);
   assert.match(source, /starter-alternatives-toggle/);
   assert.match(source, /value\.lineup\.freeAgentAlternatives/);
+  assert.match(source, /const rows = eligible\.slice\(0, 25\)/);
+  assert.match(source, /verdict-\$\{String\(row\.verdict/);
+  assert.match(css, /\.verdict-watch/);
+  assert.match(css, /\.verdict-rental/);
   assert.match(source, /CBS-confirmed free agent/);
   assert.match(source, /url\.searchParams\.set\("week", String\(week\)\)/);
   assert.match(source, /url\.searchParams\.set\("team", teamId\)/);

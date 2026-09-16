@@ -187,8 +187,15 @@ function waiverExplanation(value, week) {
   const fab = value.fab || {};
   const alternatives = Array.isArray(value.alternatives) ? value.alternatives : [];
   const weekLabel = finite(week) ? `Week ${week}` : "Current week";
+  const verdict = String(value.verdict || "WATCH").toUpperCase();
+  const policy = value.policy || {};
+  const summary = verdict === "WATCH"
+    ? `Watch ${add.name}, but do not add the player for ${drop?.name || "a roster spot"}; the move does not clear the governed season-value and protected-drop gates.`
+    : verdict === "RENTAL"
+      ? `${add.name} is an emergency short-term rental, not a rest-of-season roster upgrade.`
+      : `The advisor ranks ${add.name} as ${verdict === "ADD" ? "an ADD" : "a CLAIM"} because ${drop ? `adding ${add.name} for ${drop.name}` : `adding ${add.name} into an open roster spot`} keeps the roster legal and clears both the immediate and rest-of-season value gates.`;
   return {
-    summary: `The advisor ranks ${add.name} as a ${value.verdict || "waiver"} option because ${drop ? `adding ${add.name} for ${drop.name}` : `adding ${add.name} into an open roster spot`} keeps the roster legal and clears the meaningful-improvement gate.`,
+    summary,
     sections: [
       section("Projected effect", [
         `${weekLabel}: ${signedPoints(gains.week)}.`,
@@ -199,7 +206,9 @@ function waiverExplanation(value, week) {
       section("Why this player and this drop", [
         clean(value.reason),
         drop && finite(value.dropValue?.week) ? `${drop.name} is projected for ${points(value.dropValue.week)} in ${weekLabel}, ${points(value.dropValue.nextThree)} per game over the next three weeks, and ${points(value.dropValue.restOfSeason)} per game over the rest of the season. That depth value is counted even if ${drop.name} is not currently starting.` : "No player must be dropped because the roster has an open spot.",
-        drop && finite(value.depthDelta?.week) ? `The added player's own projection minus the dropped player's projection is ${signedPoints(value.depthDelta.week)} for ${weekLabel}; this is separate from the starting-lineup change above.` : "",
+        drop && finite(value.depthDelta?.week) ? `The added player's own projection minus the dropped player's projection is ${signedPoints(value.depthDelta.week)} for ${weekLabel}, ${signedPoints(value.depthDelta.nextThree)} over the next three, and ${signedPoints(value.depthDelta.restOfSeason)} over the rest of the season; this is separate from the optimized starting-lineup change above.` : "",
+        clean(policy.rationale),
+        clean(policy.dropProtection?.reason),
         evidence.range && finite(evidence.range.median) ? `${add.name}'s ${weekLabel} projection is ${points(evidence.range.median)}, with a ${decimal(evidence.range.floor)}–${decimal(evidence.range.ceiling)} range.` : "",
         confidence(value.confidence),
       ]),
@@ -208,7 +217,7 @@ function waiverExplanation(value, week) {
         "The advisor tested the move against the league's eight required starters and 14-player maximum.",
         clean(evidence.rosterFit?.rationale),
         "An extra K or DST, or a third QB, is rejected unless it replaces the same position or solves a documented current-week availability need.",
-        "The player ranking uses current-season projected lineup value and roster legality; roster salary and contract are excluded.",
+        "A captured low-cost keeper contract can veto a drop but never inflates a free agent's ranking; the unknown winning FAB bid is not assumed to be a cheap future salary.",
       ]),
       section("Blind-auction bid plan", finite(fab.recommended) ? [
         `Recommended bid: $${Number(fab.recommended).toFixed(0)}; do not exceed $${Number(fab.maximum).toFixed(0)} for this claim.`,
@@ -221,10 +230,12 @@ function waiverExplanation(value, week) {
         fab.bidHistoryAvailable ? "CBS bid history is available for competition calibration." : "CBS does not currently expose enough losing-bid history to calibrate rival bids, so the maximum is a conservative value cap—not a prediction of the winning price.",
         alternatives.length ? `If this player is gone, continue with ${alternatives.map((item) => `#${item.priority} ${item.name}${finite(item.recommendedBid) ? ` at $${item.recommendedBid}` : ""}`).join(", ")}.` : "No lower-ranked alternative cleared every current gate.",
       ] : [
-        clean(fab.unavailableReason) || "FAB balances, standings, and priority order have not been captured, so the advisor will not invent a bid.",
+        verdict === "WATCH"
+          ? "No bid is recommended because this is a watch item, not an actionable claim."
+          : clean(fab.unavailableReason) || "FAB balances, standings, and priority order have not been captured, so the advisor will not invent a bid.",
       ]),
       section("What the bid does not use", [
-        "The bid is constrained by the separate $50 season FAB balance. A player's roster salary after acquisition does not increase his waiver ranking or trade value.",
+        "The bid is constrained by the separate $50 season FAB balance. A player's unknown post-acquisition salary does not increase his waiver ranking; a captured inexpensive keeper contract is used only as protection against an unnecessarily destructive drop.",
       ]),
       section("Role and news", [
         role ? `Depth-chart role: ${role.starter ? "starter" : `depth order ${role.order ?? "unknown"}`}${clean(role.status) ? `; status ${role.status}` : ""}.` : "No additional depth-chart signal is registered.",

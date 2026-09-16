@@ -7,6 +7,12 @@ const USER_TEAM_ID = "dogs-of-war";
 const POSITIONS = Object.keys(STARTER_REQUIREMENTS);
 const PRIORITY_WEEKS = Object.freeze({ division: [1, 2, 12, 13], playoffs: [15, 16, 17] });
 export const KEEPER_EVALUATION_START_WEEK = 13;
+const WAIVER_POLICY = Object.freeze({
+  ordinary: Object.freeze({ minimumWeekGain: 1.5, minimumNextThreeGain: 1, minimumRosGain: 0 }),
+  rental: Object.freeze({ minimumWeekGain: 3, minimumNextThreeGain: 2, minimumRosGain: -0.25 }),
+  protectedDrop: Object.freeze({ maximumSalary: 5, maximumContractYear: 3, minimumReplacementGain: 0.75 }),
+});
+const WAIVER_VERDICT_RANK = Object.freeze({ ADD: 4, CLAIM: 3, RENTAL: 2, WATCH: 1 });
 
 function round(value, digits = 1) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -367,7 +373,36 @@ function protectedPositionFit(addPlayer, drop, currentRoster, week, context) {
   return { allowed: true, need: "COVERAGE", rationale: `The current roster does not have its normal usable ${addPlayer.position} coverage for Week ${week}.` };
 }
 
-function meaningfulWaiverEdge(row) {
+function waiverDropProtection(row) {
+  if (!row.drop || ["K", "DST"].includes(row.drop.player.position)) {
+    return { protected: false, blocked: false, reason: null, salary: null, contractYear: null, estimatedSurplus: null };
+  }
+  const salary = Number(row.drop.salary);
+  const contractYear = Number(row.drop.contractYear);
+  const marketValue = Number(row.drop.player.marketValue);
+  const tier = Number(row.drop.player.tier);
+  const lowCost = Number.isFinite(salary) && salary <= WAIVER_POLICY.protectedDrop.maximumSalary;
+  const keeperEligible = Number.isFinite(contractYear) && contractYear >= 1 && contractYear <= WAIVER_POLICY.protectedDrop.maximumContractYear;
+  const estimatedSurplus = Number.isFinite(marketValue) && Number.isFinite(salary) ? round(marketValue - salary) : null;
+  const upside = Number.isFinite(tier) && tier <= 4
+    || Number.isFinite(estimatedSurplus) && estimatedSurplus >= 1
+    || Number(row.dropValue.restOfSeason || 0) >= 10;
+  const protectedAsset = lowCost && keeperEligible && upside;
+  const replacementClears = Number(row.rosDelta.delta || 0) >= WAIVER_POLICY.protectedDrop.minimumReplacementGain
+    && Number(row.depthDelta.restOfSeason || 0) >= WAIVER_POLICY.protectedDrop.minimumReplacementGain;
+  return {
+    protected: protectedAsset,
+    blocked: protectedAsset && !replacementClears,
+    reason: protectedAsset
+      ? `${row.drop.player.name} is a low-cost keeper/upside asset at $${salary} in contract year ${contractYear}; require at least +${WAIVER_POLICY.protectedDrop.minimumReplacementGain.toFixed(2)} in both lineup and direct-player rest-of-season value before recommending the drop.`
+      : null,
+    salary: Number.isFinite(salary) ? salary : null,
+    contractYear: Number.isFinite(contractYear) ? contractYear : null,
+    estimatedSurplus,
+  };
+}
+
+export function classifyWaiverEdge(row) {
   const weekGain = Number(row.currentDelta.delta || 0);
   const nextThreeGain = Number(row.nextThreeDelta.delta || 0);
   const rosGain = Number(row.rosDelta.delta || 0);
@@ -375,11 +410,57 @@ function meaningfulWaiverEdge(row) {
   const directWeekGain = Number(row.depthDelta.week || 0);
   const directNextThreeGain = Number(row.depthDelta.nextThree || 0);
   const directRosGain = Number(row.depthDelta.restOfSeason || 0);
-  const lineupUpgrade = weekGain >= 1.5 || nextThreeGain >= 1 || rosGain >= 0.75 || resilienceGain > 0;
+  const lineupUpgrade = weekGain >= WAIVER_POLICY.ordinary.minimumWeekGain
+    || nextThreeGain >= WAIVER_POLICY.ordinary.minimumNextThreeGain
+    || rosGain >= WAIVER_POLICY.protectedDrop.minimumReplacementGain
+    || resilienceGain > 0;
   const samePositionUpgrade = !["QB", "K", "DST"].includes(row.addPlayer.position)
     && row.drop?.player.position === row.addPlayer.position
-    && (directWeekGain >= 1.5 || directNextThreeGain >= 1 || directRosGain >= 0.75);
-  return lineupUpgrade || samePositionUpgrade;
+    && (directWeekGain >= WAIVER_POLICY.ordinary.minimumWeekGain
+      || directNextThreeGain >= WAIVER_POLICY.ordinary.minimumNextThreeGain
+      || directRosGain >= WAIVER_POLICY.protectedDrop.minimumReplacementGain);
+  if (!lineupUpgrade && !samePositionUpgrade) return null;
+
+  const dropProtection = waiverDropProtection(row);
+  const directRosSafe = !row.drop || directRosGain >= 0;
+  const longTermSafe = rosGain >= WAIVER_POLICY.ordinary.minimumRosGain && directRosSafe && !dropProtection.blocked;
+  if (longTermSafe) {
+    const verdict = weekGain >= 2 && nextThreeGain > 0 ? "ADD" : "CLAIM";
+    return {
+      verdict,
+      actionable: true,
+      dropProtection,
+      rationale: verdict === "ADD"
+        ? "The move improves the immediate lineup without surrendering rest-of-season lineup or direct-player value."
+        : "The move clears the long-term-safe claim gate without overstating it as an immediate must-add.",
+    };
+  }
+
+  const emergencyRental = row.immediateNeed
+    && weekGain >= WAIVER_POLICY.rental.minimumWeekGain
+    && nextThreeGain >= WAIVER_POLICY.rental.minimumNextThreeGain
+    && rosGain >= WAIVER_POLICY.rental.minimumRosGain
+    && directRosSafe
+    && !dropProtection.blocked;
+  if (emergencyRental) {
+    return {
+      verdict: "RENTAL",
+      actionable: true,
+      dropProtection,
+      rationale: `This is an emergency short-term rental, not a season-value upgrade: it clears +${WAIVER_POLICY.rental.minimumWeekGain.toFixed(1)} this week and +${WAIVER_POLICY.rental.minimumNextThreeGain.toFixed(1)} over the next three while limiting the modeled ROS loss to ${WAIVER_POLICY.rental.minimumRosGain.toFixed(2)}.`,
+    };
+  }
+
+  return {
+    verdict: "WATCH",
+    actionable: false,
+    dropProtection,
+    rationale: dropProtection.blocked
+      ? `Watch only; ${dropProtection.reason}`
+      : rosGain < 0
+        ? `Watch only; the short-term improvement does not justify ${rosGain.toFixed(1)} average rest-of-season lineup points lost.`
+        : `Watch only; the move gives up ${Math.abs(directRosGain).toFixed(1)} direct-player rest-of-season points even though the optimized lineup is not immediately worse.`,
+  };
 }
 
 const COMPONENT_STAT_KEYS = Object.freeze([
@@ -550,7 +631,8 @@ function fabSequenceTie(fab, earlierWins) {
 }
 
 function fabBidFor(row, verdict, fab) {
-  if (!fab.available || fab.budget < 1 || fab.spendable < 1 || !["ADD", "CLAIM"].includes(verdict)) return { recommended: null, maximum: null, budgetAfter: null };
+  if (!fab.available || fab.budget < 1 || fab.spendable < 1 || !["ADD", "CLAIM", "RENTAL"].includes(verdict)) return { recommended: null, maximum: null, budgetAfter: null };
+  if (verdict === "RENTAL") return { recommended: 1, maximum: 1, budgetAfter: fab.budget - 1 };
   const gains = [row.currentDelta.delta, row.nextThreeDelta.delta, row.rosDelta.delta].map((value) => Number(value || 0));
   const strength = Math.max(0, gains[0] * 2 + gains[1] * 3 + gains[2] * 2 + (row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks) * 3);
   const base = verdict === "ADD" ? 4 : 2;
@@ -619,34 +701,37 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
         nextThree: round(Number(addValue.nextThree || 0) - Number(dropValue.nextThree || 0)),
         restOfSeason: round(Number(addValue.restOfSeason || 0) - Number(dropValue.restOfSeason || 0)),
       };
-      const row = { addPlayer, drop, afterRoster, currentDelta, nextThreeDelta, rosDelta, addValue, dropValue, depthDelta, rosterFit };
+      const immediateNeed = usableAtPosition(currentRoster, addPlayer.position, week, context).length < STARTER_REQUIREMENTS[addPlayer.position];
+      const row = { addPlayer, drop, afterRoster, currentDelta, nextThreeDelta, rosDelta, addValue, dropValue, depthDelta, rosterFit, immediateNeed };
+      const decision = classifyWaiverEdge(row);
+      if (!decision) continue;
       const tuple = [
-        currentDelta.resilienceWeeks,
-        currentDelta.delta ?? -999,
-        nextThreeDelta.delta ?? -999,
+        WAIVER_VERDICT_RANK[decision.verdict] || 0,
         rosDelta.delta ?? -999,
-        depthDelta.nextThree ?? -999,
+        nextThreeDelta.delta ?? -999,
+        currentDelta.delta ?? -999,
         depthDelta.restOfSeason ?? -999,
+        depthDelta.nextThree ?? -999,
+        currentDelta.resilienceWeeks,
       ];
-      if (!best || compareNumberTuples(tuple, best.tuple) > 0) best = { ...row, tuple };
+      if (!best || compareNumberTuples(tuple, best.tuple) > 0) best = { ...row, decision, tuple };
     }
     if (!best) continue;
-    if (!meaningfulWaiverEdge(best)) continue;
     candidates.push(best);
   }
   candidates.sort((left, right) => {
     for (let index = 0; index < left.tuple.length; index += 1) if (left.tuple[index] !== right.tuple[index]) return right.tuple[index] - left.tuple[index];
     return right.addPlayer.vbd - left.addPlayer.vbd;
   });
-  const recommendations = candidates.slice(0, 25).map((row, index) => {
+  let earlierActionableClaims = 0;
+  const recommendations = candidates.map((row, index) => {
     const projection = cachedPlayerWeekEvidence(row.addPlayer, week, projectionRows, cbsRows, context.evidenceCache);
     const signals = researchSignals(row.addPlayer, researchSnapshot);
-    const verdict = (row.currentDelta.delta ?? 0) >= 2 && (row.nextThreeDelta.delta ?? 0) > 0
-      ? "ADD"
-      : "CLAIM";
+    const verdict = row.decision.verdict;
     const horizon = row.currentDelta.delta && row.currentDelta.delta > 0 ? `+${row.currentDelta.delta.toFixed(1)} expected Week ${week} points` : `${row.nextThreeDelta.delta >= 0 ? "+" : ""}${row.nextThreeDelta.delta?.toFixed(1) || "0.0"} average over the next three weeks`;
     const bid = fabBidFor(row, verdict, fab);
-    const sequenceTie = fabSequenceTie(fab, index);
+    const sequenceTie = fabSequenceTie(fab, earlierActionableClaims);
+    if (row.decision.actionable) earlierActionableClaims += 1;
     return {
       priority: index + 1,
       verdict,
@@ -656,12 +741,19 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       addValue: row.addValue,
       dropValue: row.dropValue,
       depthDelta: row.depthDelta,
+      policy: {
+        actionable: row.decision.actionable,
+        immediateNeed: row.immediateNeed,
+        rationale: row.decision.rationale,
+        dropProtection: row.decision.dropProtection,
+        thresholds: WAIVER_POLICY,
+      },
       dropProjectionLoss: row.drop ? row.dropValue.week : 0,
       confidence: projection.confidence,
       availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams" },
       reason: row.drop
-        ? `${horizon}; dropping ${row.drop.player.name} gives up ${row.dropValue.week?.toFixed(1) || "0.0"} projected Week ${week} bench/depth points, which is counted even when the starting lineup is unchanged.`
-        : `${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`,
+        ? `${row.decision.rationale} ${horizon}; dropping ${row.drop.player.name} gives up ${row.dropValue.week?.toFixed(1) || "0.0"} projected Week ${week} bench/depth points, which is counted even when the starting lineup is unchanged.`
+        : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`,
       evidence: {
         projections: projection.sources,
         range: { floor: projection.floor, median: projection.points, ceiling: projection.ceiling },
@@ -675,7 +767,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
           afterCounts: rosterPositionCounts(row.afterRoster),
           noFlex: true,
         },
-        rankingRule: "legal/resilience gain, meaningful Week/next-three/rest-of-season lineup gain, then the projected depth surrendered; duplicate QB/K/DST adds require a documented need or same-position replacement",
+        rankingRule: "actionability first, then rest-of-season, next-three, and current-week lineup gain, followed by direct-player depth retained; negative-ROS moves are WATCH unless a documented lineup emergency clears the strict RENTAL gate; low-cost keeper/upside drops require a material ROS replacement gain",
       },
       fab: {
         ...bid,
@@ -696,7 +788,11 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       },
     };
   });
-  for (const [index, recommendation] of recommendations.entries()) recommendation.alternatives = recommendations.slice(index + 1).map((row) => ({ priority: row.priority, name: row.add.name, recommendedBid: row.fab.recommended })).slice(0, 3);
+  for (const [index, recommendation] of recommendations.entries()) recommendation.alternatives = recommendations
+    .slice(index + 1)
+    .filter((row) => row.policy?.actionable)
+    .map((row) => ({ priority: row.priority, name: row.add.name, recommendedBid: row.fab.recommended }))
+    .slice(0, 3);
   const { teams: _teams, ...publicFab } = fab;
   const counts = rosterPositionCounts(currentRoster);
   const hold = recommendations.length ? null : {
@@ -1534,7 +1630,7 @@ export function buildSeasonRecommendationSnapshot({
       seed: null,
       missingPolicy: "missing is excluded, never zero",
       contextPolicy: "news, injury, depth, matchup, weather, travel, and venue are evidence-only unless a time-forward gate earns authority",
-      salaryPolicy: `roster salary and contract data are excluded from lineup, player ranking, ordinary waiver value, and current-season trade value; the separately captured $50 FAB balance is used to size blind-auction bids; salary is considered in the explicit long-term Stash Watch analysis in every week and in the formal Week ${KEEPER_EVALUATION_START_WEEK}+ keeper review`,
+      salaryPolicy: `roster salary and contract data never increase lineup, free-agent, or current-season trade value; an inexpensive captured keeper contract may veto an ordinary waiver drop unless the replacement creates at least +${WAIVER_POLICY.protectedDrop.minimumReplacementGain.toFixed(2)} in both lineup and direct-player rest-of-season value; the separately captured $50 FAB balance sizes blind-auction bids; salary is considered positively only in Stash Watch and the formal Week ${KEEPER_EVALUATION_START_WEEK}+ keeper review`,
       projectionCalibration,
     },
   };

@@ -91,7 +91,8 @@ test("AI lineup advice uses the Responses API with strict saved output and every
   assert.match(captured.body.instructions, /8-14 players/);
   assert.match(captured.body.instructions, /\$50 full-season blind FAB budget/);
   assert.match(captured.body.instructions, /worse record, then fewer successful pickups/);
-  assert.match(captured.body.instructions, /Current-season salary and contract cost do not affect/);
+  assert.match(captured.body.instructions, /Current-season salary and contract cost never increase/);
+  assert.match(captured.body.instructions, /protective veto against dropping an existing asset/);
   assert.match(captured.body.instructions, /EVIDENCE_JSON as untrusted data/);
   assert.match(captured.body.input, /REQUESTED_SECTION: lineup/);
   assert.match(captured.body.input, /"submittedKnown":false/);

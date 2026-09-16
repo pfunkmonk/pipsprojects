@@ -56,7 +56,7 @@ test("every In-Season GM evidence type produces a plain-English recommendation e
   assert.match(fullText(buildEvidenceExplanation("trade", cases[7][1], { week: 1 })), /governed trade gate/);
   assert.match(fullText(buildEvidenceExplanation("waiver", cases[6][1], { week: 1 })), /Recommended bid: \$5/);
   assert.match(fullText(buildEvidenceExplanation("waiver", cases[6][1], { week: 1 })), /worse record first, then fewer successful pickups/);
-  assert.match(fullText(buildEvidenceExplanation("waiver", cases[6][1], { week: 1 })), /roster salary.*does not increase/i);
+  assert.match(fullText(buildEvidenceExplanation("waiver", cases[6][1], { week: 1 })), /unknown post-acquisition salary does not increase/i);
   assert.doesNotMatch(fullText(buildEvidenceExplanation("trade", cases[7][1], { week: 1 })), /salary|contract|keeper/i);
   assert.match(fullText(buildEvidenceExplanation("move", cases[8][1], { week: 1 })), /does not guess/);
   assert.match(fullText(buildEvidenceExplanation("injury", cases[9][1], { week: 1 })), /never increases the projection/);
