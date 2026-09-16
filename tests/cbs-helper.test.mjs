@@ -77,7 +77,7 @@ test("CBS helper manifest is least-privilege and has no cookie or storage permis
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, ["https://*.football.cbssports.com/*", "https://www.footballguys.com/*", "https://www.fantasypros.com/*", "https://www.pff.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.10.6");
+  assert.equal(manifest.version, "0.10.7");
   assert.deepEqual(manifest.content_scripts.find((entry) => entry.matches.includes("https://*.football.cbssports.com/*"))?.js, ["cbs-page-reader.js"]);
   assert.ok(manifest.content_scripts.some((entry) => entry.matches.includes("https://pipsprojects.com/draft-day/*") && entry.js.includes("page-bridge.js")));
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
@@ -92,7 +92,7 @@ test("the season page accepts only the exact current helper protocol and release
     readFile(new URL("../public/thunder-bowl/supplemental-session-capture.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(bridge, /PROTOCOL_VERSION = 2/);
-  assert.match(bridge, /HELPER_VERSION = "0\.10\.6"/);
+  assert.match(bridge, /HELPER_VERSION = "0\.10\.7"/);
   assert.match(bridge, /captureCbsInStages/);
   assert.match(bridge, /action: "capture-cbs-roster-base"/);
   assert.match(bridge, /action: "capture-cbs-schedule"/);
@@ -109,8 +109,8 @@ test("the season page accepts only the exact current helper protocol and release
   assert.match(bridge, /versionResult\?\.helperVersion !== HELPER_VERSION/);
   for (const client of [cbsClient, fbgClient, supplementalClient]) {
     assert.match(client, /CAPTURE_PROTOCOL_VERSION = 2/);
-    assert.match(client, /REQUIRED_HELPER_VERSION = "0\.10\.6"/);
-    assert.match(client, /COMPATIBLE_HELPER_VERSIONS = Object\.freeze\(\[.*REQUIRED_HELPER_VERSION, "0\.10\.5"\]\)/);
+    assert.match(client, /REQUIRED_HELPER_VERSION = "0\.10\.7"/);
+    assert.match(client, /COMPATIBLE_HELPER_VERSIONS = Object\.freeze\(\[.*REQUIRED_HELPER_VERSION, "0\.10\.6"\]\)/);
     assert.match(client, /COMPATIBLE_HELPER_VERSIONS\.includes\(data\.helperVersion\)/);
     assert.match(client, /for \(const expectedHelperVersion of .*COMPATIBLE_HELPER_VERSIONS\)/);
     assert.match(client, /expectedHelperVersion,/);
@@ -136,8 +136,8 @@ test("the Draft Day bridge sends one version-checked CBS setup request and retur
     lastError: null,
     sendMessage(message, callback) {
       calls.push({ ...message });
-      if (message.action === "helper-version") callback({ ok: true, helperVersion: "0.10.6" });
-      else callback({ ok: true, helperVersion: "0.10.6", setup });
+      if (message.action === "helper-version") callback({ ok: true, helperVersion: "0.10.7" });
+      else callback({ ok: true, helperVersion: "0.10.7", setup });
     },
   };
   const fakeWindow = {
@@ -155,7 +155,7 @@ test("the Draft Day bridge sends one version-checked CBS setup request and retur
       source: "pips-draft-day-app",
       type: "PIPS_DRAFT_DAY_CBS_SETUP_REQUEST",
       protocolVersion: 2,
-      expectedHelperVersion: "0.10.6",
+      expectedHelperVersion: "0.10.7",
       requestId: "draft-day-setup-test",
     },
   });
@@ -181,7 +181,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
     sendMessage(message, callback) {
       calls.push({ ...message });
       if (message.action === "helper-version") {
-        callback({ ok: true, helperVersion: "0.10.6" });
+        callback({ ok: true, helperVersion: "0.10.7" });
         return;
       }
       const attempt = (attempts.get(message.action) || 0) + 1;
@@ -197,31 +197,31 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
           return;
         }
         if (message.action === failAction) {
-          callback({ ok: false, helperVersion: "0.10.6", error: `${failAction} stopped safely` });
+          callback({ ok: false, helperVersion: "0.10.7", error: `${failAction} stopped safely` });
           return;
         }
         if (message.action === "capture-cbs-roster-base") {
-          callback({ ok: true, helperVersion: "0.10.6", snapshot: { schemaVersion: 1, teams: [{ name: "Dogs of War", players: [{ cbsPlayerId: "1", name: "Jalen Hurts" }] }], projectionCount: 0 } });
+          callback({ ok: true, helperVersion: "0.10.7", snapshot: { schemaVersion: 1, teams: [{ name: "Dogs of War", players: [{ cbsPlayerId: "1", name: "Jalen Hurts" }] }], projectionCount: 0 } });
           return;
         }
         if (message.action === "capture-cbs-schedule") {
-          callback({ ok: true, helperVersion: "0.10.6", rawLeagueSchedule: { schemaVersion: 1, pages: [{ url: "https://berrymvp.football.cbssports.com/schedule/full" }] } });
+          callback({ ok: true, helperVersion: "0.10.7", rawLeagueSchedule: { schemaVersion: 1, pages: [{ url: "https://berrymvp.football.cbssports.com/schedule/full" }] } });
           return;
         }
         if (message.action === "capture-cbs-fab") {
-          callback({ ok: true, helperVersion: "0.10.6", fabState: null });
+          callback({ ok: true, helperVersion: "0.10.7", fabState: null });
           return;
         }
         if (message.action === "capture-cbs-preview") {
-          callback({ ok: true, helperVersion: "0.10.6", rawScoringPreview: { schemaVersion: 1, rows: [] } });
+          callback({ ok: true, helperVersion: "0.10.7", rawScoringPreview: { schemaVersion: 1, rows: [] } });
           return;
         }
         if (message.action === "capture-cbs-position") {
           const rows = Array.from({ length: 20 }, (_, index) => ({ cbsPlayerId: `${message.position}-${index}`, position: message.position }));
-          callback({ ok: true, helperVersion: "0.10.6", position: message.position, rows });
+          callback({ ok: true, helperVersion: "0.10.7", position: message.position, rows });
           return;
         }
-        callback({ ok: false, helperVersion: "0.10.6", error: "unexpected action" });
+        callback({ ok: false, helperVersion: "0.10.7", error: "unexpected action" });
       }, 1);
     },
   };
@@ -240,7 +240,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
       source: "thunder-bowl-app",
       type: "THUNDER_BOWL_CBS_CAPTURE_REQUEST",
       protocolVersion: 2,
-      expectedHelperVersion: "0.10.6",
+      expectedHelperVersion: "0.10.7",
       requestId: "release-test",
       week: 1,
     },
@@ -252,7 +252,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
 test("CBS one-click bridge runs every short stage serially and recovers one worker restart", async () => {
   const result = await exerciseCbsBridge({ transientAction: "capture-cbs-schedule" });
   assert.equal(result.message.ok, true);
-  assert.equal(result.message.helperVersion, "0.10.6");
+  assert.equal(result.message.helperVersion, "0.10.7");
   assert.equal(result.message.snapshot.weeklyProjections.length, 120);
   assert.equal(result.message.snapshot.projectionCount, 120);
   assert.equal(result.message.snapshot.fabState, undefined);
@@ -297,7 +297,7 @@ test("the helper waits for authenticated rendered content and limits CBS setup t
   assert.match(worker, /response\.readerVersion !== HELPER_VERSION/);
   assert.match(worker, /waitForRenderedSchedulePage\(tabId, fullScheduleUrl, 30_000\)/);
   assert.match(worker, /15_000/);
-  assert.match(cbsReader, /READER_VERSION = "0\.10\.6"/);
+  assert.match(cbsReader, /READER_VERSION = "0\.10\.7"/);
   assert.match(cbsReader, /teamTableCount >= 12/);
   assert.match(cbsReader, /projectionTable\?\.querySelector/);
   assert.match(cbsReader, /rosterNameHits >= 8/);
@@ -389,7 +389,7 @@ test("the helper waits for authenticated rendered content and limits CBS setup t
   assert.match(worker, /rawScoringPreview/);
   assert.match(worker, /live scoring page/);
   assert.match(worker, /expectedPlayers/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.10\.6\.zip/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.10\.7\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
 });
 
@@ -683,6 +683,21 @@ test("CBS row normalization preserves authenticated partial auction rosters", ()
   assert.equal(normalized.players.length, 11);
 });
 
+test("CBS row normalization permits a 15th player only with authenticated PUP/IR evidence", () => {
+  const team = { teamId: "orange-crush", cbsTeamId: 2, name: "Orange Crush" };
+  const rows = Array.from({ length: 15 }, (_, index) => rawPlayer(7000 + index, `Orange Player ${index + 1}`));
+  assert.throws(() => normalizeCbsTeamRows(team, rows), /none|PUP\/IR|plus one CBS-marked/i);
+
+  rows[14].newsTitles = ["Physically Unable to Perform. Expected Return - Week 5"];
+  const normalized = normalizeCbsTeamRows(team, rows);
+  assert.equal(normalized.players.length, 15);
+  assert.equal(normalized.players[14].irEligible, true);
+  assert.equal(normalized.players.filter((player) => player.irEligible).length, 1);
+
+  const sixteen = [...rows, rawPlayer(7015, "Orange Player 16")];
+  assert.throws(() => normalizeCbsTeamRows(team, sixteen), /returned 16 roster rows/i);
+});
+
 test("CBS roster readiness accepts the required eight starters plus zero to six backups", () => {
   const starters = ["QB", "RB", "RB", "WR", "WR", "TE", "K", "DST"];
   const teams = Array.from({ length: 12 }, (_, teamIndex) => ({
@@ -701,6 +716,32 @@ test("CBS roster readiness accepts the required eight starters plus zero to six 
   const missingDefense = cbsLeagueRosterReadiness(teams);
   assert.equal(missingDefense.rostersReady, false);
   assert.deepEqual(missingDefense.teamStatuses[0].missingSlots, ["DST"]);
+});
+
+test("CBS roster readiness counts one verified PUP/IR player outside the 14-player active cap", () => {
+  const starters = ["QB", "RB", "RB", "WR", "WR", "TE", "K", "DST"];
+  const roster = Array.from({ length: 15 }, (_, index) => ({
+    position: index < starters.length ? starters[index] : "WR",
+    newsTitles: index === 14 ? ["Injured Reserve"] : [],
+    markerClasses: [],
+  }));
+  const ready = cbsLeagueRosterReadiness(Array.from({ length: 12 }, (_, index) => ({
+    teamId: `team-${index}`,
+    teamName: `Team ${index}`,
+    roster: structuredClone(roster),
+  })));
+  assert.equal(ready.rostersReady, true);
+  assert.equal(ready.rosterMaximum, 14);
+  assert.equal(ready.totalRosterMaximum, 15);
+  assert.equal(ready.teamStatuses[0].rosterSize, 15);
+  assert.equal(ready.teamStatuses[0].activeRosterSize, 14);
+  assert.equal(ready.teamStatuses[0].irExemptionCount, 1);
+
+  ready.teamStatuses.length = 0;
+  roster[14].newsTitles = [];
+  const invalid = cbsLeagueRosterReadiness([{ teamId: "orange-crush", teamName: "Orange Crush", roster }]);
+  assert.equal(invalid.teamStatuses[0].aboveMaximum, true);
+  assert.equal(invalid.teamStatuses[0].legal, false);
 });
 
 test("stored CBS state is re-evaluated under the legal starter rule instead of stale 14-player metadata", () => {
@@ -788,6 +829,33 @@ test("CBS roster snapshot validation requires all 12 exact league teams", () => 
   assert.throws(() => validateCbsRosterSnapshot(snapshot), /unknown team mapping/);
 });
 
+test("CBS snapshot validation accepts 15 only when the extra roster row carries CBS PUP/IR evidence", () => {
+  const teams = scheduleTeams.map(([teamId, name], teamIndex) => {
+    const count = teamId === "orange-crush" ? 15 : 14;
+    const rows = Array.from({ length: count }, (_, playerIndex) => rawPlayer(110000 + teamIndex * 100 + playerIndex, `${name} Player ${playerIndex + 1}`));
+    if (teamId === "orange-crush") rows[14].markerClasses = ["player-status-ir"];
+    return normalizeCbsTeamRows({ teamId, cbsTeamId: teamIndex + 1, name }, rows);
+  });
+  const snapshot = {
+    schemaVersion: 1,
+    source: "CBS Sports authenticated Thunder Bowl all-team roster report",
+    modelEffect: "none",
+    capturedAt: "2026-09-16T14:00:00.000Z",
+    season: 2026,
+    pageUrl: "https://berrymvp.football.cbssports.com/teams/roster-report/all/2026/",
+    teamCount: 12,
+    playerCount: teams.reduce((sum, team) => sum + team.players.length, 0),
+    teams,
+    leagueSchedule: rawLeagueSchedule(),
+  };
+  assert.equal(validateCbsRosterSnapshot(snapshot), snapshot);
+  assert.equal(cbsLeagueRosterReadiness(teams).teamStatuses.find((team) => team.teamId === "orange-crush").activeRosterSize, 14);
+
+  snapshot.teams.find((team) => team.teamId === "orange-crush").players[14].irEligible = false;
+  snapshot.teams.find((team) => team.teamId === "orange-crush").players[14].markerClasses = [];
+  assert.throws(() => validateCbsRosterSnapshot(snapshot), /15 players only.*PUP\/IR/i);
+});
+
 test("the app materializes raw CBS schedule pages before enforcing the roster snapshot contract", () => {
   const teams = scheduleTeams.map(([teamId, name], teamIndex) => normalizeCbsTeamRows(
     { teamId, cbsTeamId: teamIndex + 1, name },
@@ -867,7 +935,7 @@ test("CBS capture rejects an invalid helper response immediately instead of hang
     addEventListener(type, listener) { if (type === "message") listeners.add(listener); },
     removeEventListener(type, listener) { if (type === "message") listeners.delete(listener); },
     postMessage(message, origin) {
-      if (message.source !== "thunder-bowl-app" || message.expectedHelperVersion !== "0.10.6") return;
+      if (message.source !== "thunder-bowl-app" || message.expectedHelperVersion !== "0.10.7") return;
       queueMicrotask(() => {
         for (const listener of [...listeners]) listener({
           source: fakeWindow,
@@ -876,7 +944,7 @@ test("CBS capture rejects an invalid helper response immediately instead of hang
             source: "thunder-bowl-cbs-helper",
             type: "THUNDER_BOWL_CBS_CAPTURE_RESPONSE",
             protocolVersion: 2,
-            helperVersion: "0.10.6",
+            helperVersion: "0.10.7",
             requestId: message.requestId,
             ok: true,
             snapshot: {},

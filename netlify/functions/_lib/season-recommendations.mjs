@@ -1,4 +1,5 @@
 import { STARTER_REQUIREMENTS } from "../../../public/thunder-bowl/state-engine.mjs";
+import { cbsTeamRosterReadiness } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
 import { PREMIUM_PROJECTION_SOURCES, projectionSourceWeights } from "../../../public/thunder-bowl/projection-lab.mjs";
 import { ageMinutes } from "./season-time.mjs";
 import { kickoffAt, sourceAudit } from "./season-management.mjs";
@@ -64,7 +65,7 @@ function leagueRostersReady(leagueState) {
 function incompleteRosterMessage(leagueState, decision) {
   const legal = Number.isSafeInteger(leagueState?.legalTeamCount) ? leagueState.legalTeamCount : Number.isSafeInteger(leagueState?.completeTeamCount) ? leagueState.completeTeamCount : 0;
   const teams = Number.isSafeInteger(leagueState?.teamCount) ? leagueState.teamCount : leagueState?.teams?.length || 12;
-  return `CBS updated successfully, but only ${legal} of ${teams} teams have a legal 8–14 player roster with 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST. ${decision} stays blocked until every team satisfies the league rule.`;
+  return `CBS updated successfully, but only ${legal} of ${teams} teams have a legal 8–14 active-player roster (plus the separate PUP/IR slot) with 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST. ${decision} stays blocked until every team satisfies the league rule.`;
 }
 
 function projectionRowMaps({ fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, allowSeasonShapes = false } = {}) {
@@ -402,6 +403,13 @@ function waiverDropProtection(row) {
     contractYear: Number.isFinite(contractYear) ? contractYear : null,
     estimatedSurplus,
   };
+}
+
+function rosterReadiness(roster) {
+  return cbsTeamRosterReadiness(roster.map((entry) => ({
+    ...entry,
+    position: entry.player.position,
+  })));
 }
 
 export function classifyWaiverEdge(row) {
@@ -821,7 +829,14 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
     verdict: "HOLD",
     confidence: "HIGH",
     reason: `Hold FAB and roster depth. Dogs of War already has a legal ${currentRoster.length}-player roster, and no CBS-available player produced a meaningful lineup or depth upgrade after counting the actual value of the player surrendered. Duplicate QB, K, or DST claims are excluded unless they replace that position or solve a documented Week ${week} availability need.`,
-    roster: { size: currentRoster.length, maximum: 14, counts, noFlex: true },
+    roster: {
+      size: currentRoster.length,
+      activeMaximum: 14,
+      totalMaximumWithIr: 15,
+      irExemptionUsed: rosterReadiness(currentRoster).irExemptionCount === 1,
+      counts,
+      noFlex: true,
+    },
     fab: { currentBudget: fab.budget, orderAvailable: fab.orderAvailable, plannedReserve: fab.plannedReserve },
   };
   return { recommendations, hold, blockedReason: null, fab: publicFab };
@@ -1048,7 +1063,8 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
   }
   for (const teamId of participantIds) {
     const roster = afterByTeam.get(teamId);
-    if (roster.length < 8 || roster.length > 14) throw new Error(`${teamById.get(teamId).teamName} would have ${roster.length} players; every roster must remain between 8 and 14.`);
+    const readiness = rosterReadiness(roster);
+    if (readiness.belowMinimum || readiness.aboveMaximum) throw new Error(`${teamById.get(teamId).teamName} would have ${roster.length} total players; every roster must remain between 8 and 14 active players, with at most one additional CBS-verified PUP/IR player.`);
     if (!legalStarterPath(roster)) throw new Error(`${teamById.get(teamId).teamName} would no longer have 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST.`);
   }
 

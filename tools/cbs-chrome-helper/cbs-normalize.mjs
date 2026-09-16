@@ -1,5 +1,21 @@
 const VALID_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
-const MAX_ROSTER_SIZE = 14;
+const ACTIVE_ROSTER_MAXIMUM_SIZE = 14;
+const TOTAL_ROSTER_MAXIMUM_SIZE = 15;
+const IR_ELIGIBLE_PATTERN = /(?:\bPUP\b|physically unable to perform|injured reserve|reserve\s*\/\s*injured|\bIR\b)/i;
+
+export function cbsIrEligibleEvidence(player = {}) {
+  const evidence = [
+    ...(Array.isArray(player.cells) ? player.cells : []),
+    ...(Array.isArray(player.newsTitles) ? player.newsTitles : []),
+    ...(Array.isArray(player.markerClasses) ? player.markerClasses : []),
+  ].map((value) => String(value || "")).join(" ");
+  return IR_ELIGIBLE_PATTERN.test(evidence);
+}
+
+export function cbsRosterSizeAllowed(players = []) {
+  if (!Array.isArray(players) || players.length < 1 || players.length > TOTAL_ROSTER_MAXIMUM_SIZE) return false;
+  return players.length <= ACTIVE_ROSTER_MAXIMUM_SIZE || players.some((player) => cbsIrEligibleEvidence(player));
+}
 
 function numberOrNull(value) {
   const text = String(value ?? "").replace(/[%,$]/g, "").trim();
@@ -50,6 +66,8 @@ export function normalizeCbsTeamRows(team, rawRows) {
     const nflTeam = teamFrom(combined, position);
     const salary = requiredInteger(cells.at(-5), `${name} salary`, 0, 200);
     const contractYear = requiredInteger(cells.at(-4), `${name} contract year`, 1, 3);
+    const newsTitles = (row.newsTitles || []).filter((value) => typeof value === "string").slice(0, 10);
+    const markerClasses = (row.markerClasses || []).filter((value) => typeof value === "string").slice(0, 20);
     players.push({
       cbsPlayerId: id,
       name,
@@ -74,15 +92,21 @@ export function normalizeCbsTeamRows(team, rawRows) {
       opponentVsPosition: numberOrNull(cells.at(-8)),
       rosteredPercent: numberOrNull(cells.at(-7)),
       startedPercent: numberOrNull(cells.at(-6)),
-      newsTitles: (row.newsTitles || []).filter((value) => typeof value === "string").slice(0, 10),
-      markerClasses: (row.markerClasses || []).filter((value) => typeof value === "string").slice(0, 20),
+      newsTitles,
+      markerClasses,
+      irEligible: cbsIrEligibleEvidence({ cells, newsTitles, markerClasses }),
     });
     seen.add(id);
   }
   // Eight legal starters are sufficient after the draft; teams may carry up to
   // six reserves. Preserve incomplete captures, then let the server validate
   // the exact positional minimum before it enables roster-dependent advice.
-  if (players.length < 1 || players.length > MAX_ROSTER_SIZE) throw new Error(`${team.name} returned ${players.length} roster rows; expected 1–${MAX_ROSTER_SIZE}.`);
+  if (!cbsRosterSizeAllowed(players)) {
+    const detail = players.length === TOTAL_ROSTER_MAXIMUM_SIZE
+      ? `expected 1–${ACTIVE_ROSTER_MAXIMUM_SIZE} active players plus one CBS-marked PUP/IR player`
+      : `expected 1–${ACTIVE_ROSTER_MAXIMUM_SIZE} active players, or ${TOTAL_ROSTER_MAXIMUM_SIZE} with one CBS-marked PUP/IR player`;
+    throw new Error(`${team.name} returned ${players.length} roster rows; ${detail}.`);
+  }
   return { teamId: team.teamId, cbsTeamId: team.cbsTeamId, name: team.name, players };
 }
 

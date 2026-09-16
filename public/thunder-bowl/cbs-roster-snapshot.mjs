@@ -1,6 +1,6 @@
 export const CBS_CAPTURE_PROTOCOL_VERSION = 2;
-export const CBS_REQUIRED_HELPER_VERSION = "0.10.6";
-export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION, "0.10.5"]);
+export const CBS_REQUIRED_HELPER_VERSION = "0.10.7";
+export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION, "0.10.6"]);
 export const CBS_CAPTURE_REQUEST = "THUNDER_BOWL_CBS_CAPTURE_REQUEST";
 export const CBS_CAPTURE_RESPONSE = "THUNDER_BOWL_CBS_CAPTURE_RESPONSE";
 export const CBS_APP_SOURCE = "thunder-bowl-app";
@@ -10,9 +10,20 @@ export const CBS_SNAPSHOT_MODEL_EFFECT = "none";
 export const CBS_STARTER_REQUIREMENTS = Object.freeze({ QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DST: 1 });
 export const CBS_ROSTER_MINIMUM_SIZE = Object.values(CBS_STARTER_REQUIREMENTS).reduce((sum, value) => sum + value, 0);
 export const CBS_ROSTER_MAXIMUM_SIZE = 14;
+export const CBS_TOTAL_ROSTER_MAXIMUM_SIZE = 15;
 // Backward-compatible name retained for older consumers. Fourteen is a cap,
 // not the number a team must carry after the draft.
 export const CBS_BASE_ROSTER_SIZE = CBS_ROSTER_MAXIMUM_SIZE;
+
+const IR_ELIGIBLE_PATTERN = /(?:\bPUP\b|physically unable to perform|injured reserve|reserve\s*\/\s*injured|\bIR\b)/i;
+
+export function cbsPlayerIsIrEligible(player = {}) {
+  const evidence = [
+    ...(Array.isArray(player?.newsTitles) ? player.newsTitles : []),
+    ...(Array.isArray(player?.markerClasses) ? player.markerClasses : []),
+  ].map((value) => String(value || "")).join(" ");
+  return IR_ELIGIBLE_PATTERN.test(evidence);
+}
 
 export const CBS_TEAM_CATALOG = Object.freeze([
   { teamId: "angry-face", cbsTeamId: 1, name: "Angry Face" },
@@ -43,13 +54,21 @@ export function cbsTeamRosterReadiness(players = []) {
   const missingSlots = Object.entries(CBS_STARTER_REQUIREMENTS)
     .flatMap(([position, required]) => Array.from({ length: Math.max(0, required - counts[position]) }, () => position));
   const rosterSize = players.length;
+  const irEligibleCount = players.filter((player) => cbsPlayerIsIrEligible(player)).length;
+  const irExemptionCount = irEligibleCount > 0 ? 1 : 0;
+  const activeRosterSize = rosterSize - irExemptionCount;
+  const allowedMaximum = CBS_ROSTER_MAXIMUM_SIZE + (irEligibleCount > 0 ? 1 : 0);
   return {
     rosterSize,
+    activeRosterSize,
+    irEligibleCount,
+    irExemptionCount,
+    allowedMaximum,
     counts,
     missingSlots,
-    belowMinimum: rosterSize < CBS_ROSTER_MINIMUM_SIZE,
-    aboveMaximum: rosterSize > CBS_ROSTER_MAXIMUM_SIZE,
-    legal: missingSlots.length === 0 && rosterSize >= CBS_ROSTER_MINIMUM_SIZE && rosterSize <= CBS_ROSTER_MAXIMUM_SIZE,
+    belowMinimum: activeRosterSize < CBS_ROSTER_MINIMUM_SIZE,
+    aboveMaximum: rosterSize > allowedMaximum || rosterSize > CBS_TOTAL_ROSTER_MAXIMUM_SIZE,
+    legal: missingSlots.length === 0 && activeRosterSize >= CBS_ROSTER_MINIMUM_SIZE && rosterSize <= allowedMaximum && rosterSize <= CBS_TOTAL_ROSTER_MAXIMUM_SIZE,
   };
 }
 
@@ -63,6 +82,7 @@ export function cbsLeagueRosterReadiness(teams = []) {
   return {
     rosterMinimum: CBS_ROSTER_MINIMUM_SIZE,
     rosterMaximum: CBS_ROSTER_MAXIMUM_SIZE,
+    totalRosterMaximum: CBS_TOTAL_ROSTER_MAXIMUM_SIZE,
     legalTeamCount,
     rostersReady: teamStatuses.length === CBS_TEAM_CATALOG.length && legalTeamCount === teamStatuses.length,
     teamStatuses,
@@ -102,6 +122,8 @@ function validatePlayer(player, teamName) {
   assert(player.bye === null || Number.isSafeInteger(player.bye), `${player.name} has an invalid bye week.`);
   assert(Array.isArray(player.newsTitles) && player.newsTitles.length <= 10 && player.newsTitles.every((value) => typeof value === "string" && value.length <= 240), `${player.name} has invalid news markers.`);
   assert(Array.isArray(player.markerClasses) && player.markerClasses.length <= 20 && player.markerClasses.every((value) => typeof value === "string" && value.length <= 100), `${player.name} has invalid icon markers.`);
+  assert(player.irEligible === undefined || typeof player.irEligible === "boolean", `${player.name} has an invalid IR/PUP marker.`);
+  assert(player.irEligible !== true || IR_ELIGIBLE_PATTERN.test([...player.newsTitles, ...player.markerClasses].join(" ")), `${player.name} is marked IR/PUP without supporting CBS evidence.`);
 }
 
 function validateProjectionRow(row, week) {
@@ -278,13 +300,15 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
     assert(expected && expected.teamId === team.teamId && expected.cbsTeamId === team.cbsTeamId, `CBS roster capture contains an unknown team mapping: ${team.name || "unnamed"}.`);
     assert(!seenTeams.has(team.teamId), `CBS roster capture repeats ${team.name}.`);
     seenTeams.add(team.teamId);
-    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= CBS_ROSTER_MAXIMUM_SIZE, `${team.name} must have 1 to ${CBS_ROSTER_MAXIMUM_SIZE} rostered players.`);
+    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= CBS_TOTAL_ROSTER_MAXIMUM_SIZE, `${team.name} must have 1 to ${CBS_ROSTER_MAXIMUM_SIZE} active players, plus no more than one PUP/IR player.`);
     for (const player of team.players) {
       validatePlayer(player, team.name);
       assert(!seenPlayers.has(player.cbsPlayerId), `CBS player ${player.cbsPlayerId} appears on more than one team.`);
       seenPlayers.add(player.cbsPlayerId);
       playerCount += 1;
     }
+    const readiness = cbsTeamRosterReadiness(team.players);
+    assert(!readiness.aboveMaximum, `${team.name} may carry 15 players only when at least one roster row is marked PUP/IR by CBS.`);
   }
   assert(seenTeams.size === CBS_TEAM_CATALOG.length, "CBS roster capture is missing a known team.");
   assert(input.teamCount === CBS_TEAM_CATALOG.length, "CBS roster capture team count does not match its rows.");

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
-  CBS_ROSTER_MAXIMUM_SIZE,
+  CBS_TOTAL_ROSTER_MAXIMUM_SIZE,
+  cbsPlayerIsIrEligible,
   cbsLeagueRosterReadiness,
   validateCbsRosterSnapshot,
 } from "../../../public/thunder-bowl/cbs-roster-snapshot.mjs";
@@ -82,6 +83,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
         projectedPoints: row.projectedPoints,
         newsTitles: [...row.newsTitles],
         markerClasses: [...row.markerClasses],
+        irEligible: cbsPlayerIsIrEligible(row),
       };
     }),
   }));
@@ -205,6 +207,7 @@ export function canonicalizeCbsLeagueSnapshot(input, pack) {
     teamCount: teams.length,
     rosterMinimum: readiness.rosterMinimum,
     rosterMaximum: readiness.rosterMaximum,
+    totalRosterMaximum: readiness.totalRosterMaximum,
     legalTeamCount: readiness.legalTeamCount,
     rostersReady: readiness.rostersReady,
     teamStatuses: readiness.teamStatuses,
@@ -239,8 +242,9 @@ export function validateCanonicalCbsLeagueState(value, pack) {
   if (!Array.isArray(value.availablePlayerIds) || value.availablePlayerIds.length !== value.availablePlayerCount || value.availablePlayerIds.some((id) => !knownIds.has(id))) throw new Error("CBS availability coverage is invalid.");
   const available = new Set(value.availablePlayerIds);
   if (rostered.some((player) => available.has(player.playerId)) || rostered.length + available.size !== knownIds.size) throw new Error("CBS rostered and available players do not partition the governed catalog.");
-  if (value.teams.some((team) => !Array.isArray(team.roster) || team.roster.length < 1 || team.roster.length > CBS_ROSTER_MAXIMUM_SIZE)) throw new Error("CBS league state contains an invalid roster size.");
+  if (value.teams.some((team) => !Array.isArray(team.roster) || team.roster.length < 1 || team.roster.length > CBS_TOTAL_ROSTER_MAXIMUM_SIZE)) throw new Error("CBS league state contains an invalid roster size.");
   const readiness = cbsLeagueRosterReadiness(value.teams);
+  if (readiness.teamStatuses.some((team) => team.aboveMaximum)) throw new Error("CBS league state contains a 15-player roster without a verified PUP/IR exemption.");
   const weeklyProjections = Array.isArray(value.weeklyProjections) ? value.weeklyProjections : [];
   const projectionIds = new Set();
   for (const row of weeklyProjections) {
@@ -296,6 +300,7 @@ export function validateCanonicalCbsLeagueState(value, pack) {
     ...value,
     rosterMinimum: readiness.rosterMinimum,
     rosterMaximum: readiness.rosterMaximum,
+    totalRosterMaximum: readiness.totalRosterMaximum,
     legalTeamCount: readiness.legalTeamCount,
     rostersReady: readiness.rostersReady,
     teamStatuses: readiness.teamStatuses,

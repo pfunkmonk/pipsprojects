@@ -546,7 +546,7 @@ test("partial authenticated CBS captures update safely without confirming free a
   };
   const result = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
   assert.equal(result.recommendations.length, 0);
-  assert.match(result.blockedReason, /legal 8–14 player roster/);
+  assert.match(result.blockedReason, /legal 8–14 active-player roster/);
   assert.match(result.blockedReason, /3 of 12 teams/);
 });
 

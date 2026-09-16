@@ -563,7 +563,7 @@ function renderHeader(value, offline) {
     : partialCbs
     ? `CBS is current, but ${value.baseline.legalTeamCount ?? value.baseline.completeTeamCount} of ${value.baseline.teamCount} teams currently satisfy the legal roster rule: eight required starters and no more than six backups.`
     : isCbs
-    ? `Last CBS capture: ${dateTime(value.baseline.asOf)}. All teams satisfy the 8–14 player rule${value.baseline.scheduleMatchups ? `, and ${value.baseline.scheduleMatchups} regular-season matchups are stored` : "; the matchup schedule still needs the current Data Helper"}. Refresh only the source that changed, or use Update everything for a complete pass.`
+    ? `Last CBS capture: ${dateTime(value.baseline.asOf)}. All teams satisfy the 8–14 active-player rule, with the separate PUP/IR slot honored${value.baseline.scheduleMatchups ? `, and ${value.baseline.scheduleMatchups} regular-season matchups are stored` : "; the matchup schedule still needs the current Data Helper"}. Refresh only the source that changed, or use Update everything for a complete pass.`
     : "CBS has not been captured for the season. Choose Update CBS or Update everything before trusting availability, manager moves, or weekly lineup advice.";
 }
 
