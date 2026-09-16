@@ -915,6 +915,20 @@ function waiverBidAdvice(fab) {
   return advice;
 }
 
+function waiverNoBidAdvice() {
+  const advice = element("section", "fab-advice");
+  advice.setAttribute("aria-label", "Waiver bid recommendation");
+  const recommendation = element("div", "fab-advice-primary");
+  recommendation.append(
+    element("span", "", "Recommended blind bid"),
+    element("strong", "", "$0"),
+  );
+  const details = element("div", "fab-advice-details");
+  details.append(metric("Action", "Do not bid"), metric("Status", "Watch only"));
+  advice.append(recommendation, details, element("p", "fab-unavailable", "This move does not clear the paid-bid threshold. Keep your FAB and roster asset unless the player's role or your lineup need materially changes."));
+  return advice;
+}
+
 function waiverVerdictLabel(verdict) {
   if (verdict === "ADD") return "STRONG BID";
   if (verdict === "CLAIM") return "VALUE BID";
@@ -939,7 +953,8 @@ function renderWaivers(value) {
       return left.priority - right.priority;
     });
   const rows = eligible.slice(0, 25);
-  byId("waiver-result-count").textContent = `${rows.length} of ${eligible.length} recommendations`;
+  const paidBidCount = eligible.filter((row) => Number.isFinite(row.fab?.recommended) && row.fab.recommended > 0).length;
+  byId("waiver-result-count").textContent = `${rows.length} of ${eligible.length} opportunities · ${paidBidCount} paid-bid target${paidBidCount === 1 ? "" : "s"}`;
   if (!rows.length) {
     const hold = value.waivers.hold;
     if (hold) {
@@ -972,6 +987,8 @@ function renderWaivers(value) {
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
     if (Number.isFinite(row.fab?.recommended)) {
       card.append(waiverBidAdvice(row.fab));
+    } else if (row.verdict === "WATCH") {
+      card.append(waiverNoBidAdvice());
     } else if (row.fab?.unavailableReason) {
       card.append(element("p", "fab-unavailable", row.fab.unavailableReason));
     }

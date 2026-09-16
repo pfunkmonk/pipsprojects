@@ -1025,6 +1025,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /Rebuilding the current weekly plan automatically/);
   assert.match(source, /STRONG BID/);
   assert.match(source, /VALUE BID/);
+  assert.match(source, /Recommended blind bid/);
+  assert.match(source, /Do not bid/);
+  assert.match(source, /paid-bid target/);
   assert.match(source, /CBS did not expose your current remaining FAB balance/);
   assert.match(source, /row\.drop\.position/);
   assert.match(source, /verdict-\$\{String\(row\.verdict/);
