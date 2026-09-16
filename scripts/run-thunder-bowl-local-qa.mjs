@@ -48,6 +48,17 @@ function qaSeasonPlan() {
       rawSha256: "b".repeat(64),
       teams,
       availablePlayerIds,
+      fabState: {
+        schemaVersion: 1,
+        source: "CBS isolated QA partial FAB report",
+        capturedAt: "2026-09-08T12:05:00.000Z",
+        week: 1,
+        status: "PARTIAL",
+        rules: { processingNights: ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"], typicalProcessingWindow: "1–4 a.m. ET the following morning" },
+        coverage: { budgetTeams: 0, orderTeams: 0, recordTeams: 12, pickupEvidence: "CURRENT_WEEK", pickupRows: 0 },
+        teams: teams.map((team) => ({ teamId: team.teamId, teamName: team.teamName, remainingBudget: null, fabOrder: null, record: { wins: 0, losses: 0, ties: 0 }, weeklySuccessfulPickups: 0 })),
+        pageUrls: [],
+      },
     },
     statusSnapshot: {
       capturedAt: "2026-09-08T12:06:00.000Z",

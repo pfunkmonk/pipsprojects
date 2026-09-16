@@ -9,6 +9,8 @@ const PRIORITY_WEEKS = Object.freeze({ division: [1, 2, 12, 13], playoffs: [15, 
 export const KEEPER_EVALUATION_START_WEEK = 13;
 const WAIVER_POLICY = Object.freeze({
   ordinary: Object.freeze({ minimumWeekGain: 1.5, minimumNextThreeGain: 1, minimumRosGain: 0 }),
+  strongBid: Object.freeze({ minimumWeekGain: 3, minimumNextThreeGain: 1.5, minimumRosGain: 0, alternateMinimumRosGain: 1 }),
+  valueBid: Object.freeze({ minimumWeekGain: 2, minimumNextThreeGain: 1.5, minimumRosGain: 0.25 }),
   rental: Object.freeze({ minimumWeekGain: 3, minimumNextThreeGain: 2, minimumRosGain: -0.25 }),
   protectedDrop: Object.freeze({ maximumSalary: 5, maximumContractYear: 3, minimumReplacementGain: 0.75 }),
 });
@@ -425,14 +427,24 @@ export function classifyWaiverEdge(row) {
   const directRosSafe = !row.drop || directRosGain >= 0;
   const longTermSafe = rosGain >= WAIVER_POLICY.ordinary.minimumRosGain && directRosSafe && !dropProtection.blocked;
   if (longTermSafe) {
-    const verdict = weekGain >= 2 && nextThreeGain > 0 ? "ADD" : "CLAIM";
-    return {
-      verdict,
+    const strongBid = rosGain >= WAIVER_POLICY.strongBid.alternateMinimumRosGain
+      || (weekGain >= WAIVER_POLICY.strongBid.minimumWeekGain
+        && nextThreeGain >= WAIVER_POLICY.strongBid.minimumNextThreeGain
+        && rosGain >= WAIVER_POLICY.strongBid.minimumRosGain);
+    if (strongBid) return {
+      verdict: "ADD",
       actionable: true,
       dropProtection,
-      rationale: verdict === "ADD"
-        ? "The move improves the immediate lineup without surrendering rest-of-season lineup or direct-player value."
-        : "The move clears the long-term-safe claim gate without overstating it as an immediate must-add.",
+      rationale: "Strong bid: the move provides either a major rest-of-season upgrade or a material immediate gain backed by at least a +1.5 next-three-week average, without surrendering long-term value.",
+    };
+    const valueBid = weekGain >= WAIVER_POLICY.valueBid.minimumWeekGain
+      && nextThreeGain >= WAIVER_POLICY.valueBid.minimumNextThreeGain
+      && rosGain >= WAIVER_POLICY.valueBid.minimumRosGain;
+    if (valueBid) return {
+      verdict: "CLAIM",
+      actionable: true,
+      dropProtection,
+      rationale: "Value bid: the move clears conservative week, three-week, and rest-of-season floors, but it is not strong enough for an aggressive bid.",
     };
   }
 
@@ -459,6 +471,8 @@ export function classifyWaiverEdge(row) {
       ? `Watch only; ${dropProtection.reason}`
       : rosGain < 0
         ? `Watch only; the short-term improvement does not justify ${rosGain.toFixed(1)} average rest-of-season lineup points lost.`
+        : longTermSafe
+          ? `Watch only; the safe but modest +${weekGain.toFixed(1)} Week gain and +${nextThreeGain.toFixed(1)} next-three average do not clear the minimum paid-bid thresholds.`
         : `Watch only; the move gives up ${Math.abs(directRosGain).toFixed(1)} direct-player rest-of-season points even though the optimized lineup is not immediately worse.`,
   };
 }
@@ -592,17 +606,22 @@ function effectiveFabState(leagueState, leagueMoves, roster, week) {
     return Number.isSafeInteger(bye) && bye >= week ? [{ position, week: bye }] : [];
   });
   const budget = pricingReady ? dogs.remainingBudget : null;
+  const bidBudget = budget ?? (dogs ? 50 : null);
+  const pricingEstimated = budget === null && bidBudget !== null;
   const injuryReserve = Math.min(5, Math.max(2, Math.ceil((18 - week) / 4)));
-  const plannedReserve = budget === null ? null : Math.min(Math.max(0, budget - 1), injuryReserve + specialTeamsByes.length);
+  const plannedReserve = bidBudget === null ? null : Math.min(Math.max(0, bidBudget - 1), injuryReserve + specialTeamsByes.length);
   const teamsAheadOnTie = pricingReady && orderAvailable ? teams.filter((team) => team.teamId !== USER_TEAM_ID && compareFabTiePriority(team, dogs) < 0).length : null;
   return {
-    available: pricingReady,
+    available: bidBudget !== null,
+    pricingReady,
+    pricingEstimated,
     reason: pricingReady ? null : incompleteFabMessage(raw),
     notStarted,
     orderAvailable,
     budget,
+    bidBudget,
     plannedReserve,
-    spendable: budget === null ? null : Math.max(0, budget - plannedReserve),
+    spendable: bidBudget === null ? null : Math.max(0, bidBudget - plannedReserve),
     injuryReserve,
     specialTeamsByes,
     weeklySuccessfulPickups: dogs?.weeklySuccessfulPickups ?? null,
@@ -631,16 +650,16 @@ function fabSequenceTie(fab, earlierWins) {
 }
 
 function fabBidFor(row, verdict, fab) {
-  if (!fab.available || fab.budget < 1 || fab.spendable < 1 || !["ADD", "CLAIM", "RENTAL"].includes(verdict)) return { recommended: null, maximum: null, budgetAfter: null };
-  if (verdict === "RENTAL") return { recommended: 1, maximum: 1, budgetAfter: fab.budget - 1 };
+  if (!fab.available || fab.bidBudget < 1 || fab.spendable < 1 || !["ADD", "CLAIM", "RENTAL"].includes(verdict)) return { recommended: null, maximum: null, budgetAfter: null };
+  if (verdict === "RENTAL") return { recommended: 1, maximum: 1, budgetAfter: fab.budget === null ? null : fab.budget - 1 };
   const gains = [row.currentDelta.delta, row.nextThreeDelta.delta, row.rosDelta.delta].map((value) => Number(value || 0));
   const strength = Math.max(0, gains[0] * 2 + gains[1] * 3 + gains[2] * 2 + (row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks) * 3);
-  const base = verdict === "ADD" ? 4 : 2;
+  const base = verdict === "ADD" ? 3 : 1;
   const rawBid = base + Math.ceil(strength / 4);
-  const positionCap = ["K", "DST"].includes(row.addPlayer.position) ? 2 : verdict === "CLAIM" ? 8 : 15;
+  const positionCap = ["K", "DST"].includes(row.addPlayer.position) ? 2 : verdict === "CLAIM" ? 3 : 12;
   const recommended = Math.max(1, Math.min(fab.spendable, positionCap, rawBid));
   const maximum = Math.max(recommended, Math.min(fab.spendable, positionCap, recommended + Math.max(1, Math.ceil(recommended / 2))));
-  return { recommended, maximum, budgetAfter: fab.budget - recommended };
+  return { recommended, maximum, budgetAfter: fab.budget === null ? null : fab.budget - recommended };
 }
 
 export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [] }) {
@@ -730,6 +749,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
     const verdict = row.decision.verdict;
     const horizon = row.currentDelta.delta && row.currentDelta.delta > 0 ? `+${row.currentDelta.delta.toFixed(1)} expected Week ${week} points` : `${row.nextThreeDelta.delta >= 0 ? "+" : ""}${row.nextThreeDelta.delta?.toFixed(1) || "0.0"} average over the next three weeks`;
     const bid = fabBidFor(row, verdict, fab);
+    const earlierWinsBeforeThisClaim = earlierActionableClaims;
     const sequenceTie = fabSequenceTie(fab, earlierActionableClaims);
     if (row.decision.actionable) earlierActionableClaims += 1;
     return {
@@ -772,12 +792,14 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       fab: {
         ...bid,
         currentBudget: fab.budget,
+        bidBudget: fab.bidBudget,
+        pricingEstimated: fab.pricingEstimated,
         plannedReserve: fab.plannedReserve,
         spendable: fab.spendable,
         tiePosition: sequenceTie.tiePosition,
         teamsAheadOnTie: sequenceTie.teamsAheadOnTie,
         weeklySuccessfulPickups: sequenceTie.weeklySuccessfulPickups,
-        earlierClaimWinsAssumed: index,
+        earlierClaimWinsAssumed: earlierWinsBeforeThisClaim,
         fabOrder: fab.fabOrder,
         record: fab.record,
         bidHistoryAvailable: fab.bidHistoryAvailable,

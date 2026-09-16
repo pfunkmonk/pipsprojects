@@ -193,7 +193,7 @@ function waiverExplanation(value, week) {
     ? `Watch ${add.name}, but do not add the player for ${drop?.name || "a roster spot"}; the move does not clear the governed season-value and protected-drop gates.`
     : verdict === "RENTAL"
       ? `${add.name} is an emergency short-term rental, not a rest-of-season roster upgrade.`
-      : `The advisor ranks ${add.name} as ${verdict === "ADD" ? "an ADD" : "a CLAIM"} because ${drop ? `adding ${add.name} for ${drop.name}` : `adding ${add.name} into an open roster spot`} keeps the roster legal and clears both the immediate and rest-of-season value gates.`;
+      : `The advisor ranks ${add.name} as ${verdict === "ADD" ? "a STRONG BID" : "a VALUE BID"} because ${drop ? `adding ${add.name} for ${drop.name}` : `adding ${add.name} into an open roster spot`} keeps the roster legal and clears the conservative immediate, three-week, and rest-of-season value gates.`;
   return {
     summary,
     sections: [
@@ -221,7 +221,9 @@ function waiverExplanation(value, week) {
       ]),
       section("Blind-auction bid plan", finite(fab.recommended) ? [
         `Recommended bid: $${Number(fab.recommended).toFixed(0)}; do not exceed $${Number(fab.maximum).toFixed(0)} for this claim.`,
-        `Current FAB balance: $${Number(fab.currentBudget).toFixed(0)}; the recommended bid would leave $${Number(fab.budgetAfter).toFixed(0)}.`,
+        finite(fab.currentBudget)
+          ? `CBS-confirmed current FAB balance: $${Number(fab.currentBudget).toFixed(0)}; the recommended bid would leave $${Number(fab.budgetAfter).toFixed(0)}.`
+          : `CBS has not exposed your current remaining balance. The dollar cap uses the league's $${Number(fab.bidBudget || 50).toFixed(0)} opening budget as a conservative sizing basis; never submit more than the balance shown in CBS.`,
         `The model protects $${Number(fab.plannedReserve).toFixed(0)} for later injury coverage${fab.specialTeamsByes?.length ? ` and ${fab.specialTeamsByes.map((item) => `${item.position} Week ${item.week}`).join(" plus ")} bye replacements` : ""}.`,
         finite(fab.tiePosition) ? `On an equal bid, Dogs of War currently ranks about ${Number(fab.tiePosition).toFixed(0)} of 12: worse record first, then fewer successful pickups this week, then CBS FAB order.` : "CBS tie position is not available yet.",
         Number(fab.earlierClaimWinsAssumed || 0) > 0 ? `That tie estimate conservatively assumes the ${Number(fab.earlierClaimWinsAssumed).toFixed(0)} higher displayed claim${Number(fab.earlierClaimWinsAssumed) === 1 ? " was" : "s were"} won first in this run.` : "This is the first displayed claim, so no earlier same-run win is assumed.",

@@ -29,7 +29,7 @@ import { currentStatusSnapshot, savedStatusSnapshot } from "./status-store.mjs";
 import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
-const RECOMMENDATION_ENGINE_VERSION = 16;
+export const RECOMMENDATION_ENGINE_VERSION = 17;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {
@@ -398,13 +398,20 @@ export async function getCurrentSeasonSnapshot({ now = new Date(), week: request
     // queued separately as a Netlify Background Function, so authentication and
     // ordinary page loads can never be held hostage by the build duration.
     const current = await readLatestSeasonPlan() || await getOrCreateCurrentSeasonPlan({ now });
+    const rebuildRequired = current.recommendationEngineVersion !== RECOMMENDATION_ENGINE_VERSION;
     const plan = current.management ? current : await attachManagement(current, new Date(now).toISOString());
+    if (rebuildRequired) {
+      plan.state = "STALE";
+      plan.alerts = [`Recommendation policy v${RECOMMENDATION_ENGINE_VERSION} is rebuilding. Until it finishes, do not act on saved waiver labels or bids from policy v${current.recommendationEngineVersion || "unknown"}.`, ...(plan.alerts || [])];
+    }
     if (plan.week !== currentWeek) {
       plan.state = "STALE";
       plan.alerts = [`Week ${currentWeek} recommendations are rebuilding in the background. The saved Week ${plan.week} plan remains usable until the new plan is ready.`, ...(plan.alerts || [])];
     }
     return {
       ...plan,
+      rebuildRequired,
+      expectedRecommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION,
       viewing: plan.viewing ? { ...plan.viewing, currentWeek, maxSelectableWeek: Math.min(18, currentWeek + 2) } : {
         currentWeek,
         selectedWeek: currentWeek,

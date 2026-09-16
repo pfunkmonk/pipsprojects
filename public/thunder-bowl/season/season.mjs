@@ -906,16 +906,28 @@ function waiverBidAdvice(fab) {
     element("strong", "", `$${number(fab.recommended, 0)}`),
   );
   const details = element("div", "fab-advice-details");
-  details.append(
-    metric("Do not exceed", `$${number(fab.maximum, 0)}`),
-    metric("Remaining after a win", `$${number(fab.budgetAfter, 0)}`),
-  );
+  details.append(metric("Do not exceed", `$${number(fab.maximum, 0)}`));
+  details.append(Number.isFinite(fab.budgetAfter)
+    ? metric("Remaining after a win", `$${number(fab.budgetAfter, 0)}`)
+    : metric("Budget basis", `$${number(fab.bidBudget, 0)} opening`));
   advice.append(recommendation, details);
+  if (fab.pricingEstimated) advice.append(element("p", "fab-unavailable", "CBS did not expose your current remaining FAB balance. This is a conservative risk cap based on the $50 opening budget—never bid more than the balance shown in CBS."));
   return advice;
+}
+
+function waiverVerdictLabel(verdict) {
+  if (verdict === "ADD") return "STRONG BID";
+  if (verdict === "CLAIM") return "VALUE BID";
+  return verdict;
 }
 
 function renderWaivers(value) {
   const target = byId("waiver-list");
+  if (value.rebuildRequired) {
+    byId("waiver-result-count").textContent = "Rebuilding with current policy";
+    target.replaceChildren(empty("The saved waiver plan uses an older recommendation policy. A fresh plan is rebuilding automatically; no stale add/drop label or bid is actionable."));
+    return;
+  }
   const all = value.waivers.recommendations || [];
   const eligible = all
     .filter((row) => waiverView.position === "ALL" || row.add.position === waiverView.position)
@@ -950,8 +962,11 @@ function renderWaivers(value) {
     const card = element("article", "decision-card");
     const header = element("header");
     const title = element("div");
-    title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", `${row.drop ? `Drop ${row.drop.name}` : "No drop required"} · ${row.add.position} ${row.add.nflTeam}`));
-    header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, row.verdict));
+    const moveDetail = row.drop
+      ? `Drop ${row.drop.name} · ${row.drop.position} ${row.drop.nflTeam}`
+      : `No drop required · ${row.add.position} ${row.add.nflTeam}`;
+    title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", moveDetail));
+    header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, waiverVerdictLabel(row.verdict)));
     card.append(header, element("p", "", row.reason));
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
@@ -1378,6 +1393,12 @@ async function openCachedPlanWhileRefreshing(message) {
   setStatus(message);
   void loadSnapshot().then(async (current) => {
     await renderPlan(current);
+    if (current.rebuildRequired) {
+      setStatus(`The saved Week ${current.week} plan uses an older recommendation policy. Rebuilding it automatically before waiver advice can be trusted…`, true);
+      await queuePlanRebuild();
+      void watchQueuedPlan(current.sourceFingerprint, "Recommendation policy");
+      return;
+    }
     setStatus(`Current Week ${current.week} plan loaded.`);
   }).catch((error) => {
     setStatus(`Signed in. The saved plan is available and update controls remain active. The current server plan is still rebuilding (${errorMessage(error)}). Choose Update CBS to refresh the current week now.`, true);
@@ -1558,7 +1579,13 @@ async function attemptLogin(event) {
       await saveOfflineVerifier(code);
       byId("access-code").value = "";
       if (await openCachedPlanWhileRefreshing("Signed in. The saved plan is ready now; checking for the current weekly plan in the background…")) return;
-      await renderPlan(await loadSnapshot());
+      const current = await loadSnapshot();
+      await renderPlan(current);
+      if (current.rebuildRequired) {
+        setStatus("The saved recommendation policy is outdated. Rebuilding the current weekly plan automatically…", true);
+        await queuePlanRebuild();
+        void watchQueuedPlan(current.sourceFingerprint, "Recommendation policy");
+      }
       return;
     }
     if (!(await verifyOfflineCode(code))) throw new Error("That code does not match this device's saved offline verifier.");
@@ -1809,7 +1836,15 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("online", async () => {
   if (!offlineMode) return;
-  try { await renderPlan(await loadSnapshot()); setStatus("Reconnected and loaded the current private plan."); } catch { /* Keep explicit stale recovery view. */ }
+  try {
+    const current = await loadSnapshot();
+    await renderPlan(current);
+    if (current.rebuildRequired) {
+      setStatus("Reconnected. The saved recommendation policy is outdated, so the current plan is rebuilding automatically…", true);
+      await queuePlanRebuild();
+      void watchQueuedPlan(current.sourceFingerprint, "Recommendation policy");
+    } else setStatus("Reconnected and loaded the current private plan.");
+  } catch { /* Keep explicit stale recovery view. */ }
 });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(() => {});
@@ -1822,7 +1857,13 @@ activateTab(location.hash.slice(1), { updateHash: false });
       const auth = await fetch("/api/thunder-bowl/auth", { method: "GET", credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(5_000) });
       if (auth.ok) {
         if (await openCachedPlanWhileRefreshing("Signed in. The saved plan is ready now; checking for the current weekly plan in the background…")) return;
-        await renderPlan(await loadSnapshot());
+        const current = await loadSnapshot();
+        await renderPlan(current);
+        if (current.rebuildRequired) {
+          setStatus("The saved recommendation policy is outdated. Rebuilding the current weekly plan automatically…", true);
+          await queuePlanRebuild();
+          void watchQueuedPlan(current.sourceFingerprint, "Recommendation policy");
+        }
         return;
       }
       if (auth.status === 401) byId("login-status").textContent = "Enter your access code to open the current weekly plan.";

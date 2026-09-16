@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import { FBG_NATIVE_WEEKLY_COLUMNS, parseFbgAuthenticatedWeeklyCapture, parseFbgNativeWeeklyCsv, parseFbgWeeklyCsv } from "../netlify/functions/_lib/fbg-season-source.mjs";
-import { buildSeasonSetupSnapshot, cbsFinalScoreRecords, normalizeSeasonViewingTeam, normalizeSeasonViewingWeek, retainPriorCbsOptionalEvidence } from "../netlify/functions/_lib/season-service.mjs";
+import { buildSeasonSetupSnapshot, cbsFinalScoreRecords, normalizeSeasonViewingTeam, normalizeSeasonViewingWeek, RECOMMENDATION_ENGINE_VERSION, retainPriorCbsOptionalEvidence } from "../netlify/functions/_lib/season-service.mjs";
 import { readSeasonPack } from "../netlify/functions/_lib/season-pack.mjs";
 import {
   analyzeTradeProposal,
@@ -636,6 +636,35 @@ test("CBS FAB-not-started evidence uses the confirmed $50 opening balance withou
   assert.equal(result.fab.orderAvailable, false);
 });
 
+test("missing current CBS FAB balances still produce clearly estimated conservative dollar caps", () => {
+  const roster = rosterPlayers();
+  const freeAgent = player("wr-week-two-upgrade", "WR", 22, { vbd: 110, marketValue: 45 });
+  const partialFab = fabState();
+  partialFab.status = "PARTIAL";
+  partialFab.coverage = { budgetTeams: 0, orderTeams: 0, recordTeams: 12, pickupEvidence: "CURRENT_WEEK", pickupRows: 0 };
+  partialFab.teams = partialFab.teams.map((team) => ({ ...team, remainingBudget: null, fabOrder: null }));
+  const result = recommendWaivers({
+    pack: { players: [...roster, freeAgent] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-15T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [freeAgent.id],
+      fabState: partialFab,
+    },
+    week: 2,
+  });
+  const recommendation = result.recommendations.find((row) => row.policy.actionable);
+  assert.ok(recommendation.fab.recommended >= 1);
+  assert.ok(recommendation.fab.maximum >= recommendation.fab.recommended);
+  assert.equal(recommendation.fab.currentBudget, null);
+  assert.equal(recommendation.fab.bidBudget, 50);
+  assert.equal(recommendation.fab.budgetAfter, null);
+  assert.equal(recommendation.fab.pricingEstimated, true);
+  assert.equal(recommendation.fab.tiePosition, null);
+});
+
 test("FAB bids preserve K/DST reserves while high roster salaries never inflate a claim", () => {
   const roster = rosterPlayers();
   const freeAgent = player("wr-upgrade", "WR", 21, { vbd: 100, marketValue: 40 });
@@ -674,6 +703,24 @@ test("waiver policy downgrades short-term gains with negative ROS to WATCH", () 
   assert.equal(decision.verdict, "WATCH");
   assert.equal(decision.actionable, false);
   assert.match(decision.rationale, /rest-of-season/i);
+});
+
+test("waiver policy does not spend FAB on a safe but weak 2.3 and 1.2 point edge", () => {
+  const dropPlayer = player("replaceable-depth", "WR", 10);
+  const decision = classifyWaiverEdge({
+    addPlayer: player("small-edge", "WR", 12.3),
+    drop: { playerId: dropPlayer.id, salary: 12, contractYear: 1, player: dropPlayer },
+    currentDelta: { delta: 2.3, resilienceWeeks: 0 },
+    nextThreeDelta: { delta: 1.2, resilienceWeeks: 0 },
+    rosDelta: { delta: 0.2, resilienceWeeks: 0 },
+    addValue: { week: 12.3, nextThree: 11.2, restOfSeason: 10.2 },
+    dropValue: { week: 10, nextThree: 10, restOfSeason: 10 },
+    depthDelta: { week: 2.3, nextThree: 1.2, restOfSeason: 0.2 },
+    immediateNeed: false,
+  });
+  assert.equal(decision.verdict, "WATCH");
+  assert.equal(decision.actionable, false);
+  assert.match(decision.rationale, /minimum paid-bid thresholds/i);
 });
 
 test("waiver policy reserves RENTAL for a true lineup emergency with a major temporary edge", () => {
@@ -957,6 +1004,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 17);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
@@ -971,6 +1019,14 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /starter-alternatives-toggle/);
   assert.match(source, /value\.lineup\.freeAgentAlternatives/);
   assert.match(source, /const rows = eligible\.slice\(0, 25\)/);
+  assert.match(source, /if \(current\.rebuildRequired\)/);
+  assert.match(source, /if \(value\.rebuildRequired\)/);
+  assert.match(source, /no stale add\/drop label or bid is actionable/);
+  assert.match(source, /Rebuilding the current weekly plan automatically/);
+  assert.match(source, /STRONG BID/);
+  assert.match(source, /VALUE BID/);
+  assert.match(source, /CBS did not expose your current remaining FAB balance/);
+  assert.match(source, /row\.drop\.position/);
   assert.match(source, /verdict-\$\{String\(row\.verdict/);
   assert.match(css, /\.verdict-watch/);
   assert.match(css, /\.verdict-rental/);
@@ -984,6 +1040,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(snapshotHandler, /searchParams\.get\("team"\)/);
   assert.match(seasonService, /normalizeSeasonViewingWeek/);
   assert.match(seasonService, /normalizeSeasonViewingTeam/);
+  assert.match(seasonService, /rebuildRequired = current\.recommendationEngineVersion !== RECOMMENDATION_ENGINE_VERSION/);
+  assert.match(seasonService, /expectedRecommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION/);
   assert.match(seasonService, /season: pack\.season,\s*week,\s*lineupTeamId,\s*packId: pack\.packId/);
   assert.doesNotMatch(seasonService, /captureFootballguysSource[\s\S]*?return \{\s*week,\s*lineupTeamId,/);
   assert.doesNotMatch(html, /id="player-sort"/);
