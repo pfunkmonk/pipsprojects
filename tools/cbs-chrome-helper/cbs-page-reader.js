@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.7";
+  const READER_VERSION = "0.10.8";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
@@ -179,6 +179,7 @@
     const signature = () => [...document.querySelectorAll("#matchupDetailsRegion .playerLayoutContainer a.playerLink")]
       .map((link) => (link.getAttribute("href") || "").match(/(?:playerpage\/|players\/)(\d+)/i)?.[1] || "")
       .filter(Boolean).join("|");
+    const exactStarterSides = (rows) => ["AWAY", "HOME"].every((side) => rows.filter((row) => row.teamSide === side && row.role === "STARTER").length === 8);
     try {
       for (let matchupIndex = 0; matchupIndex < tiles.length; matchupIndex += 1) {
         const tile = tiles[matchupIndex];
@@ -191,8 +192,16 @@
           if (tile.classList.contains("selected") && current && (wasSelected || current !== before)) break;
           await pause(100);
         }
-        const captured = currentLiveScoringRows(rosterPlayers, matchupIndex);
-        if (captured.length < 16) captureErrors.push(`CBS live scoring matchup ${matchupIndex + 1} did not finish rendering.`);
+        let captured = currentLiveScoringRows(rosterPlayers, matchupIndex);
+        // CBS sometimes marks the matchup tile selected just before its player
+        // rows finish replacing the prior matchup. Do not accept that
+        // intermediate DOM: re-read until both sides expose all eight submitted
+        // starters, or report the partial capture honestly after the deadline.
+        for (let attempt = 0; attempt < 12 && !exactStarterSides(captured); attempt += 1) {
+          await pause(125);
+          captured = currentLiveScoringRows(rosterPlayers, matchupIndex);
+        }
+        if (!exactStarterSides(captured)) captureErrors.push(`CBS live scoring matchup ${matchupIndex + 1} did not expose eight submitted starters for both teams.`);
         allRows.push(...captured);
       }
     } finally {

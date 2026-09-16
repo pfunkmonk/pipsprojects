@@ -26,7 +26,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.7";
+const HELPER_VERSION = "0.10.8";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));

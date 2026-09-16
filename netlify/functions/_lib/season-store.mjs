@@ -71,21 +71,33 @@ export async function readLeagueMoves(week) {
   return Array.isArray(value) ? value : [];
 }
 
+export function buildCbsLeagueEnvelope(previous, current, pack, storedAt = new Date().toISOString()) {
+  const unchanged = previous?.snapshot?.rawSha256 === current.rawSha256;
+  return {
+    snapshot: current,
+    leagueMoves: unchanged ? previous.leagueMoves : diffLeagueOwnership(previous?.snapshot || null, current, pack),
+    storedAt,
+    changed: !unchanged,
+  };
+}
+
 export async function saveCbsLeagueState(snapshot, pack, { week } = {}) {
   const canonical = validateCanonicalCbsLeagueState(snapshot, pack);
   const prior = await readLatestCbsLeagueState(pack);
-  if (prior?.snapshot.rawSha256 === canonical.rawSha256) return { ...prior, changed: false };
-  const leagueMoves = diffLeagueOwnership(prior?.snapshot || null, canonical, pack);
   const storedAt = new Date().toISOString();
-  const envelope = { snapshot: canonical, leagueMoves, storedAt };
-  await store().setJSON(`sources/cbs/v1/raw/${canonical.rawSha256}`, envelope, { onlyIfNew: true });
+  const envelope = buildCbsLeagueEnvelope(prior, canonical, pack, storedAt);
+  if (envelope.changed) await store().setJSON(`sources/cbs/v1/raw/${canonical.rawSha256}`, envelope, { onlyIfNew: true });
+  // A repeated pull can contain identical roster/projection content while still
+  // being fresh evidence that CBS was checked again. Always advance the latest
+  // envelope to the newly observed capture instead of retaining yesterday's
+  // timestamp merely because the raw-content hash is unchanged.
   await store().setJSON("sources/cbs/v1/latest", envelope);
-  if (Number.isSafeInteger(week) && week >= 1 && week <= 18 && leagueMoves.length) {
+  if (envelope.changed && Number.isSafeInteger(week) && week >= 1 && week <= 18 && envelope.leagueMoves.length) {
     const priorMoves = await readLeagueMoves(week);
-    const byId = new Map([...priorMoves, ...leagueMoves].map((move) => [move.id, move]));
+    const byId = new Map([...priorMoves, ...envelope.leagueMoves].map((move) => [move.id, move]));
     await store().setJSON(`sources/cbs/v1/week-${week}/moves`, [...byId.values()].sort((left, right) => right.detectedAt.localeCompare(left.detectedAt)).slice(0, 500));
   }
-  return { ...envelope, changed: true };
+  return envelope;
 }
 
 export async function readLatestFbgWeeklySnapshot(pack, week) {

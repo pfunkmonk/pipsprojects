@@ -17,7 +17,7 @@ import {
   recommendWaivers,
   simulateFabTieClaims,
 } from "../netlify/functions/_lib/season-recommendations.mjs";
-import { diffLeagueOwnership } from "../netlify/functions/_lib/season-store.mjs";
+import { buildCbsLeagueEnvelope, diffLeagueOwnership } from "../netlify/functions/_lib/season-store.mjs";
 import { isDenverTuesdayRefresh, seasonIdempotencyKey, seasonWeekForDate } from "../netlify/functions/_lib/season-time.mjs";
 
 const projectionSources = ["Footballguys", "CBS", "FantasyPros", "PFF"];
@@ -848,6 +848,22 @@ test("CBS snapshot diffs distinguish pickups, drops, and owner changes without i
   assert.ok(moves.every((move) => /not inferred/.test(move.evidence)));
 });
 
+test("an unchanged CBS pull advances freshness without inventing league moves", () => {
+  const priorSnapshot = { rawSha256: "same", capturedAt: "2026-09-15T03:29:00.000Z", teams: [] };
+  const currentSnapshot = { rawSha256: "same", capturedAt: "2026-09-16T23:05:00.000Z", teams: [] };
+  const priorMoves = [{ id: "existing-move" }];
+  const envelope = buildCbsLeagueEnvelope(
+    { snapshot: priorSnapshot, leagueMoves: priorMoves, storedAt: "2026-09-15T03:29:01.000Z" },
+    currentSnapshot,
+    { players: [] },
+    "2026-09-16T23:05:01.000Z",
+  );
+  assert.equal(envelope.changed, false);
+  assert.equal(envelope.snapshot.capturedAt, currentSnapshot.capturedAt);
+  assert.equal(envelope.storedAt, "2026-09-16T23:05:01.000Z");
+  assert.deepEqual(envelope.leagueMoves, priorMoves);
+});
+
 test("IR watch reports only evidence-backed reserve statuses and does not invent return dates", () => {
   const target = player("ir-star", "RB", 15, { marketValue: 35, vbd: 50 });
   const leagueState = { teams: [{ teamId: "dogs-of-war", teamName: "Dogs of War", roster: [] }], availablePlayerIds: [target.id] };
@@ -1073,6 +1089,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /action: "capture-pff"/);
   assert.match(source, /action: "rebuild-plan"/);
   assert.match(source, /REBUILD_BACKGROUND_URL = "\/api\/thunder-bowl\/season\/rebuild-background"/);
+  assert.match(source, /function withPendingCbsFreshness/);
+  assert.match(source, /rebuildAfterSourceSave\("CBS", saved\?\.source\)/);
+  assert.match(source, /!value\.rebuildQueued/);
   assert.match(source, /void watchQueuedPlan\(previousFingerprint, source\)/);
   assert.match(backgroundRebuildHandler, /refreshSeasonPlan\(\)/);
   assert.match(backgroundRebuildHandler, /verifySession\(request\)/);
@@ -1098,6 +1117,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(seasonStore, /ai-advice\/v1\/history\/\$\{advice\.section\}\/\$\{advice\.sourceFingerprint\}/);
   assert.match(seasonStore, /ai-advice\/v1\/latest\/\$\{advice\.section\}/);
   assert.match(seasonStore, /ai-advice\/v1\/jobs\/latest\/\$\{safeSection\}/);
+  assert.match(seasonStore, /function buildCbsLeagueEnvelope/);
+  assert.match(seasonStore, /setJSON\("sources\/cbs\/v1\/latest", envelope\)/);
   assert.match(source, /AI_ADVICE_BACKGROUND_URL = "\/api\/thunder-bowl\/season\/ai-advice-background"/);
   assert.match(source, /crypto\.randomUUID\(\)/);
   assert.match(source, /index\.jobsBySection\?\.\[section\]/);
@@ -1157,16 +1178,16 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v53/);
+  assert.match(worker, /thunder-bowl-season-v54/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260915e/);
+  assert.match(worker, /season\.mjs\?v=20260916a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
-  assert.match(worker, /fbg-session-capture\.mjs\?v=20260912c/);
-  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260912c/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260916a/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260916a/);
   assert.match(worker, /season-evidence\.mjs\?v=20260914a/);
-  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260915a/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260916a/);
   assert.match(source, /season-management-ui\.mjs\?v=20260915a/);
   assert.match(managementUi, /const checkpointState = m\.checkpoints \|\| \{\}/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);

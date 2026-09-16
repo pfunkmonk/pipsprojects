@@ -1,6 +1,6 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260915a";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260912c";
-import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260912c";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260916a";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260916a";
+import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260916a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
@@ -1376,7 +1376,10 @@ async function renderPlan(value, { offline = false } = {}) {
     setStatus("Access accepted. Complete the one-time helper setup, then choose Update CBS or Update everything.");
   }
   if (value.updateSummary?.cbs?.ok) byId("helper-setup").open = false;
-  if (!offline && !setupRequired) await setMeta(PLAN_CACHE_KEY, value);
+  // A just-saved source is rendered immediately while the governed
+  // recommendation snapshot rebuilds. Do not cache that transient display as
+  // though its older recommendations already used the new source.
+  if (!offline && !setupRequired && !value.rebuildQueued) await setMeta(PLAN_CACHE_KEY, value);
   // Optional saved AI/news requests must never hold the whole workspace hostage.
   // Render the governed plan and its action controls first, then hydrate these
   // secondary panels in the background.
@@ -1528,25 +1531,55 @@ async function runAction(button, message, task, successMessage = null) {
   }
 }
 
-async function rebuildAfterSourceSave(source) {
+function withPendingCbsFreshness(value, capturedAt) {
+  if (!Number.isFinite(Date.parse(capturedAt || ""))) return value;
+  const baseline = value.baseline || {};
+  const cbsSummary = {
+    ok: true,
+    asOf: capturedAt,
+    rosteredPlayers: baseline.rosteredPlayers,
+    rosterMinimum: baseline.rosterMinimum,
+    rosterMaximum: baseline.rosterMaximum,
+    legalTeams: baseline.legalTeamCount ?? baseline.completeTeamCount,
+    teamCount: baseline.teamCount,
+    rostersReady: baseline.rostersReady ?? baseline.rostersComplete,
+    projectionWeek: baseline.projectionWeek,
+    projectionRows: baseline.projectionCount,
+    fabStatus: baseline.fabStatus,
+    scheduleMatchups: baseline.scheduleMatchups,
+    scoringPreviewStatus: baseline.scoringPreviewStatus,
+  };
+  return {
+    ...value,
+    baseline: { ...baseline, asOf: capturedAt },
+    sources: value.sources.map((source) => ["CBS league", "CBS stats"].includes(source.label)
+      ? { ...source, asOf: capturedAt, ageMinutes: 0 }
+      : source),
+    updateSummary: { ...(value.updateSummary || {}), cbs: cbsSummary },
+  };
+}
+
+async function rebuildAfterSourceSave(source, savedSource = null) {
   const previousFingerprint = plan?.sourceFingerprint || null;
   await queuePlanRebuild();
-  const savedPlan = await loadSnapshot();
+  let savedPlan = await loadSnapshot();
+  if (source === "CBS") savedPlan = withPendingCbsFreshness(savedPlan, savedSource?.capturedAt);
   void watchQueuedPlan(previousFingerprint, source);
   return { ...savedPlan, rebuildQueued: true, rebuildSource: source };
 }
 
 async function updateCbsOnly() {
   let snapshot;
+  let saved;
   try {
     snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
-    await postAction({ action: "capture-cbs", snapshot });
+    saved = await postAction({ action: "capture-cbs", snapshot });
   } catch (error) {
     byId("helper-setup").open = true;
     throw error;
   }
   byId("helper-setup").open = false;
-  return rebuildAfterSourceSave("CBS");
+  return rebuildAfterSourceSave("CBS", saved?.source);
 }
 
 async function updateFbgOnly() {
