@@ -1,5 +1,5 @@
 export const CBS_CAPTURE_PROTOCOL_VERSION = 2;
-export const CBS_REQUIRED_HELPER_VERSION = "0.10.9";
+export const CBS_REQUIRED_HELPER_VERSION = "0.10.10";
 export const CBS_COMPATIBLE_HELPER_VERSIONS = Object.freeze([CBS_REQUIRED_HELPER_VERSION]);
 export const CBS_CAPTURE_REQUEST = "THUNDER_BOWL_CBS_CAPTURE_REQUEST";
 export const CBS_CAPTURE_RESPONSE = "THUNDER_BOWL_CBS_CAPTURE_RESPONSE";
@@ -11,6 +11,7 @@ export const CBS_STARTER_REQUIREMENTS = Object.freeze({ QB: 1, RB: 2, WR: 2, TE:
 export const CBS_ROSTER_MINIMUM_SIZE = Object.values(CBS_STARTER_REQUIREMENTS).reduce((sum, value) => sum + value, 0);
 export const CBS_ROSTER_MAXIMUM_SIZE = 14;
 export const CBS_TOTAL_ROSTER_MAXIMUM_SIZE = 15;
+export const CBS_CAPTURE_ROSTER_MAXIMUM_SIZE = 30;
 // Backward-compatible name retained for older consumers. Fourteen is a cap,
 // not the number a team must carry after the draft.
 export const CBS_BASE_ROSTER_SIZE = CBS_ROSTER_MAXIMUM_SIZE;
@@ -300,15 +301,16 @@ export function validateCbsRosterSnapshot(input, { expectedSeason = 2026 } = {})
     assert(expected && expected.teamId === team.teamId && expected.cbsTeamId === team.cbsTeamId, `CBS roster capture contains an unknown team mapping: ${team.name || "unnamed"}.`);
     assert(!seenTeams.has(team.teamId), `CBS roster capture repeats ${team.name}.`);
     seenTeams.add(team.teamId);
-    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= CBS_TOTAL_ROSTER_MAXIMUM_SIZE, `${team.name} must have 1 to ${CBS_ROSTER_MAXIMUM_SIZE} active players, plus no more than one PUP/IR player.`);
+    assert(Array.isArray(team.players) && team.players.length >= 1 && team.players.length <= CBS_CAPTURE_ROSTER_MAXIMUM_SIZE, `${team.name} must have 1 to ${CBS_CAPTURE_ROSTER_MAXIMUM_SIZE} structurally valid CBS player rows.`);
     for (const player of team.players) {
       validatePlayer(player, team.name);
       assert(!seenPlayers.has(player.cbsPlayerId), `CBS player ${player.cbsPlayerId} appears on more than one team.`);
       seenPlayers.add(player.cbsPlayerId);
       playerCount += 1;
     }
-    const readiness = cbsTeamRosterReadiness(team.players);
-    assert(!readiness.aboveMaximum, `${team.name} may carry 15 players only when at least one roster row is marked PUP/IR by CBS.`);
+    // Roster legality is advisory during capture. A team may temporarily exceed
+    // the league limit after waivers; retain its ownership and stat evidence and
+    // let cbsLeagueRosterReadiness surface the violation to recommendations/UI.
   }
   assert(seenTeams.size === CBS_TEAM_CATALOG.length, "CBS roster capture is missing a known team.");
   assert(input.teamCount === CBS_TEAM_CATALOG.length, "CBS roster capture team count does not match its rows.");

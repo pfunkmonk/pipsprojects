@@ -546,7 +546,8 @@ test("partial authenticated CBS captures update safely without confirming free a
   };
   const result = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
   assert.equal(result.recommendations.length, 0);
-  assert.match(result.blockedReason, /legal 8–14 active-player roster/);
+  assert.match(result.blockedReason, /scores, player stats, projections, schedules, transactions, and all captured rosters were saved/);
+  assert.match(result.blockedReason, /stays blocked only because availability cannot be trusted/);
   assert.match(result.blockedReason, /3 of 12 teams/);
 });
 
@@ -1182,21 +1183,21 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v56/);
+  assert.match(worker, /thunder-bowl-season-v57/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260917b/);
+  assert.match(worker, /season\.mjs\?v=20260917c/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
-  assert.match(worker, /fbg-session-capture\.mjs\?v=20260917a/);
-  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260917a/);
+  assert.match(worker, /fbg-session-capture\.mjs\?v=20260917c/);
+  assert.match(worker, /supplemental-session-capture\.mjs\?v=20260917c/);
   assert.match(worker, /season-evidence\.mjs\?v=20260914a/);
-  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260917a/);
+  assert.match(worker, /cbs-roster-snapshot\.mjs\?v=20260917c/);
   assert.match(source, /season-management-ui\.mjs\?v=20260915a/);
   assert.match(managementUi, /const checkpointState = m\.checkpoints \|\| \{\}/);
   assert.match(worker, /season-trade-ranking\.mjs\?v=20260901a/);
   assert.match(worker, /url\.pathname\.startsWith\("\/api\/"\)/);
-  assert.match(rootWorker, /thunder-bowl-shell-v140/);
+  assert.match(rootWorker, /thunder-bowl-shell-v141/);
   assert.doesNotMatch(rootWorker, /\/thunder-bowl\/season\/index\.html/);
   assert.equal(JSON.parse(manifest).scope, "/thunder-bowl/season/");
   assert.match(netlify, /from = "\/api\/thunder-bowl\/season\/snapshot"/);

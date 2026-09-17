@@ -65,7 +65,11 @@ function leagueRostersReady(leagueState) {
 function incompleteRosterMessage(leagueState, decision) {
   const legal = Number.isSafeInteger(leagueState?.legalTeamCount) ? leagueState.legalTeamCount : Number.isSafeInteger(leagueState?.completeTeamCount) ? leagueState.completeTeamCount : 0;
   const teams = Number.isSafeInteger(leagueState?.teamCount) ? leagueState.teamCount : leagueState?.teams?.length || 12;
-  return `CBS updated successfully, but only ${legal} of ${teams} teams have a legal 8–14 active-player roster (plus the separate PUP/IR slot) with 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST. ${decision} stays blocked until every team satisfies the league rule.`;
+  const illegalTeams = Array.isArray(leagueState?.teamStatuses)
+    ? leagueState.teamStatuses.filter((team) => team?.legal === false).map((team) => team.teamName).filter(Boolean)
+    : [];
+  const teamDetail = illegalTeams.length ? ` Temporary roster exception${illegalTeams.length === 1 ? "" : "s"}: ${illegalTeams.join(", ")}.` : "";
+  return `CBS scores, player stats, projections, schedules, transactions, and all captured rosters were saved. ${legal} of ${teams} teams currently have a legal 8–14 active-player roster (plus the separate PUP/IR slot) with 1 QB, 2 RB, 2 WR, 1 TE, 1 K, and 1 DST.${teamDetail} ${decision} stays blocked only because availability cannot be trusted until every team satisfies the league rule.`;
 }
 
 function projectionRowMaps({ fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, allowSeasonShapes = false } = {}) {

@@ -1,6 +1,7 @@
 const VALID_POSITIONS = new Set(["QB", "RB", "WR", "TE", "K", "DST"]);
 const ACTIVE_ROSTER_MAXIMUM_SIZE = 14;
 const TOTAL_ROSTER_MAXIMUM_SIZE = 15;
+const CAPTURE_ROSTER_MAXIMUM_SIZE = 30;
 const IR_ELIGIBLE_PATTERN = /(?:\bPUP\b|physically unable to perform|injured reserve|reserve\s*\/\s*injured|\bIR\b)/i;
 
 export function cbsIrEligibleEvidence(player = {}) {
@@ -15,6 +16,14 @@ export function cbsIrEligibleEvidence(player = {}) {
 export function cbsRosterSizeAllowed(players = []) {
   if (!Array.isArray(players) || players.length < 1 || players.length > TOTAL_ROSTER_MAXIMUM_SIZE) return false;
   return players.length <= ACTIVE_ROSTER_MAXIMUM_SIZE || players.some((player) => cbsIrEligibleEvidence(player));
+}
+
+// League legality and capture integrity are intentionally separate. CBS may
+// temporarily show an over-limit roster after waivers; those rows are still
+// authoritative ownership/stat evidence and must reach the app so it can warn
+// about the affected team without discarding the rest of the league update.
+export function cbsRosterCaptureAllowed(players = []) {
+  return Array.isArray(players) && players.length >= 1 && players.length <= CAPTURE_ROSTER_MAXIMUM_SIZE;
 }
 
 function numberOrNull(value) {
@@ -98,15 +107,10 @@ export function normalizeCbsTeamRows(team, rawRows) {
     });
     seen.add(id);
   }
-  // Eight legal starters are sufficient after the draft; teams may carry up to
-  // six reserves. Preserve incomplete captures, then let the server validate
-  // the exact positional minimum before it enables roster-dependent advice.
-  if (!cbsRosterSizeAllowed(players)) {
-    const detail = players.length === TOTAL_ROSTER_MAXIMUM_SIZE
-      ? `expected 1–${ACTIVE_ROSTER_MAXIMUM_SIZE} active players plus one CBS-marked PUP/IR player`
-      : `expected 1–${ACTIVE_ROSTER_MAXIMUM_SIZE} active players, or ${TOTAL_ROSTER_MAXIMUM_SIZE} with one CBS-marked PUP/IR player`;
-    throw new Error(`${team.name} returned ${players.length} roster rows; ${detail}.`);
-  }
+  // Preserve temporarily illegal CBS rosters. The app separately evaluates
+  // league legality and exposes it as a warning; only implausibly large or
+  // empty captures are rejected as page/parser failures.
+  if (!cbsRosterCaptureAllowed(players)) throw new Error(`${team.name} returned ${players.length} roster rows; expected 1–${CAPTURE_ROSTER_MAXIMUM_SIZE} structurally valid CBS player rows.`);
   return { teamId: team.teamId, cbsTeamId: team.cbsTeamId, name: team.name, players };
 }
 

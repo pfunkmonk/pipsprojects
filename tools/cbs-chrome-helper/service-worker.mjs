@@ -1,4 +1,4 @@
-import { cbsRosterSizeAllowed, normalizeCbsProjectionRows, normalizeCbsTeamRows } from "./cbs-normalize.mjs";
+import { cbsRosterCaptureAllowed, normalizeCbsProjectionRows, normalizeCbsTeamRows } from "./cbs-normalize.mjs";
 import { normalizeCbsDraftDaySetupPages } from "./cbs-draft-day-setup.mjs";
 import { normalizeCbsFabPages } from "./cbs-fab-normalize.mjs";
 import { cbsScheduleUrlMatches, renderedCbsScheduleReady } from "./cbs-schedule-readiness.mjs";
@@ -26,7 +26,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.9";
+const HELPER_VERSION = "0.10.10";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -302,7 +302,7 @@ function previewTeams(input) {
   const expectedNames = new Set(TEAMS.map((team) => team.name));
   let playerCount = 0;
   const teams = input.map((team) => {
-    if (!expectedNames.has(team?.name) || !cbsRosterSizeAllowed(team?.players)) throw new Error("CBS scoring-preview capture received invalid roster context.");
+    if (!expectedNames.has(team?.name) || !cbsRosterCaptureAllowed(team?.players)) throw new Error("CBS scoring-preview capture received invalid roster context.");
     playerCount += team.players.length;
     return {
       name: team.name,
