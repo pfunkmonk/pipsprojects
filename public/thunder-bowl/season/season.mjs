@@ -66,6 +66,18 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isCbsRosterRuleError(error) {
+  return /returned \d+ roster rows|may carry 15 players only|active players plus one CBS-marked PUP\/IR player/i.test(errorMessage(error));
+}
+
+function cbsCaptureFailureMessage(error) {
+  const message = errorMessage(error);
+  if (isCbsRosterRuleError(error)) {
+    return `${message} CBS currently shows too many ordinary Active/Reserve players for that team. No helper reinstall is needed; the last-known safe snapshot remains in use until CBS shows no more than 14 Active/Reserve players plus one player in its Injured section.`;
+  }
+  return `${message} Open “First-time setup” below to check or update the Data Helper.`;
+}
+
 function setStatus(message, error = false) {
   const target = byId("action-status");
   target.textContent = message;
@@ -1575,8 +1587,8 @@ async function updateCbsOnly() {
     snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
     saved = await postAction({ action: "capture-cbs", snapshot });
   } catch (error) {
-    byId("helper-setup").open = true;
-    throw error;
+    byId("helper-setup").open = !isCbsRosterRuleError(error);
+    throw new Error(cbsCaptureFailureMessage(error));
   }
   byId("helper-setup").open = false;
   return rebuildAfterSourceSave("CBS", saved?.source);
@@ -1796,8 +1808,8 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
   try {
     snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
   } catch (error) {
-    byId("helper-setup").open = true;
-    throw new Error(`${errorMessage(error)} Open “First-time setup” below; after that, this same button updates everything.`);
+    byId("helper-setup").open = !isCbsRosterRuleError(error);
+    throw new Error(cbsCaptureFailureMessage(error));
   }
   setStatus("CBS captured. Saving the submitted lineups, league schedule, rosters, moves, and CBS component-stat projections before continuing…");
   let current;

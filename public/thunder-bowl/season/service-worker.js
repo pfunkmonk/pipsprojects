@@ -1,11 +1,11 @@
-const CACHE_VERSION = "thunder-bowl-season-v55";
+const CACHE_VERSION = "thunder-bowl-season-v56";
 const APP_SHELL = [
   "/thunder-bowl/season/",
   "/thunder-bowl/season/index.html",
   "/thunder-bowl/season/favicon.svg?v=20260831a",
   "/thunder-bowl/season/manifest.webmanifest?v=20260831a",
   "/thunder-bowl/season/season.css?v=20260912b",
-  "/thunder-bowl/season/season.mjs?v=20260917a",
+  "/thunder-bowl/season/season.mjs?v=20260917b",
   "/thunder-bowl/season/season-kickoff.mjs?v=20260910a",
   "/thunder-bowl/season/season-evidence.mjs?v=20260914a",
   "/thunder-bowl/season/season-news.mjs?v=20260901b",
