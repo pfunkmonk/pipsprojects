@@ -26,7 +26,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.8";
+const HELPER_VERSION = "0.10.9";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -463,9 +463,17 @@ async function fantasyProsPageState(tabId, position, week) {
     target: { tabId },
     func: (expectedPosition, expectedWeek) => {
       const table = document.querySelector("table#data");
-      const selected = [...document.querySelectorAll("select option:checked")].map((option) => option.textContent?.trim() || "").filter(Boolean);
+      const leagueSelect = document.querySelector("#mpb-set-league");
+      const leagueOptions = leagueSelect ? [...leagueSelect.options].map((option) => option.textContent?.trim() || "").filter(Boolean) : [];
+      const selectedLeague = leagueSelect?.selectedOptions?.[0]?.textContent?.trim()
+        || [...document.querySelectorAll(".mcu-league-dropdown__primary-text")]
+          .map((node) => node.textContent?.trim() || "")
+          .find(Boolean)
+        || "";
       return {
-        accountLeague: selected.find((value) => value === "Thunder Bowl") || "",
+        accountLeague: selectedLeague.toLowerCase() === "thunder bowl" ? "Thunder Bowl" : selectedLeague,
+        leagueControlReady: leagueOptions.length > 0 || Boolean(selectedLeague),
+        availableLeagues: leagueOptions.slice(0, 20),
         heading: document.querySelector("h1")?.textContent?.trim() || "",
         providerTime: document.querySelector("h2 time")?.getAttribute("datetime") || "",
         headers: table ? [...table.querySelectorAll("thead tr:last-child th")].map((cell) => (cell.innerText || cell.textContent || "").trim()) : [],
@@ -493,7 +501,12 @@ async function waitForFantasyProsContent(tabId, position, week, timeoutMs = PAGE
       try {
         const state = await fantasyProsPageState(tabId, position, week);
         if (state?.pageMatches && state.accountLeague === "Thunder Bowl" && state.rowCount >= (position === "k" || position === "dst" ? 30 : 50) && state.headers.join("|") === FANTASYPROS_HEADERS[position].join("|")) return state;
-        if (tab.status === "complete" && state?.heading && state.accountLeague !== "Thunder Bowl") throw new Error("FantasyPros is signed in, but the Thunder Bowl league is not selected or available in this account.");
+        // The projection table and H1 render before FantasyPros hydrates its
+        // MyPlaybook league controls. Treat a missing selector as loading, not
+        // proof that the selected league is wrong.
+        if (tab.status === "complete" && state?.heading && state.leagueControlReady && state.accountLeague !== "Thunder Bowl") {
+          throw new Error("FantasyPros is signed in, but the Thunder Bowl league is not selected or available in this account.");
+        }
       } catch (error) {
         if (/Thunder Bowl league/.test(error?.message || "")) throw error;
       }

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.8";
+  const READER_VERSION = "0.10.9";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
