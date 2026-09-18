@@ -140,7 +140,7 @@ import {
   compareCbsRosterSnapshots,
   requestCbsRosterCapture,
   validateCbsRosterSnapshot,
-} from "./cbs-roster-snapshot.mjs?v=20260917c";
+} from "./cbs-roster-snapshot.mjs?v=20260918a";
 import { SALES_ENTRY_MODES, normalizeSalesEntryMode, salesEntryPolicy } from "./sales-entry-mode.mjs?v=20260808a";
 import { analyzeRosterSafety } from "./roster-safety.mjs?v=20260816a";
 

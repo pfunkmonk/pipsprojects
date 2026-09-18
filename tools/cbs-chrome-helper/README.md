@@ -4,7 +4,7 @@ This small Chrome/Edge helper provides read-only CBS setup import for **Pip's Dr
 
 ## Install once
 
-1. Extract `thunder-bowl-data-helper-v0.10.10.zip` to a permanent folder.
+1. Extract `thunder-bowl-data-helper-v0.10.11.zip` to a permanent folder.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge, using the browser profile you use for Pip's Projects.
 3. Turn on **Developer mode**.
 4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.

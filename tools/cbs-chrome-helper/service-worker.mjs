@@ -2,6 +2,7 @@ import { cbsRosterCaptureAllowed, normalizeCbsProjectionRows, normalizeCbsTeamRo
 import { normalizeCbsDraftDaySetupPages } from "./cbs-draft-day-setup.mjs";
 import { normalizeCbsFabPages } from "./cbs-fab-normalize.mjs";
 import { cbsScheduleUrlMatches, renderedCbsScheduleReady } from "./cbs-schedule-readiness.mjs";
+import { fantasyProsProjectionTableReady } from "./fantasypros-projection-readiness.mjs";
 import { pffProjectionTableReady } from "./pff-projection-readiness.mjs";
 
 const TEAMS = [
@@ -26,7 +27,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.10";
+const HELPER_VERSION = "0.10.11";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -463,17 +464,7 @@ async function fantasyProsPageState(tabId, position, week) {
     target: { tabId },
     func: (expectedPosition, expectedWeek) => {
       const table = document.querySelector("table#data");
-      const leagueSelect = document.querySelector("#mpb-set-league");
-      const leagueOptions = leagueSelect ? [...leagueSelect.options].map((option) => option.textContent?.trim() || "").filter(Boolean) : [];
-      const selectedLeague = leagueSelect?.selectedOptions?.[0]?.textContent?.trim()
-        || [...document.querySelectorAll(".mcu-league-dropdown__primary-text")]
-          .map((node) => node.textContent?.trim() || "")
-          .find(Boolean)
-        || "";
       return {
-        accountLeague: selectedLeague.toLowerCase() === "thunder bowl" ? "Thunder Bowl" : selectedLeague,
-        leagueControlReady: leagueOptions.length > 0 || Boolean(selectedLeague),
-        availableLeagues: leagueOptions.slice(0, 20),
         heading: document.querySelector("h1")?.textContent?.trim() || "",
         providerTime: document.querySelector("h2 time")?.getAttribute("datetime") || "",
         headers: table ? [...table.querySelectorAll("thead tr:last-child th")].map((cell) => (cell.innerText || cell.textContent || "").trim()) : [],
@@ -500,16 +491,12 @@ async function waitForFantasyProsContent(tabId, position, week, timeoutMs = PAGE
     if (currentUrl.startsWith(`${FANTASYPROS_ORIGIN}/nfl/projections/`)) {
       try {
         const state = await fantasyProsPageState(tabId, position, week);
-        if (state?.pageMatches && state.accountLeague === "Thunder Bowl" && state.rowCount >= (position === "k" || position === "dst" ? 30 : 50) && state.headers.join("|") === FANTASYPROS_HEADERS[position].join("|")) return state;
-        // The projection table and H1 render before FantasyPros hydrates its
-        // MyPlaybook league controls. Treat a missing selector as loading, not
-        // proof that the selected league is wrong.
-        if (tab.status === "complete" && state?.heading && state.leagueControlReady && state.accountLeague !== "Thunder Bowl") {
-          throw new Error("FantasyPros is signed in, but the Thunder Bowl league is not selected or available in this account.");
-        }
-      } catch (error) {
-        if (/Thunder Bowl league/.test(error?.message || "")) throw error;
-      }
+        // FantasyPros' weekly consensus projection tables are global, not
+        // league-specific. Its optional MyPlaybook league picker may be absent,
+        // delayed, or rendered outside this page. Validate the actual week,
+        // position, columns, and coverage instead of blocking on that control.
+        if (fantasyProsProjectionTableReady(state, FANTASYPROS_HEADERS[position], position)) return state;
+      } catch {}
     } else if (currentUrl && currentUrl !== "about:blank" && tab.status === "complete") {
       throw new Error("FantasyPros redirected away from the weekly projections. Sign into FantasyPros in this browser, then retry.");
     }
