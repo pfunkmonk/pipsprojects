@@ -99,7 +99,7 @@ test("CBS helper manifest is least-privilege and has no cookie or storage permis
   assert.equal(JSON.stringify(manifest).includes("<all_urls>"), false);
 });
 
-test("the season page accepts only the exact current helper protocol and release", async () => {
+test("the season page keeps the exact protocol while accepting the installed stable helper", async () => {
   const [bridge, cbsClient, fbgClient, supplementalClient] = await Promise.all([
     readFile(new URL("../tools/cbs-chrome-helper/page-bridge.js", import.meta.url), "utf8"),
     readFile(new URL("../public/thunder-bowl/cbs-roster-snapshot.mjs", import.meta.url), "utf8"),
@@ -125,7 +125,7 @@ test("the season page accepts only the exact current helper protocol and release
   for (const client of [cbsClient, fbgClient, supplementalClient]) {
     assert.match(client, /CAPTURE_PROTOCOL_VERSION = 2/);
     assert.match(client, /REQUIRED_HELPER_VERSION = "0\.10\.13"/);
-    assert.match(client, /(?:CBS_|FBG_|SUPPLEMENTAL_)COMPATIBLE_HELPER_VERSIONS = Object\.freeze\(\[(?:CBS_|FBG_|SUPPLEMENTAL_)REQUIRED_HELPER_VERSION\]\)/);
+    assert.match(client, /(?:CBS_|FBG_|SUPPLEMENTAL_)COMPATIBLE_HELPER_VERSIONS = Object\.freeze\(\[(?:CBS_|FBG_|SUPPLEMENTAL_)REQUIRED_HELPER_VERSION, "0\.10\.10"\]\)/);
     assert.match(client, /COMPATIBLE_HELPER_VERSIONS\.includes\(data\.helperVersion\)/);
     assert.match(client, /for \(const expectedHelperVersion of .*COMPATIBLE_HELPER_VERSIONS\)/);
     assert.match(client, /expectedHelperVersion,/);

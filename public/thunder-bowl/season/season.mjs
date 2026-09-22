@@ -1,6 +1,6 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260918a";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260918a";
-import { requestSupplementalProjectionCapture } from "../supplemental-session-capture.mjs?v=20260918a";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922a";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922a";
+import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922a";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
@@ -26,7 +26,7 @@ const AI_SECTIONS = Object.freeze(["lineup", "waivers", "trades", "trade-finder"
 const AI_SECTION_LABELS = Object.freeze({ lineup: "Start / sit", waivers: "Waiver wire", trades: "Trade", "trade-finder": "League-wide trade finder", "stash-watch": "Stash Watch" });
 const DEEP_AI_SECTIONS = new Set(["trade-finder", "stash-watch"]);
 const UPDATE_CONTROL_IDS = Object.freeze(["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news"]);
-const FILE_CONTROL_IDS = Object.freeze(["cbs-file", "fbg-file", "export-plan"]);
+const FILE_CONTROL_IDS = Object.freeze(["cbs-file", "fbg-file", "export-plan", "import-fantasypros-json-paste"]);
 const TAB_IDS = Object.freeze(["start-sit", "scoring-preview", "waivers", "trades", "player-stats", "news", "admin"]);
 let plan = null;
 let lineupPlan = null;
@@ -145,6 +145,7 @@ function restoreActionControls() {
   byId("cbs-file").disabled = offlineMode;
   byId("fbg-file").disabled = offlineMode || setupRequired;
   byId("export-plan").disabled = offlineMode || setupRequired;
+  byId("import-fantasypros-json-paste").disabled = offlineMode || setupRequired;
   updateAiControls();
 }
 
@@ -1872,6 +1873,21 @@ byId("import-cbs-json-paste").addEventListener("click", async (event) => {
   }
   await runAction(event.currentTarget, "Validating and syncing the captured CBS data…", async () => postAction({ action: "sync-cbs", snapshot }));
   field.value = "";
+});
+byId("import-fantasypros-json-paste").addEventListener("click", async (event) => {
+  const field = byId("fantasypros-json-paste");
+  let capture;
+  try {
+    capture = validateSupplementalSessionCapture(JSON.parse(field.value.trim()), { provider: "fantasyPros", expectedWeek: currentCaptureWeek() });
+  } catch (error) {
+    setStatus(`FantasyPros pasted-data import failed validation: ${errorMessage(error)}`, true);
+    return;
+  }
+  await runAction(event.currentTarget, "Validating and saving the captured FantasyPros projections…", async () => {
+    await postAction({ action: "capture-fantasypros", capture });
+    field.value = "";
+    return rebuildAfterSourceSave("FantasyPros");
+  });
 });
 byId("fbg-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
