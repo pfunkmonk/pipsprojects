@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const PROTOCOL_VERSION = 2;
-  const HELPER_VERSION = "0.10.11";
+  const HELPER_VERSION = "0.10.12";
   const APP_SOURCE = "thunder-bowl-app";
   const DRAFT_DAY_APP_SOURCE = "pips-draft-day-app";
   const HELPER_SOURCE = "thunder-bowl-cbs-helper";

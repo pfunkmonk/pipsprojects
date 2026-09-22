@@ -27,7 +27,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.11";
+const HELPER_VERSION = "0.10.12";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -464,12 +464,19 @@ async function fantasyProsPageState(tabId, position, week) {
     target: { tabId },
     func: (expectedPosition, expectedWeek) => {
       const table = document.querySelector("table#data");
+      const heading = document.querySelector("h1")?.textContent?.trim() || "";
+      const queryWeek = new URLSearchParams(location.search).get("week");
       return {
-        heading: document.querySelector("h1")?.textContent?.trim() || "",
+        heading,
         providerTime: document.querySelector("h2 time")?.getAttribute("datetime") || "",
         headers: table ? [...table.querySelectorAll("thead tr:last-child th")].map((cell) => (cell.innerText || cell.textContent || "").trim()) : [],
         rowCount: table?.querySelectorAll("tbody tr").length || 0,
-        pageMatches: location.pathname === `/nfl/projections/${expectedPosition}.php` && new URLSearchParams(location.search).get("week") === String(expectedWeek),
+        // FantasyPros now canonicalizes the current-week URL by removing its
+        // week query parameter after rendering. Accept that canonical URL only
+        // when the visible heading independently confirms the requested week.
+        pageMatches: location.pathname === `/nfl/projections/${expectedPosition}.php`
+          && (queryWeek === String(expectedWeek)
+            || (!queryWeek && new RegExp(`\\bWeek\\s+${expectedWeek}\\b`, "i").test(heading))),
       };
     },
     args: [position, week],
