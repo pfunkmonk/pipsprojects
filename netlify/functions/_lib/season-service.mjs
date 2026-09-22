@@ -276,7 +276,17 @@ export async function refreshSeasonPlan({
   if (fbgRefreshError) plan.alerts.push(`Footballguys raw-stat projections could not update; the last-known projection snapshot remains in use (${fbgRefreshError}).`);
   if (statusRefreshError || researchRefreshError || newsRefreshError || fbgRefreshError) plan.state = plan.state === "READY" ? "PARTIAL" : plan.state;
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
-  const saved = await saveSeasonPlan(plan, { archiveTuesday });
+  // Provider-by-provider component rows are needed for the accuracy archive,
+  // but the live Player Stats table only reads the blended stats, source names,
+  // and source counts. Persisting all raw provider rows inside every live plan
+  // made the strongly consistent pointer several megabytes larger and caused
+  // avoidable multi-minute writes. Keep the complete in-memory plan for the
+  // audit below and store only the fields the live workspace consumes.
+  const storedPlan = {
+    ...plan,
+    playerStats: (plan.playerStats || []).map(({ sources: _sources, ...player }) => player),
+  };
+  const saved = await saveSeasonPlan(storedPlan, { archiveTuesday });
   try {
     await within(Promise.all([
       archiveWeeklyProjections(plan, generatedAt),
