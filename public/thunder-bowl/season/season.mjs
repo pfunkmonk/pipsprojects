@@ -1,6 +1,6 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922c";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922c";
-import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922c";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922d";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922d";
+import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922d";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
@@ -1499,22 +1499,19 @@ async function queuePlanRebuild() {
   if (!response.ok) throw new Error(`The saved data could not be queued for recommendation rebuilding (HTTP ${response.status}).`);
 }
 
-async function watchQueuedPlan(previousFingerprint, source, { timeoutMs = 600_000 } = {}) {
+async function waitForQueuedPlan(previousFingerprint, previousGeneratedAt, source, { timeoutMs = 600_000 } = {}) {
   const expectedWeek = currentCaptureWeek();
-  const previousGeneratedAt = plan?.generatedAt || null;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline && !offlineMode && navigator.onLine) {
     await new Promise((resolve) => setTimeout(resolve, 5_000));
     try {
       const current = await loadSnapshot();
       if (current.week === expectedWeek && (current.sourceFingerprint !== previousFingerprint || current.generatedAt !== previousGeneratedAt)) {
-        await renderPlan(current);
-        setStatus(`${source} update complete. Week ${current.week} recommendations now use the newly saved data.`);
-        return;
+        return current;
       }
     } catch { /* The background build is still running; keep the saved plan usable. */ }
   }
-  if (!offlineMode && navigator.onLine) setStatus(`${source} was saved. Its recommendation rebuild is still running in the background; all controls remain available.`, true);
+  throw new Error(`${source} was saved, but its recommendation rebuild did not finish before the safety timeout.`);
 }
 
 async function runAction(button, message, task, successMessage = null) {
@@ -1573,8 +1570,17 @@ function withPendingCbsFreshness(value, capturedAt) {
 }
 
 async function rebuildAfterSourceSave(source, savedSource = null) {
-  const result = await postAction({ action: "rebuild-plan" });
-  let savedPlan = result?.plan;
+  const previousFingerprint = plan?.sourceFingerprint || null;
+  const previousGeneratedAt = plan?.generatedAt || null;
+  let savedPlan;
+  try {
+    savedPlan = (await postAction({ action: "rebuild-plan" }))?.plan;
+  } catch (error) {
+    if (!/HTTP 504|server stopped before/i.test(errorMessage(error))) throw error;
+    setStatus(`${source} was saved. The foreground server window ended, so the same rebuild is finishing safely in the background…`);
+    await queuePlanRebuild();
+    savedPlan = await waitForQueuedPlan(previousFingerprint, previousGeneratedAt, source);
+  }
   if (!savedPlan) throw new Error(`${source} was saved, but the refreshed weekly plan was not returned.`);
   if (source === "CBS") savedPlan = withPendingCbsFreshness(savedPlan, savedSource?.capturedAt);
   return savedPlan;
