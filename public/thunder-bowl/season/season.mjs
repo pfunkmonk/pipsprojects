@@ -1,6 +1,6 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922a";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922a";
-import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922a";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922b";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922b";
+import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922b";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
