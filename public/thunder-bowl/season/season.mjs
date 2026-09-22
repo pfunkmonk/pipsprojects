@@ -1,6 +1,6 @@
-import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922b";
-import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922b";
-import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922b";
+import { requestCbsRosterCapture, validateCbsRosterSnapshot } from "../cbs-roster-snapshot.mjs?v=20260922c";
+import { requestFbgProjectionCapture } from "../fbg-session-capture.mjs?v=20260922c";
+import { requestSupplementalProjectionCapture, validateSupplementalSessionCapture } from "../supplemental-session-capture.mjs?v=20260922c";
 import { getMeta, hasOfflineVerifier, saveOfflineVerifier, setMeta, verifyOfflineCode } from "../storage.mjs?v=20260823a";
 import { buildEvidenceExplanation } from "./season-evidence.mjs?v=20260914a";
 import { buildTeamNewsFeed, collectLatestPlayerNews, safeNewsUrl } from "./season-news.mjs?v=20260901b";
@@ -1573,12 +1573,11 @@ function withPendingCbsFreshness(value, capturedAt) {
 }
 
 async function rebuildAfterSourceSave(source, savedSource = null) {
-  const previousFingerprint = plan?.sourceFingerprint || null;
-  await queuePlanRebuild();
-  let savedPlan = await loadSnapshot();
+  const result = await postAction({ action: "rebuild-plan" });
+  let savedPlan = result?.plan;
+  if (!savedPlan) throw new Error(`${source} was saved, but the refreshed weekly plan was not returned.`);
   if (source === "CBS") savedPlan = withPendingCbsFreshness(savedPlan, savedSource?.capturedAt);
-  void watchQueuedPlan(previousFingerprint, source);
-  return { ...savedPlan, rebuildQueued: true, rebuildSource: source };
+  return savedPlan;
 }
 
 async function updateCbsOnly() {
