@@ -27,7 +27,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.12";
+const HELPER_VERSION = "0.10.13";
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -588,6 +588,30 @@ async function captureFantasyProsProjections(week) {
   }
 }
 
+async function captureFantasyProsPosition(week, requestedPosition) {
+  const position = String(requestedPosition || "").toLowerCase();
+  if (!FANTASYPROS_POSITIONS.includes(position)) throw new Error("FantasyPros received an invalid position.");
+  const pageUrl = `${FANTASYPROS_ORIGIN}/nfl/projections/${position}.php?week=${week}`;
+  let tabId = null;
+  try {
+    const tab = await chrome.tabs.create({ url: pageUrl, active: false });
+    tabId = tab.id;
+    const state = await waitForFantasyProsContent(tabId, position, week);
+    const table = await rawFantasyProsTable(tabId, position);
+    if (!table || table.headers.join("|") !== FANTASYPROS_HEADERS[position].join("|") || table.rows.length !== state.rowCount) throw new Error(`FantasyPros ${position.toUpperCase()} table changed while it was being captured.`);
+    return {
+      position: position === "dst" ? "DST" : position.toUpperCase(),
+      pageUrl,
+      providerAsOf: fantasyProsProviderTime(state.providerTime),
+      headers: table.headers,
+      rowCount: table.rows.length,
+      rows: table.rows,
+    };
+  } finally {
+    if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
+  }
+}
+
 async function waitForPffContent(tabId, timeoutMs = PAGE_READY_TIMEOUT_MS) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -818,7 +842,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ ok: true, helperVersion: HELPER_VERSION });
     return false;
   }
-  const allowedActions = ["capture-draft-day-cbs-setup", "capture-cbs-roster-base", "capture-cbs-schedule", "capture-cbs-fab", "capture-cbs-preview", "capture-cbs-position", "capture-fbg-projections", "capture-fantasypros-projections", "capture-pff-projections"];
+  const allowedActions = ["capture-draft-day-cbs-setup", "capture-cbs-roster-base", "capture-cbs-schedule", "capture-cbs-fab", "capture-cbs-preview", "capture-cbs-position", "capture-fbg-projections", "capture-fantasypros-position", "capture-fantasypros-projections", "capture-pff-projections"];
   if (!ALLOWED_APP_ORIGINS.has(origin) || !allowedActions.includes(message?.action) || message?.expectedHelperVersion !== HELPER_VERSION) return false;
   const week = Number(message.week);
   if (message.action !== "capture-draft-day-cbs-setup" && (!Number.isSafeInteger(week) || week < 1 || week > 18)) {
@@ -838,8 +862,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ? captureCbsPreviewStage(week, message.teams)
     : message.action === "capture-cbs-position"
       ? captureCbsPosition(week, position)
-      : message.action === "capture-fbg-projections"
+    : message.action === "capture-fbg-projections"
     ? captureFbgProjections(week)
+    : message.action === "capture-fantasypros-position"
+      ? captureFantasyProsPosition(week, position)
     : message.action === "capture-fantasypros-projections"
       ? captureFantasyProsProjections(week)
       : message.action === "capture-pff-projections"
@@ -853,6 +879,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       else if (message.action === "capture-cbs-fab") sendResponse({ ok: true, helperVersion: HELPER_VERSION, fabState: value });
       else if (message.action === "capture-cbs-preview") sendResponse({ ok: true, helperVersion: HELPER_VERSION, rawScoringPreview: value });
       else if (message.action === "capture-cbs-position") sendResponse({ ok: true, helperVersion: HELPER_VERSION, position: value.position, rows: value.rows });
+      else if (message.action === "capture-fantasypros-position") sendResponse({ ok: true, helperVersion: HELPER_VERSION, ...value });
       else sendResponse({ ok: true, helperVersion: HELPER_VERSION, capture: value });
     })
     .catch((error) => sendResponse({ ok: false, helperVersion: HELPER_VERSION, error: error instanceof Error ? error.message : "The requested capture failed safely." }));

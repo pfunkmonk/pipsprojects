@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const PROTOCOL_VERSION = 2;
-  const HELPER_VERSION = "0.10.12";
+  const HELPER_VERSION = "0.10.13";
   const APP_SOURCE = "thunder-bowl-app";
   const DRAFT_DAY_APP_SOURCE = "pips-draft-day-app";
   const HELPER_SOURCE = "thunder-bowl-cbs-helper";
@@ -81,6 +81,41 @@
     };
   }
 
+  async function captureFantasyProsInStages(data) {
+    const common = { requestId: data.requestId, week: data.week, expectedHelperVersion: HELPER_VERSION };
+    const rows = [];
+    const tables = [];
+    let providerAsOf = null;
+    for (const position of ["QB", "RB", "WR", "TE", "K", "DST"]) {
+      const result = await sendStage({ ...common, action: "capture-fantasypros-position", position });
+      if (!Array.isArray(result.rows) || !result.rows.length || !Array.isArray(result.headers)) throw new Error(`FantasyPros returned no ${position} rows.`);
+      rows.push(...result.rows);
+      tables.push({ position, headers: result.headers, rowCount: result.rows.length });
+      providerAsOf = providerAsOf || result.providerAsOf;
+    }
+    if (rows.length < 400 || rows.length > 800) throw new Error(`FantasyPros returned unsafe weekly coverage (${rows.length} rows).`);
+    const capturedAt = new Date().toISOString();
+    return {
+      ok: true,
+      helperVersion: HELPER_VERSION,
+      capture: {
+        schemaVersion: 1,
+        provider: "fantasyPros",
+        source: "FantasyPros authenticated weekly component projections capture",
+        modelEffect: "none",
+        authenticated: true,
+        accountLeague: "Thunder Bowl",
+        capturedAt,
+        providerAsOf: providerAsOf || capturedAt,
+        season: 2026,
+        week: data.week,
+        pageUrl: `https://www.fantasypros.com/nfl/projections/qb.php?week=${data.week}`,
+        tables,
+        rows,
+      },
+    };
+  }
+
   window.addEventListener("message", (event) => {
     const data = event.data;
     if (event.source !== window || event.origin !== window.location.origin || !allowedOrigins.has(event.origin)) return;
@@ -113,6 +148,10 @@
       }
       if (data.type === REQUEST) {
         captureCbsInStages(data).then((result) => post(result)).catch((error) => post({ ok: false, error: error?.message || String(error) }));
+        return;
+      }
+      if (data.type === FANTASYPROS_REQUEST) {
+        captureFantasyProsInStages(data).then((result) => post(result)).catch((error) => post({ ok: false, error: error?.message || String(error) }));
         return;
       }
       chrome.runtime.sendMessage({ action, requestId: data.requestId, week: data.week, expectedHelperVersion: HELPER_VERSION }, (result) => post(result, chrome.runtime.lastError));
