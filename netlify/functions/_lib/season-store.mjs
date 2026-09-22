@@ -145,9 +145,7 @@ export async function saveSeasonPlan(value, { archiveTuesday = false } = {}) {
   const plan = validatePlan(value);
   const prefix = `plans/v1/${plan.season}/week-${plan.week}`;
   const storage = store();
-  const [, , , tuesdayWrite] = await Promise.all([
-    storage.setJSON(`${prefix}/sources/${plan.sourceFingerprint}`, plan, { onlyIfNew: true }),
-    storage.setJSON(`${prefix}/latest`, plan),
+  const [, tuesdayWrite] = await Promise.all([
     storage.setJSON("plans/v1/latest", plan),
     archiveTuesday ? storage.setJSON(`${prefix}/tuesday`, plan, { onlyIfNew: true }) : Promise.resolve(null),
   ]);
