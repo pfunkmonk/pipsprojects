@@ -62,6 +62,15 @@ function leagueRostersReady(leagueState) {
   return Array.isArray(leagueState?.availablePlayerIds);
 }
 
+function leagueRosterCoverageComplete(leagueState) {
+  if (!Array.isArray(leagueState?.availablePlayerIds) || !Array.isArray(leagueState?.teams)) return false;
+  if (leagueState.rostersReady === true || leagueState.rostersComplete === true) return true;
+  if (!Number.isSafeInteger(leagueState?.teamCount)) return leagueState.rostersReady !== false && leagueState.rostersComplete !== false;
+  const expectedTeams = leagueState.teamCount;
+  const capturedTeamIds = new Set(leagueState.teams.map((team) => team?.teamId).filter(Boolean));
+  return expectedTeams === 12 && leagueState.teams.length === expectedTeams && capturedTeamIds.size === expectedTeams;
+}
+
 function incompleteRosterMessage(leagueState, decision) {
   const legal = Number.isSafeInteger(leagueState?.legalTeamCount) ? leagueState.legalTeamCount : Number.isSafeInteger(leagueState?.completeTeamCount) ? leagueState.completeTeamCount : 0;
   const teams = Number.isSafeInteger(leagueState?.teamCount) ? leagueState.teamCount : leagueState?.teams?.length || 12;
@@ -678,7 +687,9 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
   }
-  if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Waiver advice") };
+  if (!leagueRosterCoverageComplete(leagueState)) {
+    return { recommendations: [], blockedReason: "CBS did not capture all 12 team rosters, so the available-player pool cannot be verified yet. Update CBS or Update everything and try again." };
+  }
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   const cbsRows = cbsRowMap(leagueState);
@@ -782,7 +793,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       },
       dropProjectionLoss: row.drop ? row.dropValue.week : 0,
       confidence: projection.confidence,
-      availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams" },
+      availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams; players on temporarily illegal rosters remain excluded until CBS records a drop" },
       reason: row.drop
         ? `${row.decision.rationale} ${horizon}; dropping ${row.drop.player.name} gives up ${row.dropValue.week?.toFixed(1) || "0.0"} projected Week ${week} bench/depth points, which is counted even when the starting lineup is unchanged.`
         : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`,
@@ -1464,7 +1475,7 @@ function sourceState({ leagueState, pack, week, currentWeek = week, fbgSnapshot,
   if (leagueState.authority.startsWith("authenticated") && !leagueState.leagueSchedule) alerts.push("The CBS league matchup schedule has not been captured. Install the current Thunder Bowl Data Helper, reload this page, and choose Update CBS.");
   if (week === currentWeek && leagueState.authority.startsWith("authenticated") && !leagueState.scoringPreview) alerts.push("The CBS submitted starters and reserves have not been captured. Install the current Thunder Bowl Data Helper, reload this page, and choose Update CBS.");
   else if (week === currentWeek && leagueState.scoringPreview?.status === "PARTIAL") alerts.push(`CBS captured the league scoring page with one or more lineup exceptions. Valid submitted lineups and scores remain usable; an incomplete team is shown with an optimized roster projection instead. Detail: ${leagueState.scoringPreview.errors?.[0] || "one submitted lineup did not reconcile safely"}`);
-  if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(incompleteRosterMessage(leagueState, "Waiver and trade advice"));
+  if (leagueState.authority.startsWith("authenticated") && !rostersReady) alerts.push(`${incompleteRosterMessage(leagueState, "Trade advice")} Waiver advice remains active from the complete CBS ownership snapshot; players on exception teams stay excluded until CBS records a drop.`);
   if (leagueState.authority.startsWith("authenticated") && !cbsProjectionReady) alerts.push(week === currentWeek
     ? `CBS Week ${week} component-stat projections have not been captured yet. Keep the current Data Helper and choose Update CBS or Update everything; existing lineup and availability evidence remains usable but the plan stays PARTIAL.`
     : `Week ${week} is an early outlook. Direct CBS Week ${week} component-stat projections are not captured yet, so the schedule-shaped baseline is used until providers publish and the week becomes current.`);

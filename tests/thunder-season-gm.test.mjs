@@ -532,7 +532,7 @@ test("waiver recommendations remain blocked until CBS supplies authenticated ava
   assert.match(result.blockedReason, /Sync private CBS/);
 });
 
-test("partial authenticated CBS captures update safely without confirming free agents", () => {
+test("partial authenticated CBS captures remain blocked until all 12 rosters are present", () => {
   const roster = rosterPlayers();
   const freeAgent = player("rb-undrafted", "RB", 18, { vbd: 80, marketValue: 30 });
   const leagueState = {
@@ -546,9 +546,39 @@ test("partial authenticated CBS captures update safely without confirming free a
   };
   const result = recommendWaivers({ pack: { players: [...roster, freeAgent] }, leagueState, week: 1 });
   assert.equal(result.recommendations.length, 0);
-  assert.match(result.blockedReason, /scores, player stats, projections, schedules, transactions, and all captured rosters were saved/);
-  assert.match(result.blockedReason, /stays blocked only because availability cannot be trusted/);
-  assert.match(result.blockedReason, /3 of 12 teams/);
+  assert.match(result.blockedReason, /did not capture all 12 team rosters/);
+});
+
+test("a temporarily illegal rival roster does not block waivers and its players remain unavailable", () => {
+  const roster = rosterPlayers();
+  const freeAgent = player("rb-upgrade", "RB", 18, { vbd: 80, marketValue: 30 });
+  const protectedRivalPlayer = player("wr-three-amigos", "WR", 30, { vbd: 120, marketValue: 50 });
+  const teamIds = ["angry-face", "orange-crush", "big-head", "dogs-of-war", "t-dogs", "super-suckers", "three-amigos", "goon-skwad", "el-guapo", "crime-and-punishment", "the-hobbits", "the-bungles"];
+  const teams = teamIds.map((teamId) => ({
+    teamId,
+    teamName: teamId === "three-amigos" ? "Three Amigos" : teamId,
+    roster: teamId === "dogs-of-war" ? rosterRows(roster) : teamId === "three-amigos" ? rosterRows([protectedRivalPlayer]) : [],
+  }));
+  const result = recommendWaivers({
+    pack: { players: [...roster, freeAgent, protectedRivalPlayer] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-23T12:00:00.000Z",
+      rostersReady: false,
+      legalTeamCount: 11,
+      teamCount: 12,
+      teams,
+      teamStatuses: [{ teamId: "three-amigos", teamName: "Three Amigos", legal: false }],
+      availablePlayerIds: [freeAgent.id],
+      fabState: fabState(),
+    },
+    week: 1,
+  });
+  assert.equal(result.blockedReason, null);
+  assert.ok(result.recommendations.length >= 1);
+  assert.ok(result.recommendations.some((row) => row.add.playerId === freeAgent.id));
+  assert.ok(result.recommendations.every((row) => row.add.playerId !== protectedRivalPlayer.id));
+  assert.match(result.recommendations[0].availability.evidence, /temporarily illegal rosters remain excluded/);
 });
 
 test("waiver recommendations use only CBS-available adds and pair every add with a legal roster drop", () => {
