@@ -22,6 +22,15 @@ const NEWS_STORED_URL = "/api/thunder-bowl/news?stored=1";
 const RESEARCH_STORED_URL = "/api/thunder-bowl/research?stored=1";
 const PLAN_CACHE_KEY = "seasonPlanV1";
 const PLAYER_NEWS_CACHE_KEY = "seasonAllPlayerNewsV1";
+const HELPER_PREFLIGHT_KEY = "seasonHelperPreflightV1";
+const HELPER_PREFLIGHT_MAX_AGE_MS = 5 * 60_000;
+const HELPER_ACTION_BUTTONS = Object.freeze({
+  all: "refresh-plan",
+  cbs: "update-cbs-only",
+  fbg: "update-fbg-only",
+  fantasyPros: "update-fp-only",
+  pff: "update-pff-only",
+});
 const AI_SECTIONS = Object.freeze(["lineup", "waivers", "trades", "trade-finder", "stash-watch"]);
 const AI_SECTION_LABELS = Object.freeze({ lineup: "Start / sit", waivers: "Waiver wire", trades: "Trade", "trade-finder": "League-wide trade finder", "stash-watch": "Stash Watch" });
 const DEEP_AI_SECTIONS = new Set(["trade-finder", "stash-watch"]);
@@ -42,6 +51,7 @@ const waiverView = { position: "ALL", sort: "priority" };
 const playerStatsView = { position: "ALL", availability: "FREE_AGENT", sort: "points", direction: "desc", search: "", page: 0, pageSize: 50 };
 let tradeBuilderFingerprint = null;
 let tradeBuilderState = { teamIds: [], playerIdsByTeam: new Map(), recipientsByTeam: new Map() };
+let helperPreflightResumeStarted = false;
 
 function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
@@ -82,6 +92,28 @@ function setStatus(message, error = false) {
   const target = byId("action-status");
   target.textContent = message;
   target.classList.toggle("error", error);
+}
+
+function queueHelperPreflight(action) {
+  sessionStorage.setItem(HELPER_PREFLIGHT_KEY, JSON.stringify({ action, requestedAt: Date.now() }));
+  setStatus("Reconnecting the installed Data Helper, then this update will continue automatically…");
+  window.location.reload();
+}
+
+function resumeHelperPreflight() {
+  if (helperPreflightResumeStarted || offlineMode || !plan) return;
+  const serialized = sessionStorage.getItem(HELPER_PREFLIGHT_KEY);
+  if (!serialized) return;
+  helperPreflightResumeStarted = true;
+  sessionStorage.removeItem(HELPER_PREFLIGHT_KEY);
+  let pending;
+  try { pending = JSON.parse(serialized); }
+  catch { return; }
+  const buttonId = HELPER_ACTION_BUTTONS[pending?.action];
+  const age = Date.now() - Number(pending?.requestedAt);
+  if (!buttonId || !Number.isFinite(age) || age < 0 || age > HELPER_PREFLIGHT_MAX_AGE_MS) return;
+  setStatus("Data Helper reconnected. Continuing the requested update automatically…");
+  queueMicrotask(() => byId(buttonId).click());
 }
 
 function activateTab(tabId, { focus = false, updateHash = true } = {}) {
@@ -1400,6 +1432,7 @@ async function renderPlan(value, { offline = false } = {}) {
   void loadSavedPlayerNewsFromServer().then((savedNews) => {
     if (plan === value) renderTeamNews(value, savedNews);
   }).catch(() => {});
+  resumeHelperPreflight();
 }
 
 async function responseJson(response) {
@@ -1767,6 +1800,14 @@ byId("clear-trade").addEventListener("click", () => {
 byId("analyze-trade").addEventListener("click", analyzeBuiltTrade);
 
 byId("login-form").addEventListener("submit", attemptLogin);
+for (const [action, buttonId] of Object.entries(HELPER_ACTION_BUTTONS)) {
+  byId(buttonId).addEventListener("click", (event) => {
+    if (!event.isTrusted) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    queueHelperPreflight(action);
+  }, { capture: true });
+}
 byId("update-cbs-only").addEventListener("click", () => runAction(
   byId("update-cbs-only"),
   "Updating the CBS submitted lineups, league schedule, all 12 rosters, moves, availability, and weekly component stats…",

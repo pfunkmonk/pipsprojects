@@ -1111,6 +1111,13 @@ test("private season shell supports full and per-source updates without auction 
   assert.equal((source.match(/requestCbsRosterCapture\(\{ timeoutMs: 300_000, week: currentCaptureWeek\(\)/g) || []).length, 2);
   assert.match(source, /function isCbsRosterRuleError/);
   assert.match(source, /No helper reinstall is needed/);
+  assert.match(source, /HELPER_PREFLIGHT_KEY = "seasonHelperPreflightV1"/);
+  assert.match(source, /event\.isTrusted/);
+  assert.match(source, /window\.location\.reload\(\)/);
+  assert.match(source, /resumeHelperPreflight\(\)/);
+  assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
+  assert.match(html, /season\.mjs\?v=20260929a/);
+  assert.match(worker, /thunder-bowl-season-v64/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);
   assert.match(seasonService, /function retainPriorCbsOptionalEvidence/);
@@ -1220,10 +1227,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v63/);
+  assert.match(worker, /thunder-bowl-season-v64/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260922e/);
+  assert.match(worker, /season\.mjs\?v=20260929a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260922e/);
