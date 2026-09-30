@@ -1967,6 +1967,24 @@ byId("import-fantasypros-json-paste").addEventListener("click", async (event) =>
     return rebuildAfterSourceSave("FantasyPros");
   });
 });
+byId("import-fab-ledger-paste").addEventListener("click", async (event) => {
+  const field = byId("fab-ledger-paste");
+  let ledger;
+  try {
+    ledger = JSON.parse(field.value.trim());
+    if (!ledger || typeof ledger !== "object" || Array.isArray(ledger)) throw new Error("Ledger must be a JSON object.");
+  } catch (error) {
+    setStatus(`CBS FAB ledger import failed validation: ${errorMessage(error)}`, true);
+    return;
+  }
+  await runAction(event.currentTarget, "Applying the verified CBS transaction ledger and rebuilding waiver advice…", async () => postAction({
+    action: "apply-verified-fab-ledger",
+    observedAt: ledger.observedAt,
+    sourceUrl: ledger.sourceUrl,
+    balances: ledger.balances,
+  }));
+  field.value = "";
+});
 byId("fbg-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;

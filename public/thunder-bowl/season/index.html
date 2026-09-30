@@ -205,6 +205,9 @@
               <label for="fantasypros-json-paste">Paste verified FantasyPros capture JSON</label>
               <textarea id="fantasypros-json-paste" rows="4" spellcheck="false" placeholder="Emergency recovery import for a verified current-week FantasyPros capture."></textarea>
               <div class="sync-actions"><button id="import-fantasypros-json-paste" class="button" type="button">Import pasted FantasyPros data</button></div>
+              <label for="fab-ledger-paste">Paste verified CBS FAB ledger JSON</label>
+              <textarea id="fab-ledger-paste" rows="4" spellcheck="false" placeholder='{"observedAt":"…","sourceUrl":"https://berrymvp.football.cbssports.com/transactions?print_rows=9999","balances":[…]}'></textarea>
+              <div class="sync-actions"><button id="import-fab-ledger-paste" class="button" type="button">Apply verified FAB balances</button></div>
             </details>
           </div>
         </section>
@@ -217,6 +220,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260930b"></script>
+  <script type="module" src="./season.mjs?v=20260930c"></script>
 </body>
 </html>

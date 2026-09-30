@@ -1157,7 +1157,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930b/);
+  assert.match(html, /season\.mjs\?v=20260930c/);
   assert.match(worker, /thunder-bowl-season-v66/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);
