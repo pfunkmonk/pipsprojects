@@ -1457,7 +1457,9 @@ async function openCachedPlanWhileRefreshing(message) {
   const cached = await getMeta(PLAN_CACHE_KEY).catch(() => null);
   if (!cached) return false;
   await renderPlan(cached, { offline: false });
-  setStatus(message);
+  // Rendering the cached plan can resume a trusted helper preflight. Preserve
+  // that action's more useful stage message instead of immediately masking it.
+  if (!updateActionInProgress) setStatus(message);
   void loadSnapshot().then(async (current) => {
     // A trusted update click may have resumed from the helper preflight while
     // this older snapshot request was still in flight. Never replace its live
