@@ -653,8 +653,7 @@ export async function applyVerifiedFabLedger(input, { now = new Date() } = {}) {
     rawSha256: createHash("sha256").update(JSON.stringify({ rawSha256: current.snapshot.rawSha256, fabState })).digest("hex"),
   };
   const saved = await saveCbsLeagueState(snapshot, pack, { week: snapshot.projectionWeek });
-  const refreshed = await refreshSeasonPlan({ now });
-  return { plan: refreshed.plan, source: saved.snapshot };
+  return { source: saved.snapshot };
 }
 
 export function retainPriorCbsOptionalEvidence(captured, prior) {

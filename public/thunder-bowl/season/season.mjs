@@ -1977,12 +1977,15 @@ byId("import-fab-ledger-paste").addEventListener("click", async (event) => {
     setStatus(`CBS FAB ledger import failed validation: ${errorMessage(error)}`, true);
     return;
   }
-  await runAction(event.currentTarget, "Applying the verified CBS transaction ledger and rebuilding waiver advice…", async () => postAction({
-    action: "apply-verified-fab-ledger",
-    observedAt: ledger.observedAt,
-    sourceUrl: ledger.sourceUrl,
-    balances: ledger.balances,
-  }));
+  await runAction(event.currentTarget, "Applying the verified CBS transaction ledger and rebuilding waiver advice…", async () => {
+    await postAction({
+      action: "apply-verified-fab-ledger",
+      observedAt: ledger.observedAt,
+      sourceUrl: ledger.sourceUrl,
+      balances: ledger.balances,
+    });
+    return rebuildAfterSourceSave("CBS FAB ledger");
+  });
   field.value = "";
 });
 byId("fbg-file").addEventListener("change", async (event) => {
