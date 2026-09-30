@@ -1116,6 +1116,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /Recommended blind bid/);
   assert.match(source, /Do not bid/);
   assert.match(source, /paid-bid target/);
+  assert.match(html, /id="waiver-fab-summary"/);
+  assert.match(source, /\$\{currentBudget\} remaining · competition-aware/);
   assert.match(source, /CBS did not expose your current remaining FAB balance/);
   assert.match(source, /row\.drop\.position/);
   assert.match(source, /verdict-\$\{String\(row\.verdict/);
@@ -1157,7 +1159,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930d/);
+  assert.match(html, /season\.mjs\?v=20260930e/);
   assert.match(worker, /thunder-bowl-season-v66/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);

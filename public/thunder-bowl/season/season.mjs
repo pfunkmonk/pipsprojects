@@ -1003,11 +1003,17 @@ function waiverVerdictLabel(verdict) {
 function renderWaivers(value) {
   const target = byId("waiver-list");
   if (value.rebuildRequired) {
+    byId("waiver-fab-summary").textContent = "CBS-confirmed · FAB competition-aware";
     byId("waiver-result-count").textContent = "Rebuilding with current policy";
     target.replaceChildren(empty("The saved waiver plan uses an older recommendation policy. A fresh plan is rebuilding automatically; no stale add/drop label or bid is actionable."));
     return;
   }
   const all = value.waivers.recommendations || [];
+  const currentBudget = all.find((row) => Number.isFinite(row.fab?.currentBudget))?.fab.currentBudget
+    ?? (Number.isFinite(value.waivers.hold?.fab?.currentBudget) ? value.waivers.hold.fab.currentBudget : null);
+  byId("waiver-fab-summary").textContent = Number.isFinite(currentBudget)
+    ? `CBS-confirmed · $${currentBudget} remaining · competition-aware`
+    : "CBS-confirmed · FAB balance pending · competition-aware";
   const eligible = all
     .filter((row) => waiverView.position === "ALL" || row.add.position === waiverView.position)
     .sort((left, right) => {

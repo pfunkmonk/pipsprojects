@@ -82,7 +82,7 @@
 
       <section id="tab-waivers" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-waivers" hidden>
         <section class="panel waiver-panel" aria-labelledby="waiver-title">
-          <header class="panel-head"><div><p class="eyebrow">CBS-confirmed · $50 FAB-aware</p><h2 id="waiver-title">Waiver priorities &amp; bids</h2></div><div class="panel-head-tools"><span id="waiver-result-count">Loading recommendations</span><div class="ai-controls"><button id="ai-run-waivers" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-waivers" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <header class="panel-head"><div><p id="waiver-fab-summary" class="eyebrow">CBS-confirmed · FAB competition-aware</p><h2 id="waiver-title">Waiver priorities &amp; bids</h2></div><div class="panel-head-tools"><span id="waiver-result-count">Loading recommendations</span><div class="ai-controls"><button id="ai-run-waivers" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-waivers" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
           <div class="filter-bar" aria-label="Waiver recommendation filters">
             <label for="waiver-position">Pickup position<select id="waiver-position"><option value="ALL">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DST</option></select></label>
             <label for="waiver-sort">Sort by<select id="waiver-sort"><option value="priority">Overall priority</option><option value="week">This week gain</option><option value="nextThree">Next 3 weeks</option><option value="ros">Rest of season</option><option value="bid">Recommended bid</option></select></label>
@@ -220,6 +220,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260930d"></script>
+  <script type="module" src="./season.mjs?v=20260930e"></script>
 </body>
 </html>
