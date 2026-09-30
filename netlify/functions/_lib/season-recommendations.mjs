@@ -401,7 +401,11 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
         .filter((entry) => entry.player.position === incomingPlayer.position)
         .sort((left, right) => left.projection.points - right.projection.points)[0]
       || null;
+    const incomingPoints = round(cachedPlayerWeekEvidence(incomingPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache).points);
     const lineupGain = Number.isFinite(before.total) && Number.isFinite(after.total) ? round(after.total - before.total) : null;
+    const starterGain = incoming && Number.isFinite(incomingPoints) && (!displaced || Number.isFinite(displaced.projection?.points))
+      ? round(incomingPoints - Number(displaced?.projection?.points || 0))
+      : null;
     const starterByes = beforeRoster
       .filter((entry) => seasonStarters.has(entry.playerId))
       .filter((entry) => entry.player.position === incomingPlayer.position)
@@ -410,22 +414,33 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
     const candidateBye = incomingPlayer.weeklyProjection?.byeWeek === candidateWeek;
     return {
       week: candidateWeek,
-      incomingPoints: round(cachedPlayerWeekEvidence(incomingPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache).points),
+      incomingPoints,
       replaces: displaced ? { playerId: displaced.playerId, name: displaced.player.name, points: round(displaced.projection.points) } : null,
       wouldStart: Boolean(incoming),
       lineupGain,
+      starterGain,
       starterByes,
-      result: candidateBye ? "CANDIDATE_BYE" : incoming && starterByes.length ? "BYE_COVER" : incoming ? "WOULD_START" : "BENCH",
+      result: candidateBye
+        ? "CANDIDATE_BYE"
+        : incoming && starterByes.length
+          ? "BYE_COVER"
+          : incoming && Number.isFinite(starterGain) && starterGain < 0
+            ? "STARTS_BUT_HURTS"
+            : incoming && Number.isFinite(starterGain) && starterGain === 0
+              ? "STARTS_NO_GAIN"
+              : incoming
+                ? "WOULD_START"
+                : "BENCH",
     };
   });
-  const meaningfulWeeks = weeks.filter((row) => row.wouldStart && Number(row.lineupGain || 0) >= 1);
-  const byeCoverageWeeks = weeks.filter((row) => row.result === "BYE_COVER" && Number(row.lineupGain || 0) >= 0.5);
+  const meaningfulWeeks = weeks.filter((row) => row.wouldStart && Number(row.starterGain || 0) >= 1);
+  const byeCoverageWeeks = weeks.filter((row) => row.result === "BYE_COVER" && Number(row.starterGain || 0) >= 0.5);
   const immediateWeek = weeks.find((row) => row.week === week) || null;
   const qualification = meaningfulWeeks.length >= 2
     ? "MULTI_WEEK_STARTER"
     : byeCoverageWeeks.length
       ? "BYE_COVER"
-      : immediateWeek?.wouldStart && Number(immediateWeek.lineupGain || 0) >= 3
+      : immediateWeek?.wouldStart && Number(immediateWeek.starterGain || 0) >= 3
         ? "IMMEDIATE_STARTER"
         : null;
   const replacements = [...new Set(weeks.filter((row) => row.wouldStart && row.replaces).map((row) => row.replaces.name))];
@@ -435,7 +450,7 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
     : qualification === "BYE_COVER"
       ? `${incomingPlayer.name} supplies meaningful starter bye cover in Week ${byeCoverageWeeks.map((row) => row.week).join(", Week ")} while ${byeNames.join(" and ")} ${byeNames.length === 1 ? "is" : "are"} unavailable.`
       : qualification === "IMMEDIATE_STARTER"
-        ? `${incomingPlayer.name} immediately improves the Week ${week} starting lineup by ${Number(immediateWeek.lineupGain || 0).toFixed(1)} points.`
+        ? `${incomingPlayer.name} immediately improves the Week ${week} starting slot by ${Number(immediateWeek.starterGain || 0).toFixed(1)} points.`
         : `${incomingPlayer.name} does not create a sufficient multi-week start, bye-week start, or major immediate starting-lineup gain.`;
   return {
     qualifies: Boolean(qualification),
@@ -443,8 +458,20 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
     summary,
     meaningfulStartWeeks: meaningfulWeeks.map((row) => row.week),
     byeCoverageWeeks: byeCoverageWeeks.map((row) => row.week),
-    immediateWeekGain: immediateWeek?.lineupGain ?? null,
+    immediateWeekGain: immediateWeek?.starterGain ?? null,
     weeks,
+  };
+}
+
+function rosterComposition(roster) {
+  const readiness = rosterReadiness(roster);
+  return {
+    total: readiness.rosterSize,
+    active: readiness.activeRosterSize,
+    pupIr: readiness.irExemptionCount,
+    label: readiness.irExemptionCount
+      ? `${readiness.activeRosterSize} active + ${readiness.irExemptionCount} PUP/IR`
+      : `${readiness.activeRosterSize} active`,
   };
 }
 
@@ -1480,8 +1507,8 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
         outgoingRole: idea.outgoingRole,
       },
       rosterContext: {
-        dogs: { beforeSize: dogs.length, afterSize: idea.nextDogs.length, beforeCounts: dogsCounts, afterCounts: nextDogsCounts, outgoingRole: idea.outgoingRole },
-        rival: { beforeSize: idea.rival.length, afterSize: idea.nextRival.length, beforeCounts: rivalCounts, afterCounts: nextRivalCounts },
+        dogs: { beforeSize: dogs.length, afterSize: idea.nextDogs.length, beforeCounts: dogsCounts, afterCounts: nextDogsCounts, afterComposition: rosterComposition(idea.nextDogs), outgoingRole: idea.outgoingRole },
+        rival: { beforeSize: idea.rival.length, afterSize: idea.nextRival.length, beforeCounts: rivalCounts, afterCounts: nextRivalCounts, afterComposition: rosterComposition(idea.nextRival) },
         positionalRisk,
         noFlex: true,
       },
@@ -1513,7 +1540,7 @@ function tradeImpact(beforeRoster, afterRoster, weeks, context) {
 }
 
 export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, projectionCalibration = null, transfers = [], keepPlayerIds: requestedKeepPlayerIds = null }) {
-  if (!leagueRostersReady(leagueState)) throw new Error(incompleteRosterMessage(leagueState, "Trade analysis"));
+  if (!leagueRosterCoverageComplete(leagueState)) throw new Error("Trade analysis requires the complete CBS ownership snapshot for all 12 teams.");
   if (!Array.isArray(transfers) || transfers.length < 2 || transfers.length > 3) throw new Error("Choose two or three outgoing team packages.");
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const teamById = new Map((leagueState.teams || []).map((team) => [team.teamId, team]));
@@ -1571,6 +1598,10 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
     const sends = normalized.filter((transfer) => transfer.fromTeamId === teamId).flatMap((transfer) => transfer.playerIds.map((playerId) => playerById.get(playerId)));
     const receives = normalized.filter((transfer) => transfer.toTeamId === teamId).flatMap((transfer) => transfer.playerIds.map((playerId) => playerById.get(playerId)));
     const impact = Object.fromEntries(Object.entries(horizons).map(([name, weeks]) => [name, weeks.length ? tradeImpact(beforeByTeam.get(teamId), afterByTeam.get(teamId), weeks, context) : { before: null, after: null, delta: null }]));
+    const lineupUse = receives.map((player) => ({
+      player: { playerId: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam },
+      ...tradeLineupCase({ incomingPlayer: player, beforeRoster: beforeByTeam.get(teamId), afterRoster: afterByTeam.get(teamId), week, context }),
+    }));
     return {
       teamId,
       teamName: team.teamName,
@@ -1579,24 +1610,31 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
       sends: sends.map((player) => ({ playerId: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam })),
       receives: receives.map((player) => ({ playerId: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam })),
       impact,
+      lineupUse,
+      rosterComposition: rosterComposition(afterByTeam.get(teamId)),
     };
   });
   const dogs = teams.find((team) => team.teamId === USER_TEAM_ID);
   const rivals = teams.filter((team) => team.teamId !== USER_TEAM_ID);
   const dogsRos = dogs.impact.restOfSeason.delta ?? -999;
   const worstRival = Math.min(...rivals.map((team) => team.impact.restOfSeason.delta ?? -999));
-  const verdict = dogsRos > 0.5 && worstRival >= -0.35 ? "GOOD IDEA" : dogsRos > 0 && worstRival >= -0.35 ? "POSSIBLE" : dogsRos > 0 ? "UNLIKELY" : "DECLINE";
+  const dogsLineupUse = dogs.lineupUse.some((entry) => entry.qualifies);
+  const rivalLineupUse = rivals.every((team) => team.lineupUse.some((entry) => entry.qualifies));
+  const lineupUseReady = dogsLineupUse && rivalLineupUse;
+  const verdict = lineupUseReady && dogsRos > 0.5 && worstRival >= -0.35 ? "GOOD IDEA" : lineupUseReady && dogsRos > 0 && worstRival >= -0.35 ? "POSSIBLE" : dogsRos > 0 ? "UNLIKELY" : "DECLINE";
   const rivalSummary = rivals.map((team) => `${team.teamName} ${team.impact.restOfSeason.delta >= 0 ? "gains" : "loses"} ${Math.abs(team.impact.restOfSeason.delta || 0).toFixed(1)}`).join("; ");
   return {
     verdict,
     summary: `Dogs of War ${dogsRos >= 0 ? "gains" : "loses"} ${Math.abs(dogsRos).toFixed(1)} average optimal-lineup points over the rest of the season; ${rivalSummary}.`,
     teams,
     risks: [
+      !dogsLineupUse ? "No acquired player gives Dogs of War enough meaningful starting-lineup use; this package should not be offered." : "Dogs of War receives at least one player who clears the weekly starting-lineup-use gate.",
+      !rivalLineupUse ? "At least one other team receives no player who clears its weekly starting-lineup-use gate, so the package is not a credible offer." : "Every other team receives at least one player who clears the weekly starting-lineup-use gate.",
       worstRival < -0.35 ? "At least one other manager gives up too much projected lineup value, so acceptance is unlikely without a different package." : "Every other team stays within the configured rational-acceptance range.",
       "Injuries, role changes, projection disagreement, and manager preferences can change the practical value before acceptance.",
       "This analysis excludes roster salary because salary does not govern in-season trades; keeper salary is reviewed separately late in the season.",
     ],
-    method: "Exact legal optimal lineups before and after the complete package; current week, next three, division, playoffs, and rest of season are scored with the available four-source blend.",
+    method: "Exact legal optimal lineups before and after the complete package; each received player must also clear the same week-by-week multi-start, bye-cover, or major immediate-start gate used by the automated trade rail.",
   };
 }
 

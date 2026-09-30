@@ -1152,6 +1152,9 @@ test("the proposed trade analyzer supports legal multi-player three-team package
   });
   assert.equal(result.teams.length, 3);
   assert.equal(result.teams.every((team) => team.afterRosterSize === 8), true);
+  assert.equal(result.teams.every((team) => Array.isArray(team.lineupUse) && team.lineupUse.length >= 1), true);
+  assert.equal(result.teams.every((team) => team.rosterComposition.label === "8 active"), true);
+  assert.equal(result.teams.every((team) => team.lineupUse.every((entry) => Array.isArray(entry.weeks))), true);
   assert.ok(["GOOD IDEA", "POSSIBLE", "UNLIKELY", "DECLINE"].includes(result.verdict));
   assert.match(result.method, /Exact legal optimal lineups/);
 });
@@ -1222,8 +1225,8 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 22);
-  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 23);
+  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-result-count", "trade-position", "trade-target-role", "trade-min-weeks", "trade-verdict", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
   assert.equal((html.match(/Game \/ kickoff \(Denver\)/g) || []).length, 2);
@@ -1291,7 +1294,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930i/);
+  assert.match(html, /season\.mjs\?v=20260930j/);
   assert.match(source, /Weekly streaming slot/);
   assert.match(source, /function waiverLineupCasePanel/);
   assert.match(source, /function tradeLineupUsePanel/);

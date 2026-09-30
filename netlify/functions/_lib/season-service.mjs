@@ -30,7 +30,7 @@ import { buildManagement, buildProjectionCalibration } from "./season-management
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 import { readRosterKeepPreferences, resolveRosterKeepPreferences, saveRosterKeepPreferences } from "./season-roster-preferences.mjs";
 
-export const RECOMMENDATION_ENGINE_VERSION = 22;
+export const RECOMMENDATION_ENGINE_VERSION = 23;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {
@@ -556,6 +556,9 @@ export async function analyzeCurrentSeasonSectionWithAi(section, { now = new Dat
     model: process.env.OPENAI_MODEL || "gpt-5.6-sol",
     fetchImpl,
     now,
+    tradeValidator: safeSection === "trade-finder"
+      ? (transfers) => analyzeProposedSeasonTrade(transfers, { now })
+      : null,
   });
   await saveSeasonAiAdvice(advice);
   return { advice, cached: false, stale: false };

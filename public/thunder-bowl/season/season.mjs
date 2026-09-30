@@ -48,6 +48,7 @@ let playerNewsServerLoaded = false;
 const savedAiAdvice = new Map();
 const savedAiJobs = new Map();
 const waiverView = { position: "ALL", sort: "priority" };
+const tradeView = { position: "ALL", targetRole: "ALL", minWeeks: 0, verdict: "ALL" };
 const playerStatsView = { position: "ALL", availability: "FREE_AGENT", sort: "points", direction: "desc", search: "", page: 0, pageSize: 50 };
 let tradeBuilderFingerprint = null;
 let tradeBuilderState = { teamIds: [], playerIdsByTeam: new Map(), recipientsByTeam: new Map() };
@@ -247,7 +248,7 @@ function advicePlainText(section, envelope) {
     value.summary,
     "",
     "Decision reviews",
-    ...value.decisionReviews.map((item) => `${item.verdict}: ${item.decision}\n${item.reasoning}`),
+    ...value.decisionReviews.map((item) => `${item.verdict}: ${item.decision}\n${item.reasoning}${item.trade?.validation ? `\nDeterministic validation: ${item.trade.validation.status} · ${item.trade.validation.summary}` : ""}`),
     "",
     "Key reasons",
     ...value.keyReasons.map((item) => `- ${item}`),
@@ -275,6 +276,10 @@ function openAiAdvice(section, saved) {
     const heading = element("h3");
     heading.append(element("span", "ai-verdict", item.verdict), document.createTextNode(item.decision));
     review.append(heading, element("p", "", item.reasoning));
+    if (item.trade?.validation) {
+      const validation = element("p", item.trade.validation.status === "VALIDATED" ? "evidence-note" : "fab-unavailable", `${item.trade.validation.status === "VALIDATED" ? "Deterministic analyzer validated" : "Deterministic analyzer rejected"}: ${item.trade.validation.summary}`);
+      review.append(validation);
+    }
     body.append(review);
   }
   body.append(adviceList("Key reasons", value.keyReasons), adviceList("Risks and uncertainty", value.risks), adviceList("Next steps", value.nextSteps));
@@ -1085,7 +1090,7 @@ function tradeLineupUsePanel(row) {
   const outgoing = row.sends?.[0];
   const targetRole = lineupUse.targetSourceRole === "RIVAL_STARTER" ? "other team's starter" : "other team's bench";
   const sendRole = lineupUse.outgoingRole === "STARTER_BEING_REPLACED" ? "your same-position starter being replaced" : "your bench";
-  const resultLabels = { WOULD_START: "Would start", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Player bye" };
+  const resultLabels = { WOULD_START: "Would improve the starter", STARTS_BUT_HURTS: "Starts, but lowers the position score", STARTS_NO_GAIN: "Starts with no position gain", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Player bye" };
   const panel = element("section", "trade-lineup-use");
   panel.append(
     element("strong", "", `Starting-lineup test: ${incoming.name} is currently on the ${targetRole}; ${outgoing.name} comes from ${sendRole}`),
@@ -1102,9 +1107,10 @@ function tradeLineupUsePanel(row) {
       const comparison = week.replaces
         ? `${number(week.incomingPoints)} vs ${week.replaces.name} ${number(week.replaces.points)}`
         : `${number(week.incomingPoints)} vs no complete current starter`;
-      const gain = Number.isFinite(week.lineupGain) ? ` · lineup ${signed(week.lineupGain)}` : "";
+      const gain = Number.isFinite(week.starterGain) ? ` · starter ${signed(week.starterGain)}` : "";
+      const packageGain = Number.isFinite(week.lineupGain) ? ` · full lineup ${signed(week.lineupGain)}` : "";
       const bye = week.starterByes?.length ? ` · ${week.starterByes.join(" + ")} bye` : "";
-      grid.append(element("div", `waiver-week-row waiver-week-${String(week.result || "bench").toLowerCase()}`, `Week ${week.week}: ${comparison} · ${resultLabels[week.result] || week.result}${gain}${bye}`));
+      grid.append(element("div", `waiver-week-row waiver-week-${String(week.result || "bench").toLowerCase()}`, `Week ${week.week}: ${comparison} · ${resultLabels[week.result] || week.result}${gain}${packageGain}${bye}`));
     }
     section.append(grid);
     columns.append(section);
@@ -1195,6 +1201,12 @@ function renderWaivers(value) {
 function renderTrades(value) {
   const target = byId("trade-list");
   const summaryTarget = byId("trade-board-summary");
+  if (value.rebuildRequired) {
+    byId("trade-result-count").textContent = "Rebuilding with current policy";
+    summaryTarget.replaceChildren();
+    target.replaceChildren(empty("The saved trade board uses an older recommendation policy. A fresh board is rebuilding automatically; stale trade cards are hidden until it finishes."));
+    return;
+  }
   if (value.trades.boardSummary) {
     const summary = value.trades.boardSummary;
     const card = element("article", "decision-card");
@@ -1205,9 +1217,18 @@ function renderTrades(value) {
     card.append(header, element("p", "", summary.reason));
     summaryTarget.replaceChildren(card);
   } else summaryTarget.replaceChildren();
-  const recommendations = sortTradeProposals(value.trades.recommendations || []);
+  const allRecommendations = sortTradeProposals(value.trades.recommendations || []);
+  const recommendations = allRecommendations.filter((row) => {
+    const targetPosition = row.receives?.[0]?.position;
+    const usefulWeeks = new Set([...(row.lineupUse?.dogs?.meaningfulStartWeeks || []), ...(row.lineupUse?.dogs?.byeCoverageWeeks || [])]).size;
+    return (tradeView.position === "ALL" || targetPosition === tradeView.position)
+      && (tradeView.targetRole === "ALL" || row.lineupUse?.targetSourceRole === tradeView.targetRole)
+      && usefulWeeks >= tradeView.minWeeks
+      && (tradeView.verdict === "ALL" || row.verdict === tradeView.verdict);
+  });
+  byId("trade-result-count").textContent = `${recommendations.length} of ${allRecommendations.length} trade ideas`;
   if (!recommendations.length) {
-    target.replaceChildren(empty(value.trades.blockedReason || "No trade idea clears the two-sided gate."));
+    target.replaceChildren(empty(allRecommendations.length ? "No trade idea matches the selected filters." : value.trades.blockedReason || "No trade idea clears the two-sided gate."));
     return;
   }
   const cards = recommendations.map((row) => {
@@ -1247,7 +1268,8 @@ function renderTrades(value) {
     const rivalFit = incoming.position === outgoing.position
       ? `${row.rival.teamName} would make a same-position ${incoming.position} exchange and keep ${row.rosterContext?.rival?.beforeCounts?.[incoming.position] ?? "—"} at that position.`
       : `${row.rival.teamName} currently carries ${row.rosterContext?.rival?.beforeCounts?.[incoming.position] ?? "—"} ${incoming.position}${(row.rosterContext?.rival?.beforeCounts?.[incoming.position] ?? 0) === 1 ? "" : "s"} and ${row.rosterContext?.rival?.beforeCounts?.[outgoing.position] ?? "—"} ${outgoing.position}${(row.rosterContext?.rival?.beforeCounts?.[outgoing.position] ?? 0) === 1 ? "" : "s"}.`;
-    rosterCase.append(element("strong", "", "Rival roster fit"), element("p", "", `${rivalFit} The exchange keeps a legal ${row.rosterContext?.rival?.afterSize ?? "—"}-player roster.`));
+    const rosterLabel = row.rosterContext?.rival?.afterComposition?.label || `${row.rosterContext?.rival?.afterSize ?? "—"} total players`;
+    rosterCase.append(element("strong", "", "Rival roster fit"), element("p", "", `${rivalFit} The exchange leaves ${rosterLabel}.`));
     const risk = element("section", "trade-detail");
     risk.append(element("strong", "", "Primary risk"), element("p", "", row.primaryRisk));
     const approach = element("section", "trade-detail");
@@ -1510,6 +1532,25 @@ function renderTradeAnalysis(result) {
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(team.impact.week.delta)), metric("Next 3", signed(team.impact.nextThree.delta)), metric("ROS", signed(team.impact.restOfSeason.delta)), metric("Division", signed(team.impact.division.delta)), metric("Playoffs", signed(team.impact.playoffs.delta)));
     card.append(metrics);
+    if (team.rosterComposition?.label) card.append(element("p", "evidence-note", `Post-trade roster: ${team.rosterComposition.label}.`));
+    for (const lineupCase of team.lineupUse || []) {
+      const resultLabels = { WOULD_START: "Would improve the starter", STARTS_BUT_HURTS: "Starts, but lowers the position score", STARTS_NO_GAIN: "Starts with no position gain", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Player bye" };
+      const panel = element("section", "trade-lineup-use");
+      panel.append(element("strong", "", `${lineupCase.player.name}: ${lineupCase.qualifies ? "clears" : "does not clear"} the starting-lineup-use gate`), element("p", "", lineupCase.summary));
+      const details = document.createElement("details");
+      details.append(element("summary", "", `Week-by-week use for ${lineupCase.player.name}`));
+      const grid = element("div", "waiver-week-grid");
+      for (const week of lineupCase.weeks || []) {
+        const comparison = week.replaces ? `${number(week.incomingPoints)} vs ${week.replaces.name} ${number(week.replaces.points)}` : `${number(week.incomingPoints)} vs no complete current starter`;
+        const starterGain = Number.isFinite(week.starterGain) ? ` · starter ${signed(week.starterGain)}` : "";
+        const lineupGain = Number.isFinite(week.lineupGain) ? ` · full lineup ${signed(week.lineupGain)}` : "";
+        const bye = week.starterByes?.length ? ` · ${week.starterByes.join(" + ")} bye` : "";
+        grid.append(element("div", `waiver-week-row waiver-week-${String(week.result || "bench").toLowerCase()}`, `Week ${week.week}: ${comparison} · ${resultLabels[week.result] || week.result}${starterGain}${lineupGain}${bye}`));
+      }
+      details.append(grid);
+      panel.append(details);
+      card.append(panel);
+    }
     const actions = element("div", "card-actions");
     actions.append(...recommendationNewsButtons([...team.sends, ...team.receives]));
     card.append(actions);
@@ -2096,6 +2137,22 @@ byId("import-fantasypros-json-paste").addEventListener("click", async (event) =>
     field.value = "";
     return rebuildAfterSourceSave("FantasyPros");
   });
+});
+byId("trade-position").addEventListener("change", (event) => {
+  tradeView.position = event.target.value;
+  if (plan) renderTrades(plan);
+});
+byId("trade-target-role").addEventListener("change", (event) => {
+  tradeView.targetRole = event.target.value;
+  if (plan) renderTrades(plan);
+});
+byId("trade-min-weeks").addEventListener("change", (event) => {
+  tradeView.minWeeks = Number(event.target.value) || 0;
+  if (plan) renderTrades(plan);
+});
+byId("trade-verdict").addEventListener("change", (event) => {
+  tradeView.verdict = event.target.value;
+  if (plan) renderTrades(plan);
 });
 byId("import-fab-ledger-paste").addEventListener("click", async (event) => {
   const field = byId("fab-ledger-paste");

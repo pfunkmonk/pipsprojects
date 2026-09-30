@@ -61,7 +61,7 @@ const modelOutput = {
   headline: "Keep the current quarterback starter",
   summary: "The two-point projection edge is modest but supported by the current range and no contradictory injury evidence.",
   confidence: "MEDIUM",
-  decisionReviews: [{ decision: "Start Starter over Backup", verdict: "START", reasoning: "Starter owns the higher current Thunder Bowl projection, while the overlapping ranges keep confidence below high." }],
+  decisionReviews: [{ decision: "Start Starter over Backup", verdict: "START", reasoning: "Starter owns the higher current Thunder Bowl projection, while the overlapping ranges keep confidence below high.", trade: null }],
   keyReasons: ["The current projection favors Starter by two points.", "Both players have complete current-week evidence."],
   risks: ["The projection ranges overlap, so the outcome is not certain."],
   nextSteps: ["Recheck injury news before the first player locks."],
@@ -140,7 +140,7 @@ test("league-wide trade finder sends every roster and projection horizon with hi
     return Response.json({ output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({
       ...modelOutput,
       headline: "One stronger two-sided trade candidate is worth investigating",
-      decisionReviews: [{ decision: "Dogs of War sends Starter and receives Trade Target from Rival Team", verdict: "MONITOR", reasoning: "The playoff projection improves, but the deterministic analyzer must confirm that both post-trade lineups remain legal." }],
+      decisionReviews: [{ decision: "Dogs of War sends Starter and receives Trade Target from Rival Team", verdict: "MONITOR", reasoning: "The playoff projection improves, but the deterministic analyzer must confirm that both post-trade lineups remain legal.", trade: { transfers: [{ fromTeamId: "dogs-of-war", toTeamId: "rival", playerIds: ["starter"] }, { fromTeamId: "rival", toTeamId: "dogs-of-war", playerIds: ["target"] }], validation: null } }],
     }) }] }] });
   };
   const result = await generateSeasonAiAdvice({
@@ -149,6 +149,7 @@ test("league-wide trade finder sends every roster and projection horizon with hi
     apiKey: "test-secret-key",
     model: "gpt-5.6-sol",
     fetchImpl,
+    tradeValidator: async () => ({ verdict: "POSSIBLE", summary: "Both teams receive a player who clears the weekly starting-lineup-use gate." }),
     now: new Date("2026-09-01T12:02:00.000Z"),
   });
   assert.equal(captured.body.reasoning.effort, "high");
@@ -168,6 +169,7 @@ test("league-wide trade finder sends every roster and projection horizon with hi
   assert.match(captured.body.input, /"playoffWeeks":\[15,16,17\]/);
   assert.equal(result.section, "trade-finder");
   assert.equal(result.model, "gpt-5.6-sol");
+  assert.equal(result.advice.decisionReviews[0].trade.validation.status, "VALIDATED");
 });
 
 test("deep trade discovery automatically retries an incomplete reasoning response with enough room for valid JSON", async () => {
@@ -187,7 +189,7 @@ test("deep trade discovery automatically retries an incomplete reasoning respons
       output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({
         ...modelOutput,
         headline: "Retry found one credible trade construction",
-        decisionReviews: [{ decision: "Dogs sends Starter and receives Trade Target from Rival Team", verdict: "MONITOR", reasoning: "The retry completed the governed schema and preserved a two-sided roster-fit review." }],
+        decisionReviews: [{ decision: "Dogs sends Starter and receives Trade Target from Rival Team", verdict: "MONITOR", reasoning: "The retry completed the governed schema and preserved a two-sided roster-fit review.", trade: { transfers: [{ fromTeamId: "dogs-of-war", toTeamId: "rival", playerIds: ["starter"] }, { fromTeamId: "rival", toTeamId: "dogs-of-war", playerIds: ["target"] }], validation: null } }],
       }) }] }],
     });
   };
@@ -200,6 +202,7 @@ test("deep trade discovery automatically retries an incomplete reasoning respons
       apiKey: "test-secret-key",
       model: "gpt-5.6-sol",
       fetchImpl,
+      tradeValidator: async () => ({ verdict: "GOOD IDEA", summary: "Both teams gain a useful weekly starter." }),
       now: new Date("2026-09-01T12:02:30.000Z"),
     });
     assert.equal(calls.length, 2);
@@ -212,6 +215,33 @@ test("deep trade discovery automatically retries an incomplete reasoning respons
   } finally {
     console.warn = originalWarn;
   }
+});
+
+test("trade discovery is downgraded to PASS when the deterministic analyzer rejects the package", async () => {
+  const output = {
+    ...modelOutput,
+    headline: "A proposed package requires deterministic review",
+    decisionReviews: [{
+      decision: "Dogs sends Starter and receives Trade Target from Rival Team",
+      verdict: "OFFER",
+      reasoning: "The model sees a possible roster fit, but the governed analyzer is authoritative.",
+      trade: { transfers: [{ fromTeamId: "dogs-of-war", toTeamId: "rival", playerIds: ["starter"] }, { fromTeamId: "rival", toTeamId: "dogs-of-war", playerIds: ["target"] }], validation: null },
+    }],
+  };
+  const result = await generateSeasonAiAdvice({
+    plan: plan(),
+    section: "trade-finder",
+    apiKey: "test-secret-key",
+    model: "gpt-5.6-sol",
+    fetchImpl: async () => Response.json({ output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(output) }] }] }),
+    tradeValidator: async () => { throw new Error("Rival Team would no longer have a legal starting lineup."); },
+  });
+  assert.equal(result.advice.decisionReviews[0].verdict, "PASS");
+  assert.deepEqual(result.advice.decisionReviews[0].trade.validation, {
+    status: "REJECTED",
+    verdict: "PASS",
+    summary: "Rejected by the deterministic analyzer: Rival Team would no longer have a legal starting lineup.",
+  });
 });
 
 test("AI advice safely unwraps a fenced JSON object before strict validation", async () => {
@@ -233,7 +263,7 @@ test("stash watch deeply searches CBS-confirmed IR free agents for low-cost long
     return Response.json({ output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({
       ...modelOutput,
       headline: "IR Gem is worth a low-cost stash only if CBS still shows him available",
-      decisionReviews: [{ decision: "IR Gem · RB · NYJ · CBS free agent · STASH", verdict: "STASH", reasoning: "The healthy four-source scoring profile and pre-injury value support long-term upside, but no return date is supplied and the winning FAB price must stay low because it becomes the keeper salary." }],
+      decisionReviews: [{ decision: "IR Gem · RB · NYJ · CBS free agent · STASH", verdict: "STASH", reasoning: "The healthy four-source scoring profile and pre-injury value support long-term upside, but no return date is supplied and the winning FAB price must stay low because it becomes the keeper salary.", trade: null }],
     }) }] }] });
   };
   const result = await generateSeasonAiAdvice({

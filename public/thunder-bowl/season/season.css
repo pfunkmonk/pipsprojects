@@ -68,6 +68,7 @@ form { display:grid; gap:.55rem; } label { font-weight:800; } input { width:100%
 .waiver-week-row { border-radius:6px; padding:.35rem .45rem; background:rgba(4,28,52,.62); color:var(--muted); font-size:.74rem; line-height:1.35; }
 .waiver-week-would_start,.waiver-week-bye_cover { border-left:3px solid var(--green); color:var(--text); }
 .waiver-week-candidate_bye { border-left:3px solid var(--warning); }
+.waiver-week-starts_but_hurts,.waiver-week-starts_no_gain { border-left:3px solid var(--warning); color:var(--warning); }
 .keep-toggle { border-color:#6d86a4; color:#d7e5f4; background:#102a45; min-width:4.2rem; }
 .keep-toggle.active { border-color:var(--green); color:#082b28; background:var(--green); font-weight:800; }
 .keep-toggle:disabled { opacity:.62; cursor:wait; }

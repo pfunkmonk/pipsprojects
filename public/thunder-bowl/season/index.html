@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and player-stat command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260930e" />
+  <link rel="stylesheet" href="./season.css?v=20260930f" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to weekly workspace</a>
@@ -107,7 +107,13 @@
 
       <section id="tab-trades" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-trades" hidden>
         <section class="panel trade-panel" aria-labelledby="trade-title">
-          <header class="panel-head"><div><p class="eyebrow">Two-sided current-season value</p><h2 id="trade-title">Recommended trade ideas</h2></div><div class="panel-head-tools"><span>Impact for both teams</span><div class="ai-controls"><button id="ai-run-trades" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-trades" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <header class="panel-head"><div><p class="eyebrow">Two-sided current-season value</p><h2 id="trade-title">Recommended trade ideas</h2></div><div class="panel-head-tools"><span id="trade-result-count">Impact for both teams</span><div class="ai-controls"><button id="ai-run-trades" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-trades" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
+          <div class="filter-bar" aria-label="Trade recommendation filters">
+            <label for="trade-position">Target position<select id="trade-position"><option value="ALL">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DST</option></select></label>
+            <label for="trade-target-role">Target roster role<select id="trade-target-role"><option value="ALL">Starter or bench</option><option value="RIVAL_STARTER">Rival starter</option><option value="RIVAL_BENCH">Rival bench</option></select></label>
+            <label for="trade-min-weeks">Minimum useful weeks<select id="trade-min-weeks"><option value="0">Any</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="5">5+</option></select></label>
+            <label for="trade-verdict">Verdict<select id="trade-verdict"><option value="ALL">All verdicts</option><option value="OFFER">Offer</option><option value="MONITOR">Monitor</option><option value="PASS">Pass</option></select></label>
+          </div>
           <div id="trade-board-summary" class="trade-board-summary"></div>
           <div id="trade-list" class="card-list recommendation-grid"></div>
         </section>
@@ -220,6 +226,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260930i"></script>
+  <script type="module" src="./season.mjs?v=20260930j"></script>
 </body>
 </html>

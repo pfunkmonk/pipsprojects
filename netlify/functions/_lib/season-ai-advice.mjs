@@ -6,7 +6,7 @@ const DEEP_OUTPUT_TOKENS = 16_000;
 const DEEP_RETRY_OUTPUT_TOKENS = 24_000;
 const STANDARD_TIMEOUT_MS = 80_000;
 const DEEP_ATTEMPT_TIMEOUT_MS = 6 * 60_000;
-export const SEASON_AI_PROMPT_VERSION = 5;
+export const SEASON_AI_PROMPT_VERSION = 6;
 
 export const THUNDER_BOWL_AI_INSTRUCTIONS = `You are the private, skeptical in-season decision analyst for Dogs of War in the 12-team Thunder Bowl fantasy-football league. Audit the supplied governed recommendations; do not replace missing facts with guesses.
 
@@ -45,6 +45,7 @@ ANALYSIS STANDARD
 - Challenge weak recommendations. A WATCH or exploratory idea is not an instruction to act. Say PASS or HOLD when the edge is too small, evidence is stale, the drop is damaging, the rival has no incentive, or uncertainty overwhelms the gain.
 - Never invent news, availability, opponent behavior, waiver prices, return dates, statistics, rules, or certainty. Mention important missing evidence.
 - Keep the response concise enough to use during lineup and waiver decisions. Do not discuss auction salaries unless the requested section is stash-watch or an eligible Week 13+ keeper review.
+- Every decision review must include the schema's trade field. Set it to null unless REQUESTED_SECTION is trade-finder.
 - Return only the required JSON object.`;
 
 export const TRADE_FINDER_AI_INSTRUCTIONS = `
@@ -64,7 +65,8 @@ LEAGUE-WIDE TRADE FINDER MODE
 - Avoid repeating a displayed trade-rail idea unless the new package materially improves its Dogs value, acceptance case, or risk profile.
 - OFFER requires a meaningful, evidence-backed improvement and a credible benefit or solved need for every other manager. Use MONITOR for promising but uncertain packages and PASS when the evidence does not justify outreach.
 - These are candidate constructions, not completed trades. State what current evidence should be rechecked in the deterministic proposal analyzer before an offer is sent.
-- Return one decisionReviews item per candidate package, in descending strength order. Never invent a projection, news item, opponent preference, or acceptance probability.`;
+- Return one decisionReviews item per candidate package, in descending strength order. Never invent a projection, news item, opponent preference, or acceptance probability.
+- For every candidate, populate the required trade object with exact current team IDs and player IDs from EVIDENCE_JSON. Use one transfer per sending team. Set trade.validation to null; only the deterministic server analyzer may populate it. A candidate without exact structured IDs cannot be shown as validated.`;
 
 export const STASH_WATCH_AI_INSTRUCTIONS = `
 
@@ -94,11 +96,53 @@ export const SEASON_AI_OUTPUT_SCHEMA = Object.freeze({
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["decision", "verdict", "reasoning"],
+        required: ["decision", "verdict", "reasoning", "trade"],
         properties: {
           decision: { type: "string", minLength: 3, maxLength: 180 },
           verdict: { type: "string", enum: VALID_VERDICTS },
           reasoning: { type: "string", minLength: 12, maxLength: 700 },
+          trade: {
+            anyOf: [
+              { type: "null" },
+              {
+                type: "object",
+                additionalProperties: false,
+                required: ["transfers", "validation"],
+                properties: {
+                  transfers: {
+                    type: "array",
+                    minItems: 2,
+                    maxItems: 3,
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["fromTeamId", "toTeamId", "playerIds"],
+                      properties: {
+                        fromTeamId: { type: "string", minLength: 2, maxLength: 80 },
+                        toTeamId: { type: "string", minLength: 2, maxLength: 80 },
+                        playerIds: { type: "array", minItems: 1, maxItems: 6, items: { type: "string", minLength: 1, maxLength: 80 } },
+                      },
+                    },
+                  },
+                  validation: {
+                    anyOf: [
+                      { type: "null" },
+                      {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["status", "verdict", "summary"],
+                        properties: {
+                          status: { type: "string", enum: ["VALIDATED", "REJECTED"] },
+                          verdict: { type: "string", enum: ["OFFER", "MONITOR", "PASS"] },
+                          summary: { type: "string", minLength: 6, maxLength: 500 },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
         },
       },
     },
@@ -138,7 +182,32 @@ export function validateAiSection(section) {
   return section;
 }
 
-export function validateAiAdvice(value) {
+function validateTradeDecision(value, label, { required = false } = {}) {
+  if (value === null) {
+    if (required) fail(`${label} must include exact structured trade IDs.`);
+    return null;
+  }
+  exactKeys(value, ["transfers", "validation"], label);
+  if (!Array.isArray(value.transfers) || value.transfers.length < 2 || value.transfers.length > 3) fail(`${label} transfers are invalid.`);
+  const transfers = value.transfers.map((transfer, index) => {
+    exactKeys(transfer, ["fromTeamId", "toTeamId", "playerIds"], `${label} transfer ${index + 1}`);
+    if (!Array.isArray(transfer.playerIds) || transfer.playerIds.length < 1 || transfer.playerIds.length > 6) fail(`${label} transfer ${index + 1} player coverage is invalid.`);
+    return {
+      fromTeamId: string(transfer.fromTeamId, `${label} transfer ${index + 1} source`, 2, 80),
+      toTeamId: string(transfer.toTeamId, `${label} transfer ${index + 1} recipient`, 2, 80),
+      playerIds: transfer.playerIds.map((playerId, playerIndex) => string(playerId, `${label} transfer ${index + 1} player ${playerIndex + 1}`, 1, 80)),
+    };
+  });
+  let validation = null;
+  if (value.validation !== null) {
+    exactKeys(value.validation, ["status", "verdict", "summary"], `${label} validation`);
+    if (!["VALIDATED", "REJECTED"].includes(value.validation.status) || !["OFFER", "MONITOR", "PASS"].includes(value.validation.verdict)) fail(`${label} validation is invalid.`);
+    validation = { status: value.validation.status, verdict: value.validation.verdict, summary: string(value.validation.summary, `${label} validation summary`, 6, 500) };
+  }
+  return { transfers, validation };
+}
+
+export function validateAiAdvice(value, section = null) {
   exactKeys(value, ["headline", "summary", "confidence", "decisionReviews", "keyReasons", "risks", "nextSteps"], "AI advice");
   if (!["HIGH", "MEDIUM", "LOW"].includes(value.confidence)) fail("AI advice confidence is invalid.");
   if (!Array.isArray(value.decisionReviews) || value.decisionReviews.length < 1 || value.decisionReviews.length > 8) fail("AI decision review coverage is invalid.");
@@ -147,12 +216,13 @@ export function validateAiAdvice(value) {
     summary: string(value.summary, "AI advice summary", 20, 1400),
     confidence: value.confidence,
     decisionReviews: value.decisionReviews.map((item, index) => {
-      exactKeys(item, ["decision", "verdict", "reasoning"], `AI decision review ${index + 1}`);
+      exactKeys(item, ["decision", "verdict", "reasoning", "trade"], `AI decision review ${index + 1}`);
       if (!VALID_VERDICTS.includes(item.verdict)) fail(`AI decision review ${index + 1} has an invalid verdict.`);
       return {
         decision: string(item.decision, `AI decision review ${index + 1} decision`, 3, 180),
         verdict: item.verdict,
         reasoning: string(item.reasoning, `AI decision review ${index + 1} reasoning`, 12, 700),
+        trade: validateTradeDecision(item.trade, `AI decision review ${index + 1} trade`, { required: section === "trade-finder" }),
       };
     }),
     keyReasons: stringArray(value.keyReasons, "AI key reasons", 2, 6, 360),
@@ -171,7 +241,7 @@ export function validateSeasonAiAdviceEnvelope(value) {
   return {
     ...value,
     model: string(value.model, "Saved AI model", 2, 100),
-    advice: validateAiAdvice(value.advice),
+    advice: validateAiAdvice(value.advice, value.section),
   };
 }
 
@@ -388,7 +458,13 @@ function providerErrorCode(data) {
   return String(raw).replace(/[^a-z0-9_.-]/gi, "").slice(0, 80) || "unclassified";
 }
 
-export async function generateSeasonAiAdvice({ plan, section, apiKey, model, fetchImpl = fetch, now = new Date() }) {
+function deterministicTradeVerdict(result) {
+  if (result?.verdict === "GOOD IDEA") return "OFFER";
+  if (result?.verdict === "POSSIBLE") return "MONITOR";
+  return "PASS";
+}
+
+export async function generateSeasonAiAdvice({ plan, section, apiKey, model, fetchImpl = fetch, now = new Date(), tradeValidator = null }) {
   validateAiSection(section);
   if (!plan || plan.kind !== "thunder-bowl-season-recommendations") fail("The current governed plan is not ready for AI review.", "INVALID_INPUT");
   if (!apiKey || !model) fail("AI advice is not configured.", "SERVER_NOT_CONFIGURED");
@@ -446,6 +522,27 @@ export async function generateSeasonAiAdvice({ plan, section, apiKey, model, fet
       ? "AI used its full response budget twice before completing the advice. No advice was saved."
       : "AI analysis returned an unreadable result after an automatic retry. No advice was saved.");
   }
+  let advice = validateAiAdvice(parsed, section);
+  if (section === "trade-finder") {
+    if (typeof tradeValidator !== "function") fail("Deterministic trade validation is not configured.", "SERVER_NOT_CONFIGURED");
+    advice = {
+      ...advice,
+      decisionReviews: await Promise.all(advice.decisionReviews.map(async (item) => {
+        try {
+          const result = await tradeValidator(item.trade.transfers);
+          const verdict = deterministicTradeVerdict(result);
+          return {
+            ...item,
+            verdict,
+            trade: { ...item.trade, validation: { status: verdict === "PASS" ? "REJECTED" : "VALIDATED", verdict, summary: result.summary } },
+          };
+        } catch (error) {
+          const summary = `Rejected by the deterministic analyzer: ${String(error?.message || "the package is invalid").slice(0, 420)}`;
+          return { ...item, verdict: "PASS", trade: { ...item.trade, validation: { status: "REJECTED", verdict: "PASS", summary } } };
+        }
+      })),
+    };
+  }
   return validateSeasonAiAdviceEnvelope({
     schemaVersion: 1,
     kind: "thunder-bowl-season-ai-advice",
@@ -457,6 +554,6 @@ export async function generateSeasonAiAdvice({ plan, section, apiKey, model, fet
     planGeneratedAt: plan.generatedAt,
     generatedAt: new Date(now).toISOString(),
     model,
-    advice: validateAiAdvice(parsed),
+    advice,
   });
 }
