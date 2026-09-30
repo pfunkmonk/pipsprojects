@@ -52,6 +52,7 @@ const playerStatsView = { position: "ALL", availability: "FREE_AGENT", sort: "po
 let tradeBuilderFingerprint = null;
 let tradeBuilderState = { teamIds: [], playerIdsByTeam: new Map(), recipientsByTeam: new Map() };
 let helperPreflightResumeStarted = false;
+let updateActionInProgress = false;
 
 function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
@@ -1458,6 +1459,10 @@ async function openCachedPlanWhileRefreshing(message) {
   await renderPlan(cached, { offline: false });
   setStatus(message);
   void loadSnapshot().then(async (current) => {
+    // A trusted update click may have resumed from the helper preflight while
+    // this older snapshot request was still in flight. Never replace its live
+    // progress (or re-enable stale controls) with the background load.
+    if (updateActionInProgress) return;
     await renderPlan(current);
     if (current.rebuildRequired) {
       setStatus(`The saved Week ${current.week} plan uses an older recommendation policy. Rebuilding it automatically before waiver advice can be trusted…`, true);
@@ -1555,6 +1560,8 @@ async function watchQueuedPlan(previousFingerprint, source, { timeoutMs = 600_00
 }
 
 async function runAction(button, message, task, successMessage = null) {
+  if (updateActionInProgress) return;
+  updateActionInProgress = true;
   setActionControlsDisabled(true);
   button.closest?.(".update-source")?.classList.add("updating");
   setStatus(message);
@@ -1576,6 +1583,7 @@ async function runAction(button, message, task, successMessage = null) {
   } catch (error) {
     setStatus(errorMessage(error), true);
   } finally {
+    updateActionInProgress = false;
     button.closest?.(".update-source")?.classList.remove("updating");
     restoreActionControls();
   }
@@ -2003,7 +2011,7 @@ activateTab(location.hash.slice(1), { updateHash: false });
 })();
 
 setInterval(async () => {
-  if (document.hidden || offlineMode || !navigator.onLine || !plan || document.activeElement?.closest(".management-form")) return;
+  if (document.hidden || offlineMode || updateActionInProgress || !navigator.onLine || !plan || document.activeElement?.closest(".management-form")) return;
   try {
     const current = await loadSnapshot(plan.viewing?.selectedWeek ?? plan.week, plan.lineup?.teamId);
     if (current.sourceFingerprint !== plan.sourceFingerprint || current.generatedAt !== plan.generatedAt) await renderPlan(current);

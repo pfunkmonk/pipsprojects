@@ -1116,8 +1116,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260929a/);
-  assert.match(worker, /thunder-bowl-season-v64/);
+  assert.match(html, /season\.mjs\?v=20260930a/);
+  assert.match(worker, /thunder-bowl-season-v65/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);
   assert.match(seasonService, /function retainPriorCbsOptionalEvidence/);
@@ -1217,6 +1217,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /thunder-bowl-season-setup-required/);
   assert.match(source, /Too many recent access checks/);
   assert.match(source, /openCachedPlanWhileRefreshing/);
+  assert.match(source, /if \(updateActionInProgress\) return;/);
+  assert.match(source, /updateActionInProgress = true;/);
+  assert.match(source, /updateActionInProgress = false;/);
   assert.match(source, /saved plan is ready now; checking for the current weekly plan in the background/i);
   assert.match(source, /method: "GET", credentials: "same-origin", cache: "no-store", signal: AbortSignal\.timeout\(5_000\)/);
   assert.match(source, /update controls remain active/);
@@ -1227,10 +1230,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v64/);
+  assert.match(worker, /thunder-bowl-season-v65/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
   assert.match(worker, /season\.css\?v=20260912b/);
-  assert.match(worker, /season\.mjs\?v=20260929a/);
+  assert.match(worker, /season\.mjs\?v=20260930a/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260922e/);
