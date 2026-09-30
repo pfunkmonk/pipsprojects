@@ -18,6 +18,7 @@ import {
   simulateFabTieClaims,
 } from "../netlify/functions/_lib/season-recommendations.mjs";
 import { buildCbsLeagueEnvelope, diffLeagueOwnership } from "../netlify/functions/_lib/season-store.mjs";
+import { resolveRosterKeepPreferences } from "../netlify/functions/_lib/season-roster-preferences.mjs";
 import { isDenverTuesdayRefresh, seasonIdempotencyKey, seasonWeekForDate } from "../netlify/functions/_lib/season-time.mjs";
 
 const projectionSources = ["Footballguys", "CBS", "FantasyPros", "PFF"];
@@ -639,7 +640,7 @@ test("a full legal roster holds FAB for tiny duplicate QB, K, and DST gains", ()
   assert.equal(result.hold.confidence, "HIGH");
   assert.equal(result.hold.roster.size, 14);
   assert.match(result.hold.reason, /Hold FAB and roster depth/);
-  assert.match(result.hold.reason, /protected season anchors/);
+  assert.match(result.hold.reason, /marked Keep remain protected/);
 });
 
 test("one weekly streaming slot preserves Pittsburgh while rotating a temporary defense", () => {
@@ -673,6 +674,43 @@ test("one weekly streaming slot preserves Pittsburgh while rotating a temporary 
   assert.equal(recommendation.fab.maximum, 2);
   assert.match(recommendation.reason, /Weekly streaming slot/);
   assert.doesNotMatch(recommendation.reason, /dropping Pittsburgh Steelers/i);
+});
+
+test("user-controlled Keep status blocks waiver drops until it is removed", () => {
+  const roster = rosterPlayers();
+  const expendable = roster.find((item) => item.id === "rb-three");
+  const freeAgent = player("kept-player-upgrade", "RB", 30, { vbd: 120, marketValue: 60 });
+  const input = {
+    pack: { players: [...roster, freeAgent] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-30T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [freeAgent.id],
+      fabState: fabState({ dogsBudget: 47 }),
+    },
+    week: 4,
+  };
+  const protectedResult = recommendWaivers({ ...input, keepPlayerIds: roster.map((item) => item.id) });
+  assert.deepEqual(protectedResult.recommendations, []);
+  const releasedResult = recommendWaivers({ ...input, keepPlayerIds: roster.filter((item) => item.id !== expendable.id).map((item) => item.id) });
+  assert.ok(releasedResult.recommendations.length > 0);
+  assert.ok(releasedResult.recommendations.every((row) => row.drop.playerId === expendable.id));
+});
+
+test("Keep preferences seed the three roster anchors once and preserve an explicitly empty choice", () => {
+  const players = [
+    player("pit-dst", "DST", 8, { name: "Pittsburgh Steelers" }),
+    player("myers", "K", 8, { name: "Jason Myers" }),
+    player("fannin", "TE", 10, { name: "Harold Fannin Jr." }),
+    player("other", "WR", 12, { name: "Other Player" }),
+  ];
+  const league = { teams: [{ teamId: "dogs-of-war", roster: rosterRows(players) }] };
+  const seeded = resolveRosterKeepPreferences({ initialized: false, keepPlayerIds: [] }, { players }, league);
+  assert.deepEqual(seeded.keepPlayerIds, ["fannin", "myers", "pit-dst"]);
+  const cleared = resolveRosterKeepPreferences({ initialized: true, keepPlayerIds: [] }, { players }, league);
+  assert.deepEqual(cleared.keepPlayerIds, []);
 });
 
 test("CBS FAB-not-started evidence uses the confirmed $50 opening balance without inventing tie order", () => {
@@ -917,6 +955,9 @@ test("waiver and trade recommendations are invariant to salary and contract data
   assert.ok(base.recommendations[0].receives[0].weekProjection);
   assert.ok(base.recommendations[0].rosterContext.rival.beforeCounts);
   assert.doesNotMatch(JSON.stringify(base.recommendations), /salary|contract|keeper/i);
+  const protectedOutgoingId = base.recommendations[0].sends[0].playerId;
+  const protectedBoard = recommendTrades({ pack, leagueState: baseLeague, week: 1, keepPlayerIds: [protectedOutgoingId] });
+  assert.ok(protectedBoard.recommendations.every((row) => row.sends.every((item) => item.playerId !== protectedOutgoingId)));
 });
 
 test("trade classification passes thin or one-sided ideas and reserves OFFER for strong mutual value", () => {
@@ -1125,7 +1166,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 19);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 20);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
@@ -1138,6 +1179,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /button\[data-player-sort\]/);
   assert.match(source, /async function loadLineupSelection/);
   assert.match(source, /starter-alternatives-toggle/);
+  assert.match(source, /keep-toggle/);
+  assert.match(source, /set-roster-keep/);
   assert.match(source, /value\.lineup\.freeAgentAlternatives/);
   assert.match(source, /const rows = eligible\.slice\(0, 25\)/);
   assert.match(source, /if \(current\.rebuildRequired\)/);
@@ -1192,8 +1235,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930f/);
+  assert.match(html, /season\.mjs\?v=20260930g/);
   assert.match(source, /Weekly streaming slot/);
+  assert.match(source, /option\.disabled = kept/);
+  assert.match(source, /Remove Keep status on Start\/Sit/);
   assert.match(worker, /thunder-bowl-season-v66/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);

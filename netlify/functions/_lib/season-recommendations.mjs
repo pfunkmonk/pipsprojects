@@ -18,7 +18,7 @@ const WAIVER_POLICY = Object.freeze({
 });
 const WAIVER_VERDICT_RANK = Object.freeze({ ADD: 4, CLAIM: 3, RENTAL: 2, WATCH: 1 });
 const STREAMING_POSITIONS = Object.freeze(["K", "DST", "TE"]);
-const STREAMING_ANCHOR_NAMES = Object.freeze({ DST: "Pittsburgh Steelers" });
+const DEFAULT_KEEP_NAMES = Object.freeze(["Pittsburgh Steelers", "Jason Myers", "Harold Fannin Jr."]);
 
 function round(value, digits = 1) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -376,23 +376,15 @@ function usableAtPosition(roster, position, week, context) {
     && Number.isFinite(cachedPlayerWeekEvidence(entry.player, week, context.projectionRows, context.cbsRows, context.evidenceCache).points));
 }
 
+function keepPlayerIds(roster, requestedIds) {
+  if (Array.isArray(requestedIds)) return new Set(requestedIds.filter((playerId) => roster.some((entry) => entry.playerId === playerId)));
+  return new Set(roster.filter((entry) => DEFAULT_KEEP_NAMES.includes(entry.player.name)).map((entry) => entry.playerId));
+}
+
 function streamingRosterPlan(currentRoster, week, context) {
   const rosWeeks = weekRange(week, 17);
-  const anchors = new Map();
-  for (const position of STREAMING_POSITIONS) {
-    const candidates = currentRoster.filter((entry) => entry.player.position === position);
-    if (!candidates.length) continue;
-    const namedAnchor = STREAMING_ANCHOR_NAMES[position]
-      ? candidates.find((entry) => entry.player.name === STREAMING_ANCHOR_NAMES[position])
-      : null;
-    const anchor = namedAnchor || [...candidates].sort((left, right) => {
-      const rightValue = playerProjectionAverage(right.player, rosWeeks, context) ?? -999;
-      const leftValue = playerProjectionAverage(left.player, rosWeeks, context) ?? -999;
-      return rightValue - leftValue || left.playerId.localeCompare(right.playerId);
-    })[0];
-    anchors.set(position, anchor);
-  }
-  const anchorIds = new Set([...anchors.values()].map((entry) => entry.playerId));
+  const anchorIds = keepPlayerIds(currentRoster, context.keepPlayerIds);
+  const anchors = currentRoster.filter((entry) => anchorIds.has(entry.playerId));
   const existingStreamers = currentRoster
     .filter((entry) => STREAMING_POSITIONS.includes(entry.player.position) && !anchorIds.has(entry.playerId))
     .filter((entry) => legalStarterPath(currentRoster.filter((candidate) => candidate.playerId !== entry.playerId)))
@@ -436,7 +428,7 @@ function protectedPositionFit(addPlayer, drop, currentRoster, week, context) {
     if (!streamingPlan.slotPlayer && currentRoster.length >= 14) {
       return { allowed: false, need: "NO_SAFE_STREAMING_DROP", rationale: "No legal expendable player is available for the weekly streaming spot." };
     }
-    const anchorNames = [...streamingPlan.anchors.values()].map((entry) => entry.player.name);
+    const anchorNames = streamingPlan.anchors.map((entry) => entry.player.name);
     return {
       allowed: true,
       need: "WEEKLY_STREAM",
@@ -940,7 +932,7 @@ function waiverMarketCompetition({ row, leagueState, fab, week, context, ranks, 
   };
 }
 
-export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [] }) {
+export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [], keepPlayerIds: requestedKeepPlayerIds = null }) {
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
   }
@@ -956,7 +948,8 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   if (!userTeam) return { recommendations: [], blockedReason: "Dogs of War is missing from the CBS snapshot." };
   const currentRoster = rosterPlayers(userTeam.roster, playerById);
   const fab = effectiveFabState(leagueState, leagueMoves, currentRoster, week);
-  const context = { playerById, projectionRows, cbsRows, statuses, evidenceCache, lineupCache: new Map() };
+  const currentKeepIds = keepPlayerIds(currentRoster, requestedKeepPlayerIds);
+  const context = { playerById, projectionRows, cbsRows, statuses, evidenceCache, lineupCache: new Map(), keepPlayerIds: [...currentKeepIds] };
   context.streamingPlan = streamingRosterPlan(currentRoster, week, context);
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
@@ -975,7 +968,8 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const candidates = [];
   for (const addPlayer of available) {
     let best = null;
-    const dropOptions = currentRoster.length < 14 ? [null, ...currentRoster] : currentRoster;
+    const eligibleDrops = currentRoster.filter((entry) => !currentKeepIds.has(entry.playerId));
+    const dropOptions = currentRoster.length < 14 ? [null, ...eligibleDrops] : eligibleDrops;
     for (const drop of dropOptions) {
       const rosterFit = protectedPositionFit(addPlayer, drop, currentRoster, week, context);
       if (!rosterFit.allowed) continue;
@@ -1082,7 +1076,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
           afterCounts: rosterPositionCounts(row.afterRoster),
           noFlex: true,
         },
-        rankingRule: "actionability first, then protected weekly-streaming strategy, rest-of-season, next-three, and current-week lineup gain, followed by direct-player depth retained; Pittsburgh and the strongest current K/TE are protected season anchors; the single streaming slot may rotate among K, DST, and TE for a meaningful weekly edge; other negative-ROS moves are WATCH unless a documented lineup emergency clears the strict RENTAL gate",
+        rankingRule: "actionability first, then the user-controlled Keep list and weekly-streaming strategy, rest-of-season, next-three, and current-week lineup gain, followed by direct-player depth retained; kept players cannot be dropped; the single streaming slot may rotate among K, DST, and TE for a meaningful weekly edge; other negative-ROS moves are WATCH unless a documented lineup emergency clears the strict RENTAL gate",
       },
       fab: {
         ...bid,
@@ -1118,7 +1112,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const hold = recommendations.length ? null : {
     verdict: "HOLD",
     confidence: "HIGH",
-    reason: `Hold FAB and roster depth. Dogs of War already has a legal ${currentRoster.length}-player roster, and no CBS-available player produced a meaningful lineup or depth upgrade after counting the actual value of the player surrendered. Pittsburgh and the strongest current K/TE remain protected season anchors; the one flexible streaming spot rotates only when a K, DST, or TE creates at least +${WAIVER_POLICY.streaming.minimumWeekGain.toFixed(1)} projected Week ${week} points.`,
+    reason: `Hold FAB and roster depth. Dogs of War already has a legal ${currentRoster.length}-player roster, and no CBS-available player produced a meaningful lineup or depth upgrade after counting the actual value of the player surrendered. Players marked Keep remain protected; the one flexible streaming spot rotates only when a K, DST, or TE creates at least +${WAIVER_POLICY.streaming.minimumWeekGain.toFixed(1)} projected Week ${week} points.`,
     roster: {
       size: currentRoster.length,
       activeMaximum: 14,
@@ -1193,7 +1187,7 @@ export function classifyTradeIdea({ dogsDeltas, rivalDeltas, evidenceComplete = 
   return { verdict: "PASS", confidence: rivalNegativeWindows > 1 || Number(dogsDeltas.restOfSeason) < 0.35 ? "HIGH" : "MEDIUM", rivalNegativeWindows, dogsWorst, rivalWorst };
 }
 
-export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null }) {
+export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, keepPlayerIds: requestedKeepPlayerIds = null }) {
   if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Trade advice") };
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
@@ -1203,6 +1197,7 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   const dogsTeam = rosterTeam(leagueState, USER_TEAM_ID);
   if (!dogsTeam) return { recommendations: [], blockedReason: "Dogs of War roster is unavailable." };
   const dogs = rosterPlayers(dogsTeam.roster, playerById);
+  const currentKeepIds = keepPlayerIds(dogs, requestedKeepPlayerIds);
   const dogsCurrentLineup = optimizeExactLineup(dogs, { week, ...context });
   const dogsStarterIds = new Set(dogsCurrentLineup.starters.map((entry) => entry.playerId));
   const currentWeek = [week];
@@ -1211,7 +1206,7 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   const division = PRIORITY_WEEKS.division.filter((candidate) => candidate >= week);
   const playoffs = PRIORITY_WEEKS.playoffs.filter((candidate) => candidate >= week);
   const ideas = [];
-  const dogsCandidates = [...dogs].sort((left, right) => right.player.vbd - left.player.vbd);
+  const dogsCandidates = dogs.filter((entry) => !currentKeepIds.has(entry.playerId)).sort((left, right) => right.player.vbd - left.player.vbd);
   for (const rivalTeam of leagueState.teams.filter((team) => team.teamId !== USER_TEAM_ID)) {
     const rival = rosterPlayers(rivalTeam.roster, playerById);
     const rivalCandidates = [...rival].sort((left, right) => right.player.vbd - left.player.vbd);
@@ -1321,7 +1316,7 @@ function tradeImpact(beforeRoster, afterRoster, weeks, context) {
   return { before: round(before), after: round(after), delta: before === null || after === null ? null : round(after - before) };
 }
 
-export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, projectionCalibration = null, transfers = [] }) {
+export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, projectionCalibration = null, transfers = [], keepPlayerIds: requestedKeepPlayerIds = null }) {
   if (!leagueRostersReady(leagueState)) throw new Error(incompleteRosterMessage(leagueState, "Trade analysis"));
   if (!Array.isArray(transfers) || transfers.length < 2 || transfers.length > 3) throw new Error("Choose two or three outgoing team packages.");
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
@@ -1338,6 +1333,13 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
   if (normalized.some((transfer) => transfer.playerIds.length < 1 || transfer.playerIds.length > 6)) throw new Error("Choose between one and six outgoing players for every participating team.");
   const allMovedIds = normalized.flatMap((transfer) => transfer.playerIds);
   if (new Set(allMovedIds).size !== allMovedIds.length) throw new Error("A player can appear in only one outgoing package.");
+  const dogsRoster = rosterPlayers(teamById.get(USER_TEAM_ID).roster, playerById);
+  const currentKeepIds = keepPlayerIds(dogsRoster, requestedKeepPlayerIds);
+  const keptOutgoing = normalized
+    .filter((transfer) => transfer.fromTeamId === USER_TEAM_ID)
+    .flatMap((transfer) => transfer.playerIds)
+    .find((playerId) => currentKeepIds.has(playerId));
+  if (keptOutgoing) throw new Error(`${playerById.get(keptOutgoing)?.name || "That player"} is marked Keep. Remove Keep before including the player in a trade proposal.`);
 
   const beforeByTeam = new Map([...participantIds].map((teamId) => [teamId, rosterPlayers(teamById.get(teamId).roster, playerById)]));
   const afterByTeam = new Map([...beforeByTeam].map(([teamId, roster]) => [teamId, [...roster]]));
@@ -1777,6 +1779,7 @@ export function buildSeasonRecommendationSnapshot({
   generatedAt = new Date().toISOString(),
   lineupTeamId = USER_TEAM_ID,
   projectionCalibration = null,
+  rosterPreferences = null,
 }) {
   const isForecast = week > currentWeek;
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
@@ -1850,8 +1853,14 @@ export function buildSeasonRecommendationSnapshot({
       : `${decisionCounts.strong} strong start call${decisionCounts.strong === 1 ? "" : "s"}, ${decisionCounts.lean} modest lean${decisionCounts.lean === 1 ? "" : "s"}, and ${decisionCounts.tossUp} non-actionable toss-up${decisionCounts.tossUp === 1 ? "" : "s"} are registered. Edges below 2 points are not directives; an earlier player needs 3 points to justify sacrificing later flexibility.${optimized.optionalitySwaps.length ? ` ${optimized.optionalitySwaps.length} later-game option${optimized.optionalitySwaps.length === 1 ? " was" : "s were"} preserved.` : ""}${decisionCounts.monitors ? ` ${decisionCounts.monitors} starter status check${decisionCounts.monitors === 1 ? "" : "s"} remain before lock.` : ""}`,
     counts: decisionCounts,
   };
-  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves });
-  const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot });
+  const userRoster = rosterPlayers(rosterTeam(leagueState, USER_TEAM_ID)?.roster || [], playerById);
+  const effectiveKeepIds = [...keepPlayerIds(userRoster, rosterPreferences?.keepPlayerIds)];
+  const keepPlayers = effectiveKeepIds.map((playerId) => {
+    const entry = userRoster.find((candidate) => candidate.playerId === playerId);
+    return entry ? { playerId, name: entry.player.name, position: entry.player.position, nflTeam: entry.player.nflTeam } : null;
+  }).filter(Boolean);
+  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves, keepPlayerIds: effectiveKeepIds });
+  const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, keepPlayerIds: effectiveKeepIds });
   const watch = buildInjuryWatch({ pack, leagueState, week, statusSnapshot, researchSnapshot, fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   const playerStats = buildPlayerStats({ pack, leagueState, week, projectionRows, cbsRows, statuses });
   const league = buildPublicLeague(pack, leagueState, week, projectionRows, cbsRows);
@@ -1918,6 +1927,13 @@ export function buildSeasonRecommendationSnapshot({
       rosterTarget: leagueState.rosterMaximum ?? leagueState.rosterTarget ?? 14,
       completeTeamCount: leagueState.legalTeamCount ?? leagueState.completeTeamCount ?? null,
       rostersComplete: leagueRostersReady(leagueState),
+    },
+    rosterPreferences: {
+      schemaVersion: 1,
+      keepPlayerIds: effectiveKeepIds,
+      keepPlayers,
+      updatedAt: rosterPreferences?.updatedAt || null,
+      policy: "Players marked Keep are excluded from waiver drops and outgoing trade recommendations until Keep is removed.",
     },
     lineup: {
       teamId: lineupTeam.teamId,

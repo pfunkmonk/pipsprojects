@@ -170,6 +170,7 @@ function setActionControlsDisabled(disabled) {
   setUpdateControlsDisabled(disabled);
   for (const id of FILE_CONTROL_IDS) byId(id).disabled = disabled;
   for (const section of AI_SECTIONS) byId(`ai-run-${section}`).disabled = disabled;
+  for (const button of document.querySelectorAll(".keep-toggle")) button.disabled = disabled;
 }
 
 function restoreActionControls() {
@@ -180,6 +181,7 @@ function restoreActionControls() {
   byId("export-plan").disabled = offlineMode || setupRequired;
   byId("import-fantasypros-json-paste").disabled = offlineMode || setupRequired;
   updateAiControls();
+  for (const button of document.querySelectorAll(".keep-toggle")) button.disabled = offlineMode;
 }
 
 function updateAiControls() {
@@ -667,6 +669,20 @@ function lineupRow(row, slotLabel, kind, value, { toggle = null, alternativeFor 
     const points = element("td", "player-name", number(row.points));
     const action = document.createElement("td");
     const actions = element("div", "row-actions");
+    const isDogsRosterPlayer = !alternativeFor && value.lineup?.teamId === value.league?.userTeamId && ["starter", "bench"].includes(kind);
+    if (isDogsRosterPlayer) {
+      const kept = value.rosterPreferences?.keepPlayerIds?.includes(row.playerId) || false;
+      const keep = element("button", `keep-toggle${kept ? " active" : ""}`, kept ? "Kept" : "Keep");
+      keep.type = "button";
+      keep.setAttribute("aria-pressed", String(kept));
+      keep.setAttribute("aria-label", `${kept ? "Remove" : "Add"} Keep status for ${row.name}`);
+      keep.title = kept
+        ? "Protected from waiver drops and outgoing trade recommendations. Click to make this player eligible again."
+        : "Protect this player from waiver drops and outgoing trade recommendations.";
+      keep.disabled = offlineMode;
+      keep.addEventListener("click", () => updatePlayerKeep(row, !kept, keep));
+      actions.append(keep);
+    }
     actions.append(newsButton(row), evidenceButton(`${row.name} Week ${value.week}`, row, kind, "Why?", value.week));
     action.append(actions);
     tr.append(slot, playerCell, teamStatus, game, range, points, action);
@@ -707,13 +723,16 @@ function renderLineup(value) {
   byId("lineup-title").textContent = `${teamName} start / sit plan`;
   const note = byId("lineup-week-note");
   const opponentCopy = fantasyOpponent ? `${teamName} faces ${fantasyOpponent}. ` : value.lineup?.opponent?.allPlay ? `${teamName} is in the all-play week. ` : "";
+  const keepCopy = value.lineup?.teamId === value.league?.userTeamId
+    ? " Use Keep in the Actions column to protect a player from waiver drops and outgoing trades; click Kept to make that player eligible again."
+    : "";
   if (value.week === currentWeek) {
-    note.textContent = `${opponentCopy}Current week: the latest signed-in component projections and Thunder Bowl scoring are used. The ★ team is Dogs of War's CBS opponent. Open a starter’s caret to compare higher-projected free agents.`;
+    note.textContent = `${opponentCopy}Current week: the latest signed-in component projections and Thunder Bowl scoring are used. The ★ team is Dogs of War's CBS opponent. Open a starter’s caret to compare higher-projected free agents.${keepCopy}`;
   } else {
     const direct = value.viewing?.directProjectionSources || [];
     note.textContent = opponentCopy + (direct.length
-      ? `Early Week ${value.week} outlook using ${direct.join(", ")} direct weekly data plus the governed schedule-shaped baseline for sources that have not posted yet. Open a starter’s caret to compare higher-projected free agents.`
-      : `Early Week ${value.week} outlook using the latest roster and injury information plus the governed schedule-shaped projection baseline. Direct weekly component stats replace it when available. Open a starter’s caret to compare higher-projected free agents.`);
+      ? `Early Week ${value.week} outlook using ${direct.join(", ")} direct weekly data plus the governed schedule-shaped baseline for sources that have not posted yet. Open a starter’s caret to compare higher-projected free agents.${keepCopy}`
+      : `Early Week ${value.week} outlook using the latest roster and injury information plus the governed schedule-shaped projection baseline. Direct weekly component stats replace it when available. Open a starter’s caret to compare higher-projected free agents.${keepCopy}`);
   }
   byId("lineup-total").textContent = `${teamName} · ${number(value.lineup.total)} pts`;
   const tbody = byId("starter-rows");
@@ -973,6 +992,30 @@ function waiverNoBidAdvice() {
   details.append(metric("Action", "Do not bid"), metric("Status", "Watch only"));
   advice.append(recommendation, details, element("p", "fab-unavailable", "This move does not clear the paid-bid threshold. Keep your FAB and roster asset unless the player's role or your lineup need materially changes."));
   return advice;
+}
+
+async function updatePlayerKeep(row, keep, button) {
+  if (offlineMode || updateActionInProgress) return;
+  updateActionInProgress = true;
+  setActionControlsDisabled(true);
+  const previousFingerprint = plan?.sourceFingerprint || null;
+  const previousGeneratedAt = plan?.generatedAt || null;
+  button.textContent = "Saving…";
+  setStatus(`${keep ? "Keeping" : "Releasing"} ${row.name}. Rebuilding waiver and trade recommendations…`);
+  try {
+    await postAction({ action: "set-roster-keep", playerId: row.playerId, keep });
+    byId("waiver-list").replaceChildren(empty("Keep status saved. Rebuilding waiver recommendations before any add/drop advice can be trusted."));
+    byId("trade-list").replaceChildren(empty("Keep status saved. Rebuilding trade recommendations before any outgoing-player advice can be trusted."));
+    await queuePlanRebuild();
+    const current = await waitForQueuedPlan(previousFingerprint, previousGeneratedAt, "Keep status");
+    await renderPlan(current);
+    setStatus(`${row.name} is ${keep ? "now protected by Keep" : "no longer protected by Keep"}. Waiver and trade recommendations are current.`);
+  } catch (error) {
+    setStatus(`Keep status could not finish rebuilding (${errorMessage(error)}). No stale waiver or trade advice should be used.`, true);
+  } finally {
+    updateActionInProgress = false;
+    restoreActionControls();
+  }
 }
 
 function waiverMarketAdvice(market) {
@@ -1318,6 +1361,7 @@ function renderTradeBuilder(value, { forceReset = false } = {}) {
   const teamById = new Map(teams.map((team) => [team.teamId, team]));
   const count = Number(byId("trade-team-count").value || 2);
   const dogsId = value.league.userTeamId;
+  const keptPlayerIds = new Set(value.rosterPreferences?.keepPlayerIds || []);
   const rivals = teams.filter((team) => team.teamId !== dogsId);
   tradeBuilderState.teamIds = [dogsId, ...tradeBuilderState.teamIds.slice(1, count)];
   while (tradeBuilderState.teamIds.length < count) {
@@ -1355,9 +1399,12 @@ function renderTradeBuilder(value, { forceReset = false } = {}) {
     players.size = Math.min(8, Math.max(4, team.roster.length));
     const selected = new Set(tradeBuilderState.playerIdsByTeam.get(teamId) || []);
     for (const player of team.roster) {
-      const option = element("option", "", `${player.position} · ${player.name} · ${number(player.points)} pts`);
+      const kept = teamId === dogsId && keptPlayerIds.has(player.playerId);
+      const option = element("option", "", `${player.position} · ${player.name} · ${number(player.points)} pts${kept ? " · KEEP" : ""}`);
       option.value = player.playerId;
-      option.selected = selected.has(player.playerId);
+      option.selected = !kept && selected.has(player.playerId);
+      option.disabled = kept;
+      if (kept) option.title = "Remove Keep status on Start/Sit before proposing this player in a trade.";
       players.append(option);
     }
     players.addEventListener("change", () => tradeBuilderState.playerIdsByTeam.set(teamId, selectedValues(players)));

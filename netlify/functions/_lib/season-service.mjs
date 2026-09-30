@@ -28,8 +28,9 @@ import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot, savedStatusSnapshot } from "./status-store.mjs";
 import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
+import { readRosterKeepPreferences, resolveRosterKeepPreferences, saveRosterKeepPreferences } from "./season-roster-preferences.mjs";
 
-export const RECOMMENDATION_ENGINE_VERSION = 19;
+export const RECOMMENDATION_ENGINE_VERSION = 20;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {
@@ -83,7 +84,7 @@ function sha256(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
-function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration = null }) {
+function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration = null, rosterPreferences = null }) {
   return sha256({
     schemaVersion: 1,
     recommendationEngineVersion: RECOMMENDATION_ENGINE_VERSION,
@@ -98,6 +99,7 @@ function sourceFingerprint({ pack, week, lineupTeamId = USER_TEAM_ID, leagueStat
     research: researchSnapshot?.capturedAt || null,
     status: statusSnapshot?.rawSha256 || statusSnapshot?.capturedAt || null,
     projectionCalibration,
+    keepPlayerIds: rosterPreferences?.keepPlayerIds || [],
   });
 }
 
@@ -205,6 +207,7 @@ export async function refreshSeasonPlan({
   const week = seasonWeekForDate(now);
   const pack = await readSeasonPack();
   const leagueState = leagueStateOverride ? canonicalizeCbsLeagueSnapshot(leagueStateOverride, pack) : await liveLeagueState(pack);
+  const rosterPreferences = resolveRosterKeepPreferences(await readRosterKeepPreferences(), pack, leagueState, USER_TEAM_ID);
   const fbgRefreshTask = refreshFootballguys
     ? downloadFbgWeeklySnapshot(pack, week)
       .then(async (value) => { await saveFbgWeeklySnapshot(value, pack); return { value }; })
@@ -266,8 +269,9 @@ export async function refreshSeasonPlan({
     leagueMoves,
     generatedAt,
     projectionCalibration,
+    rosterPreferences,
   });
-  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration });
+  plan.sourceFingerprint = sourceFingerprint({ pack, week, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration, rosterPreferences });
   plan.recommendationEngineVersion = RECOMMENDATION_ENGINE_VERSION;
   plan.idempotencyKey = seasonIdempotencyKey({ date: now, source: archiveTuesday ? "tuesday-plan" : "live-watch" });
   if (statusRefreshError) plan.alerts.push(`Injury refresh failed; last-known safe status evidence remains in use (${statusRefreshError}).`);
@@ -354,6 +358,7 @@ export function buildSeasonSetupSnapshot({ pack, now = new Date() }) {
       { label: "injury / news", asOf: null, ageMinutes: null, required: false },
     ],
     baseline: { authority: "season setup required", source: "authenticated CBS all-team roster snapshot", asOf: null },
+    rosterPreferences: { schemaVersion: 1, keepPlayerIds: [], keepPlayers: [], updatedAt: null, policy: "Players marked Keep are excluded from waiver drops and outgoing trade recommendations until Keep is removed." },
     lineup: { teamId: USER_TEAM_ID, teamName: "Dogs of War", opponent: null, legal: false, total: null, requiredSlots: {}, missingSlots: [], starters: [], bench: [], freeAgentAlternatives: {}, swaps: [] },
     waivers: { recommendations: [], blockedReason: syncMessage },
     trades: { recommendations: [], blockedReason: syncMessage },
@@ -392,8 +397,9 @@ async function buildTeamLineupOutlook({ now, currentWeek, week, lineupTeamId }) 
     generatedAt,
     lineupTeamId,
     projectionCalibration,
+    rosterPreferences: resolveRosterKeepPreferences(await readRosterKeepPreferences(), pack, leagueState, USER_TEAM_ID),
   });
-  plan.sourceFingerprint = sourceFingerprint({ pack, week, lineupTeamId, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration });
+  plan.sourceFingerprint = sourceFingerprint({ pack, week, lineupTeamId, leagueState, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, researchSnapshot, statusSnapshot, projectionCalibration, rosterPreferences: plan.rosterPreferences });
   plan.recommendationEngineVersion = RECOMMENDATION_ENGINE_VERSION;
   return plan;
 }
@@ -479,6 +485,29 @@ export async function importManagementEvidence(records, { now = new Date() } = {
   return { plan: (await refreshSeasonPlan({ now })).plan, imported: normalized.length };
 }
 
+export async function setSeasonRosterKeepPreference(input, { now = new Date() } = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input) || typeof input.playerId !== "string" || typeof input.keep !== "boolean") {
+    const error = new Error("Keep preference requires one roster player and a true/false Keep value.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  const pack = await readSeasonPack();
+  const leagueState = await liveLeagueState(pack);
+  const stored = await readRosterKeepPreferences();
+  const current = resolveRosterKeepPreferences(stored, pack, leagueState, USER_TEAM_ID);
+  const roster = leagueState.teams.find((team) => team.teamId === USER_TEAM_ID)?.roster || [];
+  if (!roster.some((entry) => entry.playerId === input.playerId)) {
+    const error = new Error("Keep status can only be changed for a player currently on Dogs of War.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  const next = new Set(current.keepPlayerIds);
+  if (input.keep) next.add(input.playerId);
+  else next.delete(input.playerId);
+  const saved = await saveRosterKeepPreferences([...next], { now });
+  return { rosterPreferences: resolveRosterKeepPreferences(saved, pack, leagueState, USER_TEAM_ID) };
+}
+
 export async function analyzeProposedSeasonTrade(transfers, { now = new Date() } = {}) {
   const pack = await readSeasonPack();
   const week = seasonWeekForDate(now);
@@ -490,7 +519,8 @@ export async function analyzeProposedSeasonTrade(transfers, { now = new Date() }
     currentStatusSnapshot(pack, { force: false }).catch(() => null),
     projectionCalibrationForWeek(week),
   ]);
-  return analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, projectionCalibration, transfers });
+  const rosterPreferences = resolveRosterKeepPreferences(await readRosterKeepPreferences(), pack, leagueState, USER_TEAM_ID);
+  return analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, projectionCalibration, transfers, keepPlayerIds: rosterPreferences.keepPlayerIds });
 }
 
 export async function getSavedSeasonAiAdvice({ now = new Date() } = {}) {

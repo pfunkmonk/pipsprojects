@@ -11,6 +11,7 @@ import {
   refreshFootballguysSource,
   refreshSeasonPlan,
   refreshSeasonPublicSources,
+  setSeasonRosterKeepPreference,
   updateSeasonEverything,
 } from "./_lib/season-service.mjs";
 
@@ -64,6 +65,10 @@ export default async function handler(request) {
     if (input.action === "capture-cbs") {
       exactKeys(input, ["action", "snapshot"]);
       return json(await captureCbsLeagueSource(input.snapshot));
+    }
+    if (input.action === "set-roster-keep") {
+      exactKeys(input, ["action", "playerId", "keep"]);
+      return json(await setSeasonRosterKeepPreference({ playerId: input.playerId, keep: input.keep }));
     }
     if (input.action === "apply-verified-fab-ledger") {
       exactKeys(input, ["action", "observedAt", "sourceUrl", "balances"]);
