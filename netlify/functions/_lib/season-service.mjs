@@ -29,7 +29,7 @@ import { currentStatusSnapshot, savedStatusSnapshot } from "./status-store.mjs";
 import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 
-export const RECOMMENDATION_ENGINE_VERSION = 18;
+export const RECOMMENDATION_ENGINE_VERSION = 19;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {

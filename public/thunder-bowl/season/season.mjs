@@ -994,6 +994,14 @@ function waiverMarketAdvice(market) {
   return panel;
 }
 
+function waiverRosterStrategy(strategy) {
+  if (!strategy || strategy.type !== "WEEKLY_STREAMING_SLOT") return null;
+  const panel = element("section", "waiver-roster-strategy");
+  panel.append(element("strong", "", "Weekly streaming slot"));
+  panel.append(element("p", "", strategy.explanation));
+  return panel;
+}
+
 function waiverVerdictLabel(verdict) {
   if (verdict === "ADD") return "STRONG BID";
   if (verdict === "CLAIM") return "VALUE BID";
@@ -1054,6 +1062,8 @@ function renderWaivers(value) {
     title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", moveDetail));
     header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, waiverVerdictLabel(row.verdict)));
     card.append(header, element("p", "", row.reason));
+    const rosterStrategy = waiverRosterStrategy(row.policy?.rosterStrategy);
+    if (rosterStrategy) card.append(rosterStrategy);
     const marketAdvice = waiverMarketAdvice(row.fab?.market);
     if (marketAdvice) card.append(marketAdvice);
     const metrics = element("div", "metrics");

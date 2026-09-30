@@ -13,9 +13,12 @@ const WAIVER_POLICY = Object.freeze({
   strongBid: Object.freeze({ minimumWeekGain: 3, minimumNextThreeGain: 1.5, minimumRosGain: 0, alternateMinimumRosGain: 1 }),
   valueBid: Object.freeze({ minimumWeekGain: 2, minimumNextThreeGain: 1.5, minimumRosGain: 0.25 }),
   rental: Object.freeze({ minimumWeekGain: 3, minimumNextThreeGain: 2, minimumRosGain: -0.25 }),
+  streaming: Object.freeze({ minimumWeekGain: 2, maximumBenchRosLoss: -0.5, kickerDefenseBidCap: 2, tightEndBidCap: 3 }),
   protectedDrop: Object.freeze({ maximumSalary: 5, maximumContractYear: 3, minimumReplacementGain: 0.75 }),
 });
 const WAIVER_VERDICT_RANK = Object.freeze({ ADD: 4, CLAIM: 3, RENTAL: 2, WATCH: 1 });
+const STREAMING_POSITIONS = Object.freeze(["K", "DST", "TE"]);
+const STREAMING_ANCHOR_NAMES = Object.freeze({ DST: "Pittsburgh Steelers" });
 
 function round(value, digits = 1) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -373,8 +376,81 @@ function usableAtPosition(roster, position, week, context) {
     && Number.isFinite(cachedPlayerWeekEvidence(entry.player, week, context.projectionRows, context.cbsRows, context.evidenceCache).points));
 }
 
+function streamingRosterPlan(currentRoster, week, context) {
+  const rosWeeks = weekRange(week, 17);
+  const anchors = new Map();
+  for (const position of STREAMING_POSITIONS) {
+    const candidates = currentRoster.filter((entry) => entry.player.position === position);
+    if (!candidates.length) continue;
+    const namedAnchor = STREAMING_ANCHOR_NAMES[position]
+      ? candidates.find((entry) => entry.player.name === STREAMING_ANCHOR_NAMES[position])
+      : null;
+    const anchor = namedAnchor || [...candidates].sort((left, right) => {
+      const rightValue = playerProjectionAverage(right.player, rosWeeks, context) ?? -999;
+      const leftValue = playerProjectionAverage(left.player, rosWeeks, context) ?? -999;
+      return rightValue - leftValue || left.playerId.localeCompare(right.playerId);
+    })[0];
+    anchors.set(position, anchor);
+  }
+  const anchorIds = new Set([...anchors.values()].map((entry) => entry.playerId));
+  const existingStreamers = currentRoster
+    .filter((entry) => STREAMING_POSITIONS.includes(entry.player.position) && !anchorIds.has(entry.playerId))
+    .filter((entry) => legalStarterPath(currentRoster.filter((candidate) => candidate.playerId !== entry.playerId)))
+    .map((entry) => ({
+      entry,
+      ros: playerProjectionAverage(entry.player, rosWeeks, context) ?? -999,
+      positionPriority: ["K", "DST"].includes(entry.player.position) ? 0 : 1,
+    }))
+    .sort((left, right) => left.positionPriority - right.positionPriority || left.ros - right.ros || left.entry.playerId.localeCompare(right.entry.playerId));
+  const fallback = currentRoster
+    .filter((entry) => !anchorIds.has(entry.playerId))
+    .filter((entry) => legalStarterPath(currentRoster.filter((candidate) => candidate.playerId !== entry.playerId)))
+    .map((entry) => ({ entry, ros: playerProjectionAverage(entry.player, rosWeeks, context) ?? -999 }))
+    .sort((left, right) => left.ros - right.ros || left.entry.playerId.localeCompare(right.entry.playerId))[0]?.entry || null;
+  const slotPlayer = existingStreamers[0]?.entry || (currentRoster.length >= 14 ? fallback : null);
+  return {
+    anchors,
+    anchorIds,
+    slotPlayer,
+    slotKind: existingStreamers.length ? "EXISTING_STREAMER" : slotPlayer ? "LOWEST_VALUE_DEPTH" : "OPEN_ROSTER_SPOT",
+  };
+}
+
 function protectedPositionFit(addPlayer, drop, currentRoster, week, context) {
-  if (!['QB', 'K', 'DST'].includes(addPlayer.position)) return { allowed: true, need: "OPEN", rationale: "Skill-position depth or lineup upgrade." };
+  const streamingPlan = context.streamingPlan || streamingRosterPlan(currentRoster, week, context);
+  if (drop && streamingPlan.anchorIds.has(drop.playerId)) {
+    return {
+      allowed: false,
+      need: "ANCHOR_PROTECTED",
+      rationale: `${drop.player.name} is a protected season-long ${drop.player.position} anchor, not the weekly streaming spot.`,
+    };
+  }
+  if (STREAMING_POSITIONS.includes(addPlayer.position)) {
+    if (streamingPlan.slotPlayer && drop?.playerId !== streamingPlan.slotPlayer.playerId) {
+      return {
+        allowed: false,
+        need: "STREAMING_SLOT_RESERVED",
+        rationale: `The one weekly streaming spot is currently occupied by ${streamingPlan.slotPlayer.player.name}; preserve the K, DST, and TE anchors and rotate that spot instead.`,
+      };
+    }
+    if (!streamingPlan.slotPlayer && currentRoster.length >= 14) {
+      return { allowed: false, need: "NO_SAFE_STREAMING_DROP", rationale: "No legal expendable player is available for the weekly streaming spot." };
+    }
+    const anchorNames = [...streamingPlan.anchors.values()].map((entry) => entry.player.name);
+    return {
+      allowed: true,
+      need: "WEEKLY_STREAM",
+      strategy: "STREAM",
+      slotKind: streamingPlan.slotKind,
+      slotPlayerId: drop?.playerId || null,
+      anchorPlayerIds: [...streamingPlan.anchorIds],
+      anchorNames,
+      rationale: drop
+        ? `Weekly streaming slot: keep ${anchorNames.join(", ")} as season anchors and rotate ${drop.player.name} out only if ${addPlayer.name} creates a meaningful Week ${week} advantage.`
+        : `Weekly streaming slot: keep ${anchorNames.join(", ")} as season anchors and use the open roster spot only for a meaningful Week ${week} advantage.`,
+    };
+  }
+  if (addPlayer.position !== "QB") return { allowed: true, need: "OPEN", rationale: "Skill-position depth or lineup upgrade.", strategy: null };
   const usable = usableAtPosition(currentRoster, addPlayer.position, week, context).length;
   const samePositionReplacement = drop?.player.position === addPlayer.position;
   const protectedLimit = addPlayer.position === "QB" ? 2 : 1;
@@ -466,6 +542,19 @@ export function classifyWaiverEdge(row) {
       actionable: true,
       dropProtection,
       rationale: "Value bid: the move clears conservative week, three-week, and rest-of-season floors, but it is not strong enough for an aggressive bid.",
+    };
+  }
+
+  const streamingRental = row.rosterFit?.strategy === "STREAM"
+    && weekGain >= WAIVER_POLICY.streaming.minimumWeekGain
+    && (row.rosterFit.slotKind === "EXISTING_STREAMER" || rosGain >= WAIVER_POLICY.streaming.maximumBenchRosLoss)
+    && !dropProtection.blocked;
+  if (streamingRental) {
+    return {
+      verdict: "RENTAL",
+      actionable: true,
+      dropProtection,
+      rationale: `Weekly streamer: the season-long K, DST, and TE anchors stay rostered while the designated flexible spot gains +${weekGain.toFixed(1)} projected Week points. Treat this as a one-week matchup play, then reassess the slot.`,
     };
   }
 
@@ -672,7 +761,12 @@ function fabSequenceTie(fab, earlierWins) {
 
 function fabBidFor(row, verdict, fab) {
   if (!fab.available || fab.bidBudget < 1 || fab.spendable < 1 || !["ADD", "CLAIM", "RENTAL"].includes(verdict)) return { recommended: null, maximum: null, budgetAfter: null };
-  if (verdict === "RENTAL") return { recommended: 1, maximum: 1, budgetAfter: fab.budget === null ? null : fab.budget - 1 };
+  if (verdict === "RENTAL") {
+    const rentalCap = ["K", "DST"].includes(row.addPlayer.position)
+      ? WAIVER_POLICY.streaming.kickerDefenseBidCap
+      : WAIVER_POLICY.streaming.tightEndBidCap;
+    return { recommended: 1, maximum: Math.min(fab.spendable, rentalCap), budgetAfter: fab.budget === null ? null : fab.budget - 1 };
+  }
   const gains = [row.currentDelta.delta, row.nextThreeDelta.delta, row.rosDelta.delta].map((value) => Number(value || 0));
   const strength = Math.max(0, gains[0] * 2 + gains[1] * 3 + gains[2] * 2 + (row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks) * 3);
   const base = verdict === "ADD" ? 3 : 1;
@@ -863,6 +957,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const currentRoster = rosterPlayers(userTeam.roster, playerById);
   const fab = effectiveFabState(leagueState, leagueMoves, currentRoster, week);
   const context = { playerById, projectionRows, cbsRows, statuses, evidenceCache, lineupCache: new Map() };
+  context.streamingPlan = streamingRosterPlan(currentRoster, week, context);
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
   const ros = weekRange(week, 17);
@@ -913,6 +1008,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       if (!decision) continue;
       const tuple = [
         WAIVER_VERDICT_RANK[decision.verdict] || 0,
+        Number(row.rosterFit?.strategy === "STREAM"),
         rosDelta.delta ?? -999,
         nextThreeDelta.delta ?? -999,
         currentDelta.delta ?? -999,
@@ -955,16 +1051,24 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       policy: {
         actionable: row.decision.actionable && !marketPass,
         immediateNeed: row.immediateNeed,
-        rationale: marketPass ? `${row.decision.rationale} ${market.reason}` : row.decision.rationale,
+        rationale: marketPass ? `${row.rosterFit.rationale} ${row.decision.rationale} ${market.reason}` : `${row.rosterFit.rationale} ${row.decision.rationale}`,
         dropProtection: row.decision.dropProtection,
+        rosterStrategy: row.rosterFit.strategy === "STREAM" ? {
+          type: "WEEKLY_STREAMING_SLOT",
+          slotKind: row.rosterFit.slotKind,
+          protectedAnchorPlayerIds: row.rosterFit.anchorPlayerIds,
+          protectedAnchorNames: row.rosterFit.anchorNames,
+          rotatingOutPlayerId: row.rosterFit.slotPlayerId,
+          explanation: row.rosterFit.rationale,
+        } : null,
         thresholds: WAIVER_POLICY,
       },
       dropProjectionLoss: row.drop ? row.dropValue.week : 0,
       confidence: projection.confidence,
       availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams; players on temporarily illegal rosters remain excluded until CBS records a drop" },
-      reason: (row.drop
+      reason: `${row.rosterFit.strategy === "STREAM" ? `${row.rosterFit.rationale} ` : ""}${row.drop
         ? `${row.decision.rationale} ${horizon}; dropping ${row.drop.player.name} gives up ${row.dropValue.week?.toFixed(1) || "0.0"} projected Week ${week} bench/depth points, which is counted even when the starting lineup is unchanged.`
-        : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`) + ` ${market.reason}`,
+        : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`} ${market.reason}`,
       evidence: {
         projections: projection.sources,
         range: { floor: projection.floor, median: projection.points, ceiling: projection.ceiling },
@@ -978,7 +1082,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
           afterCounts: rosterPositionCounts(row.afterRoster),
           noFlex: true,
         },
-        rankingRule: "actionability first, then rest-of-season, next-three, and current-week lineup gain, followed by direct-player depth retained; negative-ROS moves are WATCH unless a documented lineup emergency clears the strict RENTAL gate; low-cost keeper/upside drops require a material ROS replacement gain",
+        rankingRule: "actionability first, then protected weekly-streaming strategy, rest-of-season, next-three, and current-week lineup gain, followed by direct-player depth retained; Pittsburgh and the strongest current K/TE are protected season anchors; the single streaming slot may rotate among K, DST, and TE for a meaningful weekly edge; other negative-ROS moves are WATCH unless a documented lineup emergency clears the strict RENTAL gate",
       },
       fab: {
         ...bid,
@@ -1014,7 +1118,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const hold = recommendations.length ? null : {
     verdict: "HOLD",
     confidence: "HIGH",
-    reason: `Hold FAB and roster depth. Dogs of War already has a legal ${currentRoster.length}-player roster, and no CBS-available player produced a meaningful lineup or depth upgrade after counting the actual value of the player surrendered. Duplicate QB, K, or DST claims are excluded unless they replace that position or solve a documented Week ${week} availability need.`,
+    reason: `Hold FAB and roster depth. Dogs of War already has a legal ${currentRoster.length}-player roster, and no CBS-available player produced a meaningful lineup or depth upgrade after counting the actual value of the player surrendered. Pittsburgh and the strongest current K/TE remain protected season anchors; the one flexible streaming spot rotates only when a K, DST, or TE creates at least +${WAIVER_POLICY.streaming.minimumWeekGain.toFixed(1)} projected Week ${week} points.`,
     roster: {
       size: currentRoster.length,
       activeMaximum: 14,

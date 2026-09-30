@@ -639,7 +639,40 @@ test("a full legal roster holds FAB for tiny duplicate QB, K, and DST gains", ()
   assert.equal(result.hold.confidence, "HIGH");
   assert.equal(result.hold.roster.size, 14);
   assert.match(result.hold.reason, /Hold FAB and roster depth/);
-  assert.match(result.hold.reason, /Duplicate QB, K, or DST/);
+  assert.match(result.hold.reason, /protected season anchors/);
+});
+
+test("one weekly streaming slot preserves Pittsburgh while rotating a temporary defense", () => {
+  const roster = rosterPlayers().filter((item) => item.id !== "te-two");
+  roster.find((item) => item.id === "dst-one").name = "Pittsburgh Steelers";
+  roster.find((item) => item.id === "dst-one").nflTeam = "PIT";
+  const currentStreamer = player("ravens", "DST", 9, { name: "Baltimore Ravens", nflTeam: "BAL" });
+  const weeklyTarget = player("streaming-defense", "DST", 5, { name: "Weekly Matchup Defense", nflTeam: "ATL" });
+  weeklyTarget.weeklyProjection.points = Array.from({ length: 18 }, (_, index) => index === 3 ? 14 : index === 5 ? null : 5);
+  roster.push(currentStreamer);
+  const result = recommendWaivers({
+    pack: { players: [...roster, weeklyTarget] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-30T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [weeklyTarget.id],
+      fabState: fabState({ dogsBudget: 47 }),
+    },
+    week: 4,
+  });
+  const recommendation = result.recommendations[0];
+  assert.equal(recommendation.add.playerId, weeklyTarget.id);
+  assert.equal(recommendation.drop.playerId, currentStreamer.id);
+  assert.equal(recommendation.verdict, "RENTAL");
+  assert.equal(recommendation.policy.actionable, true);
+  assert.equal(recommendation.policy.rosterStrategy.type, "WEEKLY_STREAMING_SLOT");
+  assert.ok(recommendation.policy.rosterStrategy.protectedAnchorNames.includes("Pittsburgh Steelers"));
+  assert.equal(recommendation.fab.recommended, 1);
+  assert.equal(recommendation.fab.maximum, 2);
+  assert.match(recommendation.reason, /Weekly streaming slot/);
+  assert.doesNotMatch(recommendation.reason, /dropping Pittsburgh Steelers/i);
 });
 
 test("CBS FAB-not-started evidence uses the confirmed $50 opening balance without inventing tie order", () => {
@@ -1092,7 +1125,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 18);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 19);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
@@ -1159,7 +1192,8 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930e/);
+  assert.match(html, /season\.mjs\?v=20260930f/);
+  assert.match(source, /Weekly streaming slot/);
   assert.match(worker, /thunder-bowl-season-v66/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);
