@@ -1,5 +1,6 @@
 import { assertSameOrigin, configurationError, json, verifySession } from "./_lib/auth.mjs";
 import {
+  applyVerifiedFabLedger,
   captureCbsLeagueSource,
   captureFantasyProsSource,
   captureFootballguysSource,
@@ -63,6 +64,10 @@ export default async function handler(request) {
     if (input.action === "capture-cbs") {
       exactKeys(input, ["action", "snapshot"]);
       return json(await captureCbsLeagueSource(input.snapshot));
+    }
+    if (input.action === "apply-verified-fab-ledger") {
+      exactKeys(input, ["action", "observedAt", "sourceUrl", "balances"]);
+      return json(await applyVerifiedFabLedger({ observedAt: input.observedAt, sourceUrl: input.sourceUrl, balances: input.balances }));
     }
     if (input.action === "sync-fbg") {
       exactKeys(input, ["action", "csv"]);

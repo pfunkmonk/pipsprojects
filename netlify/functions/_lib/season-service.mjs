@@ -573,6 +573,90 @@ export async function importCbsLeagueSnapshot(input, { now = new Date() } = {}) 
   return { plan: refreshed.plan, source: captured.source };
 }
 
+export async function applyVerifiedFabLedger(input, { now = new Date() } = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    const error = new Error("Verified FAB ledger input must be an object.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  const observedAt = new Date(input.observedAt);
+  if (!Number.isFinite(observedAt.valueOf()) || observedAt > new Date(now.getTime() + 15 * 60_000)) {
+    const error = new Error("Verified FAB ledger timing is invalid.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  let sourceUrl;
+  try {
+    sourceUrl = new URL(input.sourceUrl);
+  } catch {
+    const error = new Error("Verified FAB ledger source URL is invalid.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  if (sourceUrl.protocol !== "https:" || sourceUrl.hostname !== "berrymvp.football.cbssports.com" || !sourceUrl.pathname.startsWith("/transactions")) {
+    const error = new Error("Verified FAB balances must come from the authenticated CBS transaction report.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  if (!Array.isArray(input.balances) || input.balances.length !== CBS_TEAM_CATALOG.length) {
+    const error = new Error("Verified FAB ledger must contain all 12 team balances.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+  const expectedIds = new Set(CBS_TEAM_CATALOG.map((team) => team.teamId));
+  const balanceByTeam = new Map();
+  for (const row of input.balances) {
+    const teamId = String(row?.teamId || "").trim().toLowerCase();
+    const remainingBudget = Number(row?.remainingBudget);
+    if (!expectedIds.has(teamId) || balanceByTeam.has(teamId) || !Number.isSafeInteger(remainingBudget) || remainingBudget < 0 || remainingBudget > 50) {
+      const error = new Error("Verified FAB ledger contains an invalid or repeated team balance.");
+      error.code = "INVALID_INPUT";
+      throw error;
+    }
+    balanceByTeam.set(teamId, remainingBudget);
+  }
+  if (balanceByTeam.size !== expectedIds.size) {
+    const error = new Error("Verified FAB ledger is missing one or more team balances.");
+    error.code = "INVALID_INPUT";
+    throw error;
+  }
+
+  const pack = await readSeasonPack();
+  const current = await readLatestCbsLeagueState(pack);
+  if (!current?.snapshot?.fabState) throw new Error("A saved CBS league snapshot with FAB rules is required before applying the verified ledger.");
+  const priorFab = current.snapshot.fabState;
+  const teams = priorFab.teams.map((team) => ({
+    ...team,
+    remainingBudget: balanceByTeam.get(team.teamId),
+  }));
+  const budgetTeams = teams.filter((team) => Number.isSafeInteger(team.remainingBudget)).length;
+  const orderTeams = teams.filter((team) => Number.isSafeInteger(team.fabOrder)).length;
+  const recordTeams = teams.filter((team) => team.record !== null).length;
+  const fabState = {
+    ...priorFab,
+    source: "CBS Sports authenticated Thunder Bowl full transaction ledger",
+    capturedAt: observedAt.toISOString(),
+    status: budgetTeams === 12 && orderTeams === 12 && recordTeams === 12 ? "COMPLETE" : "PARTIAL",
+    coverage: {
+      ...priorFab.coverage,
+      budgetTeams,
+      orderTeams,
+      recordTeams,
+      budgetEvidence: "COMPLETE_TRANSACTION_LEDGER",
+    },
+    teams,
+    pageUrls: [...new Set([...(priorFab.pageUrls || []), sourceUrl.toString()])].slice(0, 30),
+  };
+  const snapshot = {
+    ...current.snapshot,
+    fabState,
+    rawSha256: createHash("sha256").update(JSON.stringify({ rawSha256: current.snapshot.rawSha256, fabState })).digest("hex"),
+  };
+  const saved = await saveCbsLeagueState(snapshot, pack, { week: snapshot.projectionWeek });
+  const refreshed = await refreshSeasonPlan({ now });
+  return { plan: refreshed.plan, source: saved.snapshot };
+}
+
 export function retainPriorCbsOptionalEvidence(captured, prior) {
   if (!prior) return captured;
   const snapshot = { ...captured };
