@@ -1045,6 +1045,33 @@ function waiverRosterStrategy(strategy) {
   return panel;
 }
 
+function waiverLineupCasePanel(lineupCase) {
+  if (!lineupCase) return null;
+  const labels = {
+    MULTI_WEEK_STARTER: "Multi-week starting upgrade",
+    BYE_COVER: "Starter bye-week cover",
+    IMMEDIATE_RENTAL: "Major one-week rental",
+  };
+  const resultLabels = { WOULD_START: "Would start", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Candidate bye" };
+  const panel = element("section", "waiver-lineup-case");
+  panel.append(element("strong", "", `Lineup-use test: ${labels[lineupCase.qualification] || "Does not qualify"}`));
+  panel.append(element("p", "", lineupCase.summary || "No starting-lineup purpose was found."));
+  const details = document.createElement("details");
+  const summary = element("summary", "", `Compare all ${lineupCase.weeks?.length || 0} remaining weeks`);
+  const grid = element("div", "waiver-week-grid");
+  for (const row of lineupCase.weeks || []) {
+    const comparison = row.currentStarter
+      ? `${number(row.addPoints)} vs ${row.currentStarter.name} ${number(row.currentStarter.points)}`
+      : `${number(row.addPoints)} vs no complete current starter`;
+    const gain = Number.isFinite(row.lineupGain) ? ` · lineup ${signed(row.lineupGain)}` : "";
+    const bye = row.starterByes?.length ? ` · ${row.starterByes.join(" + ")} bye` : "";
+    grid.append(element("div", `waiver-week-row waiver-week-${String(row.result || "bench").toLowerCase()}`, `Week ${row.week}: ${comparison} · ${resultLabels[row.result] || row.result}${gain}${bye}`));
+  }
+  details.append(summary, grid);
+  panel.append(details);
+  return panel;
+}
+
 function waiverVerdictLabel(verdict) {
   if (verdict === "ADD") return "STRONG BID";
   if (verdict === "CLAIM") return "VALUE BID";
@@ -1102,9 +1129,11 @@ function renderWaivers(value) {
     const moveDetail = row.drop
       ? `Drop ${row.drop.name} · ${row.drop.position} ${row.drop.nflTeam}`
       : `No drop required · ${row.add.position} ${row.add.nflTeam}`;
-    title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", moveDetail));
+    title.append(element("h3", "", `${row.priority}. ${row.verdict === "WATCH" ? "Watch" : "Add"} ${row.add.name}`), element("p", "", moveDetail));
     header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, waiverVerdictLabel(row.verdict)));
     card.append(header, element("p", "", row.reason));
+    const lineupCase = waiverLineupCasePanel(row.lineupCase);
+    if (lineupCase) card.append(lineupCase);
     const rosterStrategy = waiverRosterStrategy(row.policy?.rosterStrategy);
     if (rosterStrategy) card.append(rosterStrategy);
     const marketAdvice = waiverMarketAdvice(row.fab?.market);

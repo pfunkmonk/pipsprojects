@@ -608,6 +608,56 @@ test("waiver recommendations use only CBS-available adds and pair every add with
   assert.match(result.recommendations[0].reason, /bench\/depth points/);
   assert.match(JSON.stringify(result.recommendations), /dropProtection/);
   assert.ok(result.recommendations.every((row) => row.gains.restOfSeason >= 0 || ["RENTAL", "WATCH"].includes(row.verdict)));
+  assert.equal(result.recommendations[0].lineupCase.qualification, "MULTI_WEEK_STARTER");
+  assert.ok(result.recommendations[0].lineupCase.meaningfulStartWeeks.length >= 2);
+  assert.ok(result.recommendations[0].lineupCase.weeks.every((row) => Number.isSafeInteger(row.week)));
+});
+
+test("waiver candidates who improve only the bench are excluded", () => {
+  const roster = rosterPlayers();
+  const benchOnly = player("wr-bench-only", "WR", 11, { vbd: 45, marketValue: 18 });
+  const result = recommendWaivers({
+    pack: { players: [...roster, benchOnly] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-30T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [benchOnly.id],
+      fabState: fabState({ dogsBudget: 47 }),
+    },
+    week: 4,
+  });
+  assert.deepEqual(result.recommendations, []);
+  assert.match(result.hold.reason, /No CBS-available player projects to improve the starting lineup/i);
+});
+
+test("waiver candidates qualify when they provide meaningful starter bye-week cover", () => {
+  const roster = rosterPlayers();
+  const topWideout = roster.find((item) => item.id === "wr-one");
+  topWideout.weeklyProjection.byeWeek = 7;
+  topWideout.weeklyProjection.points[6] = null;
+  const byeCover = player("wr-bye-cover", "WR", 12, { vbd: 50, marketValue: 20 });
+  byeCover.weeklyProjection.byeWeek = 9;
+  byeCover.weeklyProjection.points[8] = null;
+  const result = recommendWaivers({
+    pack: { players: [...roster, byeCover] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-30T12:00:00.000Z",
+      rostersReady: true,
+      teams: [{ teamId: "dogs-of-war", roster: rosterRows(roster) }],
+      availablePlayerIds: [byeCover.id],
+      fabState: fabState({ dogsBudget: 47 }),
+    },
+    week: 4,
+  });
+  const recommendation = result.recommendations.find((row) => row.add.playerId === byeCover.id);
+  assert.ok(recommendation);
+  assert.equal(recommendation.lineupCase.qualification, "BYE_COVER");
+  assert.deepEqual(recommendation.lineupCase.byeCoverageWeeks, [7]);
+  assert.equal(recommendation.lineupCase.weeks.find((row) => row.week === 7).result, "BYE_COVER");
+  assert.match(recommendation.reason, /meaningful projected cover in Week 7/i);
 });
 
 test("a full legal roster holds FAB for tiny duplicate QB, K, and DST gains", () => {
@@ -1166,7 +1216,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 20);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 21);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
@@ -1235,8 +1285,12 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930g/);
+  assert.match(html, /season\.mjs\?v=20260930h/);
   assert.match(source, /Weekly streaming slot/);
+  assert.match(source, /function waiverLineupCasePanel/);
+  assert.match(source, /row\.lineupCase/);
+  assert.match(source, /Compare all \$\{lineupCase\.weeks\?\.length \|\| 0\} remaining weeks/);
+  assert.match(source, /row\.verdict === "WATCH" \? "Watch" : "Add"/);
   assert.match(source, /option\.disabled = kept/);
   assert.match(source, /Remove Keep status on Start\/Sit/);
   assert.match(worker, /thunder-bowl-season-v66/);

@@ -59,6 +59,15 @@ form { display:grid; gap:.55rem; } label { font-weight:800; } input { width:100%
 .waiver-roster-strategy { margin:.55rem 0; padding:.65rem .75rem; border:1px solid rgba(75,213,166,.65); border-radius:10px; background:rgba(8,48,53,.48); }
 .waiver-roster-strategy strong { color:var(--green); }
 .waiver-roster-strategy p { margin:.25rem 0 0; }
+.waiver-lineup-case { margin:.55rem 0; padding:.65rem .75rem; border:1px solid rgba(113,177,224,.7); border-radius:10px; background:rgba(20,60,91,.5); }
+.waiver-lineup-case>strong { color:var(--text); }
+.waiver-lineup-case>p { margin:.25rem 0 .45rem; }
+.waiver-lineup-case details { border-top:1px solid var(--line); padding-top:.45rem; }
+.waiver-lineup-case summary { cursor:pointer; color:var(--green); font-size:.78rem; font-weight:850; }
+.waiver-week-grid { display:grid; gap:.25rem; margin-top:.45rem; }
+.waiver-week-row { border-radius:6px; padding:.35rem .45rem; background:rgba(4,28,52,.62); color:var(--muted); font-size:.74rem; line-height:1.35; }
+.waiver-week-would_start,.waiver-week-bye_cover { border-left:3px solid var(--green); color:var(--text); }
+.waiver-week-candidate_bye { border-left:3px solid var(--warning); }
 .keep-toggle { border-color:#6d86a4; color:#d7e5f4; background:#102a45; min-width:4.2rem; }
 .keep-toggle.active { border-color:var(--green); color:#082b28; background:var(--green); font-weight:800; }
 .keep-toggle:disabled { opacity:.62; cursor:wait; }
