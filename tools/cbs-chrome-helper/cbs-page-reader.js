@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.13";
+  const READER_VERSION = "0.10.14";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
@@ -371,7 +371,7 @@
   async function fabPages(expectedWeek, cbsOrigin) {
     const relevant = /fab|waiver|claim|transaction|standings|rules|settings|add-drop/i;
     const paths = [
-      "/", "/rules", "/settings", "/standings", "/transactions", "/transactions/add-drop",
+      "/", "/rules", "/settings", "/standings", "/transactions", "/transactions?print_rows=9999", "/transactions/add-drop",
       "/transactions/waivers", "/transactions/fab", "/transactions/fab-budget",
       "/transactions/fab-order", "/transactions/report",
     ];

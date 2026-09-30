@@ -719,6 +719,47 @@ test("FAB bids preserve K/DST reserves while high roster salaries never inflate 
   assert.equal(first.recommendations[0].policy.dropProtection.protected, false);
 });
 
+test("waiver bids model rival roster weakness and pass when the expected market price exceeds value", () => {
+  const teamIds = ["angry-face", "orange-crush", "big-head", "dogs-of-war", "t-dogs", "super-suckers", "three-amigos", "goon-skwad", "el-guapo", "crime-and-punishment", "the-hobbits", "the-bungles"];
+  const teamNames = { "orange-crush": "Orange Crush", "dogs-of-war": "Dogs of War" };
+  const makeRoster = (teamId, weakWideReceivers = false) => [
+    player(`${teamId}-qb-1`, "QB", 20), player(`${teamId}-qb-2`, "QB", 14),
+    player(`${teamId}-rb-1`, "RB", 18), player(`${teamId}-rb-2`, "RB", 16), player(`${teamId}-rb-3`, "RB", 10), player(`${teamId}-rb-4`, "RB", 8),
+    player(`${teamId}-wr-1`, "WR", weakWideReceivers ? 9 : 24), player(`${teamId}-wr-2`, "WR", weakWideReceivers ? 6 : 23), player(`${teamId}-wr-3`, "WR", weakWideReceivers ? 5 : 18), player(`${teamId}-wr-4`, "WR", weakWideReceivers ? 4 : 17),
+    player(`${teamId}-te-1`, "TE", 11), player(`${teamId}-te-2`, "TE", 7),
+    player(`${teamId}-k-1`, "K", 8), player(`${teamId}-dst-1`, "DST", 8),
+  ];
+  const rosters = new Map(teamIds.map((teamId) => [teamId, makeRoster(teamId, teamId === "orange-crush" || teamId === "dogs-of-war")]));
+  const candidate = player("market-wr", "WR", 22, { name: "Market Wideout", vbd: 120, marketValue: 45 });
+  const fab = fabState({ dogsBudget: 47 });
+  fab.teams = fab.teams.map((team) => ({
+    ...team,
+    remainingBudget: team.teamId === "dogs-of-war" ? 47 : team.teamId === "orange-crush" ? 21 : 0,
+  }));
+  const result = recommendWaivers({
+    pack: { players: [...teamIds.flatMap((teamId) => rosters.get(teamId)), candidate] },
+    leagueState: {
+      authority: "authenticated league roster and availability authority",
+      capturedAt: "2026-09-30T12:00:00.000Z",
+      rostersReady: true,
+      teams: teamIds.map((teamId) => ({ teamId, name: teamNames[teamId] || teamId, roster: rosterRows(rosters.get(teamId)) })),
+      availablePlayerIds: [candidate.id],
+      fabState: fab,
+    },
+    week: 4,
+  });
+  const recommendation = result.recommendations[0];
+  assert.equal(recommendation.fab.currentBudget, 47);
+  assert.equal(recommendation.fab.market.topRivals[0].teamId, "orange-crush");
+  assert.equal(recommendation.fab.market.topRivals[0].remainingBudget, 21);
+  assert.equal(recommendation.fab.market.topRivals[0].need, "HIGH");
+  assert.equal(recommendation.fab.market.decision, "PASS");
+  assert.equal(recommendation.fab.recommended, null);
+  assert.equal(recommendation.policy.actionable, false);
+  assert.equal(recommendation.verdict, "WATCH");
+  assert.match(recommendation.reason, /Do not chase/i);
+});
+
 test("waiver policy downgrades short-term gains with negative ROS to WATCH", () => {
   const decision = classifyWaiverEdge({
     addPlayer: player("short-rental", "WR", 14),
@@ -1051,7 +1092,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 17);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 18);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));

@@ -92,7 +92,7 @@ test("CBS helper manifest is least-privilege and has no cookie or storage permis
   assert.deepEqual(manifest.permissions.sort(), ["scripting", "tabs"]);
   assert.deepEqual(manifest.host_permissions, ["https://*.football.cbssports.com/*", "https://www.footballguys.com/*", "https://www.fantasypros.com/*", "https://www.pff.com/*"]);
   assert.equal(manifest.name, "Thunder Bowl Data Helper");
-  assert.equal(manifest.version, "0.10.13");
+  assert.equal(manifest.version, "0.10.14");
   assert.deepEqual(manifest.content_scripts.find((entry) => entry.matches.includes("https://*.football.cbssports.com/*"))?.js, ["cbs-page-reader.js"]);
   assert.ok(manifest.content_scripts.some((entry) => entry.matches.includes("https://pipsprojects.com/draft-day/*") && entry.js.includes("page-bridge.js")));
   assert.equal(JSON.stringify(manifest).includes("cookies"), false);
@@ -107,7 +107,7 @@ test("the season page keeps the exact protocol while accepting the installed sta
     readFile(new URL("../public/thunder-bowl/supplemental-session-capture.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(bridge, /PROTOCOL_VERSION = 2/);
-  assert.match(bridge, /HELPER_VERSION = "0\.10\.13"/);
+  assert.match(bridge, /HELPER_VERSION = "0\.10\.14"/);
   assert.match(bridge, /captureCbsInStages/);
   assert.match(bridge, /action: "capture-cbs-roster-base"/);
   assert.match(bridge, /action: "capture-cbs-schedule"/);
@@ -124,7 +124,7 @@ test("the season page keeps the exact protocol while accepting the installed sta
   assert.match(bridge, /versionResult\?\.helperVersion !== HELPER_VERSION/);
   for (const client of [cbsClient, fbgClient, supplementalClient]) {
     assert.match(client, /CAPTURE_PROTOCOL_VERSION = 2/);
-    assert.match(client, /REQUIRED_HELPER_VERSION = "0\.10\.13"/);
+    assert.match(client, /REQUIRED_HELPER_VERSION = "0\.10\.14"/);
     assert.match(client, /(?:CBS_|FBG_|SUPPLEMENTAL_)COMPATIBLE_HELPER_VERSIONS = Object\.freeze\(\[(?:CBS_|FBG_|SUPPLEMENTAL_)REQUIRED_HELPER_VERSION, "0\.10\.12", "0\.10\.11", "0\.10\.10"\]\)/);
     assert.match(client, /COMPATIBLE_HELPER_VERSIONS\.includes\(data\.helperVersion\)/);
     assert.match(client, /for \(const expectedHelperVersion of .*COMPATIBLE_HELPER_VERSIONS\)/);
@@ -151,8 +151,8 @@ test("the Draft Day bridge sends one version-checked CBS setup request and retur
     lastError: null,
     sendMessage(message, callback) {
       calls.push({ ...message });
-      if (message.action === "helper-version") callback({ ok: true, helperVersion: "0.10.13" });
-      else callback({ ok: true, helperVersion: "0.10.13", setup });
+      if (message.action === "helper-version") callback({ ok: true, helperVersion: "0.10.14" });
+      else callback({ ok: true, helperVersion: "0.10.14", setup });
     },
   };
   const fakeWindow = {
@@ -170,7 +170,7 @@ test("the Draft Day bridge sends one version-checked CBS setup request and retur
       source: "pips-draft-day-app",
       type: "PIPS_DRAFT_DAY_CBS_SETUP_REQUEST",
       protocolVersion: 2,
-      expectedHelperVersion: "0.10.13",
+      expectedHelperVersion: "0.10.14",
       requestId: "draft-day-setup-test",
     },
   });
@@ -196,7 +196,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
     sendMessage(message, callback) {
       calls.push({ ...message });
       if (message.action === "helper-version") {
-        callback({ ok: true, helperVersion: "0.10.13" });
+        callback({ ok: true, helperVersion: "0.10.14" });
         return;
       }
       const attempt = (attempts.get(message.action) || 0) + 1;
@@ -212,31 +212,31 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
           return;
         }
         if (message.action === failAction) {
-          callback({ ok: false, helperVersion: "0.10.13", error: `${failAction} stopped safely` });
+          callback({ ok: false, helperVersion: "0.10.14", error: `${failAction} stopped safely` });
           return;
         }
         if (message.action === "capture-cbs-roster-base") {
-          callback({ ok: true, helperVersion: "0.10.13", snapshot: { schemaVersion: 1, teams: [{ name: "Dogs of War", players: [{ cbsPlayerId: "1", name: "Jalen Hurts" }] }], projectionCount: 0 } });
+          callback({ ok: true, helperVersion: "0.10.14", snapshot: { schemaVersion: 1, teams: [{ name: "Dogs of War", players: [{ cbsPlayerId: "1", name: "Jalen Hurts" }] }], projectionCount: 0 } });
           return;
         }
         if (message.action === "capture-cbs-schedule") {
-          callback({ ok: true, helperVersion: "0.10.13", rawLeagueSchedule: { schemaVersion: 1, pages: [{ url: "https://berrymvp.football.cbssports.com/schedule/full" }] } });
+          callback({ ok: true, helperVersion: "0.10.14", rawLeagueSchedule: { schemaVersion: 1, pages: [{ url: "https://berrymvp.football.cbssports.com/schedule/full" }] } });
           return;
         }
         if (message.action === "capture-cbs-fab") {
-          callback({ ok: true, helperVersion: "0.10.13", fabState: null });
+          callback({ ok: true, helperVersion: "0.10.14", fabState: null });
           return;
         }
         if (message.action === "capture-cbs-preview") {
-          callback({ ok: true, helperVersion: "0.10.13", rawScoringPreview: { schemaVersion: 1, rows: [] } });
+          callback({ ok: true, helperVersion: "0.10.14", rawScoringPreview: { schemaVersion: 1, rows: [] } });
           return;
         }
         if (message.action === "capture-cbs-position") {
           const rows = Array.from({ length: 20 }, (_, index) => ({ cbsPlayerId: `${message.position}-${index}`, position: message.position }));
-          callback({ ok: true, helperVersion: "0.10.13", position: message.position, rows });
+          callback({ ok: true, helperVersion: "0.10.14", position: message.position, rows });
           return;
         }
-        callback({ ok: false, helperVersion: "0.10.13", error: "unexpected action" });
+        callback({ ok: false, helperVersion: "0.10.14", error: "unexpected action" });
       }, 1);
     },
   };
@@ -255,7 +255,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
       source: "thunder-bowl-app",
       type: "THUNDER_BOWL_CBS_CAPTURE_REQUEST",
       protocolVersion: 2,
-      expectedHelperVersion: "0.10.13",
+      expectedHelperVersion: "0.10.14",
       requestId: "release-test",
       week: 1,
     },
@@ -267,7 +267,7 @@ async function exerciseCbsBridge({ failAction = null, transientAction = null } =
 test("CBS one-click bridge runs every short stage serially and recovers one worker restart", async () => {
   const result = await exerciseCbsBridge({ transientAction: "capture-cbs-schedule" });
   assert.equal(result.message.ok, true);
-  assert.equal(result.message.helperVersion, "0.10.13");
+  assert.equal(result.message.helperVersion, "0.10.14");
   assert.equal(result.message.snapshot.weeklyProjections.length, 120);
   assert.equal(result.message.snapshot.projectionCount, 120);
   assert.equal(result.message.snapshot.fabState, undefined);
@@ -313,7 +313,7 @@ test("the helper waits for authenticated rendered content and limits CBS setup t
   assert.match(worker, /response\.readerVersion !== HELPER_VERSION/);
   assert.match(worker, /waitForRenderedSchedulePage\(tabId, fullScheduleUrl, 30_000\)/);
   assert.match(worker, /15_000/);
-  assert.match(cbsReader, /READER_VERSION = "0\.10\.13"/);
+  assert.match(cbsReader, /READER_VERSION = "0\.10\.14"/);
   assert.match(cbsReader, /exactStarterSides/);
   assert.match(cbsReader, /attempt < 12/);
   assert.match(cbsReader, /eight submitted starters for both teams/);
@@ -416,7 +416,7 @@ test("the helper waits for authenticated rendered content and limits CBS setup t
   assert.match(worker, /rawScoringPreview/);
   assert.match(worker, /live scoring page/);
   assert.match(worker, /expectedPlayers/);
-  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.10\.13\.zip/);
+  assert.match(seasonHtml, /thunder-bowl-data-helper-v0\.10\.14\.zip/);
   assert.match(seasonHtml, /edge:\/\/extensions/);
 });
 
@@ -656,6 +656,34 @@ test("CBS FAB pages normalize the $50 budget, reverse-standings order, records, 
   assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").remainingBudget, 47);
   assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").fabOrder, 4);
   assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").weeklySuccessfulPickups, 1);
+});
+
+test("CBS FAB balances are reconstructed from the complete signed-transaction ledger", () => {
+  const teams = ["Angry Face", "Orange Crush", "Big Head", "Dogs of War", "T-Dogs", "Super Suckers", "Three Amigos", "Goon Skwad", "El Guapo", "Crime and Punishment", "The Hobbits", "The Bungles"];
+  const pages = [
+    {
+      url: "https://berrymvp.football.cbssports.com/transactions?print_rows=9999",
+      title: "Transaction Reports",
+      text: "All transactions REPORT UPDATED AS OF 9/30/26",
+      tables: [{
+        headers: ["Date", "Team", "Players", "Effective"],
+        rows: [
+          ["9/30/26", "Dogs of War", "Ravens DST - Signed for $3.00 Rome Odunze - Dropped", "4"],
+          ["9/30/26", "The Bungles", "Ollie Gordon II - Signed for $17.00", "4"],
+          ["9/23/26", "The Bungles", "Bills DST - Signed for $1.00", "3"],
+          ["9/16/26", "The Bungles", "Dallas Goedert - Signed for $5.00", "2"],
+        ],
+      }],
+    },
+    { url: "https://berrymvp.football.cbssports.com/standings", title: "Standings", text: "Overall standings", tables: [{ headers: ["Team", "Record"], rows: teams.map((name) => [name, "1-2-0"]) }] },
+  ];
+  const fab = normalizeCbsFabPages(pages, 4, "2026-09-30T12:00:00.000Z");
+  assert.equal(fab.coverage.budgetTeams, 12);
+  assert.equal(fab.coverage.budgetEvidence, "COMPLETE_TRANSACTION_LEDGER");
+  assert.equal(fab.coverage.budgetWinningRows, 4);
+  assert.equal(fab.teams.find((team) => team.teamId === "dogs-of-war").remainingBudget, 47);
+  assert.equal(fab.teams.find((team) => team.teamId === "the-bungles").remainingBudget, 27);
+  assert.equal(fab.teams.find((team) => team.teamId === "orange-crush").remainingBudget, 50);
 });
 
 test("CBS FAB normalization accepts the current CBS alias for Angry Face", () => {
@@ -983,7 +1011,7 @@ test("CBS capture rejects an invalid helper response immediately instead of hang
     addEventListener(type, listener) { if (type === "message") listeners.add(listener); },
     removeEventListener(type, listener) { if (type === "message") listeners.delete(listener); },
     postMessage(message, origin) {
-      if (message.source !== "thunder-bowl-app" || message.expectedHelperVersion !== "0.10.13") return;
+      if (message.source !== "thunder-bowl-app" || message.expectedHelperVersion !== "0.10.14") return;
       queueMicrotask(() => {
         for (const listener of [...listeners]) listener({
           source: fakeWindow,
@@ -992,7 +1020,7 @@ test("CBS capture rejects an invalid helper response immediately instead of hang
             source: "thunder-bowl-cbs-helper",
             type: "THUNDER_BOWL_CBS_CAPTURE_RESPONSE",
             protocolVersion: 2,
-            helperVersion: "0.10.13",
+            helperVersion: "0.10.14",
             requestId: message.requestId,
             ok: true,
             snapshot: {},

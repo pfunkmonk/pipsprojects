@@ -683,6 +683,169 @@ function fabBidFor(row, verdict, fab) {
   return { recommended, maximum, budgetAfter: fab.budget === null ? null : fab.budget - recommended };
 }
 
+const COMPETITIVE_STARTER_RANK = Object.freeze({ QB: 12, RB: 24, WR: 24, TE: 12, K: 12, DST: 12 });
+
+function marketPositionRanks(players, weeks, context) {
+  const ranks = new Map();
+  for (const position of POSITIONS) {
+    const rows = players
+      .filter((player) => player.position === position && !criticalStatus(context.statuses.get(player.id)))
+      .map((player) => ({ playerId: player.id, points: playerProjectionAverage(player, weeks, context) }))
+      .filter((row) => Number.isFinite(row.points))
+      .sort((left, right) => right.points - left.points || left.playerId.localeCompare(right.playerId));
+    rows.forEach((row, index) => ranks.set(row.playerId, index + 1));
+  }
+  return ranks;
+}
+
+function opponentPositionDemand({ addPlayer, team, fabTeam, week, context, ranks }) {
+  const roster = rosterPlayers(team.roster || [], context.playerById);
+  const positionRoster = roster.filter((entry) => entry.player.position === addPlayer.position);
+  const required = STARTER_REQUIREMENTS[addPlayer.position];
+  const currentWeeks = [week];
+  const nextThreeWeeks = weekRange(week, week + 2);
+  const rosWeeks = weekRange(week, 17);
+  const values = positionRoster.map((entry) => ({
+    entry,
+    week: playerProjectionAverage(entry.player, currentWeeks, context),
+    nextThree: playerProjectionAverage(entry.player, nextThreeWeeks, context),
+    ros: playerProjectionAverage(entry.player, rosWeeks, context),
+    rank: ranks.get(entry.playerId) || null,
+    unavailable: entry.bye === week
+      || entry.player.weeklyProjection?.byeWeek === week
+      || criticalStatus(context.statuses.get(entry.playerId)),
+  }));
+  const usable = values.filter((row) => !row.unavailable && Number.isFinite(row.week));
+  const starterPool = [...values].sort((left, right) => Number(right.ros ?? -999) - Number(left.ros ?? -999));
+  const weakestStarter = starterPool[Math.max(0, required - 1)] || null;
+  const addValue = {
+    week: playerProjectionAverage(addPlayer, currentWeeks, context),
+    nextThree: playerProjectionAverage(addPlayer, nextThreeWeeks, context),
+    ros: playerProjectionAverage(addPlayer, rosWeeks, context),
+  };
+  const gain = {
+    week: round(Number(addValue.week || 0) - Number(weakestStarter?.week || 0)),
+    nextThree: round(Number(addValue.nextThree || 0) - Number(weakestStarter?.nextThree || 0)),
+    ros: round(Number(addValue.ros || 0) - Number(weakestStarter?.ros || 0)),
+  };
+  const weakRank = weakestStarter?.rank || null;
+  const targetRank = COMPETITIVE_STARTER_RANK[addPlayer.position];
+  const injuredCount = values.filter((row) => criticalStatus(context.statuses.get(row.entry.playerId))).length;
+  const reasons = [];
+  let score = 0;
+  if (usable.length < required) {
+    score += 5;
+    reasons.push(`only ${usable.length} usable Week ${week} ${addPlayer.position}${usable.length === 1 ? "" : "s"} for ${required} starting slot${required === 1 ? "" : "s"}`);
+  }
+  if (injuredCount) {
+    score += Math.min(3, injuredCount * 2);
+    reasons.push(`${injuredCount} ${addPlayer.position} injury/IR absence${injuredCount === 1 ? "" : "s"}`);
+  }
+  if (weakRank && weakRank > targetRank) {
+    score += 2;
+    reasons.push(`weakest required starter ranks outside the top ${targetRank}`);
+  }
+  if (gain.nextThree >= 2) score += 2;
+  else if (gain.nextThree >= 1) score += 1;
+  if (gain.ros >= 2) score += 2;
+  else if (gain.ros >= 1) score += 1;
+  const candidateRank = ranks.get(addPlayer.id) || null;
+  if (candidateRank && candidateRank <= targetRank && (weakRank === null || weakRank > targetRank)) {
+    score += 1;
+    reasons.push(`${addPlayer.name} projects as a top-${targetRank} ${addPlayer.position}`);
+  }
+  if (!reasons.length && gain.nextThree > 0.5) reasons.push(`projects ${gain.nextThree.toFixed(1)} points above the weakest required ${addPlayer.position} over the next three weeks`);
+  const remainingBudget = Number.isSafeInteger(fabTeam?.remainingBudget) ? fabTeam.remainingBudget : null;
+  const injuryReserve = Math.min(5, Math.max(2, Math.ceil((18 - week) / 4)));
+  const spendable = remainingBudget === null ? null : Math.max(0, remainingBudget - injuryReserve);
+  const meaningfulUpgrade = gain.week > 0.5 || gain.nextThree > 0.5 || gain.ros > 0.5 || usable.length < required;
+  const strength = Math.max(0, Number(gain.week || 0) * 2 + Number(gain.nextThree || 0) * 3 + Number(gain.ros || 0) * 2);
+  const positionCap = ["K", "DST"].includes(addPlayer.position) ? 2 : 12;
+  const urgencyPremium = score >= 6 ? 2 : score >= 3 ? 1 : 0;
+  const rawBid = meaningfulUpgrade && score >= 2 ? 1 + Math.ceil(strength / 4) + urgencyPremium : 0;
+  const estimatedMaxBid = spendable === null ? null : Math.max(0, Math.min(spendable, positionCap, rawBid));
+  return {
+    teamId: team.teamId,
+    teamName: team.name || team.teamName || team.teamId,
+    position: addPlayer.position,
+    need: score >= 6 ? "HIGH" : score >= 3 ? "MEDIUM" : score >= 2 ? "LOW" : "NONE",
+    needScore: score,
+    remainingBudget,
+    estimatedMaxBid,
+    usablePlayers: usable.length,
+    requiredStarters: required,
+    weakestStarterRank: weakRank,
+    candidateRank,
+    projectedGain: gain,
+    reasons: reasons.slice(0, 3),
+  };
+}
+
+function waiverMarketCompetition({ row, leagueState, fab, week, context, ranks, baseBid }) {
+  const fabByTeam = new Map((fab.teams || []).map((team) => [team.teamId, team]));
+  const opponents = (leagueState.teams || [])
+    .filter((team) => team.teamId !== USER_TEAM_ID && Array.isArray(team.roster) && team.roster.length)
+    .map((team) => opponentPositionDemand({ addPlayer: row.addPlayer, team, fabTeam: fabByTeam.get(team.teamId), week, context, ranks }))
+    .filter((team) => team.need !== "NONE")
+    .sort((left, right) => Number(right.estimatedMaxBid ?? -1) - Number(left.estimatedMaxBid ?? -1)
+      || right.needScore - left.needScore
+      || left.teamName.localeCompare(right.teamName));
+  const priced = opponents.filter((team) => Number.isFinite(team.estimatedMaxBid) && team.estimatedMaxBid > 0);
+  if (!fab.pricingReady || !priced.length || !Number.isFinite(baseBid.recommended)) {
+    return {
+      decision: "HOLD",
+      level: opponents.some((team) => team.need === "HIGH") ? "UNKNOWN" : "LOW",
+      adjustedBy: 0,
+      recommended: baseBid.recommended,
+      maximum: baseBid.maximum,
+      budgetAfter: baseBid.budgetAfter,
+      rivalCount: opponents.length,
+      pricedRivalCount: priced.length,
+      topRivals: opponents.slice(0, 3),
+      reason: fab.pricingReady
+        ? "No opponent with a modeled positional need is expected to force the bid higher."
+        : "Opponent roster needs were evaluated, but CBS has not supplied complete remaining FAB balances, so the bid is not increased on invented competition.",
+    };
+  }
+  const topBid = priced[0].estimatedMaxBid;
+  const topAtBid = priced.filter((team) => team.estimatedMaxBid === topBid);
+  const userFab = fabByTeam.get(USER_TEAM_ID);
+  const tieDisadvantage = topAtBid.some((rival) => userFab && compareFabTiePriority(fabByTeam.get(rival.teamId), userFab) < 0);
+  const marketTarget = topBid + (tieDisadvantage ? 1 : 0);
+  const valueCap = Number(baseBid.maximum);
+  if (marketTarget > valueCap) {
+    return {
+      decision: "PASS",
+      level: "HIGH",
+      adjustedBy: 0,
+      recommended: null,
+      maximum: valueCap,
+      budgetAfter: null,
+      rivalCount: opponents.length,
+      pricedRivalCount: priced.length,
+      topRivals: opponents.slice(0, 3),
+      modeledWinningBid: marketTarget,
+      reason: `Modeled competition may require about $${marketTarget}, above this player's $${valueCap} value cap. Do not chase the expected market price.`,
+    };
+  }
+  const recommended = Math.max(baseBid.recommended, marketTarget);
+  return {
+    decision: recommended > baseBid.recommended ? "BOOST" : "HOLD",
+    level: topBid >= 5 || priced.length >= 3 ? "HIGH" : topBid >= 3 || priced.length >= 2 ? "MEDIUM" : "LOW",
+    adjustedBy: recommended - baseBid.recommended,
+    recommended,
+    maximum: valueCap,
+    budgetAfter: fab.budget === null ? null : fab.budget - recommended,
+    rivalCount: opponents.length,
+    pricedRivalCount: priced.length,
+    topRivals: opponents.slice(0, 3),
+    modeledWinningBid: marketTarget,
+    reason: recommended > baseBid.recommended
+      ? `Raised the bid by $${recommended - baseBid.recommended} because ${priced[0].teamName} has a modeled ${priced[0].need.toLowerCase()} ${row.addPlayer.position} need and can plausibly bid $${topBid}.`
+      : `The base bid already covers the strongest modeled rival price of $${topBid}; no competition premium is needed.`,
+  };
+}
+
 export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [] }) {
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
@@ -703,6 +866,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
   const ros = weekRange(week, 17);
+  const marketRanks = marketPositionRanks(pack.players, nextThree, context);
   const available = leagueState.availablePlayerIds
     .map((id) => playerById.get(id))
     .filter(Boolean)
@@ -771,13 +935,17 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
     const signals = researchSignals(row.addPlayer, researchSnapshot);
     const verdict = row.decision.verdict;
     const horizon = row.currentDelta.delta && row.currentDelta.delta > 0 ? `+${row.currentDelta.delta.toFixed(1)} expected Week ${week} points` : `${row.nextThreeDelta.delta >= 0 ? "+" : ""}${row.nextThreeDelta.delta?.toFixed(1) || "0.0"} average over the next three weeks`;
-    const bid = fabBidFor(row, verdict, fab);
+    const baseBid = fabBidFor(row, verdict, fab);
+    const market = waiverMarketCompetition({ row, leagueState, fab, week, context, ranks: marketRanks, baseBid });
+    const bid = { recommended: market.recommended, maximum: market.maximum, budgetAfter: market.budgetAfter };
+    const marketPass = market.decision === "PASS";
+    const finalVerdict = marketPass ? "WATCH" : verdict;
     const earlierWinsBeforeThisClaim = earlierActionableClaims;
     const sequenceTie = fabSequenceTie(fab, earlierActionableClaims);
-    if (row.decision.actionable) earlierActionableClaims += 1;
+    if (row.decision.actionable && !marketPass) earlierActionableClaims += 1;
     return {
       priority: index + 1,
-      verdict,
+      verdict: finalVerdict,
       add: { playerId: row.addPlayer.id, name: row.addPlayer.name, position: row.addPlayer.position, nflTeam: row.addPlayer.nflTeam, opponent: null, gameTime: null },
       drop: row.drop ? { playerId: row.drop.playerId, name: row.drop.player.name, position: row.drop.player.position, nflTeam: row.drop.player.nflTeam } : null,
       gains: { week: row.currentDelta.delta, nextThree: row.nextThreeDelta.delta, restOfSeason: row.rosDelta.delta, resilienceWeeks: row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks },
@@ -785,18 +953,18 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       dropValue: row.dropValue,
       depthDelta: row.depthDelta,
       policy: {
-        actionable: row.decision.actionable,
+        actionable: row.decision.actionable && !marketPass,
         immediateNeed: row.immediateNeed,
-        rationale: row.decision.rationale,
+        rationale: marketPass ? `${row.decision.rationale} ${market.reason}` : row.decision.rationale,
         dropProtection: row.decision.dropProtection,
         thresholds: WAIVER_POLICY,
       },
       dropProjectionLoss: row.drop ? row.dropValue.week : 0,
       confidence: projection.confidence,
       availability: { source: "CBS authenticated all-team roster snapshot", asOf: leagueState.capturedAt, evidence: "not rostered by any of the 12 CBS teams; players on temporarily illegal rosters remain excluded until CBS records a drop" },
-      reason: row.drop
+      reason: (row.drop
         ? `${row.decision.rationale} ${horizon}; dropping ${row.drop.player.name} gives up ${row.dropValue.week?.toFixed(1) || "0.0"} projected Week ${week} bench/depth points, which is counted even when the starting lineup is unchanged.`
-        : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`,
+        : `${row.decision.rationale} ${horizon}; Dogs of War has an open roster spot, so no player must be dropped.`) + ` ${market.reason}`,
       evidence: {
         projections: projection.sources,
         range: { floor: projection.floor, median: projection.points, ceiling: projection.ceiling },
@@ -830,9 +998,12 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
         processingSchedule: fab.processingSchedule,
         specialTeamsByes: fab.specialTeamsByes,
         unavailableReason: fab.reason,
+        market,
       },
     };
   });
+  recommendations.sort((left, right) => Number(right.policy.actionable) - Number(left.policy.actionable) || left.priority - right.priority);
+  recommendations.forEach((recommendation, index) => { recommendation.priority = index + 1; });
   for (const [index, recommendation] of recommendations.entries()) recommendation.alternatives = recommendations
     .slice(index + 1)
     .filter((row) => row.policy?.actionable)

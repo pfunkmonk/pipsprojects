@@ -975,6 +975,25 @@ function waiverNoBidAdvice() {
   return advice;
 }
 
+function waiverMarketAdvice(market) {
+  if (!market) return null;
+  const rivals = (market.topRivals || []).filter((team) => team.need !== "NONE").map((team) => {
+    const budget = Number.isFinite(team.remainingBudget) ? `$${team.remainingBudget} left` : "balance unavailable";
+    const bid = Number.isFinite(team.estimatedMaxBid) ? `modeled up to $${team.estimatedMaxBid}` : "bid not estimated";
+    const detail = team.reasons?.[0] ? `; ${team.reasons[0]}` : "";
+    return `${team.teamName}: ${team.need.toLowerCase()} ${team.position} need, ${budget}, ${bid}${detail}`;
+  });
+  const panel = element("section", `waiver-market waiver-market-${String(market.level || "low").toLowerCase()}`);
+  panel.append(element("strong", "", market.decision === "PASS" ? "Competition check: pass at the likely price" : market.decision === "BOOST" ? "Competition-adjusted bid" : "Competition check"));
+  panel.append(element("p", "", market.reason || "Opponent roster demand did not change the bid."));
+  if (rivals.length) {
+    const list = document.createElement("ul");
+    for (const rival of rivals) list.append(element("li", "", rival));
+    panel.append(list);
+  }
+  return panel;
+}
+
 function waiverVerdictLabel(verdict) {
   if (verdict === "ADD") return "STRONG BID";
   if (verdict === "CLAIM") return "VALUE BID";
@@ -1029,6 +1048,8 @@ function renderWaivers(value) {
     title.append(element("h3", "", `${row.priority}. Add ${row.add.name}`), element("p", "", moveDetail));
     header.append(title, element("span", `verdict verdict-${String(row.verdict || "watch").toLowerCase()}`, waiverVerdictLabel(row.verdict)));
     card.append(header, element("p", "", row.reason));
+    const marketAdvice = waiverMarketAdvice(row.fab?.market);
+    if (marketAdvice) card.append(marketAdvice);
     const metrics = element("div", "metrics");
     metrics.append(metric("Week", signed(row.gains.week)), metric("Next 3", signed(row.gains.nextThree)), metric("ROS", signed(row.gains.restOfSeason)));
     if (Number.isFinite(row.fab?.recommended)) {

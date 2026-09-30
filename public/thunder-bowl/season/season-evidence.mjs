@@ -230,11 +230,15 @@ function waiverExplanation(value, week) {
         "Each successful pickup immediately increases that team's weekly pickup count, lowering its priority for a later equal bid in the same overnight run.",
         `Processing schedule: ${clean(fab.processingSchedule) || "Tuesday through Saturday nights"}.`,
         fab.bidHistoryAvailable ? "CBS bid history is available for competition calibration." : "CBS does not currently expose enough losing-bid history to calibrate rival bids, so the maximum is a conservative value cap—not a prediction of the winning price.",
+        fab.market?.reason || "Opponent roster demand did not change this bid.",
+        ...(fab.market?.topRivals || []).slice(0, 3).map((team) => `${team.teamName}: ${team.need} ${team.position} need; ${finite(team.remainingBudget) ? `$${Number(team.remainingBudget).toFixed(0)} remaining` : "balance unavailable"}; ${finite(team.estimatedMaxBid) ? `modeled up to $${Number(team.estimatedMaxBid).toFixed(0)}` : "bid not estimated"}.`),
         alternatives.length ? `If this player is gone, continue with ${alternatives.map((item) => `#${item.priority} ${item.name}${finite(item.recommendedBid) ? ` at $${item.recommendedBid}` : ""}`).join(", ")}.` : "No lower-ranked alternative cleared every current gate.",
       ] : [
         verdict === "WATCH"
           ? "No bid is recommended because this is a watch item, not an actionable claim."
           : clean(fab.unavailableReason) || "FAB balances, standings, and priority order have not been captured, so the advisor will not invent a bid.",
+        fab.market?.reason || "",
+        ...(fab.market?.topRivals || []).slice(0, 3).map((team) => `${team.teamName}: ${team.need} ${team.position} need; ${finite(team.remainingBudget) ? `$${Number(team.remainingBudget).toFixed(0)} remaining` : "balance unavailable"}; ${finite(team.estimatedMaxBid) ? `modeled up to $${Number(team.estimatedMaxBid).toFixed(0)}` : "bid not estimated"}.`),
       ]),
       section("What the bid does not use", [
         "The bid is constrained by the separate $50 season FAB balance. A player's unknown post-acquisition salary does not increase his waiver ranking; a captured inexpensive keeper contract is used only as protection against an unnecessarily destructive drop.",

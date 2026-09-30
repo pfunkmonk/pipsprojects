@@ -92,19 +92,47 @@ function pickupCounts(pages, week) {
   };
 }
 
+function inferredTransactionBudgets(pages) {
+  const completeReports = pages.filter((page) => /\/transactions(?:\?|$)/i.test(page?.url || "")
+    && /(?:\?|&)print_rows=9999(?:&|$)/i.test(page.url)
+    && pageRows(page).some((row) => /\bsigned for\s*\$\s*\d+/i.test(row.text)));
+  const report = completeReports
+    .sort((left, right) => pageRows(right).length - pageRows(left).length)[0] || null;
+  if (!report) return null;
+  const spent = new Map(TEAM_CATALOG.map((team) => [team.teamId, 0]));
+  let winningRows = 0;
+  for (const row of pageRows(report)) {
+    const team = TEAM_CATALOG.find((candidate) => row.cells.some((cell) => [candidate.name, ...candidate.aliases].includes(cell)));
+    if (!team) continue;
+    const prices = [...row.text.matchAll(/\bsigned for\s*\$\s*(\d{1,2})(?:\.00)?\b/gi)].map((match) => Number(match[1]));
+    if (!prices.length) continue;
+    spent.set(team.teamId, spent.get(team.teamId) + prices.reduce((sum, price) => sum + price, 0));
+    winningRows += 1;
+  }
+  if (!winningRows || [...spent.values()].some((amount) => amount < 0 || amount > THUNDER_BOWL_FAB_RULES.startingBudget)) return null;
+  return {
+    budgets: new Map([...spent].map(([teamId, amount]) => [teamId, THUNDER_BOWL_FAB_RULES.startingBudget - amount])),
+    winningRows,
+    pageUrl: report.url,
+  };
+}
+
 export function normalizeCbsFabPages(pages = [], week = 1, capturedAt = new Date().toISOString()) {
   const safePages = pages.filter((page) => page && Array.isArray(page.tables));
   const budgetPage = findPage(safePages, [/fab.{0,20}budget/i, /remaining.{0,12}budget/i, /available.{0,12}balance/i]);
   const orderPage = findPage(safePages, [/fab.{0,20}(order|priority)/i, /(waiver|claim).{0,20}(order|priority)/i]);
   const standingsPage = findPage(safePages, [/standings/i, /overall.{0,20}record/i]);
   const pickups = pickupCounts(safePages, week);
+  const inferredBudgets = inferredTransactionBudgets(safePages);
   const teams = TEAM_CATALOG.map((team) => {
     const { aliases: _aliases, ...canonicalTeam } = team;
     const budgetRow = teamRow(budgetPage, team);
     const orderRow = teamRow(orderPage, team);
     const standingsRow = teamRow(standingsPage, team);
     const remainingBudget = money(columnValue(budgetRow, /remaining|available|balance|budget/i))
-      ?? money((budgetRow?.cells || []).find((cell) => /\$/.test(cell)));
+      ?? money((budgetRow?.cells || []).find((cell) => /\$/.test(cell)))
+      ?? inferredBudgets?.budgets.get(team.teamId)
+      ?? null;
     const fabOrder = order(columnValue(orderRow, /order|priority|rank/i))
       ?? order((orderRow?.cells || []).find((cell) => /^\d{1,2}(?:st|nd|rd|th)?$/i.test(cell)));
     const teamRecord = record(columnValue(standingsRow, /record|overall/i)) ?? record(standingsRow?.text);
@@ -126,7 +154,15 @@ export function normalizeCbsFabPages(pages = [], week = 1, capturedAt = new Date
     week,
     status: budgetCoverage === 12 && orderCoverage === 12 && recordCoverage === 12 ? "COMPLETE" : "PARTIAL",
     rules: { ...THUNDER_BOWL_FAB_RULES, processingNights: [...THUNDER_BOWL_FAB_RULES.processingNights], equalBidTieBreakers: [...THUNDER_BOWL_FAB_RULES.equalBidTieBreakers] },
-    coverage: { budgetTeams: budgetCoverage, orderTeams: orderCoverage, recordTeams: recordCoverage, pickupEvidence: pickups.coverage, pickupRows: pickups.evidenceRows },
+    coverage: {
+      budgetTeams: budgetCoverage,
+      budgetEvidence: inferredBudgets ? "COMPLETE_TRANSACTION_LEDGER" : budgetPage ? "CBS_BUDGET_REPORT" : "UNAVAILABLE",
+      budgetWinningRows: inferredBudgets?.winningRows || 0,
+      orderTeams: orderCoverage,
+      recordTeams: recordCoverage,
+      pickupEvidence: pickups.coverage,
+      pickupRows: pickups.evidenceRows,
+    },
     teams,
     pageUrls: [...new Set(safePages.map((page) => page.url).filter(Boolean))].slice(0, 30),
   };
