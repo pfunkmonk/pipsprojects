@@ -1004,6 +1004,12 @@ test("waiver and trade recommendations are invariant to salary and contract data
   assert.ok(["OFFER", "MONITOR", "PASS"].includes(base.recommendations[0].verdict));
   assert.ok(base.recommendations[0].receives[0].weekProjection);
   assert.ok(base.recommendations[0].rosterContext.rival.beforeCounts);
+  assert.ok(["RIVAL_BENCH", "RIVAL_STARTER"].includes(base.recommendations[0].lineupUse.targetSourceRole));
+  assert.equal(base.recommendations[0].lineupUse.outgoingRole, "BENCH");
+  assert.equal(base.recommendations[0].lineupUse.dogs.qualifies, true);
+  assert.equal(base.recommendations[0].lineupUse.rival.qualifies, true);
+  assert.ok(base.recommendations[0].lineupUse.dogs.meaningfulStartWeeks.length >= 2);
+  assert.ok(base.recommendations[0].lineupUse.rival.meaningfulStartWeeks.length >= 2);
   assert.doesNotMatch(JSON.stringify(base.recommendations), /salary|contract|keeper/i);
   const protectedOutgoingId = base.recommendations[0].sends[0].playerId;
   const protectedBoard = recommendTrades({ pack, leagueState: baseLeague, week: 1, keepPlayerIds: [protectedOutgoingId] });
@@ -1216,7 +1222,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 21);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 22);
   for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
@@ -1285,9 +1291,12 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930h/);
+  assert.match(html, /season\.mjs\?v=20260930i/);
   assert.match(source, /Weekly streaming slot/);
   assert.match(source, /function waiverLineupCasePanel/);
+  assert.match(source, /function tradeLineupUsePanel/);
+  assert.match(source, /Starting-lineup test/);
+  assert.match(source, /Compare all \$\{lineupUse\.dogs\.weeks\?\.length \|\| 0\} remaining weeks for both teams/);
   assert.match(source, /row\.lineupCase/);
   assert.match(source, /Compare all \$\{lineupCase\.weeks\?\.length \|\| 0\} remaining weeks/);
   assert.match(source, /row\.verdict === "WATCH" \? "Watch" : "Add"/);

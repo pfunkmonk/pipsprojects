@@ -374,6 +374,80 @@ function playerValueHorizons(player, { currentWeek, nextThree, ros }, context) {
   };
 }
 
+function seasonLongStarterIds(roster, week, context) {
+  const remainingWeeks = weekRange(week, 17);
+  const ids = new Set();
+  for (const position of POSITIONS) {
+    [...roster]
+      .filter((entry) => entry.player.position === position)
+      .map((entry) => ({ entry, value: playerProjectionAverage(entry.player, remainingWeeks, context) ?? -999 }))
+      .sort((left, right) => right.value - left.value || left.entry.playerId.localeCompare(right.entry.playerId))
+      .slice(0, STARTER_REQUIREMENTS[position])
+      .forEach((row) => ids.add(row.entry.playerId));
+  }
+  return ids;
+}
+
+function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, context }) {
+  const remainingWeeks = weekRange(week, 17);
+  const seasonStarters = seasonLongStarterIds(beforeRoster, week, context);
+  const weeks = remainingWeeks.map((candidateWeek) => {
+    const before = optimizeExactLineup(beforeRoster, { ...context, week: candidateWeek });
+    const after = optimizeExactLineup(afterRoster, { ...context, week: candidateWeek });
+    const incoming = after.starters.find((entry) => entry.playerId === incomingPlayer.id) || null;
+    const displaced = before.starters.find((entry) => entry.player.position === incomingPlayer.position
+      && !after.starters.some((candidate) => candidate.playerId === entry.playerId))
+      || before.starters
+        .filter((entry) => entry.player.position === incomingPlayer.position)
+        .sort((left, right) => left.projection.points - right.projection.points)[0]
+      || null;
+    const lineupGain = Number.isFinite(before.total) && Number.isFinite(after.total) ? round(after.total - before.total) : null;
+    const starterByes = beforeRoster
+      .filter((entry) => seasonStarters.has(entry.playerId))
+      .filter((entry) => entry.player.position === incomingPlayer.position)
+      .filter((entry) => (entry.bye ?? entry.player.weeklyProjection?.byeWeek) === candidateWeek)
+      .map((entry) => entry.player.name);
+    const candidateBye = incomingPlayer.weeklyProjection?.byeWeek === candidateWeek;
+    return {
+      week: candidateWeek,
+      incomingPoints: round(cachedPlayerWeekEvidence(incomingPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache).points),
+      replaces: displaced ? { playerId: displaced.playerId, name: displaced.player.name, points: round(displaced.projection.points) } : null,
+      wouldStart: Boolean(incoming),
+      lineupGain,
+      starterByes,
+      result: candidateBye ? "CANDIDATE_BYE" : incoming && starterByes.length ? "BYE_COVER" : incoming ? "WOULD_START" : "BENCH",
+    };
+  });
+  const meaningfulWeeks = weeks.filter((row) => row.wouldStart && Number(row.lineupGain || 0) >= 1);
+  const byeCoverageWeeks = weeks.filter((row) => row.result === "BYE_COVER" && Number(row.lineupGain || 0) >= 0.5);
+  const immediateWeek = weeks.find((row) => row.week === week) || null;
+  const qualification = meaningfulWeeks.length >= 2
+    ? "MULTI_WEEK_STARTER"
+    : byeCoverageWeeks.length
+      ? "BYE_COVER"
+      : immediateWeek?.wouldStart && Number(immediateWeek.lineupGain || 0) >= 3
+        ? "IMMEDIATE_STARTER"
+        : null;
+  const replacements = [...new Set(weeks.filter((row) => row.wouldStart && row.replaces).map((row) => row.replaces.name))];
+  const byeNames = [...new Set(byeCoverageWeeks.flatMap((row) => row.starterByes))];
+  const summary = qualification === "MULTI_WEEK_STARTER"
+    ? `${incomingPlayer.name} projects to improve this team's starting lineup by at least 1.0 point in ${meaningfulWeeks.length} remaining weeks${replacements.length ? `, replacing ${replacements.join(" or ")}` : ""}.`
+    : qualification === "BYE_COVER"
+      ? `${incomingPlayer.name} supplies meaningful starter bye cover in Week ${byeCoverageWeeks.map((row) => row.week).join(", Week ")} while ${byeNames.join(" and ")} ${byeNames.length === 1 ? "is" : "are"} unavailable.`
+      : qualification === "IMMEDIATE_STARTER"
+        ? `${incomingPlayer.name} immediately improves the Week ${week} starting lineup by ${Number(immediateWeek.lineupGain || 0).toFixed(1)} points.`
+        : `${incomingPlayer.name} does not create a sufficient multi-week start, bye-week start, or major immediate starting-lineup gain.`;
+  return {
+    qualifies: Boolean(qualification),
+    qualification,
+    summary,
+    meaningfulStartWeeks: meaningfulWeeks.map((row) => row.week),
+    byeCoverageWeeks: byeCoverageWeeks.map((row) => row.week),
+    immediateWeekGain: immediateWeek?.lineupGain ?? null,
+    weeks,
+  };
+}
+
 function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, context }) {
   const remainingWeeks = weekRange(week, 17);
   const required = STARTER_REQUIREMENTS[addPlayer.position];
@@ -1303,6 +1377,7 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   const currentKeepIds = keepPlayerIds(dogs, requestedKeepPlayerIds);
   const dogsCurrentLineup = optimizeExactLineup(dogs, { week, ...context });
   const dogsStarterIds = new Set(dogsCurrentLineup.starters.map((entry) => entry.playerId));
+  for (const playerId of seasonLongStarterIds(dogs, week, context)) dogsStarterIds.add(playerId);
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
   const ros = weekRange(week, 17);
@@ -1312,6 +1387,8 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   const dogsCandidates = dogs.filter((entry) => !currentKeepIds.has(entry.playerId)).sort((left, right) => right.player.vbd - left.player.vbd);
   for (const rivalTeam of leagueState.teams.filter((team) => team.teamId !== USER_TEAM_ID)) {
     const rival = rosterPlayers(rivalTeam.roster, playerById);
+    const rivalStarterIds = seasonLongStarterIds(rival, week, context);
+    for (const entry of optimizeExactLineup(rival, { week, ...context }).starters) rivalStarterIds.add(entry.playerId);
     const rivalCandidates = [...rival].sort((left, right) => right.player.vbd - left.player.vbd);
     for (const send of dogsCandidates) {
       for (const receive of rivalCandidates) {
@@ -1333,8 +1410,18 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
           playoffs: playoffs.length ? tradeDelta(rival, nextRival, playoffs, context) : null,
         };
         if (dogsDeltas.restOfSeason === null || rivalDeltas.restOfSeason === null || dogsDeltas.restOfSeason <= 0.15 || rivalDeltas.restOfSeason < -0.35) continue;
-        const mutualScore = dogsDeltas.restOfSeason + Math.min(0.5, rivalDeltas.restOfSeason);
-        ideas.push({ rivalTeam, rival, nextRival, nextDogs, send, receive, dogsDeltas, rivalDeltas, mutualScore });
+        const dogsLineupCase = tradeLineupCase({ incomingPlayer: receive.player, beforeRoster: dogs, afterRoster: nextDogs, week, context });
+        if (!dogsLineupCase.qualifies) continue;
+        const outgoingRole = dogsStarterIds.has(send.playerId) ? "STARTER_BEING_REPLACED" : "BENCH";
+        if (outgoingRole === "STARTER_BEING_REPLACED" && send.player.position !== receive.player.position) continue;
+        const rivalLineupCase = tradeLineupCase({ incomingPlayer: send.player, beforeRoster: rival, afterRoster: nextRival, week, context });
+        if (!rivalLineupCase.qualifies) continue;
+        const targetSourceRole = rivalStarterIds.has(receive.playerId) ? "RIVAL_STARTER" : "RIVAL_BENCH";
+        const mutualScore = dogsDeltas.restOfSeason
+          + Math.min(0.5, rivalDeltas.restOfSeason)
+          + dogsLineupCase.meaningfulStartWeeks.length * 0.05
+          + rivalLineupCase.meaningfulStartWeeks.length * 0.02;
+        ideas.push({ rivalTeam, rival, nextRival, nextDogs, send, receive, dogsDeltas, rivalDeltas, mutualScore, dogsLineupCase, rivalLineupCase, outgoingRole, targetSourceRole });
       }
     }
   }
@@ -1386,13 +1473,19 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
       whyRivalAccepts,
       primaryRisk,
       proposal,
+      lineupUse: {
+        dogs: idea.dogsLineupCase,
+        rival: idea.rivalLineupCase,
+        targetSourceRole: idea.targetSourceRole,
+        outgoingRole: idea.outgoingRole,
+      },
       rosterContext: {
-        dogs: { beforeSize: dogs.length, afterSize: idea.nextDogs.length, beforeCounts: dogsCounts, afterCounts: nextDogsCounts, outgoingRole: dogsStarterIds.has(idea.send.playerId) ? "STARTER" : "DEPTH" },
+        dogs: { beforeSize: dogs.length, afterSize: idea.nextDogs.length, beforeCounts: dogsCounts, afterCounts: nextDogsCounts, outgoingRole: idea.outgoingRole },
         rival: { beforeSize: idea.rival.length, afterSize: idea.nextRival.length, beforeCounts: rivalCounts, afterCounts: nextRivalCounts },
         positionalRisk,
         noFlex: true,
       },
-      evidence: { method: "both teams' weekly exact legal optimal lineups; byes included; bench totals excluded; outgoing depth and direct player evidence are audited separately", formatsConsidered: ["automated rail: 1-for-1", "proposal analyzer: multi-player and two- or three-team trades"] },
+      evidence: { method: "both teams' weekly exact legal optimal lineups; every acquired player must earn a meaningful start or fill a starter bye; byes included; bench totals excluded; Dogs sends bench depth or the same-position starter being replaced", formatsConsidered: ["automated rail: 1-for-1", "proposal analyzer: multi-player and two- or three-team trades"] },
     });
     if (recommendations.length === 11) break;
   }
@@ -1410,7 +1503,7 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
       : `No displayed idea currently combines a meaningful Dogs of War gain, complete player evidence, protected no-flex roster depth, and a credible multi-horizon acceptance case. ${counts.monitor} idea${counts.monitor === 1 ? "" : "s"} remain monitor-only.`,
     counts,
   };
-  return { recommendations, boardSummary, blockedReason: recommendations.length ? null : "No legal 1-for-1 comparison cleared the minimum model gate." };
+  return { recommendations, boardSummary, blockedReason: recommendations.length ? null : "No legal 1-for-1 trade gives both teams a meaningful starting-lineup use for the player they receive." };
 }
 
 function tradeImpact(beforeRoster, afterRoster, weeks, context) {

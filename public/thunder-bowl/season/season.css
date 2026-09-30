@@ -121,6 +121,13 @@ select,.stats-controls input { min-height:42px; border:1px solid var(--line); bo
 .trade-impact-card h3 { margin:0 0 .4rem; }
 .trade-impact-card p { margin:.3rem 0; color:var(--muted); }
 .trade-package { border-top:1px solid var(--line); margin-top:.55rem; padding-top:.55rem; }
+.trade-lineup-use { margin:.6rem 0; border:1px solid rgba(75,213,166,.68); border-radius:10px; padding:.7rem .8rem; background:rgba(8,48,53,.45); }
+.trade-lineup-use>strong { color:var(--green); }
+.trade-lineup-use>p { margin:.3rem 0 .5rem; color:var(--muted); }
+.trade-lineup-use details { border-top:1px solid var(--line); padding-top:.35rem; }
+.trade-lineup-use summary { padding:.35rem 0; color:var(--green); font-size:.78rem; font-weight:850; }
+.trade-week-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
+.trade-week-team>strong { display:block; margin-top:.35rem; color:var(--text); }
 .trade-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; margin-top:.65rem; }
 .trade-detail { border:1px solid var(--line); border-radius:8px; padding:.55rem; background:rgba(4,19,38,.35); }
 .trade-detail strong { display:block; color:var(--gold); }
@@ -237,7 +244,7 @@ select,.stats-controls input { min-height:42px; border:1px solid var(--line); bo
   .update-source-grid { grid-template-columns:1fr; }
   .watch-grid { grid-template-columns:1fr; }
   .stats-controls fieldset { min-width:100%; }
-  .trade-detail-grid { grid-template-columns:1fr; }
+  .trade-detail-grid,.trade-week-columns { grid-template-columns:1fr; }
   .admin-intro .button { width:100%; }
   .team-news-item header { flex-direction:column-reverse; }
   .scoring-scoreboard { grid-template-columns:1fr; }

@@ -155,6 +155,10 @@ test("league-wide trade finder sends every roster and projection horizon with hi
   assert.equal(captured.body.max_output_tokens, 16_000);
   assert.equal(captured.body.text.verbosity, "low");
   assert.match(captured.body.instructions, /discovery search, not an audit/);
+  assert.match(captured.body.instructions, /players on rival benches or in rival starting lineups/);
+  assert.match(captured.body.instructions, /Prefer sending Dogs of War bench players/);
+  assert.match(captured.body.instructions, /Pure bench accumulation is not a credible acceptance case/);
+  assert.match(captured.body.instructions, /exact weeks the target would start/);
   assert.match(captured.body.instructions, /2-for-1/);
   assert.match(captured.body.instructions, /three-team construction/);
   assert.match(captured.body.input, /REQUESTED_SECTION: trade-finder/);

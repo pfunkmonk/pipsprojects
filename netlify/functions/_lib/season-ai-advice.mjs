@@ -6,7 +6,7 @@ const DEEP_OUTPUT_TOKENS = 16_000;
 const DEEP_RETRY_OUTPUT_TOKENS = 24_000;
 const STANDARD_TIMEOUT_MS = 80_000;
 const DEEP_ATTEMPT_TIMEOUT_MS = 6 * 60_000;
-export const SEASON_AI_PROMPT_VERSION = 4;
+export const SEASON_AI_PROMPT_VERSION = 5;
 
 export const THUNDER_BOWL_AI_INSTRUCTIONS = `You are the private, skeptical in-season decision analyst for Dogs of War in the 12-team Thunder Bowl fantasy-football league. Audit the supplied governed recommendations; do not replace missing facts with guesses.
 
@@ -51,6 +51,10 @@ export const TRADE_FINDER_AI_INSTRUCTIONS = `
 
 LEAGUE-WIDE TRADE FINDER MODE
 - This request is a discovery search, not an audit of only the displayed automated trade rail. Search the complete supplied league rosters and player-projection inventory for stronger alternatives.
+- Start with players on rival benches or in rival starting lineups who would actually enter Dogs of War's legal starting lineup in at least two remaining weeks, cover a starter's bye, or create a major current-week starting gain. Reject targets whose only benefit is unused bench depth.
+- Prefer sending Dogs of War bench players. A Dogs starter may be included only when the acquired same-position player replaces that starter in Dogs of War's lineup; identify the starter replaced and the exact weeks the target would start.
+- Require a real lineup use for the other manager too: at least one player sent by Dogs of War must improve or fill that team's legal weekly lineup. Pure bench accumulation is not a credible acceptance case.
+- Explicitly label each target as currently on the rival's bench or in its starting core, label each Dogs outgoing player as bench or the starter being replaced, and state the weeks each side gains a starter.
 - Consider rational 1-for-1, 2-for-1, and 2-for-2 packages. Consider a three-team construction only when it solves a documented roster need for all three teams more convincingly than a two-team trade.
 - Rank candidate packages from strongest to weakest. Each decision name must explicitly identify every player Dogs of War sends, every player Dogs of War receives, and the other team or teams involved.
 - Optimize for Dogs of War's exact legal starting lineup and no-flex depth across the current week, next three weeks, division Weeks 1, 2, 12, and 13, playoff Weeks 15-17, and rest of season through Week 17. Week 18 is excluded.

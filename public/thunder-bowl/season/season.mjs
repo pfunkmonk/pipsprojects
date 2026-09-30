@@ -1078,6 +1078,42 @@ function waiverVerdictLabel(verdict) {
   return verdict;
 }
 
+function tradeLineupUsePanel(row) {
+  const lineupUse = row.lineupUse;
+  if (!lineupUse?.dogs || !lineupUse?.rival) return null;
+  const incoming = row.receives?.[0];
+  const outgoing = row.sends?.[0];
+  const targetRole = lineupUse.targetSourceRole === "RIVAL_STARTER" ? "other team's starter" : "other team's bench";
+  const sendRole = lineupUse.outgoingRole === "STARTER_BEING_REPLACED" ? "your same-position starter being replaced" : "your bench";
+  const resultLabels = { WOULD_START: "Would start", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Player bye" };
+  const panel = element("section", "trade-lineup-use");
+  panel.append(
+    element("strong", "", `Starting-lineup test: ${incoming.name} is currently on the ${targetRole}; ${outgoing.name} comes from ${sendRole}`),
+    element("p", "", `Dogs: ${lineupUse.dogs.summary} ${row.rival.teamName}: ${lineupUse.rival.summary}`),
+  );
+  const details = document.createElement("details");
+  details.append(element("summary", "", `Compare all ${lineupUse.dogs.weeks?.length || 0} remaining weeks for both teams`));
+  const columns = element("div", "trade-week-columns");
+  for (const [label, player, lineupCase] of [["Dogs of War receives", incoming, lineupUse.dogs], [`${row.rival.teamName} receives`, outgoing, lineupUse.rival]]) {
+    const section = element("section", "trade-week-team");
+    section.append(element("strong", "", `${label} ${player.name}`));
+    const grid = element("div", "waiver-week-grid");
+    for (const week of lineupCase.weeks || []) {
+      const comparison = week.replaces
+        ? `${number(week.incomingPoints)} vs ${week.replaces.name} ${number(week.replaces.points)}`
+        : `${number(week.incomingPoints)} vs no complete current starter`;
+      const gain = Number.isFinite(week.lineupGain) ? ` · lineup ${signed(week.lineupGain)}` : "";
+      const bye = week.starterByes?.length ? ` · ${week.starterByes.join(" + ")} bye` : "";
+      grid.append(element("div", `waiver-week-row waiver-week-${String(week.result || "bench").toLowerCase()}`, `Week ${week.week}: ${comparison} · ${resultLabels[week.result] || week.result}${gain}${bye}`));
+    }
+    section.append(grid);
+    columns.append(section);
+  }
+  details.append(columns);
+  panel.append(details);
+  return panel;
+}
+
 function renderWaivers(value) {
   const target = byId("waiver-list");
   if (value.rebuildRequired) {
@@ -1183,6 +1219,8 @@ function renderTrades(value) {
     title.append(element("h3", "", `${send} → ${receive}`), element("p", "", `With ${row.rival.teamName}`));
     header.append(title, element("span", "verdict", row.verdict));
     card.append(header);
+    const lineupUse = tradeLineupUsePanel(row);
+    if (lineupUse) card.append(lineupUse);
     const metrics = element("div", "metrics");
     metrics.append(
       metric("Dogs Week", signed(row.dogsDeltas.week)),
