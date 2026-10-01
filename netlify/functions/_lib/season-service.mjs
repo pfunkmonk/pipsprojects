@@ -282,15 +282,10 @@ export async function refreshSeasonPlan({
   if (archiveTuesday && fbgRefreshError) throw new Error(`Tuesday plan was not archived because fresh Footballguys raw-stat projections were unavailable (${fbgRefreshError}).`);
   // Provider-by-provider component rows are needed for the accuracy archive,
   // but the live Player Stats table only reads the blended stats, source names,
-  // and source counts. Persisting all raw provider rows inside every live plan
-  // made the strongly consistent pointer several megabytes larger and caused
-  // avoidable multi-minute writes. Keep the complete in-memory plan for the
-  // audit below and store only the fields the live workspace consumes.
-  const storedPlan = {
-    ...plan,
-    playerStats: (plan.playerStats || []).map(({ sources: _sources, ...player }) => player),
-  };
-  const saved = await saveSeasonPlan(storedPlan, { archiveTuesday });
+  // and source counts. Archive them first, then compact the plan in place before
+  // saving it. Creating a second playerStats array while retaining the complete
+  // source-rich plan pushed Week 4 background rebuilds close to the function's
+  // memory limit and could leave a newly captured source waiting indefinitely.
   try {
     await within(Promise.all([
       archiveWeeklyProjections(plan, generatedAt),
@@ -298,8 +293,10 @@ export async function refreshSeasonPlan({
     ]), 8_000, "Decision checkpoint archival");
   } catch (error) {
     console.error("Decision checkpoint could not be archived", error.message);
-    saved.plan.alerts.push("This refresh was saved, but its outcome-tracking checkpoint could not be archived.");
+    plan.alerts.push("This refresh was saved, but its outcome-tracking checkpoint could not be archived.");
   }
+  plan.playerStats = (plan.playerStats || []).map(({ sources: _sources, ...player }) => player);
+  const saved = await saveSeasonPlan(plan, { archiveTuesday });
   try {
     saved.plan = await within(attachManagement(saved.plan, generatedAt), 5_000, "Management history attachment");
   } catch (error) {

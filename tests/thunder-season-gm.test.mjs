@@ -1412,8 +1412,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(refreshHandler, /\["status", "research", "news"\]/);
   assert.match(refreshHandler, /newsSnapshot: publicSources\.newsSnapshot/);
   assert.match(seasonService, /currentNewsSnapshot\(\{ force: true \}\)/);
-  assert.match(seasonService, /playerStats: \(plan\.playerStats \|\| \[\]\)\.map\(\(\{ sources: _sources, \.\.\.player \}\) => player\)/);
+  assert.match(seasonService, /plan\.playerStats = \(plan\.playerStats \|\| \[\]\)\.map\(\(\{ sources: _sources, \.\.\.player \}\) => player\)/);
   assert.match(seasonService, /archiveWeeklyProjections\(plan, generatedAt\)/);
+  assert.ok(seasonService.indexOf("archiveWeeklyProjections(plan, generatedAt)") < seasonService.indexOf("plan.playerStats = (plan.playerStats || []).map"));
   assert.match(seasonService, /news: \{ ok: !newsRefreshError/);
   assert.match(source, /Latest news for \$\{player\.name\}/);
   assert.match(source, /Run AI analysis/);
