@@ -174,6 +174,13 @@ export function renderManagement(plan, options = {}) {
   table(outcomes, ["Week", "Checkpoint", "Final scores", "Projection MAE", "Recommended lineup actual", "Hindsight gap"], m.outcomes.weeks.map((w) => [w.week, when(w.capturedAt), `${w.observedPlayers}/${w.rosterPlayers}`, fmt(w.meanAbsoluteError), fmt(w.recommendedActualTotal), fmt(w.hindsightGap)]));
   if (m.outcomes.lineupRegrets?.length) table(outcomes, ["Week", "Position", "Hindsight swap", "Actual scores", "Points left on bench"], m.outcomes.lineupRegrets.map((row) => [row.week, row.position, `${row.sit} → ${row.start}`, `${fmt(row.sitActual)} → ${fmt(row.startActual)}`, fmt(row.pointsGained)]));
   table(outcomes, ["Rank", "Provider", "Player-weeks", "MAE", "Bias", "RMSE", "Pairwise calls", "Pairwise accuracy", "2+ point calls", "2+ accuracy", "Mean regret", "Evidence"], m.outcomes.providers.map((p) => [p.rank, p.source, p.sampleCount, fmt(p.meanAbsoluteError), fmt(p.meanError), fmt(p.rootMeanSquaredError), p.decisionCount, pct(p.decisionAccuracy), p.materialDecisionCount, pct(p.materialDecisionAccuracy), fmt(p.meanDecisionRegret), p.calibrationReady ? "Descriptive; governed calibration threshold met" : "Small sample; do not reweight from this"]));
+  if (m.outcomes.learning) {
+    const learning = m.outcomes.learning;
+    note(outcomes, `Projection trust: ${label(learning.projectionTrust.status)}. ${learning.projectionTrust.note}`);
+    note(outcomes, learning.waiverNote);
+    if (learning.waiverEfficiency?.length) table(outcomes, ["Claim week", "Player ID", "FAB", "Final games observed", "Actual points", "Observed points / FAB"], learning.waiverEfficiency.map((row) => [row.week, row.playerId, `$${row.amount}`, row.observedGames, fmt(row.actualPoints), fmt(row.pointsPerFab)]));
+    note(outcomes, `Trade audit: ${label(learning.tradeCounterfactual.status)}. ${learning.tradeCounterfactual.note}`);
+  }
   if (m.outcomes.playerAudits?.length) table(outcomes, ["Week", "Player", "Pos.", "Frozen blend", "Actual", "Absolute error", "Direct provider audit"], m.outcomes.playerAudits.slice(0, 100).map((p) => [p.week, p.name, p.position, fmt(p.projected), fmt(p.actual), fmt(p.absoluteError), p.providers.map((provider) => `${provider.source}: ${fmt(provider.projected)} (${fmt(provider.absoluteError)} error)`).join("; ") || "No direct weekly provider row"]));
   importForm(panel("admin", "management-import", "Import verified workload, bids, actuals or IR evidence"), plan, options);
 }

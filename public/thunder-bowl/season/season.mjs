@@ -981,6 +981,14 @@ function waiverBidAdvice(fab) {
     ? metric("Remaining after a win", `$${number(fab.budgetAfter, 0)}`)
     : metric("Budget basis", `$${number(fab.bidBudget, 0)} opening`));
   advice.append(recommendation, details);
+  if (fab.bidCurve?.tiers?.length) {
+    const curve = document.createElement("details");
+    curve.append(element("summary", "", "Bid value curve"));
+    const list = document.createElement("ul");
+    for (const tier of fab.bidCurve.tiers) list.append(element("li", "", `${tier.label}: $${tier.bid} — ${tier.tradeoff}`));
+    curve.append(list);
+    advice.append(curve);
+  }
   if (fab.pricingEstimated) advice.append(element("p", "fab-unavailable", "CBS did not expose your current remaining FAB balance. This is a conservative risk cap based on the $50 opening budget—never bid more than the balance shown in CBS."));
   return advice;
 }
@@ -997,6 +1005,28 @@ function waiverNoBidAdvice() {
   details.append(metric("Action", "Do not bid"), metric("Status", "Watch only"));
   advice.append(recommendation, details, element("p", "fab-unavailable", "This move does not clear the paid-bid threshold. Keep your FAB and roster asset unless the player's role or your lineup need materially changes."));
   return advice;
+}
+
+function waiverDecisionQuality(row) {
+  const panel = element("section", "waiver-decision-quality");
+  const utility = row.starterUtility || {};
+  const uncertainty = row.uncertainty || {};
+  panel.append(
+    element("strong", "", `Decision quality: ${uncertainty.verdict || "UNRATED"}`),
+    element("p", "", `${utility.projectedStarts || 0} projected starts · ${utility.robustStarts || 0} survive the conservative range · ${utility.byeCovers || 0} bye covers · ${utility.playoffStarts || 0} playoff starts · utility score ${number(utility.score)}.`),
+  );
+  if (row.opportunityCost?.summary) panel.append(element("p", "", `Roster-slot cost: ${row.opportunityCost.summary}`));
+  const details = document.createElement("details");
+  details.append(element("summary", "", "Downside cases and alternatives"));
+  const list = document.createElement("ul");
+  for (const scenario of row.injuryScenarios?.scenarios || []) list.append(element("li", "", `${scenario.label}: ${number(scenario.points)} points, lineup ${signed(scenario.lineupGain)} — ${scenario.meaning}`));
+  const cheaper = row.decisionOptions?.cheaperAlternative;
+  if (cheaper) list.append(element("li", "", `Cheaper same-position alternative: ${cheaper.name} at $${cheaper.bid} (${number(cheaper.utilityScore)} utility; save $${cheaper.savings}).`));
+  list.append(element("li", "", row.decisionOptions?.hold?.result || "Hold the roster and FAB."));
+  if (row.decisionOptions?.streamLater?.result) list.append(element("li", "", row.decisionOptions.streamLater.result));
+  details.append(list);
+  panel.append(details);
+  return panel;
 }
 
 async function updatePlayerKeep(row, keep, button) {
@@ -1176,6 +1206,7 @@ function renderWaivers(value) {
     card.append(header, element("p", "", row.reason));
     const lineupCase = waiverLineupCasePanel(row.lineupCase);
     if (lineupCase) card.append(lineupCase);
+    card.append(waiverDecisionQuality(row));
     const rosterStrategy = waiverRosterStrategy(row.policy?.rosterStrategy);
     if (rosterStrategy) card.append(rosterStrategy);
     const marketAdvice = waiverMarketAdvice(row.fab?.market);
@@ -1196,6 +1227,16 @@ function renderWaivers(value) {
     card.append(actions);
     return card;
   }));
+  if (value.waivers.rejected?.length) {
+    const rejected = element("article", "decision-card waiver-rejected");
+    const details = document.createElement("details");
+    details.append(element("summary", "", `Why ${value.waivers.rejected.length} other available players were rejected`));
+    const list = document.createElement("ul");
+    for (const row of value.waivers.rejected) list.append(element("li", "", `${row.player.name} (${row.player.position}, ${number(row.weekProjection)} Week points): ${row.reason}`));
+    details.append(list);
+    rejected.append(details);
+    target.append(rejected);
+  }
 }
 
 function renderTrades(value) {
@@ -1272,9 +1313,16 @@ function renderTrades(value) {
     rosterCase.append(element("strong", "", "Rival roster fit"), element("p", "", `${rivalFit} The exchange leaves ${rosterLabel}.`));
     const risk = element("section", "trade-detail");
     risk.append(element("strong", "", "Primary risk"), element("p", "", row.primaryRisk));
+    const replacement = element("section", "trade-detail");
+    replacement.append(
+      element("strong", "", `Waiver replacement cost · ${row.replacementCost?.dogs?.scarcity || "UNKNOWN"} scarcity`),
+      element("p", "", `${row.replacementCost?.dogs?.summary || "Dogs replacement cost is unavailable."} Other manager: ${row.replacementCost?.rival?.summary || "replacement cost unavailable."}`),
+    );
+    const uncertainty = element("section", "trade-detail");
+    uncertainty.append(element("strong", "", `Uncertainty check: ${row.uncertainty?.verdict || "UNRATED"}`), element("p", "", `Dogs has ${row.lineupUse?.dogs?.utility?.robustStarts || 0} conservative-range starts; ${row.rival.teamName} has ${row.lineupUse?.rival?.utility?.robustStarts || 0}. A fragile point-estimate edge cannot receive an OFFER label.`));
     const approach = element("section", "trade-detail");
     approach.append(element("strong", "", "Suggested approach"), element("p", "", row.proposal));
-    detailGrid.append(dogsCase, rivalCase, playerCase, rosterCase, risk, approach);
+    detailGrid.append(dogsCase, rivalCase, playerCase, rosterCase, replacement, uncertainty, risk, approach);
     card.append(detailGrid);
     const actions = element("div", "card-actions");
     actions.append(...recommendationNewsButtons([...row.sends, ...row.receives]));
@@ -1533,6 +1581,8 @@ function renderTradeAnalysis(result) {
     metrics.append(metric("Week", signed(team.impact.week.delta)), metric("Next 3", signed(team.impact.nextThree.delta)), metric("ROS", signed(team.impact.restOfSeason.delta)), metric("Division", signed(team.impact.division.delta)), metric("Playoffs", signed(team.impact.playoffs.delta)));
     card.append(metrics);
     if (team.rosterComposition?.label) card.append(element("p", "evidence-note", `Post-trade roster: ${team.rosterComposition.label}.`));
+    card.append(element("p", "evidence-note", `Uncertainty: ${team.uncertainty?.verdict || "UNRATED"}. Point-estimate gains are downgraded when the conservative ranges do not hold.`));
+    for (const replacement of team.replacementCost || []) card.append(element("p", "evidence-note", `Replacement market (${replacement.scarcity}): ${replacement.summary}`));
     for (const lineupCase of team.lineupUse || []) {
       const resultLabels = { WOULD_START: "Would improve the starter", STARTS_BUT_HURTS: "Starts, but lowers the position score", STARTS_NO_GAIN: "Starts with no position gain", BYE_COVER: "Bye cover", BENCH: "Bench", CANDIDATE_BYE: "Player bye" };
       const panel = element("section", "trade-lineup-use");

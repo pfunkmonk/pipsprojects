@@ -427,9 +427,35 @@ export function outcomeReport(checkpoints, records, projectionArchives = []) {
     meanDecisionRegret: round(mean(metrics.decisions.map((row) => row.regret))),
     calibrationReady: metrics.signedErrors.length >= 30,
   })).sort((a, b) => a.meanAbsoluteError - b.meanAbsoluteError || a.source.localeCompare(b.source)).map((row, index) => ({ ...row, rank: index + 1 }));
+  const waiverEfficiency = records
+    .filter((row) => row.kind === "bid" && row.outcome === "WON" && finite(row.amount) && row.amount > 0)
+    .map((bid) => {
+      const actuals = records.filter((row) => row.kind === "result" && row.playerId === bid.playerId && row.final === true && row.week >= bid.week);
+      const actualPoints = actuals.reduce((sum, row) => sum + Number(row.points || 0), 0);
+      return {
+        week: bid.week,
+        playerId: bid.playerId,
+        amount: bid.amount,
+        observedGames: actuals.length,
+        actualPoints: round(actualPoints),
+        pointsPerFab: actuals.length ? round(actualPoints / bid.amount, 2) : null,
+      };
+    });
+  const calibratedProviders = providers.filter((row) => row.calibrationReady);
+  const learning = {
+    projectionTrust: calibratedProviders.length
+      ? { status: "ACTIVE", bestSource: calibratedProviders[0].source, note: `${calibratedProviders[0].source} currently has the lowest finalized-score MAE among providers that cleared the governed sample threshold; position-specific capped weights may adapt from this evidence.` }
+      : { status: "BUILDING_SAMPLE", bestSource: null, note: "No provider has enough finalized player-games for an unrestricted trust conclusion; baseline weights and capped adjustments remain in force." },
+    waiverEfficiency,
+    waiverNote: waiverEfficiency.some((row) => row.observedGames)
+      ? "Observed post-acquisition points per FAB are shown as an audit, not proof the player entered the optimal lineup. Future bid calibration should require both lineup use and a larger sample."
+      : "Winning-bid and finalized-score evidence has not yet overlapped enough to calculate observed points per FAB.",
+    tradeCounterfactual: { status: "NOT_RECORDED", note: "Trade counterfactuals require a frozen accepted/rejected proposal record. The current evidence store does not invent those decisions from roster changes." },
+  };
   return { weeks: weeks.sort((a, b) => b.week - a.week), projectionWeeks: projectionWeeks.sort((a, b) => b.week - a.week), providers,
     lineupRegrets: weeks.flatMap((week) => week.lineupRegrets.map((row) => ({ week: week.week, ...row }))),
     playerAudits: playerAudits.sort((a, b) => b.week - a.week || b.absoluteError - a.absoluteError || a.name.localeCompare(b.name)),
+    learning,
     note: "Weekly player and provider projections, matchup, kickoff and injury state are frozen before games and never rewritten. Accuracy uses finalized Thunder Bowl actuals only; missing scores never count as zero, and post-kickoff player rows are excluded. Provider rank is descriptive until the governed sample threshold is met. Pairwise accuracy asks whether a provider ranked same-position roster alternatives correctly; regret measures points lost by following that ranking. Hindsight gap is not a claim you could have known the best lineup." };
 }
 

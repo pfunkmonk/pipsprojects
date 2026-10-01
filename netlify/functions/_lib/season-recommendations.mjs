@@ -374,6 +374,60 @@ function playerValueHorizons(player, { currentWeek, nextThree, ros }, context) {
   };
 }
 
+function evidenceRange(evidence) {
+  const points = evidence?.points == null ? null : Number(evidence.points);
+  const floor = evidence?.floor == null ? null : Number(evidence.floor);
+  const ceiling = evidence?.ceiling == null ? null : Number(evidence.ceiling);
+  const spread = evidence?.spread == null ? null : Number(evidence.spread);
+  return {
+    points: Number.isFinite(points) ? points : null,
+    floor: Number.isFinite(floor) ? floor : Number.isFinite(points) ? points : null,
+    ceiling: Number.isFinite(ceiling) ? ceiling : Number.isFinite(points) ? points : null,
+    spread: Number.isFinite(spread) ? spread : Number.isFinite(floor) && Number.isFinite(ceiling) ? ceiling - floor : null,
+    confidence: Number.isFinite(Number(evidence?.confidence)) ? Number(evidence.confidence) : 0.4,
+    rangeKind: evidence?.rangeKind || "UNAVAILABLE",
+  };
+}
+
+function lineupUtility(weeks, { gainKey = "lineupGain" } = {}) {
+  const starts = weeks.filter((row) => row.wouldStart);
+  const robust = starts.filter((row) => Number(row.conservativeGain) >= 0.5);
+  const negative = starts.filter((row) => Number(row[gainKey]) < 0);
+  const bye = starts.filter((row) => row.result === "BYE_COVER");
+  const playoffs = starts.filter((row) => PRIORITY_WEEKS.playoffs.includes(row.week) && Number(row[gainKey]) > 0);
+  const gains = starts.map((row) => Number(row[gainKey])).filter(Number.isFinite);
+  return {
+    projectedStarts: starts.length,
+    robustStarts: robust.length,
+    byeCovers: bye.length,
+    playoffStarts: playoffs.length,
+    negativeStarts: negative.length,
+    benchWeeks: Math.max(0, weeks.length - starts.length),
+    averageStarterGain: round(average(gains)),
+    totalStarterGain: round(gains.reduce((sum, value) => sum + value, 0)),
+    score: round(gains.reduce((sum, value) => sum + Math.max(-2, value), 0) + bye.length * 0.5 + playoffs.length * 0.25 - negative.length, 2),
+  };
+}
+
+function uncertaintySummary(weeks, projection) {
+  const startingWeeks = weeks.filter((row) => row.wouldStart);
+  const conservative = startingWeeks.map((row) => Number(row.conservativeGain)).filter(Number.isFinite);
+  const upside = startingWeeks.map((row) => Number(row.upsideGain)).filter(Number.isFinite);
+  const robustWeeks = conservative.filter((gain) => gain >= 0.5).length;
+  const fragileWeeks = startingWeeks.filter((row) => Number(row.lineupGain ?? row.starterGain) > 0 && Number(row.conservativeGain) < 0).length;
+  const range = evidenceRange(projection);
+  return {
+    confidence: range.confidence,
+    sourceSpread: range.spread,
+    rangeKind: range.rangeKind,
+    conservativeAverageGain: round(average(conservative)),
+    upsideAverageGain: round(average(upside)),
+    robustWeeks,
+    fragileWeeks,
+    verdict: robustWeeks >= 2 ? "ROBUST" : fragileWeeks ? "FRAGILE" : range.confidence >= 0.65 ? "MODERATE" : "LOW_CONFIDENCE",
+  };
+}
+
 function seasonLongStarterIds(roster, week, context) {
   const remainingWeeks = weekRange(week, 17);
   const ids = new Set();
@@ -401,7 +455,10 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
         .filter((entry) => entry.player.position === incomingPlayer.position)
         .sort((left, right) => left.projection.points - right.projection.points)[0]
       || null;
-    const incomingPoints = round(cachedPlayerWeekEvidence(incomingPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache).points);
+    const incomingEvidence = cachedPlayerWeekEvidence(incomingPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache);
+    const incomingRange = evidenceRange(incomingEvidence);
+    const displacedRange = displaced ? evidenceRange(cachedPlayerWeekEvidence(displaced.player, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache)) : null;
+    const incomingPoints = round(incomingEvidence.points);
     const lineupGain = Number.isFinite(before.total) && Number.isFinite(after.total) ? round(after.total - before.total) : null;
     const starterGain = incoming && Number.isFinite(incomingPoints) && (!displaced || Number.isFinite(displaced.projection?.points))
       ? round(incomingPoints - Number(displaced?.projection?.points || 0))
@@ -419,6 +476,8 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
       wouldStart: Boolean(incoming),
       lineupGain,
       starterGain,
+      conservativeGain: incoming && Number.isFinite(incomingRange.floor) ? round(incomingRange.floor - Number(displacedRange?.ceiling || 0)) : null,
+      upsideGain: incoming && Number.isFinite(incomingRange.ceiling) ? round(incomingRange.ceiling - Number(displacedRange?.floor || 0)) : null,
       starterByes,
       result: candidateBye
         ? "CANDIDATE_BYE"
@@ -445,6 +504,7 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
         : null;
   const replacements = [...new Set(weeks.filter((row) => row.wouldStart && row.replaces).map((row) => row.replaces.name))];
   const byeNames = [...new Set(byeCoverageWeeks.flatMap((row) => row.starterByes))];
+  const utility = lineupUtility(weeks, { gainKey: "starterGain" });
   const summary = qualification === "MULTI_WEEK_STARTER"
     ? `${incomingPlayer.name} projects to improve this team's starting lineup by at least 1.0 point in ${meaningfulWeeks.length} remaining weeks${replacements.length ? `, replacing ${replacements.join(" or ")}` : ""}.`
     : qualification === "BYE_COVER"
@@ -459,6 +519,8 @@ function tradeLineupCase({ incomingPlayer, beforeRoster, afterRoster, week, cont
     meaningfulStartWeeks: meaningfulWeeks.map((row) => row.week),
     byeCoverageWeeks: byeCoverageWeeks.map((row) => row.week),
     immediateWeekGain: immediateWeek?.starterGain ?? null,
+    utility,
+    uncertainty: uncertaintySummary(weeks, cachedPlayerWeekEvidence(incomingPlayer, week, context.projectionRows, context.cbsRows, context.evidenceCache)),
     weeks,
   };
 }
@@ -485,7 +547,8 @@ function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, c
     .slice(0, required)
     .map((row) => row.entry);
   const weeks = remainingWeeks.map((candidateWeek) => {
-    const addProjection = cachedPlayerWeekEvidence(addPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache).points;
+    const addEvidence = cachedPlayerWeekEvidence(addPlayer, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache);
+    const addProjection = addEvidence.points;
     const projectedAtPosition = (roster) => roster
       .filter((entry) => entry.player.position === addPlayer.position && !criticalStatus(context.statuses.get(entry.playerId)))
       .map((entry) => ({
@@ -499,6 +562,9 @@ function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, c
     const candidateRank = afterPosition.findIndex((row) => row.entry.playerId === addPlayer.id) + 1;
     const wouldStart = candidateRank > 0 && candidateRank <= required;
     const currentCutoff = beforePosition[Math.max(0, required - 1)] || null;
+    const currentStarterEvidence = currentCutoff ? cachedPlayerWeekEvidence(currentCutoff.entry.player, candidateWeek, context.projectionRows, context.cbsRows, context.evidenceCache) : null;
+    const addRange = evidenceRange(addEvidence);
+    const currentRange = evidenceRange(currentStarterEvidence);
     const beforeTotal = lineupCacheTotal(currentRoster, candidateWeek, context);
     const afterTotal = lineupCacheTotal(afterRoster, candidateWeek, context);
     const lineupGain = Number.isFinite(beforeTotal) && Number.isFinite(afterTotal) ? round(afterTotal - beforeTotal) : null;
@@ -512,6 +578,8 @@ function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, c
       currentStarter: currentCutoff ? { playerId: currentCutoff.entry.playerId, name: currentCutoff.entry.player.name, points: round(currentCutoff.points) } : null,
       wouldStart,
       lineupGain,
+      conservativeGain: wouldStart && Number.isFinite(addRange.floor) ? round(addRange.floor - Number(currentRange.ceiling || 0)) : null,
+      upsideGain: wouldStart && Number.isFinite(addRange.ceiling) ? round(addRange.ceiling - Number(currentRange.floor || 0)) : null,
       starterByes,
       result: candidateBye ? "CANDIDATE_BYE" : wouldStart && starterByes.length ? "BYE_COVER" : wouldStart ? "WOULD_START" : "BENCH",
     };
@@ -529,6 +597,7 @@ function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, c
         ? "IMMEDIATE_RENTAL"
         : null;
   const byeNames = [...new Set(byeCoverageWeeks.flatMap((row) => row.starterByes))];
+  const utility = lineupUtility(weeks);
   const summary = qualification === "MULTI_WEEK_STARTER"
     ? `${addPlayer.name} projects to improve the starting lineup by at least 1.0 point in ${meaningfulWeeks.length} remaining weeks.`
     : qualification === "BYE_COVER"
@@ -544,6 +613,8 @@ function waiverLineupCase({ addPlayer, currentRoster, afterRoster, drop, week, c
     byeCoverageWeeks: byeCoverageWeeks.map((row) => row.week),
     immediateWeekGain: immediateWeek?.lineupGain ?? null,
     usesFlexibleSlot,
+    utility,
+    uncertainty: uncertaintySummary(weeks, cachedPlayerWeekEvidence(addPlayer, week, context.projectionRows, context.cbsRows, context.evidenceCache)),
     weeks,
   };
 }
@@ -697,6 +768,11 @@ export function classifyWaiverEdge(row) {
       || directRosGain >= WAIVER_POLICY.protectedDrop.minimumReplacementGain);
   if (!lineupUpgrade && !samePositionUpgrade) return null;
 
+  const uncertainty = row.lineupCase?.uncertainty;
+  const uncertaintyBlocked = uncertainty?.robustWeeks === 0
+    && uncertainty?.fragileWeeks > 0
+    && (Number(uncertainty?.confidence || 0) < 0.55 || Number(uncertainty?.sourceSpread || 0) >= 6);
+
   const dropProtection = waiverDropProtection(row);
   const directRosSafe = !row.drop || directRosGain >= 0;
   const longTermSafe = rosGain >= WAIVER_POLICY.ordinary.minimumRosGain && directRosSafe && !dropProtection.blocked;
@@ -705,7 +781,7 @@ export function classifyWaiverEdge(row) {
       || (weekGain >= WAIVER_POLICY.strongBid.minimumWeekGain
         && nextThreeGain >= WAIVER_POLICY.strongBid.minimumNextThreeGain
         && rosGain >= WAIVER_POLICY.strongBid.minimumRosGain);
-    if (strongBid) return {
+    if (strongBid && !uncertaintyBlocked) return {
       verdict: "ADD",
       actionable: true,
       dropProtection,
@@ -714,7 +790,7 @@ export function classifyWaiverEdge(row) {
     const valueBid = weekGain >= WAIVER_POLICY.valueBid.minimumWeekGain
       && nextThreeGain >= WAIVER_POLICY.valueBid.minimumNextThreeGain
       && rosGain >= WAIVER_POLICY.valueBid.minimumRosGain;
-    if (valueBid) return {
+    if (valueBid && !uncertaintyBlocked) return {
       verdict: "CLAIM",
       actionable: true,
       dropProtection,
@@ -769,11 +845,68 @@ export function classifyWaiverEdge(row) {
     dropProtection,
     rationale: dropProtection.blocked
       ? `Watch only; ${dropProtection.reason}`
+      : uncertaintyBlocked
+        ? "Watch only; the point-estimate edge disappears under the conservative projection range and the providers do not agree closely enough to justify spending FAB."
       : rosGain < 0
         ? `Watch only; the short-term improvement does not justify ${rosGain.toFixed(1)} average rest-of-season lineup points lost.`
         : longTermSafe
           ? `Watch only; the safe but modest +${weekGain.toFixed(1)} Week gain and +${nextThreeGain.toFixed(1)} next-three average do not clear the minimum paid-bid thresholds.`
         : `Watch only; the move gives up ${Math.abs(directRosGain).toFixed(1)} direct-player rest-of-season points even though the optimized lineup is not immediately worse.`,
+  };
+}
+
+function bidValueCurve(bid, row, verdict) {
+  if (!Number.isFinite(bid?.recommended) || verdict === "WATCH") return null;
+  const preferred = Math.max(1, Math.round(bid.recommended));
+  const ceiling = Math.max(preferred, Math.round(bid.maximum ?? preferred));
+  const value = Math.max(1, preferred - Math.max(1, Math.ceil(preferred * 0.25)));
+  const aggressive = Math.min(ceiling, Math.max(preferred, preferred + Math.max(1, Math.ceil((ceiling - preferred) / 2))));
+  return {
+    value,
+    preferred,
+    aggressive,
+    hardCeiling: ceiling,
+    tiers: [
+      { bid: value, label: "Value", tradeoff: "Preserves FAB, with a meaningful risk of losing to a needy rival." },
+      { bid: preferred, label: "Recommended", tradeoff: "Best balance of modeled lineup value, competition, and future budget." },
+      { bid: aggressive, label: "Aggressive", tradeoff: "Use only if this week matters more than preserving the flexible slot and future FAB." },
+      { bid: ceiling, label: "Hard ceiling", tradeoff: "Never exceed this price; above it, hold or use the cheaper alternative." },
+    ].filter((tier, index, tiers) => tiers.findIndex((candidate) => candidate.bid === tier.bid) === index),
+    valuePerFab: preferred ? round(Number(row.lineupCase?.utility?.totalStarterGain || 0) / preferred, 2) : null,
+  };
+}
+
+function rosterOpportunityCost(row, streamingPlan, week) {
+  const flexible = row.rosterFit?.strategy === "STREAM" || row.lineupCase?.usesFlexibleSlot;
+  const dropName = row.drop?.player?.name || null;
+  const anchors = streamingPlan?.anchors?.map((entry) => entry.player.name) || [];
+  const loss = Number(row.dropValue?.restOfSeason || 0);
+  return {
+    usesFlexibleSlot: flexible,
+    rotatingOut: dropName,
+    protectedAnchors: anchors,
+    surrenderedRosDepth: dropName ? round(loss) : 0,
+    flexibilityAfterMove: flexible ? "OCCUPIED" : streamingPlan?.slotPlayer ? "PRESERVED" : "OPEN",
+    summary: flexible
+      ? `${row.addPlayer.name} uses the designated flexible spot for Week ${week}${dropName ? ` and rotates out ${dropName}` : ""}; the move must be reconsidered next week.`
+      : dropName
+        ? `This permanently exchanges ${dropName}'s modeled ${loss.toFixed(1)} rest-of-season depth points; the weekly K/DST/TE streaming slot remains separate.`
+        : "This uses an open roster spot and preserves the designated weekly streaming slot.",
+  };
+}
+
+function injuryRoleScenarios(player, week, context, lineupCase) {
+  const projection = evidenceRange(cachedPlayerWeekEvidence(player, week, context.projectionRows, context.cbsRows, context.evidenceCache));
+  const status = context.statuses.get(player.id);
+  const baseline = Number(lineupCase?.immediateWeekGain || 0);
+  return {
+    status: status?.injuryStatus || status?.status || "Active",
+    scenarios: [
+      { label: "Normal role", points: round(projection.points), lineupGain: round(baseline), meaning: "Current blended workload and role hold." },
+      { label: "Limited role", points: round(projection.floor), lineupGain: round(baseline - Math.max(0, Number(projection.points || 0) - Number(projection.floor || 0))), meaning: "Conditional downside case; this is not a forecast." },
+      { label: "Inactive", points: 0, lineupGain: round(baseline - Number(projection.points || 0)), meaning: "Contingency only; recheck official status before kickoff." },
+    ],
+    stableUnderDownside: Number(lineupCase?.weeks?.find((row) => row.week === week)?.conservativeGain) >= 0.5,
   };
 }
 
@@ -1130,7 +1263,7 @@ function waiverMarketCompetition({ row, leagueState, fab, week, context, ranks, 
   };
 }
 
-export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [], keepPlayerIds: requestedKeepPlayerIds = null }) {
+export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, leagueMoves = [], projectionCalibration = null, keepPlayerIds: requestedKeepPlayerIds = null }) {
   if (!Array.isArray(leagueState.availablePlayerIds) || !leagueState.authority.startsWith("authenticated")) {
     return { recommendations: [], blockedReason: "Sync private CBS league data to confirm the current roster and actual available-player pool." };
   }
@@ -1139,6 +1272,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   }
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
+  projectionRows.calibration = projectionCalibration;
   const cbsRows = cbsRowMap(leagueState);
   const evidenceCache = new Map();
   const statuses = statusMap(statusSnapshot);
@@ -1243,6 +1377,10 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       drop: row.drop ? { playerId: row.drop.playerId, name: row.drop.player.name, position: row.drop.player.position, nflTeam: row.drop.player.nflTeam } : null,
       gains: { week: row.currentDelta.delta, nextThree: row.nextThreeDelta.delta, restOfSeason: row.rosDelta.delta, resilienceWeeks: row.currentDelta.resilienceWeeks + row.nextThreeDelta.resilienceWeeks },
       lineupCase: row.lineupCase,
+      starterUtility: row.lineupCase.utility,
+      uncertainty: row.lineupCase.uncertainty,
+      injuryScenarios: injuryRoleScenarios(row.addPlayer, week, context, row.lineupCase),
+      opportunityCost: rosterOpportunityCost(row, context.streamingPlan, week),
       addValue: row.addValue,
       dropValue: row.dropValue,
       depthDelta: row.depthDelta,
@@ -1284,6 +1422,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
       },
       fab: {
         ...bid,
+        bidCurve: bidValueCurve(bid, row, finalVerdict),
         currentBudget: fab.budget,
         bidBudget: fab.bidBudget,
         pricingEstimated: fab.pricingEstimated,
@@ -1306,11 +1445,36 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
   });
   recommendations.sort((left, right) => Number(right.policy.actionable) - Number(left.policy.actionable) || left.priority - right.priority);
   recommendations.forEach((recommendation, index) => { recommendation.priority = index + 1; });
-  for (const [index, recommendation] of recommendations.entries()) recommendation.alternatives = recommendations
-    .slice(index + 1)
-    .filter((row) => row.policy?.actionable)
-    .map((row) => ({ priority: row.priority, name: row.add.name, recommendedBid: row.fab.recommended }))
-    .slice(0, 3);
+  for (const recommendation of recommendations) {
+    const samePosition = recommendations
+      .filter((row) => row.add.playerId !== recommendation.add.playerId && row.add.position === recommendation.add.position)
+      .sort((left, right) => (right.starterUtility?.score ?? -999) - (left.starterUtility?.score ?? -999));
+    const cheaper = samePosition.filter((row) => row.policy?.actionable && Number(row.fab?.recommended) < Number(recommendation.fab?.recommended));
+    recommendation.alternatives = samePosition.slice(0, 3).map((row) => ({
+      priority: row.priority,
+      name: row.add.name,
+      recommendedBid: row.fab.recommended,
+      savings: Number.isFinite(row.fab?.recommended) && Number.isFinite(recommendation.fab?.recommended) ? recommendation.fab.recommended - row.fab.recommended : null,
+      starterUtility: row.starterUtility?.score ?? null,
+      verdict: row.verdict,
+    }));
+    recommendation.decisionOptions = {
+      cheaperAlternative: cheaper[0] ? { name: cheaper[0].add.name, bid: cheaper[0].fab.recommended, savings: recommendation.fab.recommended - cheaper[0].fab.recommended, utilityScore: cheaper[0].starterUtility?.score ?? null } : null,
+      bestSamePositionAlternative: samePosition[0] ? { name: samePosition[0].add.name, bid: samePosition[0].fab.recommended, utilityScore: samePosition[0].starterUtility?.score ?? null } : null,
+      hold: { bid: 0, result: "Keep the current roster, FAB, and flexible-slot optionality." },
+      streamLater: STREAMING_POSITIONS.includes(recommendation.add.position) ? { result: "Wait for later injury and matchup news, then use the same flexible slot if a stronger streamer appears." } : null,
+    };
+  }
+  const recommendedIds = new Set(recommendations.map((row) => row.add.playerId));
+  const rejected = available
+    .filter((player) => !recommendedIds.has(player.id))
+    .slice(0, 12)
+    .map((player) => ({
+      player: { playerId: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam },
+      reasonCode: "NO_STARTER_UTILITY",
+      reason: `${player.name} did not produce a qualifying multi-week start, starter-bye cover, or large enough immediate lineup gain after the drop and flexible-slot cost were counted.`,
+      weekProjection: round(cachedPlayerWeekEvidence(player, week, projectionRows, cbsRows, context.evidenceCache).points),
+    }));
   const { teams: _teams, ...publicFab } = fab;
   const counts = rosterPositionCounts(currentRoster);
   const hold = recommendations.length ? null : {
@@ -1327,7 +1491,7 @@ export function recommendWaivers({ pack, leagueState, week, fbgSnapshot = null, 
     },
     fab: { currentBudget: fab.budget, orderAvailable: fab.orderAvailable, plannedReserve: fab.plannedReserve },
   };
-  return { recommendations, hold, blockedReason: null, fab: publicFab };
+  return { recommendations, rejected, hold, blockedReason: null, fab: publicFab };
 }
 
 function tradeDelta(beforeRoster, afterRoster, weeks, context) {
@@ -1367,7 +1531,7 @@ function tradePlayerEvidence(entry, week, context, researchSnapshot) {
   };
 }
 
-export function classifyTradeIdea({ dogsDeltas, rivalDeltas, evidenceComplete = false, incomingInjury = false, positionalRisk = null, week = 1 }) {
+export function classifyTradeIdea({ dogsDeltas, rivalDeltas, evidenceComplete = false, incomingInjury = false, positionalRisk = null, uncertainty = null, week = 1 }) {
   const dogs = [dogsDeltas.week, dogsDeltas.nextThree, dogsDeltas.restOfSeason, dogsDeltas.division, dogsDeltas.playoffs].filter(Number.isFinite);
   const rival = [rivalDeltas.week, rivalDeltas.nextThree, rivalDeltas.restOfSeason, rivalDeltas.division, rivalDeltas.playoffs].filter(Number.isFinite);
   const rivalNegativeWindows = rival.filter((value) => value < -0.35).length;
@@ -1381,7 +1545,8 @@ export function classifyTradeIdea({ dogsDeltas, rivalDeltas, evidenceComplete = 
     && rivalWorst >= -0.35
     && evidenceComplete
     && !incomingInjury
-    && !positionalRisk;
+    && !positionalRisk
+    && uncertainty?.verdict !== "FRAGILE";
   if (offer) return { verdict: "OFFER", confidence: "HIGH", rivalNegativeWindows, dogsWorst, rivalWorst };
   const monitor = Number(dogsDeltas.restOfSeason) >= 0.35
     && Number(dogsDeltas.nextThree) >= -0.25
@@ -1391,10 +1556,11 @@ export function classifyTradeIdea({ dogsDeltas, rivalDeltas, evidenceComplete = 
   return { verdict: "PASS", confidence: rivalNegativeWindows > 1 || Number(dogsDeltas.restOfSeason) < 0.35 ? "HIGH" : "MEDIUM", rivalNegativeWindows, dogsWorst, rivalWorst };
 }
 
-export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, keepPlayerIds: requestedKeepPlayerIds = null }) {
-  if (!leagueRostersReady(leagueState)) return { recommendations: [], blockedReason: incompleteRosterMessage(leagueState, "Trade advice") };
+export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, fantasyProsSnapshot = null, pffSnapshot = null, statusSnapshot = null, researchSnapshot = null, projectionCalibration = null, keepPlayerIds: requestedKeepPlayerIds = null }) {
+  if (!leagueRosterCoverageComplete(leagueState)) return { recommendations: [], blockedReason: "Trade advice requires a complete CBS ownership snapshot for all 12 teams; temporary roster-rule exceptions do not block it once ownership is complete." };
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
+  projectionRows.calibration = projectionCalibration;
   const cbsRows = cbsRowMap(leagueState);
   const statuses = statusMap(statusSnapshot);
   const context = { playerById, projectionRows, cbsRows, statuses, currentWeek: week, evidenceCache: new Map(), lineupCache: new Map() };
@@ -1408,6 +1574,7 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
   const currentWeek = [week];
   const nextThree = weekRange(week, week + 2);
   const ros = weekRange(week, 17);
+  const availablePlayers = (leagueState.availablePlayerIds || []).map((playerId) => playerById.get(playerId)).filter(Boolean);
   const division = PRIORITY_WEEKS.division.filter((candidate) => candidate >= week);
   const playoffs = PRIORITY_WEEKS.playoffs.filter((candidate) => candidate >= week);
   const ideas = [];
@@ -1469,7 +1636,16 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
     const positionalRisk = idea.send.player.position === "RB" && idea.receive.player.position !== "RB" && dogsCounts.RB <= 4
       ? `This sends away one of only ${dogsCounts.RB} running backs for a ${idea.receive.player.position} in a no-flex league, reducing startable RB depth.`
       : null;
-    const classification = classifyTradeIdea({ dogsDeltas: idea.dogsDeltas, rivalDeltas: idea.rivalDeltas, evidenceComplete, incomingInjury, positionalRisk, week });
+    const uncertainty = {
+      verdict: idea.dogsLineupCase.uncertainty?.verdict === "FRAGILE" || idea.rivalLineupCase.uncertainty?.verdict === "FRAGILE" ? "FRAGILE" : idea.dogsLineupCase.uncertainty?.verdict || "LOW_CONFIDENCE",
+      dogs: idea.dogsLineupCase.uncertainty,
+      rival: idea.rivalLineupCase.uncertainty,
+    };
+    const replacementCost = {
+      dogs: replacementMarket(idea.send.player.position, idea.send.player, availablePlayers, nextThree, context),
+      rival: replacementMarket(idea.receive.player.position, idea.receive.player, availablePlayers, nextThree, context),
+    };
+    const classification = classifyTradeIdea({ dogsDeltas: idea.dogsDeltas, rivalDeltas: idea.rivalDeltas, evidenceComplete, incomingInjury, positionalRisk, uncertainty, week });
     const losingWindows = Object.entries(idea.rivalDeltas).filter(([, value]) => Number.isFinite(value) && value < -0.35).map(([label]) => label);
     const whyRivalAccepts = classification.verdict === "OFFER"
       ? `${idea.rivalTeam.teamName} gains ${idea.rivalDeltas.restOfSeason.toFixed(1)} average rest-of-season lineup points without a material loss in another tested window.`
@@ -1499,6 +1675,8 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
       confidence: round(Math.min(cachedPlayerWeekEvidence(idea.send.player, week, projectionRows, cbsRows, context.evidenceCache).confidence ?? 0.4, cachedPlayerWeekEvidence(idea.receive.player, week, projectionRows, cbsRows, context.evidenceCache).confidence ?? 0.4), 2),
       whyRivalAccepts,
       primaryRisk,
+      uncertainty,
+      replacementCost,
       proposal,
       lineupUse: {
         dogs: idea.dogsLineupCase,
@@ -1531,6 +1709,27 @@ export function recommendTrades({ pack, leagueState, week, fbgSnapshot = null, f
     counts,
   };
   return { recommendations, boardSummary, blockedReason: recommendations.length ? null : "No legal 1-for-1 trade gives both teams a meaningful starting-lineup use for the player they receive." };
+}
+
+function replacementMarket(position, outgoingPlayer, availablePlayers, weeks, context) {
+  const candidates = availablePlayers
+    .filter((player) => player.position === position && !criticalStatus(context.statuses.get(player.id)))
+    .map((player) => ({ player, value: playerProjectionAverage(player, weeks, context) }))
+    .filter((row) => Number.isFinite(row.value))
+    .sort((left, right) => right.value - left.value || left.player.name.localeCompare(right.player.name));
+  const best = candidates[0] || null;
+  const outgoingValue = playerProjectionAverage(outgoingPlayer, weeks, context);
+  const replacementGap = Number.isFinite(outgoingValue) && Number.isFinite(best?.value) ? round(outgoingValue - best.value) : null;
+  return {
+    position,
+    outgoing: { playerId: outgoingPlayer.id, name: outgoingPlayer.name, projectedAverage: round(outgoingValue) },
+    bestAvailable: best ? { playerId: best.player.id, name: best.player.name, projectedAverage: round(best.value) } : null,
+    replacementGap,
+    scarcity: !best ? "EXTREME" : replacementGap >= 3 ? "HIGH" : replacementGap >= 1.5 ? "MEDIUM" : "LOW",
+    summary: !best
+      ? `No CBS-available ${position} replacement has usable projections.`
+      : `${best.player.name} is the best CBS-available ${position} replacement at ${best.value.toFixed(1)} projected points per game; replacing ${outgoingPlayer.name} from waivers leaves a ${Math.max(0, replacementGap || 0).toFixed(1)}-point gap.`,
+  };
 }
 
 function tradeImpact(beforeRoster, afterRoster, weeks, context) {
@@ -1586,6 +1785,7 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
   const projectionRows = projectionRowMaps({ fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   projectionRows.calibration = projectionCalibration;
   const context = { playerById, projectionRows, cbsRows: cbsRowMap(leagueState), statuses: statusMap(statusSnapshot), currentWeek: week, evidenceCache: new Map(), lineupCache: new Map() };
+  const availablePlayers = (leagueState.availablePlayerIds || []).map((playerId) => playerById.get(playerId)).filter(Boolean);
   const horizons = {
     week: [week],
     nextThree: weekRange(week, week + 2),
@@ -1611,6 +1811,11 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
       receives: receives.map((player) => ({ playerId: player.id, name: player.name, position: player.position, nflTeam: player.nflTeam })),
       impact,
       lineupUse,
+      uncertainty: {
+        verdict: lineupUse.some((entry) => entry.uncertainty?.verdict === "FRAGILE") ? "FRAGILE" : lineupUse.some((entry) => entry.uncertainty?.verdict === "ROBUST") ? "ROBUST" : "MODERATE",
+        players: lineupUse.map((entry) => ({ playerId: entry.player.playerId, name: entry.player.name, ...entry.uncertainty })),
+      },
+      replacementCost: sends.map((player) => replacementMarket(player.position, player, availablePlayers, horizons.nextThree, context)),
       rosterComposition: rosterComposition(afterByTeam.get(teamId)),
     };
   });
@@ -1621,7 +1826,8 @@ export function analyzeTradeProposal({ pack, leagueState, week, fbgSnapshot = nu
   const dogsLineupUse = dogs.lineupUse.some((entry) => entry.qualifies);
   const rivalLineupUse = rivals.every((team) => team.lineupUse.some((entry) => entry.qualifies));
   const lineupUseReady = dogsLineupUse && rivalLineupUse;
-  const verdict = lineupUseReady && dogsRos > 0.5 && worstRival >= -0.35 ? "GOOD IDEA" : lineupUseReady && dogsRos > 0 && worstRival >= -0.35 ? "POSSIBLE" : dogsRos > 0 ? "UNLIKELY" : "DECLINE";
+  const uncertaintyReady = dogs.uncertainty.verdict !== "FRAGILE" && rivals.every((team) => team.uncertainty.verdict !== "FRAGILE");
+  const verdict = lineupUseReady && uncertaintyReady && dogsRos > 0.5 && worstRival >= -0.35 ? "GOOD IDEA" : lineupUseReady && dogsRos > 0 && worstRival >= -0.35 ? "POSSIBLE" : dogsRos > 0 ? "UNLIKELY" : "DECLINE";
   const rivalSummary = rivals.map((team) => `${team.teamName} ${team.impact.restOfSeason.delta >= 0 ? "gains" : "loses"} ${Math.abs(team.impact.restOfSeason.delta || 0).toFixed(1)}`).join("; ");
   return {
     verdict,
@@ -2093,8 +2299,8 @@ export function buildSeasonRecommendationSnapshot({
     const entry = userRoster.find((candidate) => candidate.playerId === playerId);
     return entry ? { playerId, name: entry.player.name, position: entry.player.position, nflTeam: entry.player.nflTeam } : null;
   }).filter(Boolean);
-  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves, keepPlayerIds: effectiveKeepIds });
-  const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, keepPlayerIds: effectiveKeepIds });
+  const waiver = recommendWaivers({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, leagueMoves, projectionCalibration, keepPlayerIds: effectiveKeepIds });
+  const trades = recommendTrades({ pack, leagueState, week, fbgSnapshot, fantasyProsSnapshot, pffSnapshot, statusSnapshot, researchSnapshot, projectionCalibration, keepPlayerIds: effectiveKeepIds });
   const watch = buildInjuryWatch({ pack, leagueState, week, statusSnapshot, researchSnapshot, fbgSnapshot, fantasyProsSnapshot, pffSnapshot });
   const playerStats = buildPlayerStats({ pack, leagueState, week, projectionRows, cbsRows, statuses });
   const league = buildPublicLeague(pack, leagueState, week, projectionRows, cbsRows);
