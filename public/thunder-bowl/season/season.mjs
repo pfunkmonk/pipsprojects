@@ -78,6 +78,27 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+function isTransientPffReadinessError(error) {
+  return /PFF projection rows did not become ready|PFF projection rows are not available|PFF .* table did not become stable/i.test(errorMessage(error));
+}
+
+async function requestPffProjectionCaptureWithRetry({ week, attempts = 3 } = {}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week });
+    } catch (error) {
+      lastError = error;
+      if (!isTransientPffReadinessError(error) || attempt === attempts) throw error;
+      setStatus(`PFF is still rendering its projection table. Retrying automatically (${attempt + 1} of ${attempts})…`);
+      await pause(1_500);
+    }
+  }
+  throw lastError;
+}
+
 function isCbsRosterRuleError(error) {
   return /returned \d+ roster rows|may carry 15 players only|active players plus one CBS-marked PUP\/IR player/i.test(errorMessage(error));
 }
@@ -2002,7 +2023,9 @@ async function updateFbgOnly() {
 
 async function updateSupplementalOnly(provider, label) {
   try {
-    const capture = await requestSupplementalProjectionCapture({ provider, timeoutMs: 180_000, week: currentCaptureWeek() });
+    const capture = provider === "pff"
+      ? await requestPffProjectionCaptureWithRetry({ week: currentCaptureWeek() })
+      : await requestSupplementalProjectionCapture({ provider, timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: provider === "fantasyPros" ? "capture-fantasypros" : "capture-pff", capture });
   } catch (error) {
     byId("helper-setup").open = true;
@@ -2244,7 +2267,7 @@ byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-pla
 
   setStatus(`Step 4 of 5: reading PFF component-stat projections. Saved so far: ${completed.join(", ") || "none"}…`);
   try {
-    const capture = await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week: currentCaptureWeek() });
+    const capture = await requestPffProjectionCaptureWithRetry({ week: currentCaptureWeek() });
     await postAction({ action: "capture-pff", capture });
     completed.push("PFF");
   } catch (error) {
