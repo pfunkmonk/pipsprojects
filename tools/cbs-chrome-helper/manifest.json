@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.10.14",
-  "description": "User-triggered, read-only CBS league setup and four-source fantasy-football data capture for Pip's tools.",
-  "permissions": ["scripting", "tabs"],
+  "version": "0.10.15",
+  "description": "Read-only CBS and four-source fantasy-football capture with background-safe scheduled refreshes for Pip's tools.",
+  "permissions": ["scripting", "tabs", "alarms", "storage"],
   "host_permissions": [
     "https://*.football.cbssports.com/*",
     "https://www.footballguys.com/*",
     "https://www.fantasypros.com/*",
-    "https://www.pff.com/*"
+    "https://www.pff.com/*",
+    "https://pipsprojects.com/thunder-bowl/*"
   ],
   "background": {
     "service_worker": "service-worker.mjs",

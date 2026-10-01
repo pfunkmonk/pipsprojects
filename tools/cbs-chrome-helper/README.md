@@ -4,7 +4,7 @@ This small Chrome/Edge helper provides read-only CBS setup import for **Pip's Dr
 
 ## Install once
 
-1. Extract `thunder-bowl-data-helper-v0.10.14.zip` to a permanent folder.
+1. Extract `thunder-bowl-data-helper-v0.10.15.zip` to a permanent folder.
 2. Open `chrome://extensions` in Chrome or `edge://extensions` in Edge, using the browser profile you use for Pip's Projects.
 3. Turn on **Developer mode**.
 4. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
@@ -29,7 +29,7 @@ After setup, the single button captures the complete CBS league schedule, the cu
 
 - No password, cookie, or browser-storage permission is requested.
 - The helper does not store CBS, Footballguys, FantasyPros, or PFF credentials or session data.
-- It opens provider pages in inactive tabs only after the user presses the update button, reads the required reports, then closes the tabs.
+- Manual updates open provider pages in inactive tabs after the user presses the update button. The background-safe scheduler also runs Tuesday through Saturday at 2:00 PM America/Denver, opens only inactive temporary tabs, saves the same five-stage update, and closes them without activating Edge or taking over the desktop.
 - It accepts every legal 8–14 player roster. Waiver and trade recommendations are blocked only when a team lacks 1 QB, 2 RB, 2 WR, 1 TE, 1 K, or 1 DST, or exceeds the 14-player maximum.
 - It also reads the authenticated CBS FAB budget, current FAB order, standings record, and available current-week transaction evidence so the advisor can size blind-auction bids under the league's $50 rules.
 - It cannot change CBS rosters, lineups, waivers, trades, keepers, salaries, contracts, auction values, or ledger state.

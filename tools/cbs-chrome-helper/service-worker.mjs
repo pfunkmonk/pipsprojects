@@ -4,6 +4,7 @@ import { normalizeCbsFabPages } from "./cbs-fab-normalize.mjs";
 import { cbsScheduleUrlMatches, renderedCbsScheduleReady } from "./cbs-schedule-readiness.mjs";
 import { fantasyProsProjectionTableReady } from "./fantasypros-projection-readiness.mjs";
 import { pffProjectionTableReady } from "./pff-projection-readiness.mjs";
+import { backgroundRefreshScheduleLabel, nextBackgroundRefreshAt } from "./background-schedule.mjs";
 
 const TEAMS = [
   ["angry-face", 1, "Angry Face", ["Muther Humpers"]], ["orange-crush", 2, "Orange Crush"],
@@ -27,7 +28,11 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.14";
+const HELPER_VERSION = "0.10.15";
+const BACKGROUND_REFRESH_ALARM = "thunder-bowl-background-refresh";
+const BACKGROUND_REFRESH_URL = "https://pipsprojects.com/thunder-bowl/season/?scheduled-refresh=1";
+const BACKGROUND_REFRESH_TIMEOUT_MS = 20 * 60_000;
+let backgroundRefreshPromise = null;
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -835,6 +840,139 @@ async function capturePffProjections(week) {
     if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
   }
 }
+
+async function saveBackgroundRefreshReceipt(status, detail, extra = {}) {
+  await chrome.storage.local.set({
+    thunderBowlBackgroundRefresh: {
+      status,
+      detail: String(detail || ""),
+      helperVersion: HELPER_VERSION,
+      schedule: backgroundRefreshScheduleLabel(),
+      recordedAt: new Date().toISOString(),
+      ...extra,
+    },
+  });
+}
+
+async function scheduleNextBackgroundRefresh(now = new Date()) {
+  const nextRun = nextBackgroundRefreshAt(now);
+  await chrome.alarms.create(BACKGROUND_REFRESH_ALARM, { when: nextRun.getTime() });
+  await chrome.storage.local.set({
+    thunderBowlBackgroundRefreshSchedule: {
+      nextRunAt: nextRun.toISOString(),
+      schedule: backgroundRefreshScheduleLabel(),
+      helperVersion: HELPER_VERSION,
+    },
+  });
+  return nextRun;
+}
+
+async function scheduledRefreshPageState(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const app = document.getElementById("app-view");
+      const login = document.getElementById("login-view");
+      const button = document.getElementById("refresh-plan");
+      const status = document.getElementById("action-status");
+      const loginStatus = document.getElementById("login-status");
+      return {
+        appReady: Boolean(app && !app.hidden),
+        loginVisible: Boolean(login && !login.hidden),
+        buttonReady: Boolean(button && !button.disabled),
+        buttonDisabled: Boolean(button?.disabled),
+        status: String(status?.textContent || "").replace(/\s+/g, " ").trim(),
+        statusError: Boolean(status?.classList.contains("error")),
+        loginStatus: String(loginStatus?.textContent || "").replace(/\s+/g, " ").trim(),
+      };
+    },
+  });
+  return results[0]?.result || {};
+}
+
+async function waitForScheduledApp(tabId, timeoutMs = 45_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || tab.pendingUrl || "";
+    if (url && !url.startsWith("https://pipsprojects.com/thunder-bowl/season/")) {
+      throw new Error("The background refresh page redirected away from Thunder Bowl.");
+    }
+    if (tab.status === "complete") {
+      const state = await scheduledRefreshPageState(tabId).catch(() => ({}));
+      if (state.appReady && state.buttonReady) return state;
+      if (state.loginVisible && /enter your access code|not correct/i.test(state.loginStatus)) {
+        throw new Error("The saved Thunder Bowl website session expired. Open the site and sign in once when convenient; no foreground window was opened.");
+      }
+    }
+    await delay(500);
+  }
+  throw new Error("The background Thunder Bowl page did not become ready. No foreground window was opened.");
+}
+
+async function startScheduledPageRefresh(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const button = document.getElementById("refresh-plan");
+      if (!button || button.disabled) return false;
+      document.documentElement.dataset.thunderBowlScheduledRefresh = "running";
+      button.click();
+      return true;
+    },
+  });
+  if (results[0]?.result !== true) throw new Error("The background Update everything control was not ready.");
+}
+
+async function waitForScheduledRefresh(tabId, initialStatus, timeoutMs = BACKGROUND_REFRESH_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  let sawRunning = false;
+  while (Date.now() < deadline) {
+    const state = await scheduledRefreshPageState(tabId);
+    if (state.buttonDisabled) sawRunning = true;
+    if (sawRunning && state.buttonReady && state.status && state.status !== initialStatus) return state;
+    await delay(1_000);
+  }
+  throw new Error("The background refresh did not finish within 20 minutes. Its inactive tab was closed safely.");
+}
+
+async function runBackgroundRefresh() {
+  if (backgroundRefreshPromise) return backgroundRefreshPromise;
+  backgroundRefreshPromise = (async () => {
+    let tabId = null;
+    const startedAt = new Date().toISOString();
+    try {
+      const tab = await chrome.tabs.create({ url: `${BACKGROUND_REFRESH_URL}&run=${Date.now()}#admin`, active: false });
+      if (!Number.isSafeInteger(tab?.id)) throw new Error("The helper could not create its inactive background refresh tab.");
+      tabId = tab.id;
+      const ready = await waitForScheduledApp(tabId);
+      await startScheduledPageRefresh(tabId);
+      const result = await waitForScheduledRefresh(tabId, ready.status);
+      await saveBackgroundRefreshReceipt(result.statusError ? "partial" : "complete", result.status, { startedAt });
+    } catch (error) {
+      await saveBackgroundRefreshReceipt("failed", error instanceof Error ? error.message : String(error), { startedAt });
+    } finally {
+      if (tabId !== null) await chrome.tabs.remove(tabId).catch(() => undefined);
+      backgroundRefreshPromise = null;
+    }
+  })();
+  return backgroundRefreshPromise;
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  scheduleNextBackgroundRefresh().catch(() => undefined);
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  scheduleNextBackgroundRefresh().catch(() => undefined);
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== BACKGROUND_REFRESH_ALARM) return;
+  runBackgroundRefresh()
+    .catch(() => undefined)
+    .finally(() => scheduleNextBackgroundRefresh(new Date(Date.now() + 60_000)).catch(() => undefined));
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const origin = (() => { try { return new URL(sender.url).origin; } catch { return ""; } })();
