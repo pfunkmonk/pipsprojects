@@ -9,7 +9,7 @@
   <meta name="description" content="Dogs of War's private weekly lineup, waiver, trade, injury, and player-stat command center." />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20260831a" />
   <link rel="manifest" href="./manifest.webmanifest?v=20260831a" />
-  <link rel="stylesheet" href="./season.css?v=20260930g" />
+  <link rel="stylesheet" href="./season.css?v=20260930h" />
 </head>
 <body>
   <a class="skip-link" href="#season-main">Skip to weekly workspace</a>
@@ -38,7 +38,8 @@
     </header>
 
     <nav class="season-tabs" aria-label="In-season GM sections" role="tablist">
-      <button id="tab-button-start-sit" class="season-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-start-sit" data-tab="start-sit">Start/Sit</button>
+      <button id="tab-button-midweek" class="season-tab" type="button" role="tab" aria-selected="true" aria-controls="tab-midweek" data-tab="midweek">Midweek HQ</button>
+      <button id="tab-button-start-sit" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-start-sit" tabindex="-1" data-tab="start-sit">Start/Sit</button>
       <button id="tab-button-scoring-preview" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-scoring-preview" tabindex="-1" data-tab="scoring-preview">Scoring Preview / Results</button>
       <button id="tab-button-waivers" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-waivers" tabindex="-1" data-tab="waivers">Waiver Wire</button>
       <button id="tab-button-trades" class="season-tab" type="button" role="tab" aria-selected="false" aria-controls="tab-trades" tabindex="-1" data-tab="trades">Trades</button>
@@ -51,7 +52,33 @@
     <p id="action-status" class="status-line global-status" role="status" aria-live="polite"></p>
 
     <main id="season-main" class="workspace">
-      <section id="tab-start-sit" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-start-sit">
+      <section id="tab-midweek" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-midweek">
+        <section class="panel command-panel" aria-labelledby="midweek-title">
+          <header class="panel-head command-head">
+            <div><p class="eyebrow">Tuesday decision desk · Denver time</p><h2 id="midweek-title">Midweek Command Center</h2><p id="midweek-headline" class="panel-intro">Loading the governed weekly decision plan…</p></div>
+            <div class="panel-head-tools"><span id="midweek-timing" class="state-chip">CHECKING</span><button id="midweek-refresh" class="button primary" type="button">Refresh everything</button></div>
+          </header>
+          <div id="midweek-source-receipt" class="command-receipt" aria-label="Update receipt"></div>
+          <div class="command-grid">
+            <section class="command-primary"><p class="eyebrow">Do these in order</p><h3>Action queue</h3><div id="midweek-actions" class="command-stack"></div></section>
+            <section><p class="eyebrow">Mutually exclusive</p><h3>Waiver claim chain</h3><div id="midweek-claims" class="command-stack"></div></section>
+            <section><p class="eyebrow">Send-now only</p><h3>Trade offer ladder</h3><div id="midweek-trades" class="command-stack"></div></section>
+          </div>
+        </section>
+
+        <section class="panel command-secondary" aria-labelledby="midweek-calendar-title">
+          <header class="panel-head"><div><p class="eyebrow">Rest-of-season lineup utility</p><h2 id="midweek-calendar-title">Starts, byes &amp; playoff value</h2></div><span>Next 8 weeks</span></header>
+          <div id="midweek-calendar" class="calendar-grid"></div>
+          <details class="command-details"><summary>Drop-risk protection</summary><div id="midweek-drop-risks" class="command-stack"></div></details>
+        </section>
+
+        <section class="panel command-secondary" aria-labelledby="midweek-review-title">
+          <header class="panel-head"><div><p class="eyebrow">Frozen projections vs final results</p><h2 id="midweek-review-title">Tuesday learning review</h2></div><span id="midweek-review-week">Waiting for finalized scores</span></header>
+          <div id="midweek-review" class="command-review"></div>
+        </section>
+      </section>
+
+      <section id="tab-start-sit" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-start-sit" hidden>
         <section class="panel lineup-panel" aria-labelledby="lineup-title">
           <header class="panel-head"><div><p class="eyebrow">Exact legal lineup</p><h2 id="lineup-title">Start / sit plan</h2></div><div class="panel-head-tools"><strong id="lineup-total">— pts</strong><div class="ai-controls"><button id="ai-run-lineup" class="ai-button" type="button">Run AI analysis</button><button id="ai-view-lineup" class="ai-button saved" type="button" disabled>No saved advice</button></div></div></header>
           <div class="lineup-week-toolbar">
@@ -226,6 +253,6 @@
     <div id="evidence-body" class="evidence-body"></div>
   </dialog>
 
-  <script type="module" src="./season.mjs?v=20260930k"></script>
+  <script type="module" src="./season.mjs?v=20260930l"></script>
 </body>
 </html>

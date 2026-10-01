@@ -500,3 +500,150 @@ export function buildManagement(plan, { records = [], checkpoints = [], projecti
     stash: stashComparison({ ...plan, managementAsOf: now }, records), checkpoints: checkpointsDue, outcomes: outcomeReport(checkpoints, records, projectionArchives),
     confidenceNote: "Source agreement is a heuristic, not a success probability. Ranges are empirical position error bands only after 30 completed player-games across two weeks; before then they are provider envelopes, not prediction intervals." };
 }
+
+function actionTiming(plan, audit, actionableWaivers, now) {
+  const denver = new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", weekday: "short", hour: "numeric", minute: "2-digit", hour12: false }).formatToParts(new Date(now));
+  const parts = Object.fromEntries(denver.map((part) => [part.type, part.value]));
+  const weekday = parts.weekday;
+  const hour = Number(parts.hour);
+  const stale = audit.filter((source) => source.status !== "RECENT_CAPTURE");
+  const urgentClaim = actionableWaivers.some((row) => ["STRONG_BID", "ADD", "CLAIM", "RENTAL"].includes(row.verdict));
+  if (stale.length) return { label: "REFRESH FIRST", score: 100, tone: "danger", nextCheck: "After the missing source refresh completes", reasons: [`${stale.map((source) => source.source).join(", ")} evidence is not current enough for a final claim order.`] };
+  if (weekday === "Tue" && hour >= 14 && urgentClaim) return { label: "ACT NOW", score: 92, tone: "danger", nextCheck: "Recheck once more before the overnight waiver run", reasons: ["The Tuesday waiver window is open and at least one player clears the actionable-value gate."] };
+  if (weekday === "Tue" && urgentClaim) return { label: "BUILD CLAIMS", score: 78, tone: "warning", nextCheck: "2:00 PM Denver time after the scheduled refresh", reasons: ["Prepare the conditional order now; let the Tuesday refresh absorb late practice and transaction news."] };
+  if (["Wed", "Thu", "Fri", "Sat", "Sun"].includes(weekday) && urgentClaim) return { label: "RECHECK NEWS", score: 63, tone: "warning", nextCheck: "Before the earliest affected kickoff", reasons: ["The claim passed the value gate, but injury and role news can still change the correct drop or starter."] };
+  return { label: "HOLD", score: 28, tone: "calm", nextCheck: "Tuesday at 2:00 PM Denver time", reasons: ["No current action requires sacrificing FAB or roster optionality."] };
+}
+
+function tradeOfferLadder(idea) {
+  const outgoing = idea.sends?.map((player) => player.name).join(" + ") || "your expendable depth";
+  const incoming = idea.receives?.map((player) => player.name).join(" + ") || "the target";
+  const fair = `${outgoing} for ${incoming}`;
+  return {
+    verdict: idea.verdict,
+    rival: idea.rival?.teamName || "another manager",
+    target: incoming,
+    opening: idea.verdict === "OFFER" ? fair : `Ask whether ${incoming} is available before naming a second asset`,
+    fair,
+    maximum: idea.verdict === "OFFER" ? `${fair}; do not add a protected Keep player or create a new starter/bye gap` : "Do not improve the offer until this clears the OFFER gate",
+    otherManagerBenefit: idea.whyRivalAccepts,
+    dogsBenefit: `Modeled Dogs gain: ${round(idea.dogsDeltas?.nextThree)} next-three and ${round(idea.dogsDeltas?.restOfSeason)} rest-of-season lineup points.`,
+    replacement: idea.replacementCost?.dogs?.summary || "Recheck the waiver replacement market before sending.",
+    proposal: idea.proposal,
+  };
+}
+
+function buildCalendar(plan, waiverRows, tradeRows) {
+  const byWeek = new Map();
+  const add = (week, type, label, gain, detail) => {
+    if (!Number.isInteger(week)) return;
+    if (!byWeek.has(week)) byWeek.set(week, { week, playoff: week >= 15, items: [] });
+    byWeek.get(week).items.push({ type, label, gain: finite(gain) ? round(gain) : null, detail });
+  };
+  for (const row of waiverRows.slice(0, 3)) for (const week of row.lineupCase?.weeks || []) {
+    if (!["WOULD_START", "BYE_COVER"].includes(week.result) && Number(week.starterGain || 0) < 0.5) continue;
+    add(week.week, "WAIVER", row.add.name, week.lineupGain ?? week.starterGain, week.result === "BYE_COVER" ? `Covers ${week.starterByes?.join(" + ") || "a starter bye"}` : `Projects to replace ${week.replaces?.name || "the current starter"}`);
+  }
+  for (const idea of tradeRows.slice(0, 3)) for (const week of idea.lineupUse?.dogs?.weeks || []) {
+    if (!["WOULD_START", "BYE_COVER"].includes(week.result) && Number(week.lineupGain || 0) < 0.5) continue;
+    add(week.week, "TRADE", idea.receives?.[0]?.name || "Trade target", week.lineupGain ?? week.starterGain, week.result === "BYE_COVER" ? `Trade target fills ${week.starterByes?.join(" + ") || "a bye"}` : `Would enter the Dogs starting lineup`);
+  }
+  for (let week = plan.week; week <= Math.min(17, plan.week + 7); week++) if (!byWeek.has(week)) byWeek.set(week, { week, playoff: week >= 15, items: [] });
+  return [...byWeek.values()].sort((a, b) => a.week - b.week).slice(0, 8);
+}
+
+/**
+ * A compact, governed Tuesday decision layer. It only summarizes evidence that
+ * already passed the waiver/trade/management rules; it never invents a second
+ * projection model in the browser.
+ */
+export function buildMidweekCommandCenter(plan) {
+  const management = plan.management || {};
+  const audit = management.sourceAudit || [];
+  const actionableWaivers = (plan.waivers?.recommendations || []).filter((row) => row.policy?.actionable && row.verdict !== "WATCH");
+  const waiverMarketRows = management.waiverMarket?.chain || [];
+  const trades = (plan.trades?.recommendations || []).filter((row) => row.verdict === "OFFER");
+  const claimPlan = waiverMarketRows.slice(0, 5).map((claim, index) => {
+    const full = actionableWaivers.find((row) => row.add.playerId === claim.playerId);
+    return {
+      order: index + 1,
+      add: claim.name,
+      position: claim.position,
+      drop: claim.drop?.name || null,
+      recommended: claim.recommended,
+      maximum: claim.maximum,
+      condition: claim.condition,
+      ifWon: `Cancel the remaining claims in this chain, preserve at least $${plan.waivers?.fab?.plannedReserve ?? 0}, then rerun the roster and lineup analysis.`,
+      ifLost: index < waiverMarketRows.length - 1 ? `Advance to ${waiverMarketRows[index + 1].name}; do not raise the bid after waivers process.` : "Keep the current roster and FAB; do not force a replacement-level add.",
+      competition: full?.fab?.market || null,
+      starterWeeks: full?.lineupCase?.meaningfulStartWeeks || [],
+      byeCoverWeeks: full?.lineupCase?.byeCoverageWeeks || [],
+      reason: full?.lineupCase?.summary || full?.reason || "Passed the governed waiver gate.",
+    };
+  });
+  const dropRisks = actionableWaivers.slice(0, 5).filter((row) => row.drop).map((row) => ({
+    player: row.drop.name,
+    forPlayer: row.add.name,
+    protected: Boolean(row.policy?.dropProtection?.protected || row.policy?.dropProtection?.blocked),
+    opportunityCost: row.opportunityCost?.summary || row.opportunityCost?.reason || `Surrenders ${round(row.dropProjectionLoss)} projected Week ${plan.week} depth points.`,
+    futureByeRisk: row.lineupCase?.weeks?.filter((week) => week.starterByes?.length && Number(week.lineupGain || 0) < 0).map((week) => week.week) || [],
+    likelyClaim: row.fab?.market?.level === "HIGH" || Number(row.dropProjectionLoss || 0) >= 8,
+    instruction: row.policy?.dropProtection?.blocked ? "DO NOT DROP" : "Drop only if this exact conditional claim wins.",
+  }));
+  const timing = actionTiming(plan, audit, actionableWaivers, management.asOf || plan.generatedAt);
+  const actionQueue = [];
+  if (audit.some((source) => source.status !== "RECENT_CAPTURE")) actionQueue.push({ priority: 1, type: "UPDATE", title: "Finish the data refresh", detail: "Do not finalize bids or offers until every required source has a current successful receipt.", tab: "admin" });
+  if (claimPlan[0]) actionQueue.push({ priority: 2, type: "WAIVER", title: `Claim ${claimPlan[0].add}${finite(claimPlan[0].recommended) ? ` for $${claimPlan[0].recommended}` : ""}`, detail: claimPlan[0].reason, tab: "waivers" });
+  else actionQueue.push({ priority: 2, type: "HOLD", title: "Do not force a waiver move", detail: plan.waivers?.hold?.reason || plan.waivers?.blockedReason || "No available player clears the starter, bye-cover, or short-term rental gate.", tab: "waivers" });
+  if (trades[0]) actionQueue.push({ priority: 3, type: "TRADE", title: `Open with ${trades[0].sends[0].name} for ${trades[0].receives[0].name}`, detail: trades[0].whyRivalAccepts, tab: "trades" });
+  else actionQueue.push({ priority: 3, type: "HOLD", title: "Do not send a trade offer yet", detail: plan.trades?.boardSummary?.reason || "No current idea improves both rosters enough to justify an offer.", tab: "trades" });
+  const nextLineup = (management.actions || []).find((action) => ["start-sit", "scoring-preview"].includes(action.tab));
+  if (nextLineup) actionQueue.push({ priority: 4, type: "LINEUP", ...nextLineup });
+  const sourceReceipt = audit.map((source) => ({
+    source: source.source,
+    status: source.status,
+    lastSuccessful: source.retrievedAt,
+    publishedAt: source.publishedAt,
+    week: source.week,
+    rows: source.rows,
+    note: source.note,
+  }));
+  const newsSource = (plan.sources || []).find((source) => source.label?.toLowerCase() === "injury / news");
+  if (newsSource) sourceReceipt.push({
+    source: "Injuries/news",
+    status: Number.isFinite(newsSource.ageMinutes) && newsSource.ageMinutes <= 48 * 60 ? "RECENT_CAPTURE" : newsSource.asOf ? "STALE" : "MISSING",
+    lastSuccessful: newsSource.asOf || null,
+    publishedAt: null,
+    week: plan.week,
+    rows: plan.watch?.injuries?.length || 0,
+    note: "Current injury, news, and IR evidence retrieval receipt.",
+  });
+  const outcomes = management.outcomes || {};
+  const latestWeek = outcomes.weeks?.[0] || null;
+  const bestProvider = outcomes.learning?.projectionTrust?.bestSource || null;
+  return {
+    schemaVersion: 1,
+    asOf: management.asOf || plan.generatedAt,
+    status: audit.every((source) => source.status === "RECENT_CAPTURE") ? "READY" : "REFRESH_REQUIRED",
+    headline: claimPlan[0] ? `${timing.label}: ${claimPlan[0].add} leads the conditional waiver plan` : `${timing.label}: preserve FAB and roster flexibility`,
+    timing,
+    actionQueue: actionQueue.sort((a, b) => a.priority - b.priority),
+    claimPlan,
+    maximumClaimExposure: management.waiverMarket?.maximumChainSpend || 0,
+    tradeOffers: trades.slice(0, 3).map(tradeOfferLadder),
+    calendar: buildCalendar(plan, actionableWaivers, trades),
+    dropRisks,
+    sourceReceipt,
+    weeklyReview: {
+      latestFinalizedWeek: latestWeek?.week ?? null,
+      projectionMae: latestWeek?.meanAbsoluteError ?? null,
+      hindsightGap: latestWeek?.hindsightGap ?? null,
+      lineupRegrets: latestWeek?.lineupRegrets || [],
+      providerTrust: outcomes.learning?.projectionTrust || { status: "BUILDING_SAMPLE", bestSource: null },
+      bestProvider,
+      waiverEfficiency: outcomes.learning?.waiverEfficiency || [],
+      note: outcomes.note || "Finalized actuals are required before the model changes provider trust.",
+    },
+    policy: "Primary screen shows three decisions: the best conditional claim chain, the best send-now trade, and the next lineup/update check. Watch lists, provenance, and rejected alternatives remain in drill-down tabs.",
+  };
+}

@@ -36,7 +36,7 @@ const AI_SECTION_LABELS = Object.freeze({ lineup: "Start / sit", waivers: "Waive
 const DEEP_AI_SECTIONS = new Set(["trade-finder", "stash-watch"]);
 const UPDATE_CONTROL_IDS = Object.freeze(["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news"]);
 const FILE_CONTROL_IDS = Object.freeze(["cbs-file", "fbg-file", "export-plan", "import-fantasypros-json-paste"]);
-const TAB_IDS = Object.freeze(["start-sit", "scoring-preview", "waivers", "trades", "player-stats", "news", "admin"]);
+const TAB_IDS = Object.freeze(["midweek", "start-sit", "scoring-preview", "waivers", "trades", "player-stats", "news", "admin"]);
 let plan = null;
 let lineupPlan = null;
 let offlineMode = false;
@@ -119,7 +119,7 @@ function resumeHelperPreflight() {
 }
 
 function activateTab(tabId, { focus = false, updateHash = true } = {}) {
-  const safeId = TAB_IDS.includes(tabId) ? tabId : "start-sit";
+  const safeId = TAB_IDS.includes(tabId) ? tabId : "midweek";
   for (const candidate of TAB_IDS) {
     const selected = candidate === safeId;
     const button = byId(`tab-button-${candidate}`);
@@ -137,7 +137,7 @@ function activateTab(tabId, { focus = false, updateHash = true } = {}) {
 }
 
 function activeTabId() {
-  return TAB_IDS.find((candidate) => byId(`tab-button-${candidate}`).getAttribute("aria-selected") === "true") || "start-sit";
+  return TAB_IDS.find((candidate) => byId(`tab-button-${candidate}`).getAttribute("aria-selected") === "true") || "midweek";
 }
 
 function empty(message) {
@@ -1636,6 +1636,108 @@ async function analyzeBuiltTrade() {
   }
 }
 
+function commandLink(label, tab) {
+  const button = element("button", "command-link", label);
+  button.type = "button";
+  button.addEventListener("click", () => activateTab(tab));
+  return button;
+}
+
+function renderMidweek(value) {
+  const data = value.midweek;
+  const targets = ["midweek-actions", "midweek-claims", "midweek-trades", "midweek-calendar", "midweek-drop-risks", "midweek-review"];
+  if (!data) {
+    byId("midweek-headline").textContent = "The command-center summary is rebuilding from the current governed plan.";
+    byId("midweek-timing").textContent = "REBUILDING";
+    byId("midweek-source-receipt").replaceChildren();
+    for (const id of targets) byId(id).replaceChildren(empty("Waiting for the current decision summary."));
+    return;
+  }
+  byId("midweek-headline").textContent = `${data.headline}. ${data.timing?.nextCheck ? `Next check: ${data.timing.nextCheck}.` : ""}`;
+  byId("midweek-timing").textContent = data.timing?.label || data.status;
+  byId("midweek-timing").className = `state-chip command-timing command-${data.timing?.tone || "calm"}`;
+
+  const receipt = byId("midweek-source-receipt");
+  receipt.replaceChildren(...(data.sourceReceipt || []).map((source) => {
+    const card = element("article", `receipt-card receipt-${String(source.status).toLowerCase()}`);
+    card.append(
+      element("strong", "", source.source),
+      element("span", "", source.status.replaceAll("_", " ")),
+      element("small", "", `${source.rows || 0} rows · Week ${source.week ?? "—"} · ${source.lastSuccessful ? dateTime(source.lastSuccessful) : "never captured"}`),
+    );
+    return card;
+  }));
+
+  const actions = (data.actionQueue || []).slice(0, 5).map((action) => {
+    const card = element("article", `command-card command-${String(action.type || "check").toLowerCase()}`);
+    const heading = element("div", "command-card-head");
+    heading.append(element("span", "command-order", String(action.priority)), element("strong", "", action.title));
+    card.append(heading, element("p", "", action.detail || ""), commandLink("Open details", action.tab || "admin"));
+    return card;
+  });
+  byId("midweek-actions").replaceChildren(...(actions.length ? actions : [empty("No material action is required right now.")]));
+
+  const claims = (data.claimPlan || []).slice(0, 3).map((claim) => {
+    const card = element("article", "command-card claim-card");
+    const bid = Number.isFinite(claim.recommended) ? `$${claim.recommended}` : "verify FAB";
+    card.append(
+      element("strong", "", `${claim.order}. Add ${claim.add} · ${bid}`),
+      element("p", "", `${claim.drop ? `Drop ${claim.drop}. ` : "No drop required. "}${claim.condition}`),
+      element("small", "", `Ceiling ${Number.isFinite(claim.maximum) ? `$${claim.maximum}` : "—"} · starts W${claim.starterWeeks?.join(", W") || "—"} · bye cover W${claim.byeCoverWeeks?.join(", W") || "—"}`),
+      element("p", "command-branch", `WIN: ${claim.ifWon}`),
+      element("p", "command-branch", `LOSS: ${claim.ifLost}`),
+    );
+    return card;
+  });
+  if (claims.length) {
+    const exposure = element("p", "command-note", `Maximum exposure if one claim wins: $${data.maximumClaimExposure || 0}. These are fallbacks—not simultaneous purchases.`);
+    byId("midweek-claims").replaceChildren(...claims, exposure, commandLink("Review waiver evidence", "waivers"));
+  } else byId("midweek-claims").replaceChildren(empty("No available player clears the starter, bye-cover, or large-rental gate. Preserve FAB."), commandLink("Review rejected players", "waivers"));
+
+  const trades = (data.tradeOffers || []).map((offer, index) => {
+    const card = element("article", "command-card trade-offer-card");
+    card.append(
+      element("strong", "", `${index + 1}. Target ${offer.target} from ${offer.rival}`),
+      element("p", "", `OPEN: ${offer.opening}`),
+      element("p", "", `FAIR: ${offer.fair}`),
+      element("p", "command-branch", `MAX: ${offer.maximum}`),
+      element("small", "", `${offer.dogsBenefit} ${offer.otherManagerBenefit || ""}`),
+    );
+    return card;
+  });
+  byId("midweek-trades").replaceChildren(...(trades.length ? [...trades, commandLink("Open trade evidence", "trades")] : [empty("No send-now trade clears the two-sided value gate."), commandLink("Review monitor ideas", "trades")]));
+
+  byId("midweek-calendar").replaceChildren(...(data.calendar || []).map((week) => {
+    const card = element("article", `calendar-week${week.playoff ? " playoff-week" : ""}`);
+    card.append(element("strong", "", `Week ${week.week}${week.playoff ? " · PLAYOFFS" : ""}`));
+    if (!week.items?.length) card.append(element("p", "", "No acquisition is needed to improve a starter in this week."));
+    for (const item of week.items || []) card.append(element("p", "", `${item.type}: ${item.label}${Number.isFinite(item.gain) ? ` ${signed(item.gain)}` : ""} · ${item.detail}`));
+    return card;
+  }));
+
+  const risks = (data.dropRisks || []).map((risk) => {
+    const card = element("article", `command-card${risk.protected ? " danger-card" : ""}`);
+    card.append(element("strong", "", `${risk.player} → ${risk.forPlayer}: ${risk.instruction}`), element("p", "", risk.opportunityCost), element("small", "", `${risk.likelyClaim ? "Likely to draw a claim if dropped. " : "Lower modeled claim risk. "}${risk.futureByeRisk?.length ? `Could expose Weeks ${risk.futureByeRisk.join(", ")}.` : "No modeled future bye gap."}`));
+    return card;
+  });
+  byId("midweek-drop-risks").replaceChildren(...(risks.length ? risks : [empty("No recommended move currently requires a risky drop.")]));
+
+  const review = data.weeklyReview || {};
+  byId("midweek-review-week").textContent = Number.isInteger(review.latestFinalizedWeek) ? `Latest final: Week ${review.latestFinalizedWeek}` : "Building finalized sample";
+  const reviewCards = [];
+  reviewCards.push(metric("Projection MAE", Number.isFinite(review.projectionMae) ? review.projectionMae.toFixed(1) : "Building sample"));
+  reviewCards.push(metric("Lineup hindsight gap", Number.isFinite(review.hindsightGap) ? `${review.hindsightGap.toFixed(1)} pts` : "Not final"));
+  reviewCards.push(metric("Provider trust", review.bestProvider || review.providerTrust?.status?.replaceAll("_", " ") || "Building sample"));
+  reviewCards.push(metric("Audited waiver wins", String(review.waiverEfficiency?.filter((row) => row.observedGames).length || 0)));
+  const metrics = element("div", "metrics command-review-metrics");
+  metrics.append(...reviewCards);
+  const narrative = element("div", "command-review-copy");
+  narrative.append(element("p", "", review.providerTrust?.note || review.note || "Final scores will be compared with the frozen weekly forecasts."));
+  for (const regret of (review.lineupRegrets || []).slice(0, 3)) narrative.append(element("p", "", `Week ${review.latestFinalizedWeek}: ${regret.start} outscored ${regret.sit} by ${number(regret.pointsGained)}.`));
+  narrative.append(element("small", "", "Provider weights only adapt after the governed sample threshold; one bad week cannot overfit the model."));
+  byId("midweek-review").replaceChildren(metrics, narrative);
+}
+
 async function renderPlan(value, { offline = false } = {}) {
   plan = value;
   offlineMode = offline;
@@ -1644,6 +1746,7 @@ async function renderPlan(value, { offline = false } = {}) {
   byId("login-view").hidden = true;
   byId("app-view").hidden = false;
   renderHeader(value, offline);
+  renderMidweek(value);
   renderLineup(value);
   renderScoringPreview(value);
   renderWaivers(value);
@@ -1819,7 +1922,7 @@ async function runAction(button, message, task, successMessage = null) {
     const defaultMessage = failed.length
       ? `The weekly plan updated, but ${failed.join(" and ")} need attention. The last-known safe data remains visible.`
       : partialRosters
-      ? `Update finished, but only ${value.updateSummary.cbs.legalTeams ?? value.updateSummary.cbs.completeTeams}/${value.updateSummary.cbs.teamCount} CBS teams satisfy the required eight starters and 14-player maximum. Waiver and trade advice remains blocked.`
+      ? `Update finished. ${value.updateSummary.cbs.legalTeams ?? value.updateSummary.cbs.completeTeams}/${value.updateSummary.cbs.teamCount} CBS teams satisfy the normal active-roster rule; captured stats remain usable and players on exception teams stay excluded from availability until CBS records a drop.`
       : `Everything updated ${dateTime(value.generatedAt)}. CBS, Footballguys PRO, FantasyPros, and PFF raw component projections were scored with Thunder Bowl rules; moves, injuries, news, and IR targets are current.`;
     setStatus(successMessage && !failed.length && !partialRosters
       ? typeof successMessage === "function" ? successMessage(value) : successMessage
@@ -2103,56 +2206,66 @@ function runNewsRefresh(button) {
 
 byId("update-news-only").addEventListener("click", () => runNewsRefresh(byId("update-news-only")));
 byId("refresh-team-news").addEventListener("click", () => runNewsRefresh(byId("refresh-team-news")));
+byId("midweek-refresh").addEventListener("click", () => byId("refresh-plan").click());
 byId("refresh-plan").addEventListener("click", () => runAction(byId("refresh-plan"), "Step 1 of 5: capturing the CBS submitted lineups, schedule, and all 12 rosters from your signed-in browser session…", async () => {
-  let snapshot;
+  const completed = [];
+  const failures = {};
+  let current = null;
   try {
-    snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
+    const snapshot = validateCbsRosterSnapshot(await requestCbsRosterCapture({ timeoutMs: 300_000, week: currentCaptureWeek() }));
+    setStatus("CBS captured. Saving lineups, schedule, rosters, moves, live scores, and component projections…");
+    await postAction({ action: "capture-cbs", snapshot });
+    completed.push("CBS");
+    byId("helper-setup").open = false;
   } catch (error) {
     byId("helper-setup").open = !isCbsRosterRuleError(error);
-    throw new Error(cbsCaptureFailureMessage(error));
+    failures.cbs = cbsCaptureFailureMessage(error);
   }
-  setStatus("CBS captured. Saving the submitted lineups, league schedule, rosters, moves, and CBS component-stat projections before continuing…");
-  let current;
-  try {
-    await postAction({ action: "capture-cbs", snapshot });
-  } catch (error) {
-    throw new Error(`CBS was captured but could not be saved: ${errorMessage(error)}`);
-  }
-  byId("helper-setup").open = false;
 
-  setStatus("CBS saved. Step 2 of 5: reading Footballguys PRO component-stat projections from your signed-in browser session…");
+  setStatus(`${completed.length ? "CBS saved. " : "CBS needs attention. "}Step 2 of 5: reading Footballguys PRO component-stat projections…`);
   try {
     const capture = await requestFbgProjectionCapture({ timeoutMs: 90_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-fbg", capture });
+    completed.push("Footballguys");
   } catch (error) {
     byId("helper-setup").open = true;
-    throw new Error(`CBS was saved successfully, but Footballguys PRO could not be captured: ${errorMessage(error)} CBS will not need to be recaptured.`);
+    failures.fbg = errorMessage(error);
   }
 
-  setStatus("CBS and Footballguys saved. Step 3 of 5: reading FantasyPros component-stat projections from your signed-in Thunder Bowl account…");
+  setStatus(`Step 3 of 5: reading FantasyPros component-stat projections. Saved so far: ${completed.join(", ") || "none"}…`);
   try {
     const capture = await requestSupplementalProjectionCapture({ provider: "fantasyPros", timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-fantasypros", capture });
+    completed.push("FantasyPros");
   } catch (error) {
     byId("helper-setup").open = true;
-    throw new Error(`CBS and Footballguys were saved successfully, but FantasyPros could not be captured: ${errorMessage(error)} The completed sources remain saved.`);
+    failures.fantasyPros = errorMessage(error);
   }
 
-  setStatus("CBS, Footballguys, and FantasyPros saved. Step 4 of 5: reading PFF component-stat projections from your signed-in account…");
+  setStatus(`Step 4 of 5: reading PFF component-stat projections. Saved so far: ${completed.join(", ") || "none"}…`);
   try {
     const capture = await requestSupplementalProjectionCapture({ provider: "pff", timeoutMs: 180_000, week: currentCaptureWeek() });
     await postAction({ action: "capture-pff", capture });
+    completed.push("PFF");
   } catch (error) {
     byId("helper-setup").open = true;
-    throw new Error(`CBS, Footballguys, and FantasyPros were saved successfully, but PFF could not be captured: ${errorMessage(error)} The completed sources remain saved.`);
+    failures.pff = errorMessage(error);
   }
 
-  setStatus("All four projection sources saved. Step 5 of 5: refreshing injuries, news, and IR evidence…");
+  setStatus(`Step 5 of 5: refreshing injuries, news, and IR evidence. Saved so far: ${completed.join(", ") || "none"}…`);
   try {
     current = await refreshInjuriesAndAllPlayerNews();
+    completed.push("injuries/news");
   } catch (error) {
-    throw new Error(`CBS, Footballguys, FantasyPros, and PFF were saved successfully, but injuries/news could not refresh: ${errorMessage(error)} The saved weekly sources remain usable.`);
+    failures.news = errorMessage(error);
   }
+  if (!completed.length) throw new Error(`No source completed. ${Object.values(failures).join(" ")}`);
+  if (!current) current = await rebuildAfterSourceSave(completed.join(", "));
+  current.updateSummary = {
+    ...(current.updateSummary || {}),
+    capturedAt: new Date().toISOString(),
+    ...Object.fromEntries(Object.entries(failures).map(([key, error]) => [key, { ok: false, error }])),
+  };
   return current;
 }));
 byId("cbs-file").addEventListener("change", async (event) => {

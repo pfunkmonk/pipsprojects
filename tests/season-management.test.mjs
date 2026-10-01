@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildGameDay, buildManagement, buildProjectionCalibration, checkpointSchedule, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
+import { buildGameDay, buildManagement, buildMidweekCommandCenter, buildProjectionCalibration, checkpointSchedule, decisionCheckpoint, kickoffAt, outcomeReport, rosterFit, sourceAudit, stashComparison, waiverMarket, weeklyProjectionArchive, workloadTrends } from "../netlify/functions/_lib/season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, mergeManagementRecords, readManagementState, saveManagementRecords, validateManagementRecords } from "../netlify/functions/_lib/season-management-store.mjs";
 import { evidenceFromCsv, parseEvidenceCsv } from "../public/thunder-bowl/season/season-management-ui.mjs";
 
@@ -94,6 +94,24 @@ test("outcome scorecard selects latest eligible pregame checkpoint and compares 
   const late = { ...c, capturedAt: "2026-09-14T00:00:00Z", roster: [] };
   const report = outcomeReport([c, late], results); assert.equal(report.weeks[0].recommendedActualTotal, 80); assert.equal(report.weeks[0].hindsightGap, 10); assert.equal(report.providers[0].sampleCount, 9);
   assert.deepEqual(report.lineupRegrets.map((row) => [row.position, row.sit, row.start, row.pointsGained]), [["QB", "Player 0", "Backup", 10]]);
+});
+test("midweek command center exposes a conditional claim, timing, receipts, calendar and review", () => {
+  const plan = fixture();
+  plan.sources = [{ label: "injury / news", asOf: now, ageMinutes: 0 }];
+  plan.waivers.recommendations = [{
+    verdict: "STRONG_BID", policy: { actionable: true, dropProtection: { blocked: false } },
+    add: { playerId: "a1", name: "Upgrade", position: "WR" }, drop: { playerId: "b", name: "Backup", position: "QB" },
+    fab: { recommended: 3, maximum: 5, plannedReserve: 10, market: { level: "MEDIUM" } }, dropProjectionLoss: 8,
+    lineupCase: { summary: "Upgrade starts twice.", meaningfulStartWeeks: [2, 3], byeCoverageWeeks: [3], weeks: [{ week: 2, result: "WOULD_START", lineupGain: 2, replaces: { name: "Player 4" } }, { week: 3, result: "BYE_COVER", lineupGain: 4, starterByes: ["Player 4"] }] },
+  }];
+  plan.management = buildManagement(plan, { now: "2026-09-08T20:00:00.000Z" });
+  const command = buildMidweekCommandCenter(plan);
+  assert.equal(command.claimPlan[0].add, "Upgrade");
+  assert.equal(command.claimPlan[0].ifLost.includes("force"), true);
+  assert.equal(command.timing.label, "ACT NOW");
+  assert.equal(command.calendar.some((week) => week.week === 3 && week.items[0].type === "WAIVER"), true);
+  assert.equal(command.sourceReceipt.some((source) => source.source === "Injuries/news"), true);
+  assert.match(command.policy, /three decisions/i);
 });
 test("the second checkpoint freezes Sunday-morning evidence without rewriting the early checkpoint", () => {
   const plan = fixture();

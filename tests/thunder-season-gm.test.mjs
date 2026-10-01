@@ -1244,12 +1244,12 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 24);
-  for (const id of ["refresh-plan", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-result-count", "trade-position", "trade-target-role", "trade-min-weeks", "trade-verdict", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 25);
+  for (const id of ["refresh-plan", "midweek-refresh", "midweek-actions", "midweek-claims", "midweek-trades", "midweek-calendar", "midweek-drop-risks", "midweek-review", "midweek-source-receipt", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-result-count", "trade-position", "trade-target-role", "trade-min-weeks", "trade-verdict", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
   assert.equal((html.match(/Game \/ kickoff \(Denver\)/g) || []).length, 2);
-  for (const label of ["Start/Sit", "Waiver Wire", "Trades", "Player Stats", "News", "Admin"]) assert.match(html, new RegExp(`>${label}<`));
+  for (const label of ["Midweek HQ", "Start/Sit", "Waiver Wire", "Trades", "Player Stats", "News", "Admin"]) assert.match(html, new RegExp(`>${label}<`));
   for (const key of ["name", "leagueStatus", "opponent", "bye", "sourceCount", "points", "range", "passingYards", "passingTouchdowns", "interceptionsThrown", "rushingAttempts", "rushingYards", "rushingTouchdowns", "receptions", "receivingYards", "receivingTouchdowns", "fumblesLost", "fieldGoalsMade", "extraPointsMade", "defensiveSacks", "defensiveInterceptions", "defensiveFumblesRecovered", "defensiveTouchdowns"]) assert.match(html, new RegExp(`data-player-sort="${key}"`));
   assert.match(html, /Click any column heading to sort/);
   assert.match(source, /function comparePlayerStats/);
@@ -1319,7 +1319,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /resumeHelperPreflight\(\)/);
   assert.match(source, /queueMicrotask\(\(\) => byId\(buttonId\)\.click\(\)\)/);
-  assert.match(html, /season\.mjs\?v=20260930k/);
+  assert.match(html, /season\.mjs\?v=20260930l/);
   assert.match(source, /Weekly streaming slot/);
   assert.match(source, /function waiverLineupCasePanel/);
   assert.match(source, /function tradeLineupUsePanel/);
@@ -1330,7 +1330,7 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /row\.verdict === "WATCH" \? "Watch" : "Add"/);
   assert.match(source, /option\.disabled = kept/);
   assert.match(source, /Remove Keep status on Start\/Sit/);
-  assert.match(worker, /thunder-bowl-season-v67/);
+  assert.match(worker, /thunder-bowl-season-v68/);
   assert.match(source, /no more than 14 Active\/Reserve players plus one player in its Injured section/);
   assert.match(source, /byId\("helper-setup"\)\.open = !isCbsRosterRuleError\(error\)/);
   assert.match(seasonService, /function retainPriorCbsOptionalEvidence/);
@@ -1383,7 +1383,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /crypto\.randomUUID\(\)/);
   assert.match(source, /index\.jobsBySection\?\.\[section\]/);
   assert.match(source, /still running safely in the background/);
-  assert.match(source, /CBS was saved successfully/);
+  assert.match(source, /completed\.push\("CBS"\)/);
+  assert.match(source, /failures\.fantasyPros = errorMessage\(error\)/);
+  assert.match(source, /No source completed/);
   assert.doesNotMatch(source, /\.innerHTML\s*=/);
   assert.doesNotMatch(source, /JSON\.stringify\(value/);
   assert.doesNotMatch(source, /metric\("Salary"/);
@@ -1444,10 +1446,10 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(css, /\.source-update-button \{[^}]*min-height:44px/);
   assert.match(source, /register\("\.\/service-worker\.js", \{ scope: "\.\/" \}\)/);
   assert.match(worker, /\/thunder-bowl\/season\/index\.html/);
-  assert.match(worker, /thunder-bowl-season-v67/);
+  assert.match(worker, /thunder-bowl-season-v68/);
   assert.doesNotMatch(worker, /auctioneer|draft-board|sample-draft-pack/);
-  assert.match(worker, /season\.css\?v=20260930g/);
-  assert.match(worker, /season\.mjs\?v=20260930k/);
+  assert.match(worker, /season\.css\?v=20260930h/);
+  assert.match(worker, /season\.mjs\?v=20260930l/);
   assert.match(worker, /season-kickoff\.mjs\?v=20260910a/);
   assert.match(worker, /season-news\.mjs\?v=20260901b/);
   assert.match(worker, /fbg-session-capture\.mjs\?v=20260922e/);

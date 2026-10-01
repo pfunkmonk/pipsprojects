@@ -26,11 +26,11 @@ import {
 } from "./season-store.mjs";
 import { seasonIdempotencyKey, seasonWeekForDate } from "./season-time.mjs";
 import { currentStatusSnapshot, savedStatusSnapshot } from "./status-store.mjs";
-import { buildManagement, buildProjectionCalibration } from "./season-management.mjs";
+import { buildManagement, buildMidweekCommandCenter, buildProjectionCalibration } from "./season-management.mjs";
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 import { readRosterKeepPreferences, resolveRosterKeepPreferences, saveRosterKeepPreferences } from "./season-roster-preferences.mjs";
 
-export const RECOMMENDATION_ENGINE_VERSION = 24;
+export const RECOMMENDATION_ENGINE_VERSION = 25;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {
@@ -454,6 +454,7 @@ async function attachManagement(plan, now) {
     state = { records: [], checkpoints: [] };
   }
   value.management = buildManagement(value, { ...state, now });
+  value.midweek = buildMidweekCommandCenter(value);
   const sourceNames = { "CBS stats": "CBS", "FBG projections": "Footballguys", FantasyPros: "FantasyPros", PFF: "PFF" };
   value.sources = value.sources.map((s) => {
     const audit = value.management.sourceAudit.find((a) => a.source === sourceNames[s.label]);
