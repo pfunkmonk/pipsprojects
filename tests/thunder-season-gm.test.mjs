@@ -420,6 +420,66 @@ test("Scoring Preview uses CBS submitted starters for both teams and Thunder Bow
   assert.match(result.scoringPreview.authorityNote, /CBS determines/);
 });
 
+test("Scoring Preview treats scheduled CBS zeroes as pregame and scores a submitted bye starter as zero", () => {
+  const dogs = rosterPlayers();
+  const rivals = rosterPlayers().map((row, index) => ({ ...structuredClone(row), id: `bye-rival-${row.id}`, name: `Bye Rival ${index + 1}` }));
+  const byeQuarterback = rivals.find((row) => row.id === "bye-rival-qb-one");
+  byeQuarterback.weeklyProjection.byeWeek = 1;
+  byeQuarterback.weeklyProjection.points[0] = null;
+  const dogsStarterIds = ["qb-one", "rb-one", "rb-two", "wr-one", "wr-two", "te-one", "k-one", "dst-one"];
+  const rivalStarterIds = ["bye-rival-qb-one", "bye-rival-rb-one", "bye-rival-rb-two", "bye-rival-wr-one", "bye-rival-wr-two", "bye-rival-te-one", "bye-rival-k-one", "bye-rival-dst-one"];
+  const previewTeam = (teamId, teamName, roster, starterIds) => ({
+    teamId,
+    teamName,
+    starters: starterIds.map((playerId) => ({
+      playerId,
+      cbsPlayerId: `cbs-${playerId}`,
+      actualPoints: 0,
+      scoreStatus: "LIVE",
+      cbsLiveProjection: 0,
+      gameText: playerId === "bye-rival-qb-one" ? "BYE" : "Sun 11:00 AM MT",
+      statsText: null,
+    })),
+    bench: roster.filter((row) => !starterIds.includes(row.id)).map((row) => ({ playerId: row.id, cbsPlayerId: `cbs-${row.id}`, actualPoints: 0, scoreStatus: "LIVE", gameText: "Sun 11:00 AM MT", statsText: null })),
+    actuals: { currentPoints: 0, knownStarters: 8, finalStarters: 0, liveStarters: 8, status: "LIVE" },
+    coverage: { exactStarters: true, completeRoster: true },
+  });
+  const leagueState = {
+    source: "CBS", authority: "authenticated league roster and availability authority", capturedAt: "2026-10-07T01:00:00.000Z",
+    rostersReady: true, legalTeamCount: 12, teamCount: 12, availablePlayerIds: [], projectionWeek: 1, projectionCount: 100,
+    teams: [
+      { teamId: "dogs-of-war", teamName: "Dogs of War", roster: rosterRows(dogs) },
+      { teamId: "orange-crush", teamName: "Orange Crush", roster: rosterRows(rivals) },
+    ],
+    weeklyProjections: [],
+    leagueSchedule: {
+      source: "CBS schedule", capturedAt: "2026-10-07T00:55:00.000Z", headToHeadWeeks: [1], allPlayWeeks: [], matchupCount: 1,
+      matchups: [{ week: 1, teamAId: "dogs-of-war", teamAName: "Dogs of War", teamBId: "orange-crush", teamBName: "Orange Crush" }],
+    },
+    scoringPreview: {
+      schemaVersion: 1, source: "CBS Sports authenticated Thunder Bowl scoring preview", modelEffect: "submitted_lineup_and_actual_score_authority", status: "COMPLETE", coverageScope: "MATCHUP",
+      season: 2026, week: 1, capturedAt: "2026-10-07T00:59:00.000Z", pageUrl: "https://berrymvp.football.cbssports.com/scoring/live/1/", errors: [],
+      teams: [previewTeam("dogs-of-war", "Dogs of War", dogs, dogsStarterIds), previewTeam("orange-crush", "Orange Crush", rivals, rivalStarterIds)],
+    },
+  };
+  const result = buildSeasonRecommendationSnapshot({
+    pack: { season: 2026, packId: "pregame-bye", asOf: "2026-10-07T00:50:00.000Z", players: [...dogs, ...rivals], sources: [], weeklyContext: { asOf: "2026-10-07T00:50:00.000Z" } },
+    leagueState,
+    week: 1,
+    generatedAt: "2026-10-07T01:01:00.000Z",
+  });
+  const orange = result.scoringPreview.teams.find((team) => team.teamId === "orange-crush");
+  const quarterback = orange.starters.find((row) => row.position === "QB");
+  assert.equal(quarterback.bye, 1);
+  assert.equal(quarterback.points, null);
+  assert.equal(quarterback.actualPoints, null);
+  assert.equal(quarterback.scoreStatus, "NOT_STARTED");
+  assert.ok(Number.isFinite(orange.total));
+  assert.equal(orange.actualPoints, null);
+  assert.equal(orange.actualStatus, "PREGAME");
+  assert.equal(result.scoringPreview.actualMargin, null);
+});
+
 test("CBS final player scores become trusted result evidence without accepting ordinary current-week imports", () => {
   const dogs = rosterPlayers();
   const pack = { season: 2026, players: dogs };

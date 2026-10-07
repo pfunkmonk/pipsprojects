@@ -200,6 +200,7 @@ select,.stats-controls input { min-height:42px; border:1px solid var(--line); bo
 .scoring-player-projection span { color:var(--quiet); font-size:.68rem; }
 .scoring-player-projection.live strong { color:var(--warning); }
 .scoring-player-projection.final strong { color:var(--good); }
+.scoring-player-projection.bye strong,.scoring-player-projection.bye .scoring-actual-label { color:var(--warning); }
 .scoring-player-projection .scoring-actual-label { color:var(--warning); font-weight:900; letter-spacing:.08em; }
 .scoring-player-projection.final .scoring-actual-label { color:var(--good); }
 .scoring-player-projection small { color:var(--quiet); font-size:.65rem; text-align:right; }

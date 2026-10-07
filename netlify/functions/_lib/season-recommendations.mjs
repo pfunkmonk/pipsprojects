@@ -2019,6 +2019,17 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
   if (!opponentTeam) return unavailable(["The scheduled opponent is not present in the current CBS roster data."]);
   const playerById = new Map(pack.players.map((player) => [player.id, player]));
   const lineupDetails = new Map((leagueState.teams || []).flatMap((team) => (team.roster || []).map((row) => [row.playerId, row])));
+  const capturedScoreHasStarted = (row) => {
+    if (!row || !Number.isFinite(row.actualPoints)) return false;
+    if (row.scoreStatus === "FINAL") return true;
+    if (row.scoreStatus !== "LIVE") return false;
+    const gameText = String(row.gameText || "").trim();
+    const statsText = String(row.statsText || "").trim();
+    if (/\bBYE\b/i.test(gameText)) return false;
+    if (/\b(?:Q[1-4]|OT|HALF(?:TIME)?|END OF|IN PROGRESS)\b/i.test(gameText)) return true;
+    if (/\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)(?:DAY)?\b.*\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i.test(gameText)) return false;
+    return Boolean(statsText) || row.actualPoints !== 0;
+  };
   const publicRow = (row, team, capturedRow = null) => {
     const player = playerById.get(row.playerId);
     const roster = lineupDetails.get(row.playerId) || {};
@@ -2034,10 +2045,11 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
       gameTime: cbs?.gameTime ?? roster.gameTime ?? null,
       bye: roster.bye ?? player.weeklyProjection?.byeWeek ?? null,
     }, { includeGameDetails: leagueState.projectionWeek === week, adviceTeamId: team.teamId, adviceTeamName: team.teamName, week, season: pack.season });
+    const scoreStarted = capturedScoreHasStarted(capturedRow);
     return {
       ...projectionRow,
-      actualPoints: capturedRow?.actualPoints ?? null,
-      scoreStatus: capturedRow?.scoreStatus || "NOT_STARTED",
+      actualPoints: scoreStarted ? capturedRow.actualPoints : null,
+      scoreStatus: scoreStarted ? capturedRow.scoreStatus : "NOT_STARTED",
       cbsLiveProjection: capturedRow?.cbsLiveProjection ?? null,
       liveStats: capturedRow?.statsText || null,
       cbsGameState: capturedRow?.gameText || null,
@@ -2055,18 +2067,24 @@ function buildScoringPreview({ pack, leagueState, week, projectionRows, cbsRows,
     const bench = capturedTeam
       ? capturedTeam.bench.map((row) => publicRow(row, team, row)).filter(Boolean)
       : optimized.bench.map((entry) => publicRow(entry, team)).filter(Boolean);
-    const total = starters.length === 8 && starters.every((row) => Number.isFinite(row.points))
-      ? round(starters.reduce((sum, row) => sum + row.points, 0))
+    const projectedPoints = (row) => row.bye === week ? 0 : row.points;
+    const total = starters.length === 8 && starters.every((row) => Number.isFinite(projectedPoints(row)))
+      ? round(starters.reduce((sum, row) => sum + projectedPoints(row), 0))
       : null;
-    const actualPoints = Number.isFinite(capturedTeam?.actuals?.currentPoints) ? capturedTeam.actuals.currentPoints : null;
+    const scoredStarters = starters.filter((row) => Number.isFinite(row.actualPoints));
+    const finalStarters = scoredStarters.filter((row) => row.scoreStatus === "FINAL").length;
+    const liveStarters = scoredStarters.filter((row) => row.scoreStatus === "LIVE").length;
+    const actualPoints = scoredStarters.length ? round(scoredStarters.reduce((sum, row) => sum + row.actualPoints, 0)) : null;
+    const actualStatus = finalStarters === 8 ? "FINAL" : scoredStarters.length ? "LIVE" : "PREGAME";
     return {
       teamId: team.teamId,
       teamName: team.teamName,
       total,
       actualPoints,
-      actualStatus: capturedTeam?.actuals?.status || "PREGAME",
-      actualKnownStarters: capturedTeam?.actuals?.knownStarters || 0,
-      actualFinalStarters: capturedTeam?.actuals?.finalStarters || 0,
+      actualStatus,
+      actualKnownStarters: scoredStarters.length,
+      actualFinalStarters: finalStarters,
+      actualLiveStarters: liveStarters,
       starters,
       bench,
       submitted: Boolean(capturedTeam),

@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const REQUEST_SOURCE = "thunder-bowl-helper-worker";
-  const READER_VERSION = "0.10.16";
+  const READER_VERSION = "0.10.17";
 
   const clean = (value) => String(value || "").replace(/\s+/g, " ").trim();
 
@@ -153,14 +153,18 @@
       const actualPoints = finiteScore(node.querySelector(".playerScoresContainer .playerScore")?.innerText || node.querySelector(".playerScoresContainer .playerScore")?.textContent);
       const cbsLiveProjection = finiteScore(node.querySelector(".playerScoresContainer .projScore")?.innerText || node.querySelector(".playerScoresContainer .projScore")?.textContent);
       const final = /playerCellFinaled/i.test(node.className || "") || /\bFINAL\b/i.test(gameText);
+      const scheduled = /\bBYE\b/i.test(gameText)
+        || /\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)(?:DAY)?\b.*\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i.test(gameText);
+      const live = !scheduled && !final && actualPoints !== null
+        && (/\b(?:Q[1-4]|OT|HALF(?:TIME)?|END OF|IN PROGRESS)\b/i.test(gameText) || Boolean(statsText) || actualPoints !== 0);
       rows.push({
         cbsPlayerId,
         name: clean(link?.textContent),
         role,
         teamSide,
         matchupIndex,
-        actualPoints,
-        scoreStatus: actualPoints === null ? "NOT_STARTED" : final ? "FINAL" : "LIVE",
+        actualPoints: final || live ? actualPoints : null,
+        scoreStatus: final ? "FINAL" : live ? "LIVE" : "NOT_STARTED",
         cbsLiveProjection,
         gameText: gameText.slice(0, 300),
         statsText: statsText.slice(0, 500),

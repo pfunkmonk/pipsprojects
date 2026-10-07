@@ -850,7 +850,14 @@ function scoringPreviewPlayer(row, role, week) {
   );
   if (row.liveStats) identity.append(element("small", "scoring-live-stats", row.liveStats));
   const projection = element("div", "scoring-player-projection");
-  if (Number.isFinite(row.actualPoints)) {
+  if (row.bye === week) {
+    projection.classList.add("bye");
+    projection.append(
+      element("strong", "", "BYE"),
+      element("span", "scoring-actual-label", `WEEK ${week} BYE`),
+      element("small", "", "0.0 projected points · no game scheduled"),
+    );
+  } else if (Number.isFinite(row.actualPoints)) {
     projection.classList.add(row.scoreStatus === "FINAL" ? "final" : "live");
     projection.append(
       element("strong", "", number(row.actualPoints)),

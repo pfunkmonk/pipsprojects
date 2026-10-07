@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thunder Bowl Data Helper",
-  "version": "0.10.16",
+  "version": "0.10.17",
   "description": "Read-only CBS and four-source fantasy-football capture with background-safe scheduled refreshes for Pip's tools.",
   "permissions": ["scripting", "tabs", "alarms", "storage"],
   "host_permissions": [
