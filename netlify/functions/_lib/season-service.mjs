@@ -30,7 +30,7 @@ import { buildManagement, buildMidweekCommandCenter, buildProjectionCalibration 
 import { archiveManagementCheckpoint, archiveWeeklyProjections, readManagementState, saveManagementRecords, validateManagementRecords } from "./season-management-store.mjs";
 import { readRosterKeepPreferences, resolveRosterKeepPreferences, saveRosterKeepPreferences } from "./season-roster-preferences.mjs";
 
-export const RECOMMENDATION_ENGINE_VERSION = 25;
+export const RECOMMENDATION_ENGINE_VERSION = 26;
 const USER_TEAM_ID = "dogs-of-war";
 
 async function within(value, milliseconds, label) {

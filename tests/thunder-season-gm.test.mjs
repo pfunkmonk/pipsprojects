@@ -1304,7 +1304,7 @@ test("private season shell supports full and per-source updates without auction 
     readFile(new URL("../netlify/functions/_lib/season-service.mjs", import.meta.url), "utf8"),
     readFile(new URL("../netlify/functions/_lib/season-store.mjs", import.meta.url), "utf8"),
   ]);
-  assert.equal(RECOMMENDATION_ENGINE_VERSION, 25);
+  assert.equal(RECOMMENDATION_ENGINE_VERSION, 26);
   for (const id of ["refresh-plan", "midweek-refresh", "midweek-actions", "midweek-claims", "midweek-trades", "midweek-calendar", "midweek-drop-risks", "midweek-review", "midweek-source-receipt", "update-cbs-only", "update-fbg-only", "update-fp-only", "update-pff-only", "update-news-only", "refresh-team-news", "helper-setup", "helper-download", "fbg-file", "cbs-json-paste", "import-cbs-json-paste", "lineup-team", "lineup-week", "lineup-week-note", "scoring-preview-matchup", "starter-rows", "lineup-summary", "bench-rows", "waiver-list", "trade-board-summary", "trade-result-count", "trade-position", "trade-target-role", "trade-min-weeks", "trade-verdict", "trade-list", "move-list", "injury-list", "ir-list", "player-stats-rows", "team-news-list", "team-news-count", "team-news-updated", "trade-team-rows", "analyze-trade", "evidence-dialog", "evidence-eyebrow", "ai-run-lineup", "ai-view-lineup", "ai-run-waivers", "ai-view-waivers", "ai-run-trades", "ai-view-trades", "ai-run-trade-finder", "ai-view-trade-finder", "ai-run-stash-watch", "ai-view-stash-watch"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.ok(html.indexOf('id="lineup-summary"') < html.indexOf('class="bench-details"'));
   assert.ok(html.indexOf('class="bench-details"') < html.indexOf('id="swap-list"'));
