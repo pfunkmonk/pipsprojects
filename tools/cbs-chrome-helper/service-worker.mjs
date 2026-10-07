@@ -28,7 +28,7 @@ const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ALLOWED_APP_ORIGINS = new Set(["https://pipsprojects.com", "http://localhost:8888"]);
 const PAGE_READY_TIMEOUT_MS = 30_000;
 const PAGE_POLL_INTERVAL_MS = 250;
-const HELPER_VERSION = "0.10.15";
+const HELPER_VERSION = "0.10.16";
 const BACKGROUND_REFRESH_ALARM = "thunder-bowl-background-refresh";
 const BACKGROUND_REFRESH_URL = "https://pipsprojects.com/thunder-bowl/season/?scheduled-refresh=1";
 const BACKGROUND_REFRESH_TIMEOUT_MS = 20 * 60_000;
@@ -810,16 +810,101 @@ async function rawPffWeeklyTables(tabId) {
   return injection.result;
 }
 
+async function rawPffApiWeeklyTables(tabId, week) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    args: [week],
+    func: async (captureWeek) => {
+      const response = await fetch(`/api/fantasy/projections?scoring=preset_ppr&weeks=${encodeURIComponent(captureWeek)}`, {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`PFF projection API returned HTTP ${response.status}.`);
+      const payload = await response.json();
+      const projections = Array.isArray(payload?.player_projections) ? payload.player_projections : [];
+      if (projections.length < 200 || projections.length > 800) throw new Error(`PFF projection API returned unsafe weekly coverage (${projections.length} rows).`);
+      const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+      const rows = projections.map((item, index) => {
+        const position = String(item.position || "").toUpperCase();
+        const providerId = String(item.player_id || "");
+        const playerName = String(item.player_name || "").trim();
+        const base = {
+          kind: position === "DST" ? "dst" : "offense",
+          rank: number(item.fantasy_points_rank) || index + 1,
+          providerId,
+          providerUrl: providerId ? `https://www.pff.com/nfl/players/${providerId}` : "",
+          playerName,
+          rowKey: providerId || `${playerName}|${item.team_name || ""}|${position}`,
+        };
+        if (position === "DST") {
+          return {
+            ...base,
+            cells: [
+              item.team_name, position, item.bye_week, item.games, item.fantasy_points,
+              item.dst_sacks, item.dst_safeties, item.dst_int, item.dst_fumbles_forced,
+              item.dst_fumbles_recovered, item.dst_td, item.dst_return_yds, item.dst_return_td,
+              item.dst_pts_0, item.dst_pts_1_6, item.dst_pts_7_13, item.dst_pts_14_20,
+              item.dst_pts_21_27, item.dst_pts_28_34, item.dst_pts_35plus,
+            ].map((value, cellIndex) => cellIndex < 2 ? String(value || "") : number(value)),
+          };
+        }
+        return {
+          ...base,
+          cells: [
+            item.team_name, position, item.bye_week, item.games, item.fantasy_points,
+            item.pass_yds, item.pass_td, item.pass_int, item.rush_yds, item.rush_td,
+            item.recv_receptions, item.recv_yds, item.recv_td, item.fg_made, item.pat_made,
+          ].map((value, cellIndex) => cellIndex < 2 ? String(value || "") : number(value)),
+        };
+      });
+      if (!rows.some((row) => row.kind === "dst")) throw new Error("PFF projection API did not return defense rows.");
+      const rawProviderAsOf = String(payload.last_updated_at || "");
+      const normalizedProviderAsOf = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawProviderAsOf) ? rawProviderAsOf : `${rawProviderAsOf}Z`;
+      const providerAsOf = Number.isFinite(Date.parse(normalizedProviderAsOf))
+        ? normalizedProviderAsOf
+        : new Date().toISOString();
+      return {
+        providerAsOf,
+        offenseHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "PASS_YDS", "PASS_TD", "PASS_INT", "RUSH_YDS", "RUSH_TD", "REC", "REC_YDS", "REC_TD", "FG", "XP"],
+        dstHeaders: ["TEAM", "POS", "BYE", "OPP", "PTS", "SACK", "SFT", "INT", "FF", "FR", "TD", "RETURN_YDS", "RETURN_TD", "PA_0", "PA_1_6", "PA_7_13", "PA_14_20", "PA_21_27", "PA_28_34", "PA_35_PLUS"],
+        rows,
+      };
+    },
+  });
+  const injection = results[0];
+  if (!injection?.result) {
+    const detail = injection?.error?.message || String(injection?.error || "").trim();
+    throw new Error(detail ? `PFF API capture stopped: ${detail}` : "PFF API capture returned no data.");
+  }
+  return injection.result;
+}
+
 async function capturePffProjections(week) {
   const pageUrl = `${PFF_ORIGIN}/fantasy/projections`;
   let tabId = null;
   try {
     const tab = await chrome.tabs.create({ url: pageUrl, active: false });
     tabId = tab.id;
-    await waitForPffContent(tabId);
+    let table = null;
+    let apiError = null;
+    for (let attempt = 0; attempt < 40 && !table; attempt += 1) {
+      try {
+        const current = await chrome.tabs.get(tabId);
+        const currentUrl = current.url || current.pendingUrl || "";
+        if (currentUrl.startsWith(pageUrl) && current.status === "complete") table = await rawPffApiWeeklyTables(tabId, week);
+        else if (currentUrl && currentUrl !== "about:blank" && current.status === "complete") throw new Error("PFF redirected away from the fantasy projections. Sign into PFF in this browser, then retry.");
+      } catch (error) {
+        apiError = error;
+      }
+      if (!table) await delay(PAGE_POLL_INTERVAL_MS);
+    }
+    if (!table) {
+      await waitForPffContent(tabId);
+      table = await rawPffWeeklyTables(tabId);
+    }
     const capturedAt = new Date().toISOString();
-    const table = await rawPffWeeklyTables(tabId);
-    if (!table || table.rows.length < 200 || table.rows.length > 800 || !table.rows.some((row) => row.kind === "dst")) throw new Error(`PFF returned unsafe weekly coverage (${table?.rows?.length || 0} rows).`);
+    if (!table || table.rows.length < 200 || table.rows.length > 800 || !table.rows.some((row) => row.kind === "dst")) throw new Error(apiError?.message || `PFF returned unsafe weekly coverage (${table?.rows?.length || 0} rows).`);
     return {
       schemaVersion: 1,
       provider: "pff",
@@ -828,7 +913,7 @@ async function capturePffProjections(week) {
       authenticated: true,
       accountStatus: "signed-in",
       capturedAt,
-      providerAsOf: capturedAt,
+      providerAsOf: table.providerAsOf || capturedAt,
       season: 2026,
       week,
       pageUrl,
