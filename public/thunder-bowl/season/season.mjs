@@ -876,8 +876,63 @@ function scoringPreviewPlayer(row, role, week) {
   return card;
 }
 
+function scoringPreviewRowHasStarted(row) {
+  if (!row || !Number.isFinite(row.actualPoints)) return false;
+  if (row.scoreStatus === "FINAL") return true;
+  if (row.scoreStatus !== "LIVE") return false;
+  const gameText = String(row.cbsGameState || "").trim();
+  const statsText = String(row.liveStats || "").trim();
+  if (/\bBYE\b/i.test(gameText)) return false;
+  if (/\b(?:Q[1-4]|OT|HALF(?:TIME)?|END OF|IN PROGRESS)\b/i.test(gameText)) return true;
+  if (/\b(?:MON|TUE|WED|THU|FRI|SAT|SUN)(?:DAY)?\b.*\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i.test(gameText)) return false;
+  return Boolean(statsText) || row.actualPoints !== 0;
+}
+
+function scoringPreviewForDisplay(input, week) {
+  if (!input?.teams?.length) return input;
+  const teams = input.teams.map((team) => {
+    const normalizeRow = (row) => scoringPreviewRowHasStarted(row)
+      ? row
+      : { ...row, actualPoints: null, scoreStatus: "NOT_STARTED" };
+    const starters = (team.starters || []).map(normalizeRow);
+    const bench = (team.bench || []).map(normalizeRow);
+    const projected = starters.map((row) => row.bye === week ? 0 : row.points);
+    const total = starters.length === 8 && projected.every(Number.isFinite)
+      ? Number(projected.reduce((sum, points) => sum + points, 0).toFixed(1))
+      : null;
+    const scored = starters.filter((row) => Number.isFinite(row.actualPoints));
+    const finalCount = scored.filter((row) => row.scoreStatus === "FINAL").length;
+    return {
+      ...team,
+      starters,
+      bench,
+      total,
+      actualPoints: scored.length ? Number(scored.reduce((sum, row) => sum + row.actualPoints, 0).toFixed(1)) : null,
+      actualStatus: finalCount === 8 ? "FINAL" : scored.length ? "LIVE" : "PREGAME",
+    };
+  });
+  const [left, right] = teams;
+  const projectedMargin = Number.isFinite(left?.total) && Number.isFinite(right?.total)
+    ? Number((left.total - right.total).toFixed(1))
+    : null;
+  const absoluteMargin = Number.isFinite(projectedMargin) ? Math.abs(projectedMargin) : null;
+  const edge = absoluteMargin === null ? "UNAVAILABLE" : absoluteMargin < 2 ? "EVEN" : absoluteMargin < 6 ? "SLIGHT" : absoluteMargin < 12 ? "MODERATE" : "STRONG";
+  const actualMargin = Number.isFinite(left?.actualPoints) && Number.isFinite(right?.actualPoints)
+    ? Number((left.actualPoints - right.actualPoints).toFixed(1))
+    : null;
+  return {
+    ...input,
+    teams,
+    projectedMargin,
+    favoriteTeamId: projectedMargin === null || projectedMargin === 0 ? null : projectedMargin > 0 ? left.teamId : right.teamId,
+    edge,
+    actualMargin,
+  };
+}
+
 function renderScoringPreview(value) {
-  const preview = value.scoringPreview || { status: "UNAVAILABLE", errors: ["Update CBS with the newest Data Helper to capture submitted lineups and current scores."] };
+  const rawPreview = value.scoringPreview || { status: "UNAVAILABLE", errors: ["Update CBS with the newest Data Helper to capture submitted lineups and current scores."] };
+  const preview = scoringPreviewForDisplay(rawPreview, rawPreview.week || value.week);
   const selector = byId("scoring-preview-matchup");
   const selectedTeamId = preview.selectedTeamId || value.viewing?.selectedTeamId || value.league?.userTeamId || "";
   selector.replaceChildren();

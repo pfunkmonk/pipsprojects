@@ -1316,6 +1316,9 @@ test("private season shell supports full and per-source updates without auction 
   assert.match(source, /playerStatsView\.direction === "asc"/);
   assert.match(source, /button\[data-player-sort\]/);
   assert.match(source, /async function loadLineupSelection/);
+  assert.match(source, /function scoringPreviewForDisplay/);
+  assert.match(source, /row\.bye === week \? 0 : row\.points/);
+  assert.match(source, /scoreStatus: "NOT_STARTED"/);
   assert.match(source, /starter-alternatives-toggle/);
   assert.match(source, /keep-toggle/);
   assert.match(source, /set-roster-keep/);
