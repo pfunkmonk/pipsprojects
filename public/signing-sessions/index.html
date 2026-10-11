@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signing Sessions — Pippenger Law</title>
+  <meta name="description" content="Sign up to work a Saturday signing session." />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <span class="brand">PIPPENGER LAW</span>
+      <span class="tag">Signing Sessions</span>
+      <span class="spacer"></span>
+      <span id="who" class="who" hidden></span>
+      <button id="signout" class="link-btn" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- Sign in -->
+    <section id="view-signin" hidden>
+      <div class="card signin">
+        <p class="cap">Sign in</p>
+        <form id="signin-form">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+          <button type="submit" class="btn primary wide" id="signin-btn">Email me a sign-in link</button>
+        </form>
+        <p class="hint">We'll email you a link that signs you in — no password to remember. Invite only: if you haven't been invited, ask Mike.</p>
+        <div id="code-box" hidden>
+          <p class="sent">Check your email. Click the link, or enter the 6-digit code from it here:</p>
+          <form id="code-form" class="row">
+            <input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" autocomplete="one-time-code" />
+            <button type="submit" class="btn primary">Sign in</button>
+          </form>
+          <button id="resend" class="link-btn">Send another link</button>
+        </div>
+        <p id="signin-error" class="error" hidden></p>
+      </div>
+    </section>
+
+    <!-- Signed in -->
+    <section id="view-app" hidden>
+      <div id="mode-bar" class="mode-bar" hidden>
+        <button class="choice" data-mode="roster">Sign-up board</button>
+        <button class="choice" data-mode="admin">Admin</button>
+      </div>
+
+      <!-- Contractor board -->
+      <div id="roster-view">
+        <h1>Upcoming signing sessions</h1>
+        <p class="sub">First come, first served — one spot per person per Saturday. You can drop a spot up to 48 hours before; after that, email or text Mike.</p>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="roster">
+              <thead><tr><th>Date</th><th>Notary</th><th>Witness 1</th><th>Witness 2</th><th></th></tr></thead>
+              <tbody id="roster-body"></tbody>
+            </table>
+          </div>
+          <p id="roster-empty" class="empty" hidden>No sessions scheduled yet. Check back soon.</p>
+        </div>
+      </div>
+
+      <!-- Admin -->
+      <div id="admin-view" hidden>
+        <div class="tabs" id="admin-tabs">
+          <button class="tab" data-tab="sessions">Sessions</button>
+          <button class="tab" data-tab="people">People</button>
+          <button class="tab" data-tab="email">Email</button>
+          <button class="tab" data-tab="settings">Settings</button>
+        </div>
+
+        <div id="tab-sessions" class="tab-pane">
+          <h1>Sessions</h1>
+          <div class="card">
+            <p class="cap">Add a Saturday</p>
+            <form id="add-session" class="grid-form">
+              <label>Date <input type="date" name="session_date" required /></label>
+              <label>Start <input type="time" name="start_time" required /></label>
+              <label>End <input type="time" name="end_time" required /></label>
+              <label class="grow">Location <input type="text" name="location" required /></label>
+              <label class="grow">Notes (optional) <input type="text" name="notes" placeholder="Anything the crew should know" /></label>
+              <button type="submit" class="btn primary">Add session</button>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <p class="cap">Upcoming</p>
+              <button id="toggle-history" class="link-btn">Show history</button>
+            </div>
+            <div class="table-wrap">
+              <table class="roster admin">
+                <thead><tr><th>Date</th><th>Notary</th><th>Witness 1</th><th>Witness 2</th><th></th></tr></thead>
+                <tbody id="admin-sessions-body"></tbody>
+              </table>
+            </div>
+            <p id="admin-sessions-empty" class="empty" hidden>No sessions yet — add one above.</p>
+          </div>
+        </div>
+
+        <div id="tab-people" class="tab-pane" hidden>
+          <h1>People</h1>
+          <div class="card">
+            <p class="cap">Invite someone</p>
+            <form id="invite-form" class="grid-form">
+              <label>Name <input type="text" name="full_name" required placeholder="Full name" /></label>
+              <label class="grow">Email <input type="email" name="email" required placeholder="name@example.com" /></label>
+              <label>Role <select name="role"><option value="witness">Witness</option><option value="notary">Notary</option></select></label>
+              <button type="submit" class="btn primary">Send invite</button>
+            </form>
+            <p class="hint">They get a friendly email from you with a one-click sign-in link. You can change their role any time.</p>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table class="people">
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+                <tbody id="people-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-email" class="tab-pane" hidden>
+          <h1>Email everyone</h1>
+          <div class="card">
+            <form id="broadcast-form">
+              <div class="grid-form">
+                <label>To <select name="audience" id="audience">
+                  <option value="all">All active people</option>
+                  <option value="notary">Notaries only</option>
+                  <option value="witness">Witnesses only</option>
+                  <option value="not_signed_up">Anyone not signed up for a date…</option>
+                </select></label>
+                <label id="audience-session-wrap" hidden>Date <select name="session_id" id="audience-session"></select></label>
+                <label class="grow">Subject <input type="text" name="subject" required /></label>
+              </div>
+              <label>Message <textarea name="body" rows="6" required placeholder="Hi all — we've added two more Saturdays in December…"></textarea></label>
+              <p class="hint">Each person gets their own copy, opening with "Hi &lt;first name&gt;," and signed "Mike".</p>
+              <div class="actions"><button type="submit" class="btn primary">Send</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head"><p class="cap">Email log</p><button id="refresh-log" class="link-btn">Refresh</button></div>
+            <div class="table-wrap">
+              <table class="log">
+                <thead><tr><th>When</th><th>Kind</th><th>To</th><th>Status</th></tr></thead>
+                <tbody id="log-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-settings" class="tab-pane" hidden>
+          <h1>Settings</h1>
+          <div class="card">
+            <p class="cap">Outlook</p>
+            <p id="outlook-status" class="sub">Checking…</p>
+            <div class="actions">
+              <button id="outlook-connect" class="btn primary" hidden>Connect Outlook</button>
+              <button id="outlook-disconnect" class="btn" hidden>Disconnect</button>
+              <button id="send-test" class="btn">Send me a test email</button>
+            </div>
+            <p id="outlook-help" class="hint"></p>
+          </div>
+          <div class="card">
+            <p class="cap">Defaults for new sessions</p>
+            <form id="defaults-form" class="grid-form">
+              <label>Start <input type="time" name="default_start_time" required /></label>
+              <label>End <input type="time" name="default_end_time" required /></label>
+              <label class="grow">Location <input type="text" name="default_location" required /></label>
+              <button type="submit" class="btn primary">Save defaults</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">© <span id="year"></span> Pippenger Law</footer>
+  <script type="module" src="app.js?v=2"></script>
+</body>
+</html>

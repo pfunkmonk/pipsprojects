@@ -1,0 +1,14 @@
+# Supabase CLI config for the signing-sessions project (used for `supabase functions deploy`).
+project_id = "jadvujhtaecrlerjpbth"
+
+[functions.admin]
+verify_jwt = true
+
+[functions.mail-worker]
+verify_jwt = false
+
+[functions.auth-email]
+verify_jwt = false
+
+[functions.ms-auth]
+verify_jwt = false
